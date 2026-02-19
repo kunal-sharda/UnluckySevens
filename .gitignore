@@ -1,0 +1,9 @@
+**/*.xcodeproj
+**/*.xcworkspace
+DerivedData/
+.tuist/
+.tuist-cache/
+Tuist/.build/
+Tuist/Dependencies/
+**/.build/
+**/.swiftpm/
