@@ -1,0 +1,72 @@
+import Foundation
+
+public struct EnvelopeV1: Codable, Equatable {
+    public enum Kind: String, Codable, Equatable {
+        case state = "STATE"
+        case intent = "INTENT"
+    }
+
+    public enum Body: Codable, Equatable {
+        private enum CodingKeys: String, CodingKey {
+            case state
+            case intent
+        }
+
+        private struct PayloadContainer: Codable, Equatable {
+            let payload: String
+        }
+
+        case state(payload: String)
+        case intent(payload: String)
+
+        var kind: Kind {
+            switch self {
+            case .state:
+                return .state
+            case .intent:
+                return .intent
+            }
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+
+            if let statePayload = try container.decodeIfPresent(PayloadContainer.self, forKey: .state) {
+                self = .state(payload: statePayload.payload)
+                return
+            }
+
+            if let intentPayload = try container.decodeIfPresent(PayloadContainer.self, forKey: .intent) {
+                self = .intent(payload: intentPayload.payload)
+                return
+            }
+
+            throw DecodingError.dataCorruptedError(
+                forKey: .state,
+                in: container,
+                debugDescription: "Envelope body must contain state or intent payload."
+            )
+        }
+
+        public func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+
+            switch self {
+            case let .state(payload):
+                try container.encode(PayloadContainer(payload: payload), forKey: .state)
+            case let .intent(payload):
+                try container.encode(PayloadContainer(payload: payload), forKey: .intent)
+            }
+        }
+    }
+
+    public let v: Int
+    public let kind: Kind
+    public let body: Body
+
+    public init(v: Int = 1, kind: Kind, body: Body) {
+        self.v = v
+        self.kind = kind
+        self.body = body
+    }
+}

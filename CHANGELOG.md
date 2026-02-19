@@ -21,3 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 0.C.1 transport regression test for unsupported payload version decode handling.
 - Stage 0.C.2 Simulator fallback: when `selectedMessage.url` is missing, decode attempts now fall back to payload embedded in message `summaryText`.
 - Stage 0.C.2 terminology cleanup: user-facing `nonce` renamed to `debugId` with backward-compatible decoding for legacy payloads.
+- Stage 1.1 Transport v1: added `EnvelopeV1` (`STATE`/`INTENT`) with reusable base64url JSON encode/decode APIs.
+- Stage 1.1 added `TransportError` (`emptyPayload`, `invalidBase64URL`, `invalidJSON`, `unsupportedVersion`) and encoded size helpers.
+- Stage 1.1 added transport unit tests for envelope roundtrip, invalid decode cases, and encoded size sanity.

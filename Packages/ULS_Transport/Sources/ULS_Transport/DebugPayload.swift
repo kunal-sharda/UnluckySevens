@@ -95,27 +95,3 @@ public func decodeDebugPayload(from base64url: String) throws -> DebugPayload {
         throw DebugPayloadCodecError.jsonDecodingFailed
     }
 }
-
-private func base64URLEncode(_ data: Data) -> String {
-    data.base64EncodedString()
-        .replacingOccurrences(of: "+", with: "-")
-        .replacingOccurrences(of: "/", with: "_")
-        .replacingOccurrences(of: "=", with: "")
-}
-
-private func base64URLDecode(_ value: String) -> Data? {
-    var base64 = value
-        .replacingOccurrences(of: "-", with: "+")
-        .replacingOccurrences(of: "_", with: "/")
-
-    let remainder = base64.count % 4
-    if remainder == 1 {
-        return nil
-    }
-
-    if remainder > 0 {
-        base64 += String(repeating: "=", count: 4 - remainder)
-    }
-
-    return Data(base64Encoded: base64)
-}
