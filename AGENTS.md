@@ -77,6 +77,7 @@ README.md
 ### Swift packages
 - `ULS_CoreGame` must stay **pure** (no UIKit, no Messages framework).
 - `ULS_Transport` must stay **pure** (no UI), focused on encoding/decoding/hashing/compression.
+- Use Third Party packages when they make sense, but err on the side of using Apple packages, and log any decisions for other packages if needed. Make the decision between doing that and using your own generation. 
 
 ---
 

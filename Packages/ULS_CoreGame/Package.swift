@@ -3,6 +3,10 @@ import PackageDescription
 
 let package = Package(
     name: "ULS_CoreGame",
+    platforms: [
+        .iOS(.v13),
+        .macOS(.v10_15),
+    ],
     products: [
         .library(
             name: "ULS_CoreGame",

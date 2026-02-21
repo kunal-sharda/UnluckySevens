@@ -24,3 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 1.1 Transport v1: added `EnvelopeV1` (`STATE`/`INTENT`) with reusable base64url JSON encode/decode APIs.
 - Stage 1.1 added `TransportError` (`emptyPayload`, `invalidBase64URL`, `invalidJSON`, `unsupportedVersion`) and encoded size helpers.
 - Stage 1.1 added transport unit tests for envelope roundtrip, invalid decode cases, and encoded size sanity.
+- Stage 1.2 CoreGame v1 kernel: added `CoreGameStateV1`, `PhaseV1`, deterministic canonical SHA-256 state hashing, and `rehashed()` support.
+- Stage 1.2 added transition validator `validateTransition(from:to:actor:)` with strict rev/prevHash/actor/roster/gameId/stateHash checks.
+- Stage 1.2 added CoreGame tests for golden hash, valid transition, and per-rule transition validation failures.

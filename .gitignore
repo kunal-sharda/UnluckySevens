@@ -1,6 +1,8 @@
 **/*.xcodeproj
 **/*.xcworkspace
 DerivedData/
+Derived/
+.DS_Store
 .tuist/
 .tuist-cache/
 Tuist/.build/
