@@ -27,3 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 1.2 CoreGame v1 kernel: added `CoreGameStateV1`, `PhaseV1`, deterministic canonical SHA-256 state hashing, and `rehashed()` support.
 - Stage 1.2 added transition validator `validateTransition(from:to:actor:)` with strict rev/prevHash/actor/roster/gameId/stateHash checks.
 - Stage 1.2 added CoreGame tests for golden hash, valid transition, and per-rule transition validation failures.
+- Stage 1.3 Lobby flow UI stub: added SwiftUI lobby driver in `MessagesExtension` with Invite, Join, Record Join, Start Game, and Clear Pending Joins actions.
+- Stage 1.3 added `JoinIntentV1` transport payload model for anchored `INTENT(join)` messages.
+- Stage 1.3 updated CoreGame v1 state with `seed` and lobby-to-setup transition handling that permits roster/seed changes only for Start.
+- Stage 1.3 added/updated Transport and CoreGame tests for join intent roundtrip, seed-aware hashing, and start-transition validation rules.

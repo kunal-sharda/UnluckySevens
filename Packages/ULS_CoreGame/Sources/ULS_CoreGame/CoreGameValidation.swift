@@ -5,6 +5,7 @@ public enum CoreGameError: Error, Equatable {
     case prevHashMismatch
     case actorMismatch
     case rosterChanged
+    case seedChanged
     case invalidStateHash
     case gameIdMismatch
 }
@@ -26,8 +27,15 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
         throw CoreGameError.actorMismatch
     }
 
-    guard to.roster == from.roster else {
-        throw CoreGameError.rosterChanged
+    let isStartTransition = from.phase == .lobby && to.phase == .setup
+    if !isStartTransition {
+        guard to.roster == from.roster else {
+            throw CoreGameError.rosterChanged
+        }
+
+        guard to.seed == from.seed else {
+            throw CoreGameError.seedChanged
+        }
     }
 
     let expectedStateHash = to.rehashed().stateHash

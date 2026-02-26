@@ -65,4 +65,38 @@ final class EnvelopeV1TransportTests: XCTestCase {
         XCTAssertEqual(length, bytes)
         XCTAssertLessThan(bytes, 2048)
     }
+
+    func testJoinIntentPayloadRoundTrip() throws {
+        let intent = JoinIntentV1(
+            gameId: "game-123",
+            anchorRev: 0,
+            anchorHash: "abc123",
+            actor: "player-1"
+        )
+        let intentPayload = try jsonString(intent)
+        let envelope = EnvelopeV1(
+            kind: .intent,
+            body: .intent(payload: intentPayload)
+        )
+
+        let encoded = try encode(envelope)
+        let decoded = try decode(encoded)
+
+        guard case let .intent(payload) = decoded.body else {
+            XCTFail("Expected INTENT body.")
+            return
+        }
+
+        let decodedIntent = try JSONDecoder().decode(JoinIntentV1.self, from: Data(payload.utf8))
+        XCTAssertEqual(decodedIntent, intent)
+    }
+
+    private func jsonString<T: Encodable>(_ value: T) throws -> String {
+        let data = try JSONEncoder().encode(value)
+        guard let json = String(data: data, encoding: .utf8) else {
+            XCTFail("Expected UTF-8 JSON payload.")
+            throw TransportError.invalidJSON
+        }
+        return json
+    }
 }

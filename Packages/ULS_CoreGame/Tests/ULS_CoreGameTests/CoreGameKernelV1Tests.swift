@@ -10,31 +10,84 @@ final class CoreGameKernelV1Tests: XCTestCase {
             stateHash: "",
             roster: ["alice", "bob", "carol"],
             currentPlayer: "alice",
-            phase: .turn
+            phase: .turn,
+            seed: 42
         )
 
         let hash = state.rehashed().stateHash
-        XCTAssertEqual(hash, "040ceef25be03ba977082745cd0180fc4099c2dbddd5656d90c5dfc732246029")
+        XCTAssertEqual(hash, "15474f08888778bfd6377c0ef089f4a973b65b12568bc8be8d89c7274357196e")
     }
 
-    func testValidTransitionPasses() throws {
+    func testHashChangesWhenSeedChanges() {
+        let base = CoreGameStateV1(
+            gameId: "game-123",
+            rev: 7,
+            prevHash: "abc123",
+            stateHash: "",
+            roster: ["alice", "bob", "carol"],
+            currentPlayer: "alice",
+            phase: .turn,
+            seed: 111
+        )
+
+        let changed = CoreGameStateV1(
+            gameId: base.gameId,
+            rev: base.rev,
+            prevHash: base.prevHash,
+            stateHash: "",
+            roster: base.roster,
+            currentPlayer: base.currentPlayer,
+            phase: base.phase,
+            seed: 222
+        )
+
+        XCTAssertNotEqual(base.rehashed().stateHash, changed.rehashed().stateHash)
+    }
+
+    func testValidTransitionPasses() {
         let from = makeValidState().rehashed()
         let to = makeValidNextState(from: from, actor: from.currentPlayer)
 
         XCTAssertNoThrow(try validateTransition(from: from, to: to, actor: from.currentPlayer))
     }
 
-    func testTransitionFailsOnRevMismatch() throws {
+    func testValidStartTransitionAllowsRosterAndSeedChange() {
+        let from = CoreGameStateV1(
+            gameId: "game-123",
+            rev: 0,
+            prevHash: nil,
+            stateHash: "",
+            roster: ["alice"],
+            currentPlayer: "alice",
+            phase: .lobby,
+            seed: nil
+        ).rehashed()
+
+        let to = CoreGameStateV1(
+            gameId: from.gameId,
+            rev: 1,
+            prevHash: from.stateHash,
+            stateHash: "",
+            roster: ["alice", "bob", "carol"],
+            currentPlayer: "alice",
+            phase: .setup,
+            seed: 12345
+        ).rehashed()
+
+        XCTAssertNoThrow(try validateTransition(from: from, to: to, actor: "alice"))
+    }
+
+    func testTransitionFailsOnRevMismatch() {
         let from = makeValidState().rehashed()
-        var to = makeValidNextState(from: from, actor: from.currentPlayer)
-        to = CoreGameStateV1(
-            gameId: to.gameId,
+        let to = CoreGameStateV1(
+            gameId: from.gameId,
             rev: from.rev + 2,
-            prevHash: to.prevHash,
-            stateHash: to.stateHash,
-            roster: to.roster,
-            currentPlayer: to.currentPlayer,
-            phase: to.phase
+            prevHash: from.stateHash,
+            stateHash: "",
+            roster: from.roster,
+            currentPlayer: from.currentPlayer,
+            phase: .turn,
+            seed: from.seed
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: to, actor: from.currentPlayer)) { error in
@@ -42,7 +95,7 @@ final class CoreGameKernelV1Tests: XCTestCase {
         }
     }
 
-    func testTransitionFailsOnPrevHashMismatch() throws {
+    func testTransitionFailsOnPrevHashMismatch() {
         let from = makeValidState().rehashed()
         let tampered = CoreGameStateV1(
             gameId: from.gameId,
@@ -51,7 +104,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             stateHash: "",
             roster: from.roster,
             currentPlayer: from.currentPlayer,
-            phase: .turn
+            phase: .turn,
+            seed: from.seed
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -59,7 +113,7 @@ final class CoreGameKernelV1Tests: XCTestCase {
         }
     }
 
-    func testTransitionFailsOnActorMismatch() throws {
+    func testTransitionFailsOnActorMismatch() {
         let from = makeValidState().rehashed()
         let to = makeValidNextState(from: from, actor: from.currentPlayer)
 
@@ -68,7 +122,7 @@ final class CoreGameKernelV1Tests: XCTestCase {
         }
     }
 
-    func testTransitionFailsOnRosterChanged() throws {
+    func testTransitionFailsOnRosterChangedOutsideStartTransition() {
         let from = makeValidState().rehashed()
         let tampered = CoreGameStateV1(
             gameId: from.gameId,
@@ -77,7 +131,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             stateHash: "",
             roster: ["alice", "bob", "dave"],
             currentPlayer: from.currentPlayer,
-            phase: .turn
+            phase: .turn,
+            seed: from.seed
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -85,7 +140,25 @@ final class CoreGameKernelV1Tests: XCTestCase {
         }
     }
 
-    func testTransitionFailsOnInvalidStateHash() throws {
+    func testTransitionFailsOnSeedChangedOutsideStartTransition() {
+        let from = makeValidState().rehashed()
+        let tampered = CoreGameStateV1(
+            gameId: from.gameId,
+            rev: from.rev + 1,
+            prevHash: from.stateHash,
+            stateHash: "",
+            roster: from.roster,
+            currentPlayer: from.currentPlayer,
+            phase: .turn,
+            seed: 999
+        ).rehashed()
+
+        XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
+            XCTAssertEqual(error as? CoreGameError, .seedChanged)
+        }
+    }
+
+    func testTransitionFailsOnInvalidStateHash() {
         let from = makeValidState().rehashed()
         let to = makeValidNextState(from: from, actor: from.currentPlayer)
         let tampered = CoreGameStateV1(
@@ -95,7 +168,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             stateHash: "deadbeef",
             roster: to.roster,
             currentPlayer: to.currentPlayer,
-            phase: to.phase
+            phase: to.phase,
+            seed: to.seed
         )
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -103,7 +177,7 @@ final class CoreGameKernelV1Tests: XCTestCase {
         }
     }
 
-    func testTransitionFailsOnGameIdMismatch() throws {
+    func testTransitionFailsOnGameIdMismatch() {
         let from = makeValidState().rehashed()
         let tampered = CoreGameStateV1(
             gameId: "different-game",
@@ -112,7 +186,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             stateHash: "",
             roster: from.roster,
             currentPlayer: from.currentPlayer,
-            phase: .turn
+            phase: .turn,
+            seed: from.seed
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -128,7 +203,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             stateHash: "",
             roster: ["alice", "bob", "carol"],
             currentPlayer: "alice",
-            phase: .turn
+            phase: .turn,
+            seed: 555
         )
     }
 
@@ -140,7 +216,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             stateHash: "",
             roster: from.roster,
             currentPlayer: actor,
-            phase: .turn
+            phase: .turn,
+            seed: from.seed
         ).rehashed()
     }
 }
