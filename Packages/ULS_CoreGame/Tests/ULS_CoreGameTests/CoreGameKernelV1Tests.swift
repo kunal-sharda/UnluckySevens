@@ -11,11 +11,12 @@ final class CoreGameKernelV1Tests: XCTestCase {
             roster: ["alice", "bob", "carol"],
             currentPlayer: "alice",
             phase: .turn,
-            seed: 42
+            seed: 42,
+            diceRngState: nil
         )
 
         let hash = state.rehashed().stateHash
-        XCTAssertEqual(hash, "15474f08888778bfd6377c0ef089f4a973b65b12568bc8be8d89c7274357196e")
+        XCTAssertEqual(hash, "fc5e70118d70019ea2781766fff9cd3b2deae255125d4688d92fb2903203995a")
     }
 
     func testHashChangesWhenSeedChanges() {
@@ -27,7 +28,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             roster: ["alice", "bob", "carol"],
             currentPlayer: "alice",
             phase: .turn,
-            seed: 111
+            seed: 111,
+            diceRngState: 222
         )
 
         let changed = CoreGameStateV1(
@@ -38,7 +40,36 @@ final class CoreGameKernelV1Tests: XCTestCase {
             roster: base.roster,
             currentPlayer: base.currentPlayer,
             phase: base.phase,
-            seed: 222
+            seed: 222,
+            diceRngState: base.diceRngState
+        )
+
+        XCTAssertNotEqual(base.rehashed().stateHash, changed.rehashed().stateHash)
+    }
+
+    func testHashChangesWhenDiceRngStateChanges() {
+        let base = CoreGameStateV1(
+            gameId: "game-123",
+            rev: 7,
+            prevHash: "abc123",
+            stateHash: "",
+            roster: ["alice", "bob", "carol"],
+            currentPlayer: "alice",
+            phase: .turn,
+            seed: 111,
+            diceRngState: 333
+        )
+
+        let changed = CoreGameStateV1(
+            gameId: base.gameId,
+            rev: base.rev,
+            prevHash: base.prevHash,
+            stateHash: "",
+            roster: base.roster,
+            currentPlayer: base.currentPlayer,
+            phase: base.phase,
+            seed: base.seed,
+            diceRngState: 444
         )
 
         XCTAssertNotEqual(base.rehashed().stateHash, changed.rehashed().stateHash)
@@ -60,7 +91,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             roster: ["alice"],
             currentPlayer: "alice",
             phase: .lobby,
-            seed: nil
+            seed: nil,
+            diceRngState: nil
         ).rehashed()
 
         let to = CoreGameStateV1(
@@ -71,10 +103,28 @@ final class CoreGameKernelV1Tests: XCTestCase {
             roster: ["alice", "bob", "carol"],
             currentPlayer: "alice",
             phase: .setup,
-            seed: 12345
+            seed: 12345,
+            diceRngState: 67890
         ).rehashed()
 
         XCTAssertNoThrow(try validateTransition(from: from, to: to, actor: "alice"))
+    }
+
+    func testTransitionAllowsDiceRngStateChangeOutsideStart() {
+        let from = makeValidState().rehashed()
+        let to = CoreGameStateV1(
+            gameId: from.gameId,
+            rev: from.rev + 1,
+            prevHash: from.stateHash,
+            stateHash: "",
+            roster: from.roster,
+            currentPlayer: from.currentPlayer,
+            phase: .turn,
+            seed: from.seed,
+            diceRngState: 999
+        ).rehashed()
+
+        XCTAssertNoThrow(try validateTransition(from: from, to: to, actor: from.currentPlayer))
     }
 
     func testTransitionFailsOnRevMismatch() {
@@ -87,7 +137,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             roster: from.roster,
             currentPlayer: from.currentPlayer,
             phase: .turn,
-            seed: from.seed
+            seed: from.seed,
+            diceRngState: from.diceRngState
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: to, actor: from.currentPlayer)) { error in
@@ -105,7 +156,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             roster: from.roster,
             currentPlayer: from.currentPlayer,
             phase: .turn,
-            seed: from.seed
+            seed: from.seed,
+            diceRngState: from.diceRngState
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -132,7 +184,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             roster: ["alice", "bob", "dave"],
             currentPlayer: from.currentPlayer,
             phase: .turn,
-            seed: from.seed
+            seed: from.seed,
+            diceRngState: from.diceRngState
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -150,7 +203,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             roster: from.roster,
             currentPlayer: from.currentPlayer,
             phase: .turn,
-            seed: 999
+            seed: 999,
+            diceRngState: from.diceRngState
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -169,7 +223,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             roster: to.roster,
             currentPlayer: to.currentPlayer,
             phase: to.phase,
-            seed: to.seed
+            seed: to.seed,
+            diceRngState: to.diceRngState
         )
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -187,7 +242,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             roster: from.roster,
             currentPlayer: from.currentPlayer,
             phase: .turn,
-            seed: from.seed
+            seed: from.seed,
+            diceRngState: from.diceRngState
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -204,7 +260,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             roster: ["alice", "bob", "carol"],
             currentPlayer: "alice",
             phase: .turn,
-            seed: 555
+            seed: 555,
+            diceRngState: 777
         )
     }
 
@@ -217,7 +274,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             roster: from.roster,
             currentPlayer: actor,
             phase: .turn,
-            seed: from.seed
+            seed: from.seed,
+            diceRngState: from.diceRngState
         ).rehashed()
     }
 }

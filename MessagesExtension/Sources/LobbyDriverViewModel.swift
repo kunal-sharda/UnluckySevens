@@ -15,6 +15,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var currentPlayer: String = "-"
     @Published var phase: String = "-"
     @Published var seed: String = "-"
+    @Published var diceRngState: String = "-"
     @Published var pendingJoiners: String = "[]"
     @Published var selectionStatus: String = "No message selected"
     @Published var lastError: String = "-"
@@ -79,7 +80,8 @@ final class LobbyDriverViewModel: ObservableObject {
             roster: [actor],
             currentPlayer: actor,
             phase: .lobby,
-            seed: nil
+            seed: nil,
+            diceRngState: nil
         ).rehashed()
 
         do {
@@ -173,6 +175,8 @@ final class LobbyDriverViewModel: ObservableObject {
             }
         }
 
+        let masterSeed = UInt64.random(in: .min ... .max)
+        let diceSeed = SeedDeriver(masterSeed: masterSeed).seed(for: .dice)
         let toState = CoreGameStateV1(
             gameId: fromState.gameId,
             rev: fromState.rev + 1,
@@ -181,7 +185,8 @@ final class LobbyDriverViewModel: ObservableObject {
             roster: finalRoster,
             currentPlayer: inviter,
             phase: .setup,
-            seed: UInt64.random(in: .min ... .max)
+            seed: masterSeed,
+            diceRngState: diceSeed
         ).rehashed()
 
         do {
@@ -263,6 +268,7 @@ final class LobbyDriverViewModel: ObservableObject {
         currentPlayer = state.currentPlayer
         phase = state.phase.rawValue
         seed = state.seed.map(String.init) ?? "nil"
+        diceRngState = state.diceRngState.map(String.init) ?? "nil"
         selectionStatus = "Decoded STATE rev\(state.rev)"
         refreshPendingJoiners(for: state.gameId)
     }
@@ -277,6 +283,7 @@ final class LobbyDriverViewModel: ObservableObject {
         currentPlayer = joinIntent.actor
         phase = "-"
         seed = "-"
+        diceRngState = "-"
         selectionStatus = "Decoded JOIN intent"
         refreshPendingJoiners(for: joinIntent.gameId)
     }
@@ -291,6 +298,7 @@ final class LobbyDriverViewModel: ObservableObject {
         currentPlayer = "-"
         phase = "-"
         seed = "-"
+        diceRngState = "-"
     }
 
     private func payloadValue(from message: MSMessage) -> String? {

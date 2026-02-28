@@ -22,6 +22,7 @@ struct LobbyDriverView: View {
                     field("currentPlayer", viewModel.currentPlayer)
                     field("phase", viewModel.phase)
                     field("seed", viewModel.seed)
+                    field("diceRngState", viewModel.diceRngState)
                     field("pendingJoiners", viewModel.pendingJoiners)
                 }
                 .font(.system(.caption, design: .monospaced))
