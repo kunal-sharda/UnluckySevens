@@ -18,7 +18,7 @@ final class CoreGameKernelV1Tests: XCTestCase {
         )
 
         let hash = state.rehashed().stateHash
-        XCTAssertEqual(hash, "7fa96a969ca8e240730e51ab7296478afa0e215ca04acfe7d1ef73ed29bbb53a")
+        XCTAssertEqual(hash, "16b27f0010dc4a01b47b3b0982774b0f91c91d1fc3db0892b198136e512c4ecf")
     }
 
     func testHashChangesWhenSeedChanges() {
@@ -112,6 +112,7 @@ final class CoreGameKernelV1Tests: XCTestCase {
             boardSeed: SeedDeriver(masterSeed: 12345).seed(for: .board),
             rules: boardRules
         )
+        let setupState = initializeSetupState(roster: ["alice", "bob", "carol"])
         let to = CoreGameStateV1(
             gameId: from.gameId,
             rev: 1,
@@ -123,7 +124,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: 12345,
             diceRngState: 67890,
             boardRules: boardRules,
-            board: board
+            board: board,
+            setupState: setupState
         ).rehashed()
 
         XCTAssertNoThrow(try validateTransition(from: from, to: to, actor: "alice"))
@@ -315,6 +317,7 @@ final class CoreGameKernelV1Tests: XCTestCase {
             generator: validBoard.generator,
             boardHash: "deadbeef"
         )
+        let setupState = initializeSetupState(roster: ["alice", "bob"])
         let to = CoreGameStateV1(
             gameId: from.gameId,
             rev: 1,
@@ -326,7 +329,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: 12345,
             diceRngState: 67890,
             boardRules: boardRules,
-            board: invalidBoard
+            board: invalidBoard,
+            setupState: setupState
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: to, actor: "alice")) { error in
@@ -374,6 +378,47 @@ final class CoreGameKernelV1Tests: XCTestCase {
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
             XCTAssertEqual(error as? CoreGameError, .gameIdMismatch)
+        }
+    }
+
+    func testTransitionFailsOnSetupCurrentPlayerMismatch() {
+        let from = CoreGameStateV1(
+            gameId: "game-123",
+            rev: 0,
+            prevHash: nil,
+            stateHash: "",
+            roster: ["alice"],
+            currentPlayer: "alice",
+            phase: .lobby,
+            seed: nil,
+            diceRngState: nil,
+            boardRules: nil,
+            board: nil
+        ).rehashed()
+
+        let boardRules = BoardRulesV1(strategy: .randomV1)
+        let board = StandardBoardGeneratorV1.generate(
+            boardSeed: SeedDeriver(masterSeed: 12345).seed(for: .board),
+            rules: boardRules
+        )
+        let setupState = initializeSetupState(roster: ["alice", "bob"])
+        let to = CoreGameStateV1(
+            gameId: from.gameId,
+            rev: 1,
+            prevHash: from.stateHash,
+            stateHash: "",
+            roster: ["alice", "bob"],
+            currentPlayer: "bob",
+            phase: .setup,
+            seed: 12345,
+            diceRngState: 67890,
+            boardRules: boardRules,
+            board: board,
+            setupState: setupState
+        ).rehashed()
+
+        XCTAssertThrowsError(try validateTransition(from: from, to: to, actor: "alice")) { error in
+            XCTAssertEqual(error as? CoreGameError, .setupCurrentPlayerMismatch)
         }
     }
 

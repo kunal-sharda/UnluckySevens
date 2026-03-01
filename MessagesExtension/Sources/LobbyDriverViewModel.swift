@@ -26,6 +26,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var boardResourcesByTile: String = "-"
     @Published var boardNumbersByTile: String = "-"
     @Published var boardPortsByIndex: String = "-"
+    @Published var setupPlacement: String = "-"
 
     private let summaryPayloadPrefix = "ulsenv:"
     private let boardStrategyKey = "uls.boardStrategy"
@@ -34,6 +35,7 @@ final class LobbyDriverViewModel: ObservableObject {
     private weak var activeConversation: MSConversation?
     private var selectedState: CoreGameStateV1?
     private var selectedJoinIntent: JoinIntentV1?
+    private var selectedSetupIntent: SetupPlacementIntentV1?
     private var stateSessionsByGameId: [String: MSSession] = [:]
 
     init(userDefaults: UserDefaults = .standard) {
@@ -56,6 +58,18 @@ final class LobbyDriverViewModel: ObservableObject {
 
     var canRecordJoin: Bool {
         selectedJoinIntent != nil
+    }
+
+    var isSetupSelectedState: Bool {
+        selectedState?.phase == .setup
+    }
+
+    var canSendSetupSettlementIntentDebug: Bool {
+        isSetupSelectedState && localActorIdentifier() != nil
+    }
+
+    var canSendSetupRoadIntentDebug: Bool {
+        isSetupSelectedState && localActorIdentifier() != nil
     }
 
     var canStartGame: Bool {
@@ -211,6 +225,11 @@ final class LobbyDriverViewModel: ObservableObject {
         let boardSeed = seedDeriver.seed(for: .board)
         let rules = BoardRulesV1(strategy: boardStrategy)
         let board = StandardBoardGeneratorV1.generate(boardSeed: boardSeed, rules: rules)
+        let setupState = initializeSetupState(roster: finalRoster)
+        guard let setupPlayer = setupState.order.first else {
+            setLastError("Could not initialize setup state.")
+            return
+        }
 
         let toState = CoreGameStateV1(
             gameId: fromState.gameId,
@@ -218,12 +237,13 @@ final class LobbyDriverViewModel: ObservableObject {
             prevHash: fromState.stateHash,
             stateHash: "",
             roster: finalRoster,
-            currentPlayer: inviter,
+            currentPlayer: setupPlayer,
             phase: .setup,
             seed: masterSeed,
             diceRngState: diceSeed,
             boardRules: rules,
-            board: board
+            board: board,
+            setupState: setupState
         ).rehashed()
 
         do {
@@ -254,9 +274,80 @@ final class LobbyDriverViewModel: ObservableObject {
         setLastError(nil)
     }
 
+    func sendSetupSettlementIntentDebug(node: Int = 0) {
+        guard let state = selectedState else {
+            setLastError("Select a setup STATE first.")
+            return
+        }
+
+        guard state.phase == .setup else {
+            setLastError("Setup settlement intent is only available in setup phase.")
+            return
+        }
+
+        guard let actor = localActorIdentifier() else {
+            setLastError("Missing local participant identifier.")
+            return
+        }
+
+        let intent = SetupPlacementIntentV1(
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor,
+            node: node
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT setupSettlement", sessionPolicy: .new)
+            selectionStatus = "Setup settlement intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Setup settlement failed: \(error.localizedDescription)")
+        }
+    }
+
+    func sendSetupRoadIntentDebug(edge: Int = 0) {
+        guard let state = selectedState else {
+            setLastError("Select a setup STATE first.")
+            return
+        }
+
+        guard state.phase == .setup else {
+            setLastError("Setup road intent is only available in setup phase.")
+            return
+        }
+
+        guard let actor = localActorIdentifier() else {
+            setLastError("Missing local participant identifier.")
+            return
+        }
+
+        let intent = SetupPlacementIntentV1(
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor,
+            edge: edge
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT setupRoad", sessionPolicy: .new)
+            selectionStatus = "Setup road intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Setup road failed: \(error.localizedDescription)")
+        }
+    }
+
     private func decodeSelectedMessage(_ message: MSMessage?) {
         selectedState = nil
         selectedJoinIntent = nil
+        selectedSetupIntent = nil
 
         guard let message else {
             selectionStatus = "No message selected"
@@ -290,11 +381,21 @@ final class LobbyDriverViewModel: ObservableObject {
             let state = try decodePayload(CoreGameStateV1.self, from: payload)
             selectedState = state
             selectedJoinIntent = nil
+            selectedSetupIntent = nil
             stateSessionsByGameId[state.gameId] = message.session
             render(state: state, source: source)
         case let .intent(payload):
+            if let setupIntent = try? decodePayload(SetupPlacementIntentV1.self, from: payload) {
+                selectedSetupIntent = setupIntent
+                selectedJoinIntent = nil
+                selectedState = nil
+                render(setupIntent: setupIntent, source: source)
+                return
+            }
+
             let intent = try decodePayload(JoinIntentV1.self, from: payload)
             selectedJoinIntent = intent
+            selectedSetupIntent = nil
             selectedState = nil
             render(joinIntent: intent, source: source)
         }
@@ -311,6 +412,7 @@ final class LobbyDriverViewModel: ObservableObject {
         phase = state.phase.rawValue
         seed = state.seed.map(String.init) ?? "nil"
         diceRngState = state.diceRngState.map(String.init) ?? "nil"
+        setupPlacement = "-"
         render(board: state.board)
         selectionStatus = "Decoded STATE rev\(state.rev) via \(source.label)"
         refreshPendingJoiners(for: state.gameId)
@@ -327,9 +429,33 @@ final class LobbyDriverViewModel: ObservableObject {
         phase = "-"
         seed = "-"
         diceRngState = "-"
+        setupPlacement = "-"
         resetBoardDebugFields()
         selectionStatus = "Decoded JOIN intent via \(source.label)"
         refreshPendingJoiners(for: joinIntent.gameId)
+    }
+
+    private func render(setupIntent: SetupPlacementIntentV1, source: PayloadSource) {
+        kind = "INTENT(\(setupIntent.kind.rawValue))"
+        gameId = setupIntent.gameId
+        rev = String(setupIntent.anchorRev)
+        prevHash = "-"
+        stateHash = setupIntent.anchorHash
+        roster = "-"
+        currentPlayer = setupIntent.actor
+        phase = "-"
+        seed = "-"
+        diceRngState = "-"
+        if let node = setupIntent.node {
+            setupPlacement = "node: \(node)"
+        } else if let edge = setupIntent.edge {
+            setupPlacement = "edge: \(edge)"
+        } else {
+            setupPlacement = "-"
+        }
+        resetBoardDebugFields()
+        selectionStatus = "Decoded \(setupIntent.kind.rawValue) intent via \(source.label)"
+        refreshPendingJoiners(for: setupIntent.gameId)
     }
 
     private func render(board: BoardSetupV1?) {
@@ -363,6 +489,7 @@ final class LobbyDriverViewModel: ObservableObject {
         phase = "-"
         seed = "-"
         diceRngState = "-"
+        setupPlacement = "-"
         resetBoardDebugFields()
     }
 
@@ -472,6 +599,9 @@ final class LobbyDriverViewModel: ObservableObject {
         }
         if let intent = selectedJoinIntent {
             return intent.gameId
+        }
+        if let setupIntent = selectedSetupIntent {
+            return setupIntent.gameId
         }
         return nil
     }

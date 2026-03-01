@@ -91,6 +91,69 @@ final class EnvelopeV1TransportTests: XCTestCase {
         XCTAssertEqual(decodedIntent, intent)
     }
 
+    func testSetupSettlementIntentPayloadRoundTrip() throws {
+        let intent = SetupPlacementIntentV1(
+            gameId: "game-123",
+            anchorRev: 1,
+            anchorHash: "hash-1",
+            actor: "player-1",
+            node: 0
+        )
+        let payload = try jsonString(intent)
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+
+        let encoded = try encode(envelope)
+        let decoded = try decode(encoded)
+
+        guard case let .intent(decodedPayload) = decoded.body else {
+            XCTFail("Expected INTENT body.")
+            return
+        }
+
+        let decodedIntent = try JSONDecoder().decode(SetupPlacementIntentV1.self, from: Data(decodedPayload.utf8))
+        XCTAssertEqual(decodedIntent, intent)
+    }
+
+    func testSetupRoadIntentPayloadRoundTrip() throws {
+        let intent = SetupPlacementIntentV1(
+            gameId: "game-123",
+            anchorRev: 1,
+            anchorHash: "hash-1",
+            actor: "player-1",
+            edge: 0
+        )
+        let payload = try jsonString(intent)
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+
+        let encoded = try encode(envelope)
+        let decoded = try decode(encoded)
+
+        guard case let .intent(decodedPayload) = decoded.body else {
+            XCTFail("Expected INTENT body.")
+            return
+        }
+
+        let decodedIntent = try JSONDecoder().decode(SetupPlacementIntentV1.self, from: Data(decodedPayload.utf8))
+        XCTAssertEqual(decodedIntent, intent)
+    }
+
+    func testSetupIntentDecodeFailsWhenKindAndPayloadDoNotMatch() throws {
+        let invalidIntentJSON = """
+        {"kind":"placeSetupSettlement","gameId":"game-123","anchorRev":1,"anchorHash":"hash-1","actor":"player-1"}
+        """
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: invalidIntentJSON))
+
+        let encoded = try encode(envelope)
+        let decoded = try decode(encoded)
+
+        guard case let .intent(payload) = decoded.body else {
+            XCTFail("Expected INTENT body.")
+            return
+        }
+
+        XCTAssertThrowsError(try JSONDecoder().decode(SetupPlacementIntentV1.self, from: Data(payload.utf8)))
+    }
+
     private func jsonString<T: Encodable>(_ value: T) throws -> String {
         let data = try JSONEncoder().encode(value)
         guard let json = String(data: data, encoding: .utf8) else {

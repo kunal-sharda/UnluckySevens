@@ -49,3 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 2.3 follow-up: removed payload mirroring into `summaryText`; extension now decodes only from message URL payloads.
 - Stage 2.3 follow-up: transition validation now rejects mismatched `BoardSetupV1.boardHash` values.
 - Stage 2.3 follow-up: strengthened random board strategy test to assert unconstrained generation can produce adjacent 6/8 tiles.
+- Stage 3.1 added setup state machine models (`SetupStateV1`, `SetupStepV1`, `PlayerSetupPlacementsV1`) and deterministic snake-order initialization helpers.
+- Stage 3.1 added a pure setup reducer (`apply(intent:to:actor:)`) for settlement/road sequencing and setup completion to turn phase.
+- Stage 3.1 added setup placement transport payload model (`SetupPlacementIntentV1`) for anchored setup INTENT bubbles.
+- Stage 3.1 updated lobby Start flow to initialize `setupState` and added setup debug intent buttons (`Place Settlement`, `Place Road`) in Messages UI.
+- Stage 3.1 added CoreGame and Transport test coverage for setup sequencing/validation and setup intent roundtrips.

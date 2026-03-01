@@ -40,6 +40,7 @@ struct LobbyDriverView: View {
                     field("phase", viewModel.phase)
                     field("seed", viewModel.seed)
                     field("diceRngState", viewModel.diceRngState)
+                    field("setupPlacement", viewModel.setupPlacement)
                     field("pendingJoiners", viewModel.pendingJoiners)
                 }
                 .font(.system(.caption, design: .monospaced))
@@ -84,6 +85,20 @@ struct LobbyDriverView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(!viewModel.canStartGame)
+
+                    if viewModel.isSetupSelectedState {
+                        Button("Place Settlement (node 0)") {
+                            viewModel.sendSetupSettlementIntentDebug(node: 0)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.canSendSetupSettlementIntentDebug)
+
+                        Button("Place Road (edge 0)") {
+                            viewModel.sendSetupRoadIntentDebug(edge: 0)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.canSendSetupRoadIntentDebug)
+                    }
 
                     Button("Clear Pending Joins") {
                         viewModel.clearPendingJoins()

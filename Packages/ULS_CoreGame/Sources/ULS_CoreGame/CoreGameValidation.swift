@@ -9,6 +9,12 @@ public enum CoreGameError: Error, Equatable {
     case boardRulesChanged
     case boardChanged
     case invalidBoardHash
+    case setupStateMissing
+    case setupTurnIndexOutOfRange
+    case setupCurrentPlayerMismatch
+    case setupStepMismatch
+    case roadBeforeSettlement
+    case setupPlacementSlotUnavailable
     case invalidStateHash
     case gameIdMismatch
 }
@@ -33,6 +39,24 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
     if let board = to.board {
         guard board.boardHash == board.rehashed().boardHash else {
             throw CoreGameError.invalidBoardHash
+        }
+    }
+
+    if to.phase == .setup {
+        guard let setupState = to.setupState else {
+            throw CoreGameError.setupStateMissing
+        }
+
+        guard setupState.turnIndex >= 0, setupState.turnIndex < setupState.order.count else {
+            throw CoreGameError.setupTurnIndexOutOfRange
+        }
+
+        guard to.currentPlayer == setupState.order[setupState.turnIndex] else {
+            throw CoreGameError.setupCurrentPlayerMismatch
+        }
+    } else {
+        guard to.setupState == nil else {
+            throw CoreGameError.setupStateMissing
         }
     }
 
