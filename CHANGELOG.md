@@ -36,3 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 2.1 extended `CoreGameStateV1` with persisted `diceRngState` and included it in canonical state hashing.
 - Stage 2.1 updated lobby Start flow to initialize `diceRngState` from the derived dice domain seed.
 - Stage 2.1 added CoreGame test coverage for RNG golden sequence, seed derivation golden vectors, dice state hashing, and transition behavior.
+- Stage 2.2 added `BoardGraphV1` board topology model types (`TileV1`, `EdgeV1`, `PortV1`, `PortKindV1`) with typed IDs and adjacency helper APIs.
+- Stage 2.2 added deterministic `StandardBoardTopologyV1.standard()` generation for standard Catan geometry (19 tiles, 54 nodes, 72 edges, 9 ports, robber placeholder).
+- Stage 2.2 added canonical-frame port placement over perimeter-derived frame slots with deterministic edge selection.
+- Stage 2.2 added board graph test coverage for topology counts, ID validity, node degrees, edge/tile adjacency rules, and port constraints.
