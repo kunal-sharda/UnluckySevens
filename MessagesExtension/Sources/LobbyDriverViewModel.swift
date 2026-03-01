@@ -19,16 +19,31 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var pendingJoiners: String = "[]"
     @Published var selectionStatus: String = "No message selected"
     @Published var lastError: String = "-"
+    @Published var boardStrategy: BoardGenStrategyV1
+    @Published var boardHash: String = "-"
+    @Published var boardGenerator: String = "-"
+    @Published var boardRobberTile: String = "-"
+    @Published var boardResourcesByTile: String = "-"
+    @Published var boardNumbersByTile: String = "-"
+    @Published var boardPortsByIndex: String = "-"
 
     private let summaryPayloadPrefix = "ulsenv:"
+    private let boardStrategyKey = "uls.boardStrategy"
     private let userDefaults: UserDefaults
 
     private weak var activeConversation: MSConversation?
     private var selectedState: CoreGameStateV1?
     private var selectedJoinIntent: JoinIntentV1?
+    private var stateSessionsByGameId: [String: MSSession] = [:]
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
+        if let rawValue = userDefaults.string(forKey: boardStrategyKey),
+           let parsed = BoardGenStrategyV1(rawValue: rawValue) {
+            boardStrategy = parsed
+        } else {
+            boardStrategy = .randomV1
+        }
     }
 
     var canInvite: Bool {
@@ -61,6 +76,15 @@ final class LobbyDriverViewModel: ObservableObject {
         currentGameId() != nil
     }
 
+    var hasBoardDebug: Bool {
+        selectedState?.board != nil
+    }
+
+    func setBoardStrategy(_ strategy: BoardGenStrategyV1) {
+        boardStrategy = strategy
+        userDefaults.set(strategy.rawValue, forKey: boardStrategyKey)
+    }
+
     func updateContext(conversation: MSConversation?, selectedMessage: MSMessage?) {
         activeConversation = conversation
         decodeSelectedMessage(selectedMessage)
@@ -81,13 +105,19 @@ final class LobbyDriverViewModel: ObservableObject {
             currentPlayer: actor,
             phase: .lobby,
             seed: nil,
-            diceRngState: nil
+            diceRngState: nil,
+            boardRules: nil,
+            board: nil
         ).rehashed()
 
         do {
             let payload = try jsonString(from: state)
             let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
-            try sendEnvelope(envelope, caption: "ULS STATE rev0")
+            try sendEnvelope(
+                envelope,
+                caption: "ULS STATE rev0",
+                sessionPolicy: .state(gameId: state.gameId)
+            )
             selectionStatus = "Invite sent: lobby rev0"
             setLastError(nil)
         } catch {
@@ -121,7 +151,7 @@ final class LobbyDriverViewModel: ObservableObject {
         do {
             let payload = try jsonString(from: intent)
             let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
-            try sendEnvelope(envelope, caption: "ULS INTENT join")
+            try sendEnvelope(envelope, caption: "ULS INTENT join", sessionPolicy: .new)
             selectionStatus = "Join intent sent"
             setLastError(nil)
         } catch {
@@ -176,7 +206,12 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         let masterSeed = UInt64.random(in: .min ... .max)
-        let diceSeed = SeedDeriver(masterSeed: masterSeed).seed(for: .dice)
+        let seedDeriver = SeedDeriver(masterSeed: masterSeed)
+        let diceSeed = seedDeriver.seed(for: .dice)
+        let boardSeed = seedDeriver.seed(for: .board)
+        let rules = BoardRulesV1(strategy: boardStrategy)
+        let board = StandardBoardGeneratorV1.generate(boardSeed: boardSeed, rules: rules)
+
         let toState = CoreGameStateV1(
             gameId: fromState.gameId,
             rev: fromState.rev + 1,
@@ -186,14 +221,20 @@ final class LobbyDriverViewModel: ObservableObject {
             currentPlayer: inviter,
             phase: .setup,
             seed: masterSeed,
-            diceRngState: diceSeed
+            diceRngState: diceSeed,
+            boardRules: rules,
+            board: board
         ).rehashed()
 
         do {
             try validateTransition(from: fromState, to: toState, actor: inviter)
             let payload = try jsonString(from: toState)
             let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
-            try sendEnvelope(envelope, caption: "ULS STATE rev1")
+            try sendEnvelope(
+                envelope,
+                caption: "ULS STATE rev1",
+                sessionPolicy: .state(gameId: toState.gameId)
+            )
             selectionStatus = "Start sent: setup rev1"
             setLastError(nil)
         } catch {
@@ -232,8 +273,8 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         do {
-            let envelope = try decode(encodedEnvelope)
-            try apply(envelope: envelope)
+            let envelope = try decode(encodedEnvelope.payload)
+            try apply(envelope: envelope, message: message, source: encodedEnvelope.source)
             setLastError(nil)
         } catch {
             selectionStatus = "Failed to decode selected message"
@@ -243,22 +284,23 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
-    private func apply(envelope: EnvelopeV1) throws {
+    private func apply(envelope: EnvelopeV1, message: MSMessage, source: PayloadSource) throws {
         switch envelope.body {
         case let .state(payload):
             let state = try decodePayload(CoreGameStateV1.self, from: payload)
             selectedState = state
             selectedJoinIntent = nil
-            render(state: state)
+            stateSessionsByGameId[state.gameId] = message.session
+            render(state: state, source: source)
         case let .intent(payload):
             let intent = try decodePayload(JoinIntentV1.self, from: payload)
             selectedJoinIntent = intent
             selectedState = nil
-            render(joinIntent: intent)
+            render(joinIntent: intent, source: source)
         }
     }
 
-    private func render(state: CoreGameStateV1) {
+    private func render(state: CoreGameStateV1, source: PayloadSource) {
         kind = "STATE"
         gameId = state.gameId
         rev = String(state.rev)
@@ -269,11 +311,12 @@ final class LobbyDriverViewModel: ObservableObject {
         phase = state.phase.rawValue
         seed = state.seed.map(String.init) ?? "nil"
         diceRngState = state.diceRngState.map(String.init) ?? "nil"
-        selectionStatus = "Decoded STATE rev\(state.rev)"
+        render(board: state.board)
+        selectionStatus = "Decoded STATE rev\(state.rev) via \(source.label)"
         refreshPendingJoiners(for: state.gameId)
     }
 
-    private func render(joinIntent: JoinIntentV1) {
+    private func render(joinIntent: JoinIntentV1, source: PayloadSource) {
         kind = "INTENT(join)"
         gameId = joinIntent.gameId
         rev = String(joinIntent.anchorRev)
@@ -284,8 +327,29 @@ final class LobbyDriverViewModel: ObservableObject {
         phase = "-"
         seed = "-"
         diceRngState = "-"
-        selectionStatus = "Decoded JOIN intent"
+        resetBoardDebugFields()
+        selectionStatus = "Decoded JOIN intent via \(source.label)"
         refreshPendingJoiners(for: joinIntent.gameId)
+    }
+
+    private func render(board: BoardSetupV1?) {
+        guard let board else {
+            resetBoardDebugFields()
+            return
+        }
+
+        boardHash = board.boardHash
+        boardGenerator = board.generator.rawValue
+        boardRobberTile = String(board.robberTile)
+        boardResourcesByTile = board.resourcesByTile.enumerated()
+            .map { "\($0.offset): \($0.element.rawValue)" }
+            .joined(separator: ", ")
+        boardNumbersByTile = board.numbersByTile.enumerated()
+            .map { "\($0.offset): \($0.element.map(String.init) ?? "nil")" }
+            .joined(separator: ", ")
+        boardPortsByIndex = board.portsByIndex.enumerated()
+            .map { "\($0.offset): \(portKindDescription($0.element))" }
+            .joined(separator: ", ")
     }
 
     private func resetDisplayedFields() {
@@ -299,27 +363,53 @@ final class LobbyDriverViewModel: ObservableObject {
         phase = "-"
         seed = "-"
         diceRngState = "-"
+        resetBoardDebugFields()
     }
 
-    private func payloadValue(from message: MSMessage) -> String? {
-        if let url = message.url,
-           let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-           let payload = components.queryItems?.first(where: { $0.name == "payload" })?.value,
-           !payload.isEmpty {
-            return payload
-        }
+    private func resetBoardDebugFields() {
+        boardHash = "-"
+        boardGenerator = "-"
+        boardRobberTile = "-"
+        boardResourcesByTile = "-"
+        boardNumbersByTile = "-"
+        boardPortsByIndex = "-"
+    }
 
-        guard let summaryText = message.summaryText,
-              summaryText.hasPrefix(summaryPayloadPrefix) else {
+    private func portKindDescription(_ kind: PortKindV1) -> String {
+        switch kind {
+        case .threeToOne:
+            return "3:1"
+        case let .twoToOne(resource):
+            return "2:1 \(resource.rawValue)"
+        }
+    }
+
+    private func payloadValue(from message: MSMessage) -> DecodedPayloadSource? {
+        guard
+            let url = message.url,
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+            let payload = components.queryItems?.first(where: { $0.name == "payload" })?.value,
+            !payload.isEmpty
+        else {
+            #if DEBUG && targetEnvironment(simulator)
+            if
+                let summaryText = message.summaryText,
+                summaryText.hasPrefix(summaryPayloadPrefix)
+            {
+                let start = summaryText.index(summaryText.startIndex, offsetBy: summaryPayloadPrefix.count)
+                let payload = String(summaryText[start...])
+                if !payload.isEmpty {
+                    return DecodedPayloadSource(payload: payload, source: .summaryFallback)
+                }
+            }
+            #endif
             return nil
         }
 
-        let payloadStart = summaryText.index(summaryText.startIndex, offsetBy: summaryPayloadPrefix.count)
-        let payload = String(summaryText[payloadStart...])
-        return payload.isEmpty ? nil : payload
+        return DecodedPayloadSource(payload: payload, source: .url)
     }
 
-    private func sendEnvelope(_ envelope: EnvelopeV1, caption: String) throws {
+    private func sendEnvelope(_ envelope: EnvelopeV1, caption: String, sessionPolicy: SessionPolicy) throws {
         guard let conversation = activeConversation else {
             throw SendError.noActiveConversation
         }
@@ -335,13 +425,15 @@ final class LobbyDriverViewModel: ObservableObject {
             throw SendError.invalidURL
         }
 
-        let message = MSMessage(session: MSSession())
+        let message = MSMessage(session: session(for: sessionPolicy))
         message.url = url
 
         let layout = MSMessageTemplateLayout()
         layout.caption = caption
         message.layout = layout
+        #if DEBUG && targetEnvironment(simulator)
         message.summaryText = "\(summaryPayloadPrefix)\(encodedEnvelope)"
+        #endif
 
         conversation.insert(message) { [weak self] error in
             Task { @MainActor in
@@ -408,6 +500,45 @@ final class LobbyDriverViewModel: ObservableObject {
 
     private func setLastError(_ message: String?) {
         lastError = message ?? "-"
+    }
+
+    private func session(for policy: SessionPolicy) -> MSSession {
+        switch policy {
+        case .new:
+            return MSSession()
+        case let .state(gameId):
+            if let existing = stateSessionsByGameId[gameId] {
+                return existing
+            }
+
+            let newSession = MSSession()
+            stateSessionsByGameId[gameId] = newSession
+            return newSession
+        }
+    }
+
+    private enum SessionPolicy {
+        case new
+        case state(gameId: String)
+    }
+
+    private struct DecodedPayloadSource {
+        let payload: String
+        let source: PayloadSource
+    }
+
+    private enum PayloadSource {
+        case url
+        case summaryFallback
+
+        var label: String {
+            switch self {
+            case .url:
+                return "URL"
+            case .summaryFallback:
+                return "summary fallback"
+            }
+        }
     }
 
     private enum SendError: LocalizedError {

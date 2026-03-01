@@ -1,4 +1,5 @@
 import SwiftUI
+import ULS_CoreGame
 
 struct LobbyDriverView: View {
     @ObservedObject var viewModel: LobbyDriverViewModel
@@ -11,6 +12,22 @@ struct LobbyDriverView: View {
 
                 Text("Selection: \(viewModel.selectionStatus)")
                     .font(.subheadline)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Board Strategy")
+                        .font(.subheadline)
+                    Picker(
+                        "Board Strategy",
+                        selection: Binding(
+                            get: { viewModel.boardStrategy },
+                            set: { viewModel.setBoardStrategy($0) }
+                        )
+                    ) {
+                        Text("Random (unconstrained)").tag(BoardGenStrategyV1.randomV1)
+                        Text("No adjacent 6/8").tag(BoardGenStrategyV1.noRedAdjacentV1)
+                    }
+                    .pickerStyle(.segmented)
+                }
 
                 Group {
                     field("kind", viewModel.kind)
@@ -26,6 +43,22 @@ struct LobbyDriverView: View {
                     field("pendingJoiners", viewModel.pendingJoiners)
                 }
                 .font(.system(.caption, design: .monospaced))
+
+                if viewModel.hasBoardDebug {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Board Debug")
+                            .font(.subheadline)
+                        Group {
+                            field("boardHash", viewModel.boardHash)
+                            field("generator", viewModel.boardGenerator)
+                            field("robberTile", viewModel.boardRobberTile)
+                            field("resourcesByTile", viewModel.boardResourcesByTile)
+                            field("numbersByTile", viewModel.boardNumbersByTile)
+                            field("portsByIndex", viewModel.boardPortsByIndex)
+                        }
+                        .font(.system(.caption, design: .monospaced))
+                    }
+                }
 
                 VStack(spacing: 8) {
                     Button("Invite New Game") {

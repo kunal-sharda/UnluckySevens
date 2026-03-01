@@ -40,3 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 2.2 added deterministic `StandardBoardTopologyV1.standard()` generation for standard Catan geometry (19 tiles, 54 nodes, 72 edges, 9 ports, robber placeholder).
 - Stage 2.2 added canonical-frame port placement over perimeter-derived frame slots with deterministic edge selection.
 - Stage 2.2 added board graph test coverage for topology counts, ID validity, node degrees, edge/tile adjacency rules, and port constraints.
+- Stage 2.3 added deterministic board setup models (`BoardRulesV1`, `BoardSetupV1`) with canonical SHA-256 `boardHash`.
+- Stage 2.3 added strategy-based board generation (`randomV1`, `noRedAdjacentV1`) and Start integration to persist board rules/setup in `CoreGameStateV1`.
+- Stage 2.3 added CoreGame validation rules that restrict board and board-rule changes to lobby->setup Start transitions only.
+- Stage 2.3 added Messages lobby driver board strategy selection plus text-only Board Debug output for decoded state messages.
+- Stage 2.3 added CoreGame test coverage for board generation goldens/distributions and board transition invariants.
+- Stage 2.3 follow-up: canonical STATE messages now reuse a per-game `MSSession` while INTENT messages use fresh sessions.
+- Stage 2.3 follow-up: removed payload mirroring into `summaryText`; extension now decodes only from message URL payloads.
+- Stage 2.3 follow-up: transition validation now rejects mismatched `BoardSetupV1.boardHash` values.
+- Stage 2.3 follow-up: strengthened random board strategy test to assert unconstrained generation can produce adjacent 6/8 tiles.

@@ -91,10 +91,23 @@ README.md
 - Run the Messages extension scheme (or host app scheme if that is how Tuist wires it).
 - In iOS Simulator → Messages → open any conversation → app drawer → Unlucky Sevens.
 
+### Manual debug flow (Simulator, Messages-only handoff)
+- Start from a clean generated workspace:
+  - `./scripts/clean.sh`
+  - `./scripts/gen.sh`
+- Build and install host app for the booted simulator:
+  - `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevensApp -destination 'id=<BOOTED_SIMULATOR_UDID>' build`
+  - `xcrun simctl install booted /Users/<you>/Library/Developer/Xcode/DerivedData/UnluckySevens-*/Build/Products/Debug-iphonesimulator/UnluckySevensApp.app`
+- Launch app + Messages only (no prefilled compose URL):
+  - `xcrun simctl launch booted com.unluckysevens.app`
+  - `xcrun simctl launch booted com.apple.MobileSMS`
+- In Simulator UI, continue manual QA from Messages (pick/create thread, open app drawer, run Unlucky Sevens flow).
+
 ### Tests (must stay green)
 - Always add/maintain tests in packages:
   - `ULS_TransportTests`: roundtrip encoding/decoding + size guards
   - `ULS_CoreGameTests`: determinism + rules validation
+- Prefer deterministic automated tests for logic/transport/board generation; keep simulator transcript interaction checks as manual QA.
 
 ---
 

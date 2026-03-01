@@ -30,6 +30,7 @@ public enum ResourceV1: String, Codable, Equatable, CaseIterable {
     case sheep
     case wheat
     case ore
+    case desert
 }
 
 public enum PortKindV1: Codable, Equatable {

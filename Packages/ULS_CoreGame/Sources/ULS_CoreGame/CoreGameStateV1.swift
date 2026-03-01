@@ -18,6 +18,8 @@ public struct CoreGameStateV1: Codable, Equatable {
     public let phase: PhaseV1
     public let seed: UInt64?
     public let diceRngState: UInt64?
+    public let boardRules: BoardRulesV1?
+    public let board: BoardSetupV1?
 
     public init(
         gameId: String,
@@ -28,7 +30,9 @@ public struct CoreGameStateV1: Codable, Equatable {
         currentPlayer: String,
         phase: PhaseV1,
         seed: UInt64?,
-        diceRngState: UInt64?
+        diceRngState: UInt64?,
+        boardRules: BoardRulesV1? = nil,
+        board: BoardSetupV1? = nil
     ) {
         self.gameId = gameId
         self.rev = rev
@@ -39,6 +43,8 @@ public struct CoreGameStateV1: Codable, Equatable {
         self.phase = phase
         self.seed = seed
         self.diceRngState = diceRngState
+        self.boardRules = boardRules
+        self.board = board
     }
 
     public func rehashed() -> CoreGameStateV1 {
@@ -51,7 +57,9 @@ public struct CoreGameStateV1: Codable, Equatable {
             currentPlayer: currentPlayer,
             phase: phase,
             seed: seed,
-            diceRngState: diceRngState
+            diceRngState: diceRngState,
+            boardRules: boardRules,
+            board: board
         )
     }
 
@@ -76,6 +84,8 @@ public struct CoreGameStateV1: Codable, Equatable {
             "phase": phase.rawValue,
             "seed": seed ?? NSNull(),
             "diceRngState": diceRngState ?? NSNull(),
+            "boardRules": boardRules?.canonicalJSONValue() ?? NSNull(),
+            "board": board?.canonicalJSONIncludingHash() ?? NSNull(),
         ]
     }
 }

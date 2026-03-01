@@ -3,7 +3,7 @@
 This file records **locked product + architecture decisions** for the MVP.  
 If a change is desired, update this file **first**, then update code/tests.
 
-**Last updated:** 2026-02-15
+**Last updated:** 2026-03-01
 
 ---
 
@@ -79,6 +79,12 @@ Recommended canonical state cadence per turn:
 
 - **One `MSSession` per game** for canonical STATE messages (updates collapse / thread clean).
 - **Separate `MSSession` per trade offer** so offers appear as distinct bubbles/cards.
+
+Simulator debug decode fallback:
+- Canonical transport source is always message URL query `payload`.
+- `summaryText` is not canonical protocol data.
+- For local simulator reliability only, `summaryText` may mirror payload in `DEBUG + simulator` builds and be used as explicit fallback.
+- UI must label payload source (`URL` vs `summary fallback`) during decode so fallback use is visible.
 
 ---
 
