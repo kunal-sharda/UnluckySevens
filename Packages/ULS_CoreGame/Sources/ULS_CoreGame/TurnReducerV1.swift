@@ -734,6 +734,10 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
                 revealedVictoryPointsByPlayer: workingState.revealedVictoryPointsByPlayer,
                 devCardActionPlayedThisTurn: workingState.devCardActionPlayedThisTurn,
                 knightsPlayedByPlayer: workingState.knightsPlayedByPlayer,
+                largestArmyOwner: workingState.largestArmyOwner,
+                largestArmySize: workingState.largestArmySize,
+                longestRoadOwner: workingState.longestRoadOwner,
+                longestRoadLength: workingState.longestRoadLength,
                 activeTradeOffer: workingState.activeTradeOffer,
                 pendingTradeAccepts: workingState.pendingTradeAccepts,
                 settlementsByNode: workingState.settlementsByNode,
@@ -853,7 +857,7 @@ private func nextTurnState(
     citiesByNode: [NodeID: String]? = nil,
     roadsByEdge: [EdgeID: String]? = nil
 ) -> CoreGameStateV1 {
-    CoreGameStateV1(
+    let provisional = CoreGameStateV1(
         gameId: state.gameId,
         rev: state.rev + 1,
         prevHash: state.stateHash,
@@ -872,6 +876,10 @@ private func nextTurnState(
         revealedVictoryPointsByPlayer: revealedVictoryPointsByPlayer ?? state.revealedVictoryPointsByPlayer,
         devCardActionPlayedThisTurn: devCardActionPlayedThisTurn ?? state.devCardActionPlayedThisTurn,
         knightsPlayedByPlayer: knightsPlayedByPlayer ?? state.knightsPlayedByPlayer,
+        largestArmyOwner: state.largestArmyOwner,
+        largestArmySize: state.largestArmySize,
+        longestRoadOwner: state.longestRoadOwner,
+        longestRoadLength: state.longestRoadLength,
         activeTradeOffer: activeTradeOffer ?? state.activeTradeOffer,
         pendingTradeAccepts: (pendingTradeAccepts ?? state.pendingTradeAccepts) ?? state.pendingTradeAccepts,
         settlementsByNode: settlementsByNode ?? state.settlementsByNode,
@@ -881,7 +889,46 @@ private func nextTurnState(
         board: board,
         setupState: nil,
         turnState: turnState
-    ).rehashed()
+    )
+
+    let awards = recomputeAwards(from: state, for: provisional)
+    return stateByApplyingAwards(provisional, awards: awards).rehashed()
+}
+
+private func stateByApplyingAwards(_ state: CoreGameStateV1, awards: AwardStateV1) -> CoreGameStateV1 {
+    CoreGameStateV1(
+        gameId: state.gameId,
+        rev: state.rev,
+        prevHash: state.prevHash,
+        stateHash: state.stateHash,
+        roster: state.roster,
+        currentPlayer: state.currentPlayer,
+        phase: state.phase,
+        seed: state.seed,
+        diceRngState: state.diceRngState,
+        robberRngState: state.robberRngState,
+        resourcesByPlayer: state.resourcesByPlayer,
+        bankResources: state.bankResources,
+        devDeck: state.devDeck,
+        devCardsByPlayer: state.devCardsByPlayer,
+        newDevCardsByPlayer: state.newDevCardsByPlayer,
+        revealedVictoryPointsByPlayer: state.revealedVictoryPointsByPlayer,
+        devCardActionPlayedThisTurn: state.devCardActionPlayedThisTurn,
+        knightsPlayedByPlayer: state.knightsPlayedByPlayer,
+        largestArmyOwner: awards.largestArmyOwner,
+        largestArmySize: awards.largestArmySize,
+        longestRoadOwner: awards.longestRoadOwner,
+        longestRoadLength: awards.longestRoadLength,
+        activeTradeOffer: state.activeTradeOffer,
+        pendingTradeAccepts: state.pendingTradeAccepts,
+        settlementsByNode: state.settlementsByNode,
+        citiesByNode: state.citiesByNode,
+        roadsByEdge: state.roadsByEdge,
+        boardRules: state.boardRules,
+        board: state.board,
+        setupState: state.setupState,
+        turnState: state.turnState
+    )
 }
 
 private func requiredDiscards(for resourcesByPlayer: [String: ResourceHandV1]) -> [String: Int] {

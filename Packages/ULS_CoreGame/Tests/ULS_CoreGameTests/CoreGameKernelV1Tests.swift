@@ -19,7 +19,7 @@ final class CoreGameKernelV1Tests: XCTestCase {
         )
 
         let hash = state.rehashed().stateHash
-        XCTAssertEqual(hash, "e8b98bd5172727160f75d2d4e248c03d175ab3b8db52bb4cb003060dbb1f1062")
+        XCTAssertEqual(hash, "16a55c4ca145404238616d986018786c70bb86c2d9eca6e276af74967f5ec094")
     }
 
     func testHashChangesWhenSeedChanges() {

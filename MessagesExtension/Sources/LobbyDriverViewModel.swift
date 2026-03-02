@@ -25,6 +25,8 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var remainingPieces: String = "-"
     @Published var activeTradeOffer: String = "-"
     @Published var pendingTradeAccepts: String = "-"
+    @Published var largestArmyStatus: String = "-"
+    @Published var longestRoadStatus: String = "-"
     @Published var pendingJoiners: String = "[]"
     @Published var selectionStatus: String = "No message selected"
     @Published var lastError: String = "-"
@@ -1336,6 +1338,8 @@ final class LobbyDriverViewModel: ObservableObject {
         remainingPieces = remainingPiecesSummary(for: state)
         activeTradeOffer = activeTradeOfferSummary(for: state)
         pendingTradeAccepts = pendingTradeAcceptsSummary(for: state)
+        largestArmyStatus = largestArmySummary(for: state)
+        longestRoadStatus = longestRoadSummary(for: state)
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = visibleHandsSummary(for: state)
@@ -1367,6 +1371,8 @@ final class LobbyDriverViewModel: ObservableObject {
         remainingPieces = "-"
         activeTradeOffer = "-"
         pendingTradeAccepts = "-"
+        largestArmyStatus = "-"
+        longestRoadStatus = "-"
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = "-"
@@ -1398,6 +1404,8 @@ final class LobbyDriverViewModel: ObservableObject {
         remainingPieces = "-"
         activeTradeOffer = "-"
         pendingTradeAccepts = "-"
+        largestArmyStatus = "-"
+        longestRoadStatus = "-"
         turnIntent = "-"
         visibleHands = "-"
         bankResources = "-"
@@ -1438,6 +1446,8 @@ final class LobbyDriverViewModel: ObservableObject {
         remainingPieces = "-"
         activeTradeOffer = "-"
         pendingTradeAccepts = "-"
+        largestArmyStatus = "-"
+        longestRoadStatus = "-"
         setupPlacement = "-"
         switch decodedTurnIntent.kind {
         case .rollDice, .endTurn:
@@ -1548,6 +1558,8 @@ final class LobbyDriverViewModel: ObservableObject {
         remainingPieces = "-"
         activeTradeOffer = "-"
         pendingTradeAccepts = "-"
+        largestArmyStatus = "-"
+        longestRoadStatus = "-"
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = "-"
@@ -1685,6 +1697,16 @@ final class LobbyDriverViewModel: ObservableObject {
             .sorted { $0.acceptingPlayer < $1.acceptingPlayer }
             .map(\.acceptingPlayer)
             .joined(separator: ", ")
+    }
+
+    private func largestArmySummary(for state: CoreGameStateV1) -> String {
+        let owner = state.largestArmyOwner ?? "none"
+        return "\(owner) (\(state.largestArmySize))"
+    }
+
+    private func longestRoadSummary(for state: CoreGameStateV1) -> String {
+        let owner = state.longestRoadOwner ?? "none"
+        return "\(owner) (\(state.longestRoadLength))"
     }
 
     private func canSendNamedDevCardIntentDebug(

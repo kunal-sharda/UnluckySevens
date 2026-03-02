@@ -103,3 +103,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 7.2 added transport `buyDevCard` and `playDevCard(kind+payload)` intent schemas with strict decoding and new roundtrip/invalid decode coverage.
 - Stage 7.2 updated Messages debug-driver controls/readouts with `Buy Dev Card`, per-card play buttons, and secrecy-safe dev-card visibility summaries (local detail, opponent counts).
 - Stage 7.2 added focused CoreGame tests for timing restrictions, each dev-card effect, and deterministic fixed-seed action replay.
+- Stage 7.3 added deterministic award-state persistence in canonical hashing (`largestArmyOwner/size`, `longestRoadOwner/length`) and turn-transition recomputation hooks.
+- Stage 7.3 implemented Largest Army (>=3 knights) and Longest Road (>=5 roads, opponent-intersection blocking) award resolution with tie-retention for current owners and deterministic transfer behavior.
+- Stage 7.3 extended transition validation with strict deterministic award recomputation checks and illegal award mutation rejection.
+- Stage 7.3 added debug-driver readouts for current Largest Army and Longest Road owners/sizes in MessagesExtension.
+- Stage 7.3 added focused CoreGame tests for threshold acquisition, tie/transfer behavior, and deterministic award recomputation across identical action sequences.

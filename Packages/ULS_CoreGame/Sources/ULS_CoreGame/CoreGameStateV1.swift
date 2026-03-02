@@ -27,6 +27,10 @@ public struct CoreGameStateV1: Codable, Equatable {
     public let revealedVictoryPointsByPlayer: [String: Int]
     public let devCardActionPlayedThisTurn: Bool
     public let knightsPlayedByPlayer: [String: Int]
+    public let largestArmyOwner: String?
+    public let largestArmySize: Int
+    public let longestRoadOwner: String?
+    public let longestRoadLength: Int
     public let activeTradeOffer: TradeOfferV1?
     public let pendingTradeAccepts: [TradeAcceptV1]
     public let settlementsByNode: [NodeID: String]
@@ -56,6 +60,10 @@ public struct CoreGameStateV1: Codable, Equatable {
         revealedVictoryPointsByPlayer: [String: Int] = [:],
         devCardActionPlayedThisTurn: Bool = false,
         knightsPlayedByPlayer: [String: Int] = [:],
+        largestArmyOwner: String? = nil,
+        largestArmySize: Int = 0,
+        longestRoadOwner: String? = nil,
+        longestRoadLength: Int = 0,
         activeTradeOffer: TradeOfferV1? = nil,
         pendingTradeAccepts: [TradeAcceptV1] = [],
         settlementsByNode: [NodeID: String] = [:],
@@ -88,6 +96,10 @@ public struct CoreGameStateV1: Codable, Equatable {
         self.revealedVictoryPointsByPlayer = Self.normalizedIntMap(revealedVictoryPointsByPlayer, roster: roster)
         self.devCardActionPlayedThisTurn = devCardActionPlayedThisTurn
         self.knightsPlayedByPlayer = Self.normalizedIntMap(knightsPlayedByPlayer, roster: roster)
+        self.largestArmyOwner = Self.normalizedAwardOwner(largestArmyOwner, roster: roster)
+        self.largestArmySize = max(0, largestArmySize)
+        self.longestRoadOwner = Self.normalizedAwardOwner(longestRoadOwner, roster: roster)
+        self.longestRoadLength = max(0, longestRoadLength)
         self.activeTradeOffer = activeTradeOffer
         self.pendingTradeAccepts = pendingTradeAccepts
         self.settlementsByNode = settlementsByNode
@@ -119,6 +131,10 @@ public struct CoreGameStateV1: Codable, Equatable {
             revealedVictoryPointsByPlayer: revealedVictoryPointsByPlayer,
             devCardActionPlayedThisTurn: devCardActionPlayedThisTurn,
             knightsPlayedByPlayer: knightsPlayedByPlayer,
+            largestArmyOwner: largestArmyOwner,
+            largestArmySize: largestArmySize,
+            longestRoadOwner: longestRoadOwner,
+            longestRoadLength: longestRoadLength,
             activeTradeOffer: activeTradeOffer,
             pendingTradeAccepts: pendingTradeAccepts,
             settlementsByNode: settlementsByNode,
@@ -161,6 +177,10 @@ public struct CoreGameStateV1: Codable, Equatable {
             "revealedVictoryPointsByPlayer": revealedVictoryPointsByPlayer,
             "devCardActionPlayedThisTurn": devCardActionPlayedThisTurn,
             "knightsPlayedByPlayer": knightsPlayedByPlayer,
+            "largestArmyOwner": largestArmyOwner ?? NSNull(),
+            "largestArmySize": largestArmySize,
+            "longestRoadOwner": longestRoadOwner ?? NSNull(),
+            "longestRoadLength": longestRoadLength,
             "activeTradeOffer": activeTradeOffer?.canonicalJSONValue() ?? NSNull(),
             "pendingTradeAccepts": pendingTradeAccepts.map { $0.canonicalJSONValue() },
             "settlementsByNode": canonicalOwnershipMap(settlementsByNode),
@@ -198,5 +218,12 @@ public struct CoreGameStateV1: Codable, Equatable {
             result[player] = value[player] ?? 0
         }
         return result
+    }
+
+    private static func normalizedAwardOwner(_ value: String?, roster: [String]) -> String? {
+        guard let value else {
+            return nil
+        }
+        return roster.contains(value) ? value : nil
     }
 }

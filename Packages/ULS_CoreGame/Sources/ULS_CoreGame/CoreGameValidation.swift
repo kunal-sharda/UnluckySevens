@@ -63,6 +63,7 @@ public enum CoreGameError: Error, Equatable {
     case devCardAlreadyPlayedThisTurn
     case devCardNotOwned
     case devCardPayloadInvalid
+    case awardStateInvalid
 }
 
 public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor: String) throws {
@@ -146,6 +147,7 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
     try validateTurnStepTransition(from: from, to: to)
     try validateTradeTransition(from: from, to: to)
     try validateDevCardTransition(from: from, to: to, isStartTransition: isStartTransition)
+    try validateAwardTransition(from: from, to: to, isStartTransition: isStartTransition)
 
     let expectedEconomy = expectedEconomyAfterTransition(
         from: from,
@@ -163,6 +165,59 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
     let expectedStateHash = to.rehashed().stateHash
     guard to.stateHash == expectedStateHash else {
         throw CoreGameError.invalidStateHash
+    }
+}
+
+private func validateAwardTransition(
+    from: CoreGameStateV1,
+    to: CoreGameStateV1,
+    isStartTransition: Bool
+) throws {
+    if isStartTransition {
+        guard to.largestArmyOwner == nil, to.largestArmySize == 0 else {
+            throw CoreGameError.awardStateInvalid
+        }
+        guard to.longestRoadOwner == nil, to.longestRoadLength == 0 else {
+            throw CoreGameError.awardStateInvalid
+        }
+        return
+    }
+
+    guard
+        (to.largestArmyOwner == nil || to.roster.contains(to.largestArmyOwner ?? "")),
+        (to.longestRoadOwner == nil || to.roster.contains(to.longestRoadOwner ?? ""))
+    else {
+        throw CoreGameError.awardStateInvalid
+    }
+
+    if from.phase != .turn || to.phase != .turn {
+        guard to.largestArmyOwner == from.largestArmyOwner else {
+            throw CoreGameError.awardStateInvalid
+        }
+        guard to.largestArmySize == from.largestArmySize else {
+            throw CoreGameError.awardStateInvalid
+        }
+        guard to.longestRoadOwner == from.longestRoadOwner else {
+            throw CoreGameError.awardStateInvalid
+        }
+        guard to.longestRoadLength == from.longestRoadLength else {
+            throw CoreGameError.awardStateInvalid
+        }
+        return
+    }
+
+    let expected = recomputeAwards(from: from, for: to)
+    guard to.largestArmyOwner == expected.largestArmyOwner else {
+        throw CoreGameError.awardStateInvalid
+    }
+    guard to.largestArmySize == expected.largestArmySize else {
+        throw CoreGameError.awardStateInvalid
+    }
+    guard to.longestRoadOwner == expected.longestRoadOwner else {
+        throw CoreGameError.awardStateInvalid
+    }
+    guard to.longestRoadLength == expected.longestRoadLength else {
+        throw CoreGameError.awardStateInvalid
     }
 }
 

@@ -49,6 +49,8 @@ struct LobbyDriverView: View {
                     field("remainingPieces", viewModel.remainingPieces)
                     field("activeTrade", viewModel.activeTradeOffer)
                     field("tradeAccepts", viewModel.pendingTradeAccepts)
+                    field("largestArmy", viewModel.largestArmyStatus)
+                    field("longestRoad", viewModel.longestRoadStatus)
                     field("visibleHands", viewModel.visibleHands)
                     field("bankResources", viewModel.bankResources)
                     field("devDeckRemaining", viewModel.devDeckRemaining)
