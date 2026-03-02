@@ -38,6 +38,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var visibleHands: String = "-"
     @Published var bankResources: String = "-"
     @Published var devDeckRemaining: String = "-"
+    @Published var visibleDevCards: String = "-"
     @Published var setupPlacement: String = "-"
     @Published var turnIntent: String = "-"
 
@@ -211,6 +212,67 @@ final class LobbyDriverViewModel: ObservableObject {
             return false
         }
         return actor == state.currentPlayer
+    }
+
+    var canSendBuyDevCardIntentDebug: Bool {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            state.turnState?.step == .afterRoll,
+            let actor = localActorIdentifier(),
+            actor == state.currentPlayer,
+            !state.devDeck.isEmpty
+        else {
+            return false
+        }
+        let hand = state.resourcesByPlayer[actor] ?? .zero
+        return hand.sheep >= 1 && hand.wheat >= 1 && hand.ore >= 1
+    }
+
+    var canSendPlayKnightIntentDebug: Bool {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            state.turnState?.step == .afterRoll,
+            let actor = localActorIdentifier(),
+            actor == state.currentPlayer
+        else {
+            return false
+        }
+        return state.board != nil && (state.devCardsByPlayer[actor] ?? .zero).knight > 0
+    }
+
+    var canSendPlayMonopolyIntentDebug: Bool {
+        canSendNamedDevCardIntentDebug { $0.monopoly > 0 }
+    }
+
+    var canSendPlayYearOfPlentyIntentDebug: Bool {
+        canSendNamedDevCardIntentDebug { $0.yearOfPlenty > 0 }
+    }
+
+    var canSendPlayRoadBuildingIntentDebug: Bool {
+        guard canSendNamedDevCardIntentDebug({ $0.roadBuilding > 0 }),
+              let state = selectedState,
+              let actor = localActorIdentifier()
+        else {
+            return false
+        }
+        return defaultRoadBuildingEdges(for: actor, in: state) != nil
+    }
+
+    var canSendRevealVictoryPointIntentDebug: Bool {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            state.turnState?.step == .afterRoll,
+            let actor = localActorIdentifier(),
+            actor == state.currentPlayer
+        else {
+            return false
+        }
+        let playable = state.devCardsByPlayer[actor] ?? .zero
+        let newlyBought = state.newDevCardsByPlayer[actor] ?? .zero
+        return playable.victoryPoint > 0 || newlyBought.victoryPoint > 0
     }
 
     var canSendEndTurnIntentDebug: Bool {
@@ -922,6 +984,229 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
+    func sendBuyDevCardIntentDebug() {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+        guard canSendBuyDevCardIntentDebug else {
+            setLastError("Buy dev card intent is not currently legal.")
+            return
+        }
+        guard let actor = localActorIdentifier() else {
+            setLastError("Missing local participant identifier.")
+            return
+        }
+
+        let intent = ULS_Transport.TurnIntentV1(
+            kind: .buyDevCard,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT buyDevCard", sessionPolicy: .new)
+            selectionStatus = "Buy dev card intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Buy dev card intent failed: \(error.localizedDescription)")
+        }
+    }
+
+    func sendPlayKnightIntentDebug() {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+        guard canSendPlayKnightIntentDebug else {
+            setLastError("Play Knight intent is not currently legal.")
+            return
+        }
+        guard let actor = localActorIdentifier() else {
+            setLastError("Missing local participant identifier.")
+            return
+        }
+        guard let board = state.board else {
+            setLastError("Selected state has no board.")
+            return
+        }
+
+        let tileID = (board.robberTile + 1) % board.resourcesByTile.count
+        let victim = defaultKnightVictim(for: tileID, in: state)
+        let intent = ULS_Transport.TurnIntentV1(
+            playDevCardKind: .knight,
+            tileID: tileID,
+            victimPlayer: victim,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT playKnight", sessionPolicy: .new)
+            selectionStatus = "Play Knight intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Play Knight intent failed: \(error.localizedDescription)")
+        }
+    }
+
+    func sendPlayMonopolyIntentDebug() {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+        guard canSendPlayMonopolyIntentDebug else {
+            setLastError("Play Monopoly intent is not currently legal.")
+            return
+        }
+        guard let actor = localActorIdentifier() else {
+            setLastError("Missing local participant identifier.")
+            return
+        }
+        guard let resource = defaultMonopolyResource(for: actor, in: state) else {
+            setLastError("No legal monopoly resource available.")
+            return
+        }
+
+        let intent = ULS_Transport.TurnIntentV1(
+            playDevCardKind: .monopoly,
+            resource: transportResource(from: resource),
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT playMonopoly", sessionPolicy: .new)
+            selectionStatus = "Play Monopoly intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Play Monopoly intent failed: \(error.localizedDescription)")
+        }
+    }
+
+    func sendPlayYearOfPlentyIntentDebug() {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+        guard canSendPlayYearOfPlentyIntentDebug else {
+            setLastError("Play Year of Plenty intent is not currently legal.")
+            return
+        }
+        guard let actor = localActorIdentifier() else {
+            setLastError("Missing local participant identifier.")
+            return
+        }
+        guard let selection = defaultYearOfPlentyResources(from: state) else {
+            setLastError("Bank cannot satisfy Year of Plenty.")
+            return
+        }
+
+        let intent = ULS_Transport.TurnIntentV1(
+            playDevCardKind: .yearOfPlenty,
+            firstResource: transportResource(from: selection.first),
+            secondResource: transportResource(from: selection.second),
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT playYearOfPlenty", sessionPolicy: .new)
+            selectionStatus = "Play Year of Plenty intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Play Year of Plenty intent failed: \(error.localizedDescription)")
+        }
+    }
+
+    func sendPlayRoadBuildingIntentDebug() {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+        guard canSendPlayRoadBuildingIntentDebug else {
+            setLastError("Play Road Building intent is not currently legal.")
+            return
+        }
+        guard let actor = localActorIdentifier() else {
+            setLastError("Missing local participant identifier.")
+            return
+        }
+        guard let edges = defaultRoadBuildingEdges(for: actor, in: state) else {
+            setLastError("No legal pair of roads for Road Building.")
+            return
+        }
+
+        let intent = ULS_Transport.TurnIntentV1(
+            playDevCardKind: .roadBuilding,
+            firstEdgeID: edges.first,
+            secondEdgeID: edges.second,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT playRoadBuilding", sessionPolicy: .new)
+            selectionStatus = "Play Road Building intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Play Road Building intent failed: \(error.localizedDescription)")
+        }
+    }
+
+    func sendRevealVictoryPointIntentDebug() {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+        guard canSendRevealVictoryPointIntentDebug else {
+            setLastError("Reveal VP intent is not currently legal.")
+            return
+        }
+        guard let actor = localActorIdentifier() else {
+            setLastError("Missing local participant identifier.")
+            return
+        }
+
+        let intent = ULS_Transport.TurnIntentV1(
+            playDevCardKind: .revealVictoryPoint,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT revealVP", sessionPolicy: .new)
+            selectionStatus = "Reveal VP intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Reveal VP intent failed: \(error.localizedDescription)")
+        }
+    }
+
     func sendEndTurnIntentDebug() {
         guard let state = selectedState else {
             setLastError("Select a turn STATE first.")
@@ -1056,6 +1341,7 @@ final class LobbyDriverViewModel: ObservableObject {
         visibleHands = visibleHandsSummary(for: state)
         bankResources = resourceHandDescription(state.bankResources)
         devDeckRemaining = String(state.devDeck.count)
+        visibleDevCards = visibleDevCardsSummary(for: state)
         render(board: state.board)
         selectionStatus = "Decoded STATE rev\(state.rev) via \(source.label)"
         refreshPendingJoiners(for: state.gameId)
@@ -1086,6 +1372,7 @@ final class LobbyDriverViewModel: ObservableObject {
         visibleHands = "-"
         bankResources = "-"
         devDeckRemaining = "-"
+        visibleDevCards = "-"
         resetBoardDebugFields()
         selectionStatus = "Decoded JOIN intent via \(source.label)"
         refreshPendingJoiners(for: joinIntent.gameId)
@@ -1115,6 +1402,7 @@ final class LobbyDriverViewModel: ObservableObject {
         visibleHands = "-"
         bankResources = "-"
         devDeckRemaining = "-"
+        visibleDevCards = "-"
         switch setupIntent.kind {
         case .placeSetupSettlement:
             setupPlacement = "node: \(setupIntent.node.map(String.init) ?? "-")"
@@ -1185,10 +1473,36 @@ final class LobbyDriverViewModel: ObservableObject {
             let player = decodedTurnIntent.tradeAcceptPlayer ?? "-"
             let offer = decodedTurnIntent.tradeOfferHash ?? "-"
             turnIntent = "kind: executeTrade player: \(player) offer: \(offer)"
+        case .buyDevCard:
+            turnIntent = "kind: buyDevCard"
+        case .playDevCard:
+            let playKind = decodedTurnIntent.devCardPlayKind?.rawValue ?? "-"
+            switch decodedTurnIntent.devCardPlayKind {
+            case .knight:
+                let tile = decodedTurnIntent.devCardTileID.map(String.init) ?? "-"
+                let victim = decodedTurnIntent.devCardVictimPlayer ?? "none"
+                turnIntent = "kind: playDevCard card: \(playKind) tile: \(tile) victim: \(victim)"
+            case .monopoly:
+                let resource = decodedTurnIntent.devCardResource?.rawValue ?? "-"
+                turnIntent = "kind: playDevCard card: \(playKind) resource: \(resource)"
+            case .yearOfPlenty:
+                let first = decodedTurnIntent.devCardFirstResource?.rawValue ?? "-"
+                let second = decodedTurnIntent.devCardSecondResource?.rawValue ?? "-"
+                turnIntent = "kind: playDevCard card: \(playKind) first: \(first) second: \(second)"
+            case .roadBuilding:
+                let first = decodedTurnIntent.devCardFirstEdgeID.map(String.init) ?? "-"
+                let second = decodedTurnIntent.devCardSecondEdgeID.map(String.init) ?? "-"
+                turnIntent = "kind: playDevCard card: \(playKind) firstEdge: \(first) secondEdge: \(second)"
+            case .revealVictoryPoint:
+                turnIntent = "kind: playDevCard card: \(playKind)"
+            case .none:
+                turnIntent = "kind: playDevCard card: -"
+            }
         }
         visibleHands = "-"
         bankResources = "-"
         devDeckRemaining = "-"
+        visibleDevCards = "-"
         resetBoardDebugFields()
         selectionStatus = "Decoded \(decodedTurnIntent.kind.rawValue) intent via \(source.label)"
         refreshPendingJoiners(for: decodedTurnIntent.gameId)
@@ -1239,6 +1553,7 @@ final class LobbyDriverViewModel: ObservableObject {
         visibleHands = "-"
         bankResources = "-"
         devDeckRemaining = "-"
+        visibleDevCards = "-"
         resetBoardDebugFields()
     }
 
@@ -1271,12 +1586,29 @@ final class LobbyDriverViewModel: ObservableObject {
         }.joined(separator: " | ")
     }
 
+    private func visibleDevCardsSummary(for state: CoreGameStateV1) -> String {
+        let localActor = localActorIdentifier()
+        return state.roster.map { player in
+            let playable = state.devCardsByPlayer[player] ?? .zero
+            let newCards = state.newDevCardsByPlayer[player] ?? .zero
+            let total = playable.totalCount + newCards.totalCount
+            if localActor == player {
+                return "\(player): \(devCardInventoryDescription(playable))/new:\(devCardInventoryDescription(newCards))"
+            }
+            return "\(player): \(total)"
+        }.joined(separator: " | ")
+    }
+
     private func resourceHandDescription(_ hand: ResourceHandV1) -> String {
         "w:\(hand.wood), b:\(hand.brick), s:\(hand.sheep), wh:\(hand.wheat), o:\(hand.ore)"
     }
 
     private func resourceHandDescription(_ hand: TransportResourceHandV1) -> String {
         "w:\(hand.wood), b:\(hand.brick), s:\(hand.sheep), wh:\(hand.wheat), o:\(hand.ore)"
+    }
+
+    private func devCardInventoryDescription(_ inventory: DevCardInventoryV1) -> String {
+        "k:\(inventory.knight), m:\(inventory.monopoly), yop:\(inventory.yearOfPlenty), rb:\(inventory.roadBuilding), vp:\(inventory.victoryPoint)"
     }
 
     private func discardRequirementsSummary(for turnState: TurnStateV1?) -> String {
@@ -1353,6 +1685,126 @@ final class LobbyDriverViewModel: ObservableObject {
             .sorted { $0.acceptingPlayer < $1.acceptingPlayer }
             .map(\.acceptingPlayer)
             .joined(separator: ", ")
+    }
+
+    private func canSendNamedDevCardIntentDebug(
+        _ hasCard: (DevCardInventoryV1) -> Bool
+    ) -> Bool {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            state.turnState?.step == .afterRoll,
+            let actor = localActorIdentifier(),
+            actor == state.currentPlayer,
+            !state.devCardActionPlayedThisTurn
+        else {
+            return false
+        }
+        return hasCard(state.devCardsByPlayer[actor] ?? .zero)
+    }
+
+    private func defaultKnightVictim(for tileID: Int, in state: CoreGameStateV1) -> String? {
+        let topology = StandardBoardTopologyV1.standard()
+        guard tileID >= 0, tileID < topology.tiles.count else {
+            return nil
+        }
+
+        let current = state.currentPlayer
+        var victims: Set<String> = []
+        for node in topology.tiles[tileID].nodes {
+            if let cityOwner = state.citiesByNode[node],
+               cityOwner != current,
+               (state.resourcesByPlayer[cityOwner] ?? .zero).totalCount > 0
+            {
+                victims.insert(cityOwner)
+                continue
+            }
+            if let settlementOwner = state.settlementsByNode[node],
+               settlementOwner != current,
+               (state.resourcesByPlayer[settlementOwner] ?? .zero).totalCount > 0
+            {
+                victims.insert(settlementOwner)
+            }
+        }
+        return victims.sorted().first
+    }
+
+    private func defaultMonopolyResource(for actor: String, in state: CoreGameStateV1) -> ResourceV1? {
+        let resources: [ResourceV1] = [.wood, .brick, .sheep, .wheat, .ore]
+        var bestResource: ResourceV1?
+        var bestCount = 0
+        for resource in resources {
+            let count = state.roster
+                .filter { $0 != actor }
+                .reduce(0) { partial, player in
+                    partial + (state.resourcesByPlayer[player] ?? .zero).count(for: resource)
+                }
+            if count > bestCount {
+                bestCount = count
+                bestResource = resource
+            }
+        }
+        return bestResource ?? resources.first
+    }
+
+    private func defaultYearOfPlentyResources(from state: CoreGameStateV1) -> (first: ResourceV1, second: ResourceV1)? {
+        let resources: [ResourceV1] = [.wood, .brick, .sheep, .wheat, .ore]
+        for resource in resources where state.bankResources.count(for: resource) >= 2 {
+            return (resource, resource)
+        }
+
+        let available = resources.filter { state.bankResources.count(for: $0) > 0 }
+        guard available.count >= 2 else {
+            return nil
+        }
+        return (available[0], available[1])
+    }
+
+    private func defaultRoadBuildingEdges(for player: String, in state: CoreGameStateV1) -> (first: Int, second: Int)? {
+        let topology = StandardBoardTopologyV1.standard()
+        let roadCount = state.roadsByEdge.values.filter { $0 == player }.count
+        guard roadCount <= 13 else {
+            return nil
+        }
+
+        for firstEdge in topology.edges.indices where state.roadsByEdge[firstEdge] == nil {
+            if !isRoadConnected(firstEdge, player: player, roads: state.roadsByEdge, state: state) {
+                continue
+            }
+            var roadsAfterFirst = state.roadsByEdge
+            roadsAfterFirst[firstEdge] = player
+            for secondEdge in topology.edges.indices where secondEdge != firstEdge && roadsAfterFirst[secondEdge] == nil {
+                if isRoadConnected(secondEdge, player: player, roads: roadsAfterFirst, state: state) {
+                    return (firstEdge, secondEdge)
+                }
+            }
+        }
+        return nil
+    }
+
+    private func isRoadConnected(
+        _ edgeID: Int,
+        player: String,
+        roads: [EdgeID: String],
+        state: CoreGameStateV1
+    ) -> Bool {
+        let topology = StandardBoardTopologyV1.standard()
+        let edge = topology.edges[edgeID]
+        let nodes = [edge.a, edge.b]
+        for node in nodes {
+            if state.settlementsByNode[node] == player || state.citiesByNode[node] == player {
+                return true
+            }
+            if state.settlementsByNode[node] != nil || state.citiesByNode[node] != nil {
+                continue
+            }
+            for adjacentEdge in topology.edges(incidentTo: node) where adjacentEdge != edgeID {
+                if roads[adjacentEdge] == player {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     private func firstLegalRoadEdge(for player: String, in state: CoreGameStateV1) -> Int? {
@@ -1503,6 +1955,23 @@ final class LobbyDriverViewModel: ObservableObject {
             return TransportResourceHandV1(ore: count)
         case .desert:
             return TransportResourceHandV1()
+        }
+    }
+
+    private func transportResource(from resource: ResourceV1) -> TransportResourceV1 {
+        switch resource {
+        case .wood:
+            return .wood
+        case .brick:
+            return .brick
+        case .sheep:
+            return .sheep
+        case .wheat:
+            return .wheat
+        case .ore:
+            return .ore
+        case .desert:
+            return .wood
         }
     }
 

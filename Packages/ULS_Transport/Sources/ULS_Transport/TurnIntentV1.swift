@@ -16,6 +16,22 @@ public struct TransportResourceHandV1: Codable, Equatable {
     }
 }
 
+public enum TransportResourceV1: String, Codable, Equatable {
+    case wood
+    case brick
+    case sheep
+    case wheat
+    case ore
+}
+
+public enum TransportDevCardPlayKindV1: String, Codable, Equatable {
+    case knight
+    case monopoly
+    case yearOfPlenty
+    case roadBuilding
+    case revealVictoryPoint
+}
+
 public struct TurnIntentV1: Codable, Equatable {
     public enum Kind: String, Codable, Equatable {
         case rollDice
@@ -28,6 +44,8 @@ public struct TurnIntentV1: Codable, Equatable {
         case proposeTrade
         case acceptTrade
         case executeTrade
+        case buyDevCard
+        case playDevCard
         case endTurn
     }
 
@@ -46,6 +64,14 @@ public struct TurnIntentV1: Codable, Equatable {
     public let tradeReceive: TransportResourceHandV1?
     public let tradeAcceptPlayer: String?
     public let tradeOfferHash: String?
+    public let devCardPlayKind: TransportDevCardPlayKindV1?
+    public let devCardResource: TransportResourceV1?
+    public let devCardFirstResource: TransportResourceV1?
+    public let devCardSecondResource: TransportResourceV1?
+    public let devCardTileID: Int?
+    public let devCardVictimPlayer: String?
+    public let devCardFirstEdgeID: Int?
+    public let devCardSecondEdgeID: Int?
 
     public init(
         kind: Kind,
@@ -69,6 +95,14 @@ public struct TurnIntentV1: Codable, Equatable {
         tradeReceive = nil
         tradeAcceptPlayer = nil
         tradeOfferHash = nil
+        devCardPlayKind = nil
+        devCardResource = nil
+        devCardFirstResource = nil
+        devCardSecondResource = nil
+        devCardTileID = nil
+        devCardVictimPlayer = nil
+        devCardFirstEdgeID = nil
+        devCardSecondEdgeID = nil
     }
 
     public init(
@@ -94,6 +128,14 @@ public struct TurnIntentV1: Codable, Equatable {
         tradeReceive = nil
         tradeAcceptPlayer = nil
         tradeOfferHash = nil
+        devCardPlayKind = nil
+        devCardResource = nil
+        devCardFirstResource = nil
+        devCardSecondResource = nil
+        devCardTileID = nil
+        devCardVictimPlayer = nil
+        devCardFirstEdgeID = nil
+        devCardSecondEdgeID = nil
     }
 
     public init(
@@ -118,6 +160,14 @@ public struct TurnIntentV1: Codable, Equatable {
         tradeReceive = nil
         tradeAcceptPlayer = nil
         tradeOfferHash = nil
+        devCardPlayKind = nil
+        devCardResource = nil
+        devCardFirstResource = nil
+        devCardSecondResource = nil
+        devCardTileID = nil
+        devCardVictimPlayer = nil
+        devCardFirstEdgeID = nil
+        devCardSecondEdgeID = nil
     }
 
     public init(
@@ -142,6 +192,14 @@ public struct TurnIntentV1: Codable, Equatable {
         tradeReceive = nil
         tradeAcceptPlayer = nil
         tradeOfferHash = nil
+        devCardPlayKind = nil
+        devCardResource = nil
+        devCardFirstResource = nil
+        devCardSecondResource = nil
+        devCardTileID = nil
+        devCardVictimPlayer = nil
+        devCardFirstEdgeID = nil
+        devCardSecondEdgeID = nil
     }
 
     public init(
@@ -166,6 +224,14 @@ public struct TurnIntentV1: Codable, Equatable {
         tradeReceive = nil
         tradeAcceptPlayer = nil
         tradeOfferHash = nil
+        devCardPlayKind = nil
+        devCardResource = nil
+        devCardFirstResource = nil
+        devCardSecondResource = nil
+        devCardTileID = nil
+        devCardVictimPlayer = nil
+        devCardFirstEdgeID = nil
+        devCardSecondEdgeID = nil
     }
 
     public init(
@@ -190,6 +256,14 @@ public struct TurnIntentV1: Codable, Equatable {
         tradeReceive = nil
         tradeAcceptPlayer = nil
         tradeOfferHash = nil
+        devCardPlayKind = nil
+        devCardResource = nil
+        devCardFirstResource = nil
+        devCardSecondResource = nil
+        devCardTileID = nil
+        devCardVictimPlayer = nil
+        devCardFirstEdgeID = nil
+        devCardSecondEdgeID = nil
     }
 
     public init(
@@ -214,6 +288,14 @@ public struct TurnIntentV1: Codable, Equatable {
         tradeReceive = nil
         tradeAcceptPlayer = nil
         tradeOfferHash = nil
+        devCardPlayKind = nil
+        devCardResource = nil
+        devCardFirstResource = nil
+        devCardSecondResource = nil
+        devCardTileID = nil
+        devCardVictimPlayer = nil
+        devCardFirstEdgeID = nil
+        devCardSecondEdgeID = nil
     }
 
     public init(
@@ -239,6 +321,14 @@ public struct TurnIntentV1: Codable, Equatable {
         self.tradeReceive = tradeReceive
         tradeAcceptPlayer = nil
         tradeOfferHash = nil
+        devCardPlayKind = nil
+        devCardResource = nil
+        devCardFirstResource = nil
+        devCardSecondResource = nil
+        devCardTileID = nil
+        devCardVictimPlayer = nil
+        devCardFirstEdgeID = nil
+        devCardSecondEdgeID = nil
     }
 
     public init(
@@ -264,6 +354,14 @@ public struct TurnIntentV1: Codable, Equatable {
         tradeReceive = nil
         self.tradeAcceptPlayer = tradeAcceptPlayer
         self.tradeOfferHash = tradeOfferHash
+        devCardPlayKind = nil
+        devCardResource = nil
+        devCardFirstResource = nil
+        devCardSecondResource = nil
+        devCardTileID = nil
+        devCardVictimPlayer = nil
+        devCardFirstEdgeID = nil
+        devCardSecondEdgeID = nil
     }
 
     public init(
@@ -289,6 +387,53 @@ public struct TurnIntentV1: Codable, Equatable {
         tradeReceive = nil
         self.tradeAcceptPlayer = tradeAcceptPlayer
         self.tradeOfferHash = tradeOfferHash
+        devCardPlayKind = nil
+        devCardResource = nil
+        devCardFirstResource = nil
+        devCardSecondResource = nil
+        devCardTileID = nil
+        devCardVictimPlayer = nil
+        devCardFirstEdgeID = nil
+        devCardSecondEdgeID = nil
+    }
+
+    public init(
+        playDevCardKind: TransportDevCardPlayKindV1,
+        resource: TransportResourceV1? = nil,
+        firstResource: TransportResourceV1? = nil,
+        secondResource: TransportResourceV1? = nil,
+        tileID: Int? = nil,
+        victimPlayer: String? = nil,
+        firstEdgeID: Int? = nil,
+        secondEdgeID: Int? = nil,
+        gameId: String,
+        anchorRev: Int,
+        anchorHash: String,
+        actor: String
+    ) {
+        kind = .playDevCard
+        self.gameId = gameId
+        self.anchorRev = anchorRev
+        self.anchorHash = anchorHash
+        self.actor = actor
+        discarded = nil
+        discardPlayer = nil
+        robberTileID = nil
+        stealVictimPlayer = nil
+        buildEdgeID = nil
+        buildNodeID = nil
+        tradeGive = nil
+        tradeReceive = nil
+        tradeAcceptPlayer = nil
+        tradeOfferHash = nil
+        devCardPlayKind = playDevCardKind
+        devCardResource = resource
+        devCardFirstResource = firstResource
+        devCardSecondResource = secondResource
+        devCardTileID = tileID
+        devCardVictimPlayer = victimPlayer
+        devCardFirstEdgeID = firstEdgeID
+        devCardSecondEdgeID = secondEdgeID
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -307,6 +452,14 @@ public struct TurnIntentV1: Codable, Equatable {
         case tradeReceive
         case tradeAcceptPlayer
         case tradeOfferHash
+        case devCardPlayKind
+        case devCardResource
+        case devCardFirstResource
+        case devCardSecondResource
+        case devCardTileID
+        case devCardVictimPlayer
+        case devCardFirstEdgeID
+        case devCardSecondEdgeID
     }
 
     public init(from decoder: Decoder) throws {
@@ -326,9 +479,17 @@ public struct TurnIntentV1: Codable, Equatable {
         tradeReceive = try container.decodeIfPresent(TransportResourceHandV1.self, forKey: .tradeReceive)
         tradeAcceptPlayer = try container.decodeIfPresent(String.self, forKey: .tradeAcceptPlayer)
         tradeOfferHash = try container.decodeIfPresent(String.self, forKey: .tradeOfferHash)
+        devCardPlayKind = try container.decodeIfPresent(TransportDevCardPlayKindV1.self, forKey: .devCardPlayKind)
+        devCardResource = try container.decodeIfPresent(TransportResourceV1.self, forKey: .devCardResource)
+        devCardFirstResource = try container.decodeIfPresent(TransportResourceV1.self, forKey: .devCardFirstResource)
+        devCardSecondResource = try container.decodeIfPresent(TransportResourceV1.self, forKey: .devCardSecondResource)
+        devCardTileID = try container.decodeIfPresent(Int.self, forKey: .devCardTileID)
+        devCardVictimPlayer = try container.decodeIfPresent(String.self, forKey: .devCardVictimPlayer)
+        devCardFirstEdgeID = try container.decodeIfPresent(Int.self, forKey: .devCardFirstEdgeID)
+        devCardSecondEdgeID = try container.decodeIfPresent(Int.self, forKey: .devCardSecondEdgeID)
 
         switch kind {
-        case .rollDice, .endTurn:
+        case .rollDice, .endTurn, .buyDevCard:
             guard allOptionalPayloadsEmpty else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .kind,
@@ -408,6 +569,107 @@ public struct TurnIntentV1: Codable, Equatable {
                     debugDescription: "executeTrade must include tradeAcceptPlayer and tradeOfferHash."
                 )
             }
+        case .playDevCard:
+            guard discarded == nil,
+                  discardPlayer == nil,
+                  robberTileID == nil,
+                  stealVictimPlayer == nil,
+                  buildEdgeID == nil,
+                  buildNodeID == nil,
+                  tradeGive == nil,
+                  tradeReceive == nil,
+                  tradeAcceptPlayer == nil,
+                  tradeOfferHash == nil
+            else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .kind,
+                    in: container,
+                    debugDescription: "playDevCard does not allow non-dev payload fields."
+                )
+            }
+            guard let playKind = devCardPlayKind else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .kind,
+                    in: container,
+                    debugDescription: "playDevCard must include devCardPlayKind."
+                )
+            }
+            switch playKind {
+            case .knight:
+                guard devCardTileID != nil,
+                      devCardResource == nil,
+                      devCardFirstResource == nil,
+                      devCardSecondResource == nil,
+                      devCardFirstEdgeID == nil,
+                      devCardSecondEdgeID == nil
+                else {
+                    throw DecodingError.dataCorruptedError(
+                        forKey: .kind,
+                        in: container,
+                        debugDescription: "Knight payload must include tile and optional victim only."
+                    )
+                }
+            case .monopoly:
+                guard devCardResource != nil,
+                      devCardTileID == nil,
+                      devCardVictimPlayer == nil,
+                      devCardFirstResource == nil,
+                      devCardSecondResource == nil,
+                      devCardFirstEdgeID == nil,
+                      devCardSecondEdgeID == nil
+                else {
+                    throw DecodingError.dataCorruptedError(
+                        forKey: .kind,
+                        in: container,
+                        debugDescription: "Monopoly payload must include resource only."
+                    )
+                }
+            case .yearOfPlenty:
+                guard devCardFirstResource != nil,
+                      devCardSecondResource != nil,
+                      devCardTileID == nil,
+                      devCardVictimPlayer == nil,
+                      devCardResource == nil,
+                      devCardFirstEdgeID == nil,
+                      devCardSecondEdgeID == nil
+                else {
+                    throw DecodingError.dataCorruptedError(
+                        forKey: .kind,
+                        in: container,
+                        debugDescription: "Year of Plenty payload must include first and second resources."
+                    )
+                }
+            case .roadBuilding:
+                guard devCardFirstEdgeID != nil,
+                      devCardSecondEdgeID != nil,
+                      devCardTileID == nil,
+                      devCardVictimPlayer == nil,
+                      devCardResource == nil,
+                      devCardFirstResource == nil,
+                      devCardSecondResource == nil
+                else {
+                    throw DecodingError.dataCorruptedError(
+                        forKey: .kind,
+                        in: container,
+                        debugDescription: "Road Building payload must include first and second edges."
+                    )
+                }
+            case .revealVictoryPoint:
+                guard devCardTileID == nil,
+                      devCardVictimPlayer == nil,
+                      devCardResource == nil,
+                      devCardFirstResource == nil,
+                      devCardSecondResource == nil,
+                      devCardFirstEdgeID == nil,
+                      devCardSecondEdgeID == nil
+                else {
+                    throw DecodingError.dataCorruptedError(
+                        forKey: .kind,
+                        in: container,
+                        debugDescription: "Reveal VP payload must not include additional fields."
+                    )
+                }
+            }
         }
     }
 
@@ -421,7 +683,15 @@ public struct TurnIntentV1: Codable, Equatable {
             tradeGive == nil &&
             tradeReceive == nil &&
             tradeAcceptPlayer == nil &&
-            tradeOfferHash == nil
+            tradeOfferHash == nil &&
+            devCardPlayKind == nil &&
+            devCardResource == nil &&
+            devCardFirstResource == nil &&
+            devCardSecondResource == nil &&
+            devCardTileID == nil &&
+            devCardVictimPlayer == nil &&
+            devCardFirstEdgeID == nil &&
+            devCardSecondEdgeID == nil
     }
 
     private var otherPayloadsForDiscardEmpty: Bool {
@@ -432,7 +702,15 @@ public struct TurnIntentV1: Codable, Equatable {
             tradeGive == nil &&
             tradeReceive == nil &&
             tradeAcceptPlayer == nil &&
-            tradeOfferHash == nil
+            tradeOfferHash == nil &&
+            devCardPlayKind == nil &&
+            devCardResource == nil &&
+            devCardFirstResource == nil &&
+            devCardSecondResource == nil &&
+            devCardTileID == nil &&
+            devCardVictimPlayer == nil &&
+            devCardFirstEdgeID == nil &&
+            devCardSecondEdgeID == nil
     }
 
     private var otherPayloadsForMoveRobberEmpty: Bool {
@@ -444,7 +722,15 @@ public struct TurnIntentV1: Codable, Equatable {
             tradeGive == nil &&
             tradeReceive == nil &&
             tradeAcceptPlayer == nil &&
-            tradeOfferHash == nil
+            tradeOfferHash == nil &&
+            devCardPlayKind == nil &&
+            devCardResource == nil &&
+            devCardFirstResource == nil &&
+            devCardSecondResource == nil &&
+            devCardTileID == nil &&
+            devCardVictimPlayer == nil &&
+            devCardFirstEdgeID == nil &&
+            devCardSecondEdgeID == nil
     }
 
     private var otherPayloadsForStealVictimEmpty: Bool {
@@ -456,7 +742,15 @@ public struct TurnIntentV1: Codable, Equatable {
             tradeGive == nil &&
             tradeReceive == nil &&
             tradeAcceptPlayer == nil &&
-            tradeOfferHash == nil
+            tradeOfferHash == nil &&
+            devCardPlayKind == nil &&
+            devCardResource == nil &&
+            devCardFirstResource == nil &&
+            devCardSecondResource == nil &&
+            devCardTileID == nil &&
+            devCardVictimPlayer == nil &&
+            devCardFirstEdgeID == nil &&
+            devCardSecondEdgeID == nil
     }
 
     private var otherPayloadsForBuildRoadEmpty: Bool {
@@ -468,7 +762,15 @@ public struct TurnIntentV1: Codable, Equatable {
             tradeGive == nil &&
             tradeReceive == nil &&
             tradeAcceptPlayer == nil &&
-            tradeOfferHash == nil
+            tradeOfferHash == nil &&
+            devCardPlayKind == nil &&
+            devCardResource == nil &&
+            devCardFirstResource == nil &&
+            devCardSecondResource == nil &&
+            devCardTileID == nil &&
+            devCardVictimPlayer == nil &&
+            devCardFirstEdgeID == nil &&
+            devCardSecondEdgeID == nil
     }
 
     private var otherPayloadsForBuildNodeEmpty: Bool {
@@ -480,7 +782,15 @@ public struct TurnIntentV1: Codable, Equatable {
             tradeGive == nil &&
             tradeReceive == nil &&
             tradeAcceptPlayer == nil &&
-            tradeOfferHash == nil
+            tradeOfferHash == nil &&
+            devCardPlayKind == nil &&
+            devCardResource == nil &&
+            devCardFirstResource == nil &&
+            devCardSecondResource == nil &&
+            devCardTileID == nil &&
+            devCardVictimPlayer == nil &&
+            devCardFirstEdgeID == nil &&
+            devCardSecondEdgeID == nil
     }
 
     private var otherPayloadsForProposeTradeEmpty: Bool {
@@ -491,7 +801,15 @@ public struct TurnIntentV1: Codable, Equatable {
             buildEdgeID == nil &&
             buildNodeID == nil &&
             tradeAcceptPlayer == nil &&
-            tradeOfferHash == nil
+            tradeOfferHash == nil &&
+            devCardPlayKind == nil &&
+            devCardResource == nil &&
+            devCardFirstResource == nil &&
+            devCardSecondResource == nil &&
+            devCardTileID == nil &&
+            devCardVictimPlayer == nil &&
+            devCardFirstEdgeID == nil &&
+            devCardSecondEdgeID == nil
     }
 
     private var otherPayloadsForAcceptTradeEmpty: Bool {
@@ -502,6 +820,14 @@ public struct TurnIntentV1: Codable, Equatable {
             buildEdgeID == nil &&
             buildNodeID == nil &&
             tradeGive == nil &&
-            tradeReceive == nil
+            tradeReceive == nil &&
+            devCardPlayKind == nil &&
+            devCardResource == nil &&
+            devCardFirstResource == nil &&
+            devCardSecondResource == nil &&
+            devCardTileID == nil &&
+            devCardVictimPlayer == nil &&
+            devCardFirstEdgeID == nil &&
+            devCardSecondEdgeID == nil
     }
 }

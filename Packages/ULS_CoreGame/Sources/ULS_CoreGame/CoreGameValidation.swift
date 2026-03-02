@@ -58,6 +58,11 @@ public enum CoreGameError: Error, Equatable {
     case tradeExecutionInsufficientResources
     case tradeStateInvalid
     case devDeckInvalid
+    case devDeckEmpty
+    case devCardPurchaseInsufficientResources
+    case devCardAlreadyPlayedThisTurn
+    case devCardNotOwned
+    case devCardPayloadInvalid
 }
 
 public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor: String) throws {
@@ -125,11 +130,10 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
             throw CoreGameError.boardRulesChanged
         }
 
-        guard to.devDeck == from.devDeck else {
-            throw CoreGameError.devDeckInvalid
-        }
-
-        if !isRobberMoveBoardTransition(from: from, to: to) {
+        let boardTransitionAllowed =
+            isRobberMoveBoardTransition(from: from, to: to) ||
+            isKnightDevCardBoardTransition(from: from, to: to)
+        if !boardTransitionAllowed {
             guard to.board == from.board else {
                 throw CoreGameError.boardChanged
             }
@@ -141,6 +145,7 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
     try validateOwnershipTransition(from: from, to: to, actor: actor, isStartTransition: isStartTransition)
     try validateTurnStepTransition(from: from, to: to)
     try validateTradeTransition(from: from, to: to)
+    try validateDevCardTransition(from: from, to: to, isStartTransition: isStartTransition)
 
     let expectedEconomy = expectedEconomyAfterTransition(
         from: from,
@@ -277,6 +282,139 @@ private func validateTradeTransition(from: CoreGameStateV1, to: CoreGameStateV1)
     }
 }
 
+private func validateDevCardTransition(
+    from: CoreGameStateV1,
+    to: CoreGameStateV1,
+    isStartTransition: Bool
+) throws {
+    if isStartTransition {
+        return
+    }
+
+    let devStateUnchanged =
+        from.devDeck == to.devDeck &&
+        from.devCardsByPlayer == to.devCardsByPlayer &&
+        from.newDevCardsByPlayer == to.newDevCardsByPlayer &&
+        from.revealedVictoryPointsByPlayer == to.revealedVictoryPointsByPlayer &&
+        from.devCardActionPlayedThisTurn == to.devCardActionPlayedThisTurn &&
+        from.knightsPlayedByPlayer == to.knightsPlayedByPlayer
+
+    if from.phase != .turn || to.phase != .turn {
+        guard devStateUnchanged else {
+            throw CoreGameError.devDeckInvalid
+        }
+        return
+    }
+
+    if from.currentPlayer != to.currentPlayer {
+        try validateEndTurnDevCardCarryover(from: from, to: to)
+        return
+    }
+
+    if devStateUnchanged {
+        return
+    }
+
+    guard from.turnState?.step == .afterRoll, to.turnState?.step == .afterRoll else {
+        throw CoreGameError.devDeckInvalid
+    }
+
+    if to.devDeck != from.devDeck {
+        guard to.devDeck.count == from.devDeck.count - 1 else {
+            throw CoreGameError.devDeckInvalid
+        }
+        guard Array(from.devDeck.dropFirst()) == to.devDeck else {
+            throw CoreGameError.devDeckInvalid
+        }
+        guard to.devCardActionPlayedThisTurn == from.devCardActionPlayedThisTurn else {
+            throw CoreGameError.devDeckInvalid
+        }
+    }
+
+    let current = from.currentPlayer
+    for player in from.roster where player != current {
+        guard to.devCardsByPlayer[player] == from.devCardsByPlayer[player] else {
+            throw CoreGameError.devDeckInvalid
+        }
+        guard to.newDevCardsByPlayer[player] == from.newDevCardsByPlayer[player] else {
+            throw CoreGameError.devDeckInvalid
+        }
+        guard to.revealedVictoryPointsByPlayer[player] == from.revealedVictoryPointsByPlayer[player] else {
+            throw CoreGameError.devDeckInvalid
+        }
+        guard to.knightsPlayedByPlayer[player] == from.knightsPlayedByPlayer[player] else {
+            throw CoreGameError.devDeckInvalid
+        }
+    }
+
+    let fromCurrentInventory = from.devCardsByPlayer[current] ?? .zero
+    let toCurrentInventory = to.devCardsByPlayer[current] ?? .zero
+    let fromCurrentNewInventory = from.newDevCardsByPlayer[current] ?? .zero
+    let toCurrentNewInventory = to.newDevCardsByPlayer[current] ?? .zero
+    guard isNonNegativeInventory(toCurrentInventory), isNonNegativeInventory(toCurrentNewInventory) else {
+        throw CoreGameError.devDeckInvalid
+    }
+
+    if to.devDeck == from.devDeck {
+        guard fromCurrentInventory.totalCount + fromCurrentNewInventory.totalCount >= toCurrentInventory.totalCount + toCurrentNewInventory.totalCount else {
+            throw CoreGameError.devDeckInvalid
+        }
+    }
+
+    guard (to.revealedVictoryPointsByPlayer[current] ?? 0) >= (from.revealedVictoryPointsByPlayer[current] ?? 0) else {
+        throw CoreGameError.devDeckInvalid
+    }
+    guard (to.knightsPlayedByPlayer[current] ?? 0) >= (from.knightsPlayedByPlayer[current] ?? 0) else {
+        throw CoreGameError.devDeckInvalid
+    }
+
+    if from.devCardActionPlayedThisTurn {
+        guard to.devCardActionPlayedThisTurn else {
+            throw CoreGameError.devDeckInvalid
+        }
+    }
+}
+
+private func validateEndTurnDevCardCarryover(from: CoreGameStateV1, to: CoreGameStateV1) throws {
+    guard to.devDeck == from.devDeck else {
+        throw CoreGameError.devDeckInvalid
+    }
+
+    let endingPlayer = from.currentPlayer
+    for player in from.roster {
+        if player == endingPlayer {
+            let expectedPlayable = mergeDevInventoriesForValidation(
+                from.devCardsByPlayer[player] ?? .zero,
+                from.newDevCardsByPlayer[player] ?? .zero
+            )
+            guard to.devCardsByPlayer[player] == expectedPlayable else {
+                throw CoreGameError.devDeckInvalid
+            }
+            guard to.newDevCardsByPlayer[player] == .zero else {
+                throw CoreGameError.devDeckInvalid
+            }
+        } else {
+            guard to.devCardsByPlayer[player] == from.devCardsByPlayer[player] else {
+                throw CoreGameError.devDeckInvalid
+            }
+            guard to.newDevCardsByPlayer[player] == from.newDevCardsByPlayer[player] else {
+                throw CoreGameError.devDeckInvalid
+            }
+        }
+
+        guard to.revealedVictoryPointsByPlayer[player] == from.revealedVictoryPointsByPlayer[player] else {
+            throw CoreGameError.devDeckInvalid
+        }
+        guard to.knightsPlayedByPlayer[player] == from.knightsPlayedByPlayer[player] else {
+            throw CoreGameError.devDeckInvalid
+        }
+    }
+
+    guard to.devCardActionPlayedThisTurn == false else {
+        throw CoreGameError.devDeckInvalid
+    }
+}
+
 private func validateOwnershipTransition(
     from: CoreGameStateV1,
     to: CoreGameStateV1,
@@ -376,26 +514,45 @@ private func validateTurnBuildOwnershipTransitionIfAny(
     let removedRoads = from.roadsByEdge.filter { to.roadsByEdge[$0.key] == nil }
 
     if !addedRoads.isEmpty || !removedRoads.isEmpty {
-        guard addedRoads.count == 1, removedRoads.isEmpty else {
+        guard removedRoads.isEmpty else {
             throw CoreGameError.roadsByEdgeInvalid
         }
         guard addedSettlements.isEmpty, removedSettlements.isEmpty, addedCities.isEmpty, removedCities.isEmpty else {
             throw CoreGameError.roadsByEdgeInvalid
         }
-        guard let (edge, owner) = addedRoads.first, owner == actor else {
-            throw CoreGameError.roadsByEdgeInvalid
-        }
-        guard edge >= 0, edge < validationTopology.edges.count else {
-            throw CoreGameError.invalidEdge
-        }
+
         let roadCount = from.roadsByEdge.values.filter { $0 == actor }.count
-        guard roadCount < 15 else {
-            throw CoreGameError.roadsByEdgeInvalid
+        for (edge, owner) in addedRoads {
+            guard owner == actor else {
+                throw CoreGameError.roadsByEdgeInvalid
+            }
+            guard edge >= 0, edge < validationTopology.edges.count else {
+                throw CoreGameError.invalidEdge
+            }
         }
-        guard isRoadConnectedForBuildValidation(edgeID: edge, player: actor, state: from) else {
-            throw CoreGameError.roadsByEdgeInvalid
+
+        if addedRoads.count == 1 {
+            guard roadCount < 15, let edge = addedRoads.first?.key else {
+                throw CoreGameError.roadsByEdgeInvalid
+            }
+            guard isRoadConnectedForBuildValidation(edgeID: edge, player: actor, state: from) else {
+                throw CoreGameError.roadsByEdgeInvalid
+            }
+            return true
         }
-        return true
+
+        if addedRoads.count == 2, isRoadBuildingOwnershipTransition(from: from, to: to, actor: actor) {
+            guard roadCount <= 13 else {
+                throw CoreGameError.roadsByEdgeInvalid
+            }
+            let edges = addedRoads.map(\.key)
+            guard canPlaceTwoConnectedRoadsForValidation(edges: edges, player: actor, from: from) else {
+                throw CoreGameError.roadsByEdgeInvalid
+            }
+            return true
+        }
+
+        throw CoreGameError.roadsByEdgeInvalid
     }
 
     if !addedCities.isEmpty || !removedSettlements.isEmpty || !removedCities.isEmpty {
@@ -734,6 +891,12 @@ private func expectedEconomyAfterTransition(
         {
             return tradeExecutionUpdate
         }
+        let devCardUpdate = expectedEconomyAfterDevCardIfAny(from: from, to: to)
+        if devCardUpdate.resourcesByPlayer != original.resourcesByPlayer ||
+            devCardUpdate.bankResources != original.bankResources
+        {
+            return devCardUpdate
+        }
         let buildUpdate = expectedEconomyAfterBuildIfAny(from: from, to: to)
         if buildUpdate.resourcesByPlayer != original.resourcesByPlayer || buildUpdate.bankResources != original.bankResources {
             return buildUpdate
@@ -846,7 +1009,12 @@ private func expectedEconomyAfterBuildIfAny(from: CoreGameStateV1, to: CoreGameS
         to.phase == .turn,
         from.currentPlayer == to.currentPlayer,
         from.turnState == to.turnState,
-        from.turnState?.step == .afterRoll
+        from.turnState?.step == .afterRoll,
+        from.devCardsByPlayer == to.devCardsByPlayer,
+        from.newDevCardsByPlayer == to.newDevCardsByPlayer,
+        from.revealedVictoryPointsByPlayer == to.revealedVictoryPointsByPlayer,
+        from.devCardActionPlayedThisTurn == to.devCardActionPlayedThisTurn,
+        from.knightsPlayedByPlayer == to.knightsPlayedByPlayer
     else {
         return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
     }
@@ -946,6 +1114,107 @@ private func expectedEconomyAfterTradeExecutionIfAny(from: CoreGameStateV1, to: 
     }
 
     return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
+}
+
+private func expectedEconomyAfterDevCardIfAny(from: CoreGameStateV1, to: CoreGameStateV1) -> EconomyUpdateV1 {
+    guard
+        from.phase == .turn,
+        to.phase == .turn,
+        from.currentPlayer == to.currentPlayer,
+        from.turnState == to.turnState,
+        from.turnState?.step == .afterRoll
+    else {
+        return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
+    }
+
+    let player = from.currentPlayer
+    let original = EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
+
+    if to.devDeck.count == from.devDeck.count - 1, Array(from.devDeck.dropFirst()) == to.devDeck {
+        let cost = ResourceHandV1(sheep: 1, wheat: 1, ore: 1)
+        let hand = from.resourcesByPlayer[player] ?? .zero
+        guard canAffordForValidation(hand: hand, cost: cost) else {
+            return original
+        }
+        var expectedResourcesByPlayer = from.resourcesByPlayer
+        expectedResourcesByPlayer[player] = subtractHandsForValidation(hand, cost)
+        let bank = from.bankResources
+        let expectedBank = addHandsForValidation(bank, cost)
+        return EconomyUpdateV1(resourcesByPlayer: expectedResourcesByPlayer, bankResources: expectedBank)
+    }
+
+    for resource in [ResourceV1.wood, .brick, .sheep, .wheat, .ore] {
+        var expectedResourcesByPlayer = from.resourcesByPlayer
+        var collected = 0
+        for other in from.roster where other != player {
+            let hand = expectedResourcesByPlayer[other] ?? .zero
+            let amount = hand.count(for: resource)
+            if amount > 0 {
+                expectedResourcesByPlayer[other] = hand.subtracting(amount, for: resource)
+                collected += amount
+            }
+        }
+        let playerHand = expectedResourcesByPlayer[player] ?? .zero
+        expectedResourcesByPlayer[player] = playerHand.adding(collected, for: resource)
+        if to.resourcesByPlayer == expectedResourcesByPlayer && to.bankResources == from.bankResources {
+            return EconomyUpdateV1(resourcesByPlayer: expectedResourcesByPlayer, bankResources: from.bankResources)
+        }
+    }
+
+    let resources: [ResourceV1] = [.wood, .brick, .sheep, .wheat, .ore]
+    for first in resources {
+        for second in resources {
+            let requiredSecond = first == second ? 2 : 1
+            guard from.bankResources.count(for: first) >= 1,
+                  from.bankResources.count(for: second) >= requiredSecond else {
+                continue
+            }
+            var expectedResourcesByPlayer = from.resourcesByPlayer
+            let hand = expectedResourcesByPlayer[player] ?? .zero
+            expectedResourcesByPlayer[player] = hand.adding(1, for: first).adding(1, for: second)
+            let expectedBank = from.bankResources.subtracting(1, for: first).subtracting(1, for: second)
+            if to.resourcesByPlayer == expectedResourcesByPlayer && to.bankResources == expectedBank {
+                return EconomyUpdateV1(resourcesByPlayer: expectedResourcesByPlayer, bankResources: expectedBank)
+            }
+        }
+    }
+
+    if
+        let fromBoard = from.board,
+        let toBoard = to.board,
+        fromBoard.robberTile != toBoard.robberTile,
+        let robberSeed = from.robberRngState
+    {
+        let victims = eligibleRobberVictimsForValidation(
+            tileID: toBoard.robberTile,
+            settlementsByNode: from.settlementsByNode,
+            citiesByNode: from.citiesByNode,
+            resourcesByPlayer: from.resourcesByPlayer,
+            currentPlayer: player
+        )
+        if victims.isEmpty {
+            if to.resourcesByPlayer == from.resourcesByPlayer && to.bankResources == from.bankResources {
+                return original
+            }
+        } else {
+            for victim in victims {
+                let victimHand = from.resourcesByPlayer[victim] ?? .zero
+                guard victimHand.totalCount > 0 else {
+                    continue
+                }
+                var rng = DeterministicRNG(seed: robberSeed)
+                let stolen = deterministicStolenResourceForValidation(from: victimHand, rng: &rng)
+                var expectedResourcesByPlayer = from.resourcesByPlayer
+                expectedResourcesByPlayer[player] = (from.resourcesByPlayer[player] ?? .zero).addingOne(for: stolen)
+                expectedResourcesByPlayer[victim] = victimHand.subtracting(1, for: stolen)
+                if to.resourcesByPlayer == expectedResourcesByPlayer && to.bankResources == from.bankResources {
+                    return EconomyUpdateV1(resourcesByPlayer: expectedResourcesByPlayer, bankResources: from.bankResources)
+                }
+            }
+        }
+    }
+
+    return original
 }
 
 private func startingResourceSettlementNodeGrantedDuringTransition(
@@ -1071,6 +1340,19 @@ private func isRobberMoveBoardTransition(from: CoreGameStateV1, to: CoreGameStat
     return true
 }
 
+private func isKnightDevCardBoardTransition(from: CoreGameStateV1, to: CoreGameStateV1) -> Bool {
+    guard
+        from.phase == .turn,
+        to.phase == .turn,
+        from.currentPlayer == to.currentPlayer,
+        from.turnState?.step == .afterRoll,
+        to.turnState?.step == .afterRoll
+    else {
+        return false
+    }
+    return isKnightDevCardTransition(from: from, to: to, actor: from.currentPlayer)
+}
+
 private func isOnlyRobberTileChanged(from: BoardSetupV1?, to: BoardSetupV1?) -> Bool {
     guard let from, let to else {
         return false
@@ -1090,6 +1372,53 @@ private func isOnlyRobberTileChanged(from: BoardSetupV1?, to: BoardSetupV1?) -> 
         return false
     }
     return true
+}
+
+private func isKnightDevCardTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor: String) -> Bool {
+    guard from.currentPlayer == actor, to.currentPlayer == actor else {
+        return false
+    }
+    guard from.devDeck == to.devDeck else {
+        return false
+    }
+    guard from.newDevCardsByPlayer == to.newDevCardsByPlayer else {
+        return false
+    }
+    guard from.revealedVictoryPointsByPlayer == to.revealedVictoryPointsByPlayer else {
+        return false
+    }
+    guard to.devCardActionPlayedThisTurn else {
+        return false
+    }
+
+    for player in from.roster where player != actor {
+        guard from.devCardsByPlayer[player] == to.devCardsByPlayer[player] else {
+            return false
+        }
+        guard from.knightsPlayedByPlayer[player] == to.knightsPlayedByPlayer[player] else {
+            return false
+        }
+    }
+
+    let fromInventory = from.devCardsByPlayer[actor] ?? .zero
+    let toInventory = to.devCardsByPlayer[actor] ?? .zero
+    guard fromInventory.knight == toInventory.knight + 1 else {
+        return false
+    }
+    guard fromInventory.monopoly == toInventory.monopoly else {
+        return false
+    }
+    guard fromInventory.yearOfPlenty == toInventory.yearOfPlenty else {
+        return false
+    }
+    guard fromInventory.roadBuilding == toInventory.roadBuilding else {
+        return false
+    }
+    guard fromInventory.victoryPoint == toInventory.victoryPoint else {
+        return false
+    }
+
+    return (to.knightsPlayedByPlayer[actor] ?? 0) == (from.knightsPlayedByPlayer[actor] ?? 0) + 1
 }
 
 private func deterministicStolenResourceForValidation(from hand: ResourceHandV1, rng: inout DeterministicRNG) -> ResourceV1 {
@@ -1112,6 +1441,128 @@ private func deterministicStolenResourceForValidation(from hand: ResourceHandV1,
         cursor += count
     }
     return .wood
+}
+
+private func eligibleRobberVictimsForValidation(
+    tileID: Int,
+    settlementsByNode: [NodeID: String],
+    citiesByNode: [NodeID: String],
+    resourcesByPlayer: [String: ResourceHandV1],
+    currentPlayer: String
+) -> [String] {
+    guard tileID >= 0, tileID < validationTopology.tiles.count else {
+        return []
+    }
+
+    var victims: Set<String> = []
+    for node in validationTopology.tiles[tileID].nodes {
+        if let cityOwner = citiesByNode[node],
+           cityOwner != currentPlayer,
+           (resourcesByPlayer[cityOwner] ?? .zero).totalCount > 0
+        {
+            victims.insert(cityOwner)
+            continue
+        }
+
+        if let settlementOwner = settlementsByNode[node],
+           settlementOwner != currentPlayer,
+           (resourcesByPlayer[settlementOwner] ?? .zero).totalCount > 0
+        {
+            victims.insert(settlementOwner)
+        }
+    }
+
+    return victims.sorted()
+}
+
+private func isRoadBuildingOwnershipTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor: String) -> Bool {
+    guard from.currentPlayer == actor, to.currentPlayer == actor else {
+        return false
+    }
+    guard from.devDeck == to.devDeck else {
+        return false
+    }
+    guard from.newDevCardsByPlayer == to.newDevCardsByPlayer else {
+        return false
+    }
+    guard from.revealedVictoryPointsByPlayer == to.revealedVictoryPointsByPlayer else {
+        return false
+    }
+    guard from.knightsPlayedByPlayer == to.knightsPlayedByPlayer else {
+        return false
+    }
+    guard to.devCardActionPlayedThisTurn else {
+        return false
+    }
+
+    for player in from.roster where player != actor {
+        guard from.devCardsByPlayer[player] == to.devCardsByPlayer[player] else {
+            return false
+        }
+    }
+
+    let fromInventory = from.devCardsByPlayer[actor] ?? .zero
+    let toInventory = to.devCardsByPlayer[actor] ?? .zero
+    return fromInventory.roadBuilding == toInventory.roadBuilding + 1 &&
+        fromInventory.knight == toInventory.knight &&
+        fromInventory.monopoly == toInventory.monopoly &&
+        fromInventory.yearOfPlenty == toInventory.yearOfPlenty &&
+        fromInventory.victoryPoint == toInventory.victoryPoint
+}
+
+private func canPlaceTwoConnectedRoadsForValidation(
+    edges: [EdgeID],
+    player: String,
+    from state: CoreGameStateV1
+) -> Bool {
+    guard edges.count == 2, edges[0] != edges[1] else {
+        return false
+    }
+
+    func canPlaceInOrder(_ first: EdgeID, _ second: EdgeID) -> Bool {
+        guard isRoadConnectedForBuildValidation(edgeID: first, player: player, state: state) else {
+            return false
+        }
+
+        var roads = state.roadsByEdge
+        roads[first] = player
+        let withFirstRoad = validationStateWithRoads(state: state, roadsByEdge: roads)
+        return isRoadConnectedForBuildValidation(edgeID: second, player: player, state: withFirstRoad)
+    }
+
+    return canPlaceInOrder(edges[0], edges[1]) || canPlaceInOrder(edges[1], edges[0])
+}
+
+private func validationStateWithRoads(state: CoreGameStateV1, roadsByEdge: [EdgeID: String]) -> CoreGameStateV1 {
+    CoreGameStateV1(
+        gameId: state.gameId,
+        rev: state.rev,
+        prevHash: state.prevHash,
+        stateHash: state.stateHash,
+        roster: state.roster,
+        currentPlayer: state.currentPlayer,
+        phase: state.phase,
+        seed: state.seed,
+        diceRngState: state.diceRngState,
+        robberRngState: state.robberRngState,
+        resourcesByPlayer: state.resourcesByPlayer,
+        bankResources: state.bankResources,
+        devDeck: state.devDeck,
+        devCardsByPlayer: state.devCardsByPlayer,
+        newDevCardsByPlayer: state.newDevCardsByPlayer,
+        revealedVictoryPointsByPlayer: state.revealedVictoryPointsByPlayer,
+        devCardActionPlayedThisTurn: state.devCardActionPlayedThisTurn,
+        knightsPlayedByPlayer: state.knightsPlayedByPlayer,
+        activeTradeOffer: state.activeTradeOffer,
+        pendingTradeAccepts: state.pendingTradeAccepts,
+        settlementsByNode: state.settlementsByNode,
+        citiesByNode: state.citiesByNode,
+        roadsByEdge: roadsByEdge,
+        boardRules: state.boardRules,
+        board: state.board,
+        setupState: state.setupState,
+        turnState: state.turnState
+    )
 }
 
 private func isRoadConnectedForBuildValidation(edgeID: Int, player: String, state: CoreGameStateV1) -> Bool {
@@ -1175,5 +1626,26 @@ private func subtractHandsForValidation(_ lhs: ResourceHandV1, _ rhs: ResourceHa
         sheep: lhs.sheep - rhs.sheep,
         wheat: lhs.wheat - rhs.wheat,
         ore: lhs.ore - rhs.ore
+    )
+}
+
+private func isNonNegativeInventory(_ value: DevCardInventoryV1) -> Bool {
+    value.knight >= 0 &&
+        value.monopoly >= 0 &&
+        value.yearOfPlenty >= 0 &&
+        value.roadBuilding >= 0 &&
+        value.victoryPoint >= 0
+}
+
+private func mergeDevInventoriesForValidation(
+    _ lhs: DevCardInventoryV1,
+    _ rhs: DevCardInventoryV1
+) -> DevCardInventoryV1 {
+    DevCardInventoryV1(
+        knight: lhs.knight + rhs.knight,
+        monopoly: lhs.monopoly + rhs.monopoly,
+        yearOfPlenty: lhs.yearOfPlenty + rhs.yearOfPlenty,
+        roadBuilding: lhs.roadBuilding + rhs.roadBuilding,
+        victoryPoint: lhs.victoryPoint + rhs.victoryPoint
     )
 }

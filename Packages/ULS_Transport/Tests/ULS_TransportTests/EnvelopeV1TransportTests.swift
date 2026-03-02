@@ -474,6 +474,70 @@ final class EnvelopeV1TransportTests: XCTestCase {
         XCTAssertThrowsError(try JSONDecoder().decode(TurnIntentV1.self, from: Data(invalidJSON.utf8)))
     }
 
+    func testTurnBuyDevCardIntentPayloadRoundTrip() throws {
+        let intent = TurnIntentV1(
+            kind: .buyDevCard,
+            gameId: "game-123",
+            anchorRev: 14,
+            anchorHash: "hash-14",
+            actor: "player-1"
+        )
+        let payload = try jsonString(intent)
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+
+        let encoded = try encode(envelope)
+        let decoded = try decode(encoded)
+
+        guard case let .intent(decodedPayload) = decoded.body else {
+            XCTFail("Expected INTENT body.")
+            return
+        }
+
+        let decodedIntent = try JSONDecoder().decode(TurnIntentV1.self, from: Data(decodedPayload.utf8))
+        XCTAssertEqual(decodedIntent, intent)
+    }
+
+    func testTurnPlayDevCardIntentPayloadRoundTrip() throws {
+        let intent = TurnIntentV1(
+            playDevCardKind: .knight,
+            tileID: 5,
+            victimPlayer: "player-2",
+            gameId: "game-123",
+            anchorRev: 15,
+            anchorHash: "hash-15",
+            actor: "player-1"
+        )
+        let payload = try jsonString(intent)
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+
+        let encoded = try encode(envelope)
+        let decoded = try decode(encoded)
+
+        guard case let .intent(decodedPayload) = decoded.body else {
+            XCTFail("Expected INTENT body.")
+            return
+        }
+
+        let decodedIntent = try JSONDecoder().decode(TurnIntentV1.self, from: Data(decodedPayload.utf8))
+        XCTAssertEqual(decodedIntent, intent)
+    }
+
+    func testTurnPlayDevCardDecodeFailsWithoutKind() {
+        let invalidJSON = """
+        {"kind":"playDevCard","gameId":"game-123","anchorRev":15,"anchorHash":"hash-15","actor":"player-1","devCardTileID":5}
+        """
+
+        XCTAssertThrowsError(try JSONDecoder().decode(TurnIntentV1.self, from: Data(invalidJSON.utf8)))
+    }
+
+    func testTurnPlayDevCardMonopolyDecodeFailsWithoutResource() {
+        let invalidJSON = """
+        {"kind":"playDevCard","gameId":"game-123","anchorRev":15,"anchorHash":"hash-15","actor":"player-1","devCardPlayKind":"monopoly"}
+        """
+
+        XCTAssertThrowsError(try JSONDecoder().decode(TurnIntentV1.self, from: Data(invalidJSON.utf8)))
+    }
+
     func testSetupIntentDecodeFailsWhenKindAndPayloadDoNotMatch() throws {
         let invalidIntentJSON = """
         {"kind":"placeSetupSettlement","gameId":"game-123","anchorRev":1,"anchorHash":"hash-1","actor":"player-1"}

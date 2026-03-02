@@ -13,6 +13,12 @@ public enum TurnIntentV1: Codable, Equatable {
     case proposeTrade(give: ResourceHandV1, receive: ResourceHandV1)
     case acceptTrade(acceptingPlayer: String, offerHash: String)
     case executeTrade(acceptingPlayer: String, offerHash: String)
+    case buyDevCard
+    case playKnight(tileID: Int, victimPlayer: String?)
+    case playMonopoly(resource: ResourceV1)
+    case playYearOfPlenty(first: ResourceV1, second: ResourceV1)
+    case playRoadBuilding(firstEdgeID: Int, secondEdgeID: Int)
+    case revealVictoryPoint
     case endTurn
 }
 
@@ -490,6 +496,305 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             pendingTradeAccepts: .some([])
         )
 
+    case .buyDevCard:
+        guard turnState.step == .afterRoll else {
+            throw CoreGameError.turnStepMismatch
+        }
+        guard let draw = drawTopDevCard(from: state.devDeck) else {
+            throw CoreGameError.devDeckEmpty
+        }
+
+        let player = state.currentPlayer
+        let cost = ResourceHandV1(sheep: 1, wheat: 1, ore: 1)
+        guard canAfford(hand: state.resourcesByPlayer[player] ?? .zero, cost: cost) else {
+            throw CoreGameError.devCardPurchaseInsufficientResources
+        }
+        let economy = applyBuildCost(player: player, cost: cost, state: state)
+
+        var newDevCardsByPlayer = state.newDevCardsByPlayer
+        let currentNew = newDevCardsByPlayer[player] ?? .zero
+        newDevCardsByPlayer[player] = currentNew.addingOne(card: draw.card)
+
+        return nextTurnState(
+            from: state,
+            currentPlayer: player,
+            diceRngState: state.diceRngState,
+            robberRngState: state.robberRngState,
+            board: state.board,
+            turnState: turnState,
+            resourcesByPlayer: economy.resourcesByPlayer,
+            bankResources: economy.bankResources,
+            devDeck: draw.remaining,
+            newDevCardsByPlayer: newDevCardsByPlayer
+        )
+
+    case let .playKnight(tileID, victimPlayer):
+        guard turnState.step == .afterRoll else {
+            throw CoreGameError.turnStepMismatch
+        }
+        try ensureDevCardActionCanBePlayed(state: state)
+        try ensureCardAvailable(card: .knight, state: state)
+
+        guard let board = state.board else {
+            throw CoreGameError.boardChanged
+        }
+        guard tileID >= 0, tileID < board.resourcesByTile.count else {
+            throw CoreGameError.invalidRobberTile
+        }
+        guard tileID != board.robberTile else {
+            throw CoreGameError.robberTileUnchanged
+        }
+        guard let robberSeed = state.robberRngState else {
+            throw CoreGameError.missingRobberRngState
+        }
+
+        var updatedDevCardsByPlayer = state.devCardsByPlayer
+        updatedDevCardsByPlayer[state.currentPlayer] = (updatedDevCardsByPlayer[state.currentPlayer] ?? .zero)
+            .subtractingOne(card: .knight)
+        var updatedKnightsPlayedByPlayer = state.knightsPlayedByPlayer
+        updatedKnightsPlayedByPlayer[state.currentPlayer, default: 0] += 1
+
+        let movedBoard = BoardSetupV1(
+            resourcesByTile: board.resourcesByTile,
+            numbersByTile: board.numbersByTile,
+            portsByIndex: board.portsByIndex,
+            robberTile: tileID,
+            generator: board.generator,
+            boardHash: ""
+        ).rehashed()
+
+        var updatedResourcesByPlayer = state.resourcesByPlayer
+        var nextRobberSeed = robberSeed
+        let victims = eligibleRobberVictims(
+            for: tileID,
+            settlementsByNode: state.settlementsByNode,
+            citiesByNode: state.citiesByNode,
+            resourcesByPlayer: state.resourcesByPlayer,
+            currentPlayer: state.currentPlayer
+        )
+        if !victims.isEmpty {
+            let selectedVictim = victimPlayer ?? victims[0]
+            guard victims.contains(selectedVictim) else {
+                throw CoreGameError.robberStealVictimNotEligible
+            }
+            let victimHand = state.resourcesByPlayer[selectedVictim] ?? .zero
+            guard victimHand.totalCount > 0 else {
+                throw CoreGameError.robberStealVictimNotEligible
+            }
+
+            var rng = DeterministicRNG(seed: robberSeed)
+            let stolen = deterministicStolenResource(from: victimHand, rng: &rng)
+            nextRobberSeed = rng.state
+
+            let stealerHand = state.resourcesByPlayer[state.currentPlayer] ?? .zero
+            updatedResourcesByPlayer[state.currentPlayer] = stealerHand.addingOne(for: stolen)
+            updatedResourcesByPlayer[selectedVictim] = victimHand.subtracting(1, for: stolen)
+        }
+
+        return nextTurnState(
+            from: state,
+            currentPlayer: state.currentPlayer,
+            diceRngState: state.diceRngState,
+            robberRngState: nextRobberSeed,
+            board: movedBoard,
+            turnState: turnState,
+            resourcesByPlayer: updatedResourcesByPlayer,
+            devCardsByPlayer: updatedDevCardsByPlayer,
+            devCardActionPlayedThisTurn: true,
+            knightsPlayedByPlayer: updatedKnightsPlayedByPlayer
+        )
+
+    case let .playMonopoly(resource):
+        guard turnState.step == .afterRoll else {
+            throw CoreGameError.turnStepMismatch
+        }
+        try ensureDevCardActionCanBePlayed(state: state)
+        try ensureCardAvailable(card: .monopoly, state: state)
+        guard resource != .desert else {
+            throw CoreGameError.devCardPayloadInvalid
+        }
+
+        var updatedDevCardsByPlayer = state.devCardsByPlayer
+        updatedDevCardsByPlayer[state.currentPlayer] = (updatedDevCardsByPlayer[state.currentPlayer] ?? .zero)
+            .subtractingOne(card: .monopoly)
+
+        let current = state.currentPlayer
+        var updatedResourcesByPlayer = state.resourcesByPlayer
+        var totalCollected = 0
+        for player in state.roster where player != current {
+            let hand = updatedResourcesByPlayer[player] ?? .zero
+            let amount = hand.count(for: resource)
+            if amount > 0 {
+                updatedResourcesByPlayer[player] = hand.subtracting(amount, for: resource)
+                totalCollected += amount
+            }
+        }
+        let currentHand = updatedResourcesByPlayer[current] ?? .zero
+        updatedResourcesByPlayer[current] = currentHand.adding(totalCollected, for: resource)
+
+        return nextTurnState(
+            from: state,
+            currentPlayer: current,
+            diceRngState: state.diceRngState,
+            robberRngState: state.robberRngState,
+            board: state.board,
+            turnState: turnState,
+            resourcesByPlayer: updatedResourcesByPlayer,
+            devCardsByPlayer: updatedDevCardsByPlayer,
+            devCardActionPlayedThisTurn: true
+        )
+
+    case let .playYearOfPlenty(first, second):
+        guard turnState.step == .afterRoll else {
+            throw CoreGameError.turnStepMismatch
+        }
+        try ensureDevCardActionCanBePlayed(state: state)
+        try ensureCardAvailable(card: .yearOfPlenty, state: state)
+        guard first != .desert, second != .desert else {
+            throw CoreGameError.devCardPayloadInvalid
+        }
+
+        guard state.bankResources.count(for: first) >= 1 else {
+            throw CoreGameError.bankResourcesInvalid
+        }
+        let requiredSecond = first == second ? 2 : 1
+        guard state.bankResources.count(for: second) >= requiredSecond else {
+            throw CoreGameError.bankResourcesInvalid
+        }
+
+        var updatedDevCardsByPlayer = state.devCardsByPlayer
+        updatedDevCardsByPlayer[state.currentPlayer] = (updatedDevCardsByPlayer[state.currentPlayer] ?? .zero)
+            .subtractingOne(card: .yearOfPlenty)
+
+        var updatedResourcesByPlayer = state.resourcesByPlayer
+        let currentHand = updatedResourcesByPlayer[state.currentPlayer] ?? .zero
+        updatedResourcesByPlayer[state.currentPlayer] = currentHand
+            .adding(1, for: first)
+            .adding(1, for: second)
+
+        let updatedBankResources = state.bankResources
+            .subtracting(1, for: first)
+            .subtracting(1, for: second)
+
+        return nextTurnState(
+            from: state,
+            currentPlayer: state.currentPlayer,
+            diceRngState: state.diceRngState,
+            robberRngState: state.robberRngState,
+            board: state.board,
+            turnState: turnState,
+            resourcesByPlayer: updatedResourcesByPlayer,
+            bankResources: updatedBankResources,
+            devCardsByPlayer: updatedDevCardsByPlayer,
+            devCardActionPlayedThisTurn: true
+        )
+
+    case let .playRoadBuilding(firstEdgeID, secondEdgeID):
+        guard turnState.step == .afterRoll else {
+            throw CoreGameError.turnStepMismatch
+        }
+        try ensureDevCardActionCanBePlayed(state: state)
+        try ensureCardAvailable(card: .roadBuilding, state: state)
+
+        let player = state.currentPlayer
+        var roads = state.roadsByEdge
+        var workingState = state
+        var playerRoadCount = roads.values.filter { $0 == player }.count
+        for edgeID in [firstEdgeID, secondEdgeID] {
+            guard edgeID >= 0, edgeID < turnBuildTopology.edges.count else {
+                throw CoreGameError.invalidEdge
+            }
+            guard roads[edgeID] == nil else {
+                throw CoreGameError.edgeOccupied
+            }
+            guard playerRoadCount < 15 else {
+                throw CoreGameError.buildPieceLimitReached
+            }
+            guard isRoadConnected(edgeID: edgeID, for: player, in: workingState) else {
+                throw CoreGameError.roadConnectionRequired
+            }
+            roads[edgeID] = player
+            playerRoadCount += 1
+            workingState = CoreGameStateV1(
+                gameId: workingState.gameId,
+                rev: workingState.rev,
+                prevHash: workingState.prevHash,
+                stateHash: workingState.stateHash,
+                roster: workingState.roster,
+                currentPlayer: workingState.currentPlayer,
+                phase: workingState.phase,
+                seed: workingState.seed,
+                diceRngState: workingState.diceRngState,
+                robberRngState: workingState.robberRngState,
+                resourcesByPlayer: workingState.resourcesByPlayer,
+                bankResources: workingState.bankResources,
+                devDeck: workingState.devDeck,
+                devCardsByPlayer: workingState.devCardsByPlayer,
+                newDevCardsByPlayer: workingState.newDevCardsByPlayer,
+                revealedVictoryPointsByPlayer: workingState.revealedVictoryPointsByPlayer,
+                devCardActionPlayedThisTurn: workingState.devCardActionPlayedThisTurn,
+                knightsPlayedByPlayer: workingState.knightsPlayedByPlayer,
+                activeTradeOffer: workingState.activeTradeOffer,
+                pendingTradeAccepts: workingState.pendingTradeAccepts,
+                settlementsByNode: workingState.settlementsByNode,
+                citiesByNode: workingState.citiesByNode,
+                roadsByEdge: roads,
+                boardRules: workingState.boardRules,
+                board: workingState.board,
+                setupState: workingState.setupState,
+                turnState: workingState.turnState
+            )
+        }
+
+        var updatedDevCardsByPlayer = state.devCardsByPlayer
+        updatedDevCardsByPlayer[player] = (updatedDevCardsByPlayer[player] ?? .zero)
+            .subtractingOne(card: .roadBuilding)
+
+        return nextTurnState(
+            from: state,
+            currentPlayer: player,
+            diceRngState: state.diceRngState,
+            robberRngState: state.robberRngState,
+            board: state.board,
+            turnState: turnState,
+            devCardsByPlayer: updatedDevCardsByPlayer,
+            devCardActionPlayedThisTurn: true,
+            roadsByEdge: roads
+        )
+
+    case .revealVictoryPoint:
+        guard turnState.step == .afterRoll else {
+            throw CoreGameError.turnStepMismatch
+        }
+
+        let player = state.currentPlayer
+        var devCardsByPlayer = state.devCardsByPlayer
+        var newDevCardsByPlayer = state.newDevCardsByPlayer
+        let playable = devCardsByPlayer[player] ?? .zero
+        let newlyBought = newDevCardsByPlayer[player] ?? .zero
+        if playable.victoryPoint > 0 {
+            devCardsByPlayer[player] = playable.subtractingOne(card: .victoryPoint)
+        } else if newlyBought.victoryPoint > 0 {
+            newDevCardsByPlayer[player] = newlyBought.subtractingOne(card: .victoryPoint)
+        } else {
+            throw CoreGameError.devCardNotOwned
+        }
+
+        var revealed = state.revealedVictoryPointsByPlayer
+        revealed[player, default: 0] += 1
+
+        return nextTurnState(
+            from: state,
+            currentPlayer: player,
+            diceRngState: state.diceRngState,
+            robberRngState: state.robberRngState,
+            board: state.board,
+            turnState: turnState,
+            devCardsByPlayer: devCardsByPlayer,
+            newDevCardsByPlayer: newDevCardsByPlayer,
+            revealedVictoryPointsByPlayer: revealed
+        )
+
     case .endTurn:
         guard turnState.step == .afterRoll else {
             throw CoreGameError.turnStepMismatch
@@ -503,6 +808,14 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         let wrappedIndex = nextIndex == state.roster.endIndex ? state.roster.startIndex : nextIndex
         let nextPlayer = state.roster[wrappedIndex]
 
+        let endingPlayer = state.currentPlayer
+        var devCardsByPlayer = state.devCardsByPlayer
+        var newDevCardsByPlayer = state.newDevCardsByPlayer
+        let endingPlayable = devCardsByPlayer[endingPlayer] ?? .zero
+        let endingNew = newDevCardsByPlayer[endingPlayer] ?? .zero
+        devCardsByPlayer[endingPlayer] = mergeDevInventories(endingPlayable, endingNew)
+        newDevCardsByPlayer[endingPlayer] = .zero
+
         return nextTurnState(
             from: state,
             currentPlayer: nextPlayer,
@@ -510,6 +823,9 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             robberRngState: state.robberRngState,
             board: state.board,
             turnState: TurnStateV1(step: .needsRoll, lastRoll: nil),
+            devCardsByPlayer: devCardsByPlayer,
+            newDevCardsByPlayer: newDevCardsByPlayer,
+            devCardActionPlayedThisTurn: false,
             activeTradeOffer: .some(nil),
             pendingTradeAccepts: .some([])
         )
@@ -525,6 +841,12 @@ private func nextTurnState(
     turnState: TurnStateV1,
     resourcesByPlayer: [String: ResourceHandV1]? = nil,
     bankResources: ResourceHandV1? = nil,
+    devDeck: [DevCardV1]? = nil,
+    devCardsByPlayer: [String: DevCardInventoryV1]? = nil,
+    newDevCardsByPlayer: [String: DevCardInventoryV1]? = nil,
+    revealedVictoryPointsByPlayer: [String: Int]? = nil,
+    devCardActionPlayedThisTurn: Bool? = nil,
+    knightsPlayedByPlayer: [String: Int]? = nil,
     activeTradeOffer: TradeOfferV1?? = nil,
     pendingTradeAccepts: [TradeAcceptV1]?? = nil,
     settlementsByNode: [NodeID: String]? = nil,
@@ -544,7 +866,12 @@ private func nextTurnState(
         robberRngState: robberRngState,
         resourcesByPlayer: resourcesByPlayer ?? state.resourcesByPlayer,
         bankResources: bankResources ?? state.bankResources,
-        devDeck: state.devDeck,
+        devDeck: devDeck ?? state.devDeck,
+        devCardsByPlayer: devCardsByPlayer ?? state.devCardsByPlayer,
+        newDevCardsByPlayer: newDevCardsByPlayer ?? state.newDevCardsByPlayer,
+        revealedVictoryPointsByPlayer: revealedVictoryPointsByPlayer ?? state.revealedVictoryPointsByPlayer,
+        devCardActionPlayedThisTurn: devCardActionPlayedThisTurn ?? state.devCardActionPlayedThisTurn,
+        knightsPlayedByPlayer: knightsPlayedByPlayer ?? state.knightsPlayedByPlayer,
         activeTradeOffer: activeTradeOffer ?? state.activeTradeOffer,
         pendingTradeAccepts: (pendingTradeAccepts ?? state.pendingTradeAccepts) ?? state.pendingTradeAccepts,
         settlementsByNode: settlementsByNode ?? state.settlementsByNode,
@@ -656,6 +983,29 @@ private func subtractHands(_ lhs: ResourceHandV1, _ rhs: ResourceHandV1) -> Reso
         sheep: lhs.sheep - rhs.sheep,
         wheat: lhs.wheat - rhs.wheat,
         ore: lhs.ore - rhs.ore
+    )
+}
+
+private func ensureDevCardActionCanBePlayed(state: CoreGameStateV1) throws {
+    if state.devCardActionPlayedThisTurn {
+        throw CoreGameError.devCardAlreadyPlayedThisTurn
+    }
+}
+
+private func ensureCardAvailable(card: DevCardV1, state: CoreGameStateV1) throws {
+    let hand = state.devCardsByPlayer[state.currentPlayer] ?? .zero
+    if hand.count(for: card) <= 0 {
+        throw CoreGameError.devCardNotOwned
+    }
+}
+
+private func mergeDevInventories(_ lhs: DevCardInventoryV1, _ rhs: DevCardInventoryV1) -> DevCardInventoryV1 {
+    DevCardInventoryV1(
+        knight: lhs.knight + rhs.knight,
+        monopoly: lhs.monopoly + rhs.monopoly,
+        yearOfPlenty: lhs.yearOfPlenty + rhs.yearOfPlenty,
+        roadBuilding: lhs.roadBuilding + rhs.roadBuilding,
+        victoryPoint: lhs.victoryPoint + rhs.victoryPoint
     )
 }
 

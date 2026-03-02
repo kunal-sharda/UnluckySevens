@@ -52,6 +52,7 @@ struct LobbyDriverView: View {
                     field("visibleHands", viewModel.visibleHands)
                     field("bankResources", viewModel.bankResources)
                     field("devDeckRemaining", viewModel.devDeckRemaining)
+                    field("visibleDevCards", viewModel.visibleDevCards)
                     field("setupPlacement", viewModel.setupPlacement)
                     field("turnIntent", viewModel.turnIntent)
                     field("pendingJoiners", viewModel.pendingJoiners)
@@ -180,6 +181,42 @@ struct LobbyDriverView: View {
                         }
                         .buttonStyle(.bordered)
                         .disabled(!viewModel.canSendExecuteTradeIntentDebug)
+
+                        Button("Buy Dev Card") {
+                            viewModel.sendBuyDevCardIntentDebug()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.canSendBuyDevCardIntentDebug)
+
+                        Button("Play Knight") {
+                            viewModel.sendPlayKnightIntentDebug()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.canSendPlayKnightIntentDebug)
+
+                        Button("Play Monopoly") {
+                            viewModel.sendPlayMonopolyIntentDebug()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.canSendPlayMonopolyIntentDebug)
+
+                        Button("Play Year of Plenty") {
+                            viewModel.sendPlayYearOfPlentyIntentDebug()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.canSendPlayYearOfPlentyIntentDebug)
+
+                        Button("Play Road Building") {
+                            viewModel.sendPlayRoadBuildingIntentDebug()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.canSendPlayRoadBuildingIntentDebug)
+
+                        Button("Reveal VP") {
+                            viewModel.sendRevealVictoryPointIntentDebug()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.canSendRevealVictoryPointIntentDebug)
 
                         Button("End Turn") {
                             viewModel.sendEndTurnIntentDebug()

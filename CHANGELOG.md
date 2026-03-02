@@ -97,3 +97,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 7.1 added deterministic development deck modeling (`DevCardV1`) with domain-seeded Fisher-Yates shuffle and deterministic top-draw helper APIs.
 - Stage 7.1 persisted development deck state in canonical `CoreGameStateV1` hashing and initialized deck order from master seed on game start.
 - Stage 7.1 updated Messages debug-driver state readouts with remaining development-deck count and added deterministic deck sequence/hash continuity tests.
+- Stage 7.2 added persistent dev-card ownership state (`devCardsByPlayer`, `newDevCardsByPlayer`, revealed VP, per-turn dev action flag, and knights played) to canonical game hashing and turn transitions.
+- Stage 7.2 implemented deterministic turn intents for `buyDevCard` plus `play` flows for Knight, Monopoly, Year of Plenty, Road Building, and VP reveal, including same-turn purchase restrictions (VP reveal exception).
+- Stage 7.2 extended transition validation to permit Knight robber-tile movement and Road Building two-road ownership updates while preserving deterministic economy/actor invariants.
+- Stage 7.2 added transport `buyDevCard` and `playDevCard(kind+payload)` intent schemas with strict decoding and new roundtrip/invalid decode coverage.
+- Stage 7.2 updated Messages debug-driver controls/readouts with `Buy Dev Card`, per-card play buttons, and secrecy-safe dev-card visibility summaries (local detail, opponent counts).
+- Stage 7.2 added focused CoreGame tests for timing restrictions, each dev-card effect, and deterministic fixed-seed action replay.
