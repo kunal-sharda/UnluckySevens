@@ -18,6 +18,7 @@ public struct CoreGameStateV1: Codable, Equatable {
     public let phase: PhaseV1
     public let seed: UInt64?
     public let diceRngState: UInt64?
+    public let resourcesByPlayer: [String: ResourceHandV1]
     public let boardRules: BoardRulesV1?
     public let board: BoardSetupV1?
     public let setupState: SetupStateV1?
@@ -32,6 +33,7 @@ public struct CoreGameStateV1: Codable, Equatable {
         phase: PhaseV1,
         seed: UInt64?,
         diceRngState: UInt64?,
+        resourcesByPlayer: [String: ResourceHandV1] = [:],
         boardRules: BoardRulesV1? = nil,
         board: BoardSetupV1? = nil,
         setupState: SetupStateV1? = nil
@@ -45,6 +47,7 @@ public struct CoreGameStateV1: Codable, Equatable {
         self.phase = phase
         self.seed = seed
         self.diceRngState = diceRngState
+        self.resourcesByPlayer = resourcesByPlayer
         self.boardRules = boardRules
         self.board = board
         self.setupState = setupState
@@ -61,6 +64,7 @@ public struct CoreGameStateV1: Codable, Equatable {
             phase: phase,
             seed: seed,
             diceRngState: diceRngState,
+            resourcesByPlayer: resourcesByPlayer,
             boardRules: boardRules,
             board: board,
             setupState: setupState
@@ -88,6 +92,7 @@ public struct CoreGameStateV1: Codable, Equatable {
             "phase": phase.rawValue,
             "seed": seed ?? NSNull(),
             "diceRngState": diceRngState ?? NSNull(),
+            "resourcesByPlayer": resourcesByPlayer.mapValues { $0.canonicalJSONValue() },
             "boardRules": boardRules?.canonicalJSONValue() ?? NSNull(),
             "board": board?.canonicalJSONIncludingHash() ?? NSNull(),
             "setupState": setupState?.canonicalJSONValue() ?? NSNull(),

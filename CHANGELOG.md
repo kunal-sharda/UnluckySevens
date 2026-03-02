@@ -61,3 +61,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 3.2.1 added atomic setup pair reducer handling in `ULS_CoreGame` by reusing settlement/road legality helpers in one transition.
 - Stage 3.2.1 added pair roundtrip transport test and CoreGame pair behavior tests (success path, bad adjacency, wrong-step rejection).
 - Stage 3.2.1 added a debug setup UI action in Messages extension: `Place Pair (node 0, edge 0)`.
+- Stage 3.3 added `ResourceHandV1` and `resourcesByPlayer` to canonical core game state hashing.
+- Stage 3.3 setup reducer now grants starting resources after successful `road2` completion from each player's `settlement2` adjacency (excluding desert and robber tile).
+- Stage 3.3 added setup starting-resource unit coverage for deterministic payout timing and correctness.

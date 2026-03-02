@@ -124,6 +124,7 @@ final class LobbyDriverViewModel: ObservableObject {
             phase: .lobby,
             seed: nil,
             diceRngState: nil,
+            resourcesByPlayer: [actor: .zero],
             boardRules: nil,
             board: nil
         ).rehashed()
@@ -245,6 +246,7 @@ final class LobbyDriverViewModel: ObservableObject {
             phase: .setup,
             seed: masterSeed,
             diceRngState: diceSeed,
+            resourcesByPlayer: Dictionary(uniqueKeysWithValues: finalRoster.map { ($0, .zero) }),
             boardRules: rules,
             board: board,
             setupState: setupState

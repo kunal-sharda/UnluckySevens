@@ -51,12 +51,19 @@ public func apply(intent: SetupIntentV1, to state: CoreGameStateV1, actor: Strin
             roster: state.roster,
             topology: topology
         )
+        let updatedResourcesByPlayer = grantStartingResourcesIfEligible(
+            from: state,
+            player: player,
+            settlementNode: roadResult.startingResourceSettlementNode,
+            topology: topology
+        )
 
         return nextState(
             from: state,
             currentPlayer: roadResult.currentPlayer,
             phase: roadResult.phase,
-            setupState: roadResult.setupState
+            setupState: roadResult.setupState,
+            resourcesByPlayer: updatedResourcesByPlayer
         )
 
     case let .placeSetupPair(settlementNode, roadEdge):
@@ -73,12 +80,19 @@ public func apply(intent: SetupIntentV1, to state: CoreGameStateV1, actor: Strin
             roster: state.roster,
             topology: topology
         )
+        let updatedResourcesByPlayer = grantStartingResourcesIfEligible(
+            from: state,
+            player: player,
+            settlementNode: roadResult.startingResourceSettlementNode,
+            topology: topology
+        )
 
         return nextState(
             from: state,
             currentPlayer: roadResult.currentPlayer,
             phase: roadResult.phase,
-            setupState: roadResult.setupState
+            setupState: roadResult.setupState,
+            resourcesByPlayer: updatedResourcesByPlayer
         )
     }
 }
@@ -165,6 +179,7 @@ private func applyRoadPlacement(
     }
 
     var playerPlacements = setupState.placements[player] ?? PlayerSetupPlacementsV1()
+    var startingResourceSettlementNode: NodeID?
     if playerPlacements.road1 == nil {
         guard playerPlacements.settlement1 != nil else {
             throw CoreGameError.roadBeforeSettlement
@@ -185,6 +200,7 @@ private func applyRoadPlacement(
             settlement2: playerPlacements.settlement2,
             road2: edge
         )
+        startingResourceSettlementNode = playerPlacements.settlement2
     } else {
         throw CoreGameError.setupPlacementSlotUnavailable
     }
@@ -199,7 +215,8 @@ private func applyRoadPlacement(
         return RoadPlacementResult(
             phase: .turn,
             currentPlayer: firstPlayer,
-            setupState: nil
+            setupState: nil,
+            startingResourceSettlementNode: startingResourceSettlementNode
         )
     }
 
@@ -214,7 +231,8 @@ private func applyRoadPlacement(
     return RoadPlacementResult(
         phase: .setup,
         currentPlayer: advancedSetupState.order[advancedSetupState.turnIndex],
-        setupState: advancedSetupState
+        setupState: advancedSetupState,
+        startingResourceSettlementNode: startingResourceSettlementNode
     )
 }
 
@@ -222,6 +240,7 @@ private struct RoadPlacementResult {
     let phase: PhaseV1
     let currentPlayer: String
     let setupState: SetupStateV1?
+    let startingResourceSettlementNode: NodeID?
 }
 
 private func occupiedSettlementNodes(from placements: [String: PlayerSetupPlacementsV1]) -> Set<NodeID> {
@@ -254,7 +273,8 @@ private func nextState(
     from state: CoreGameStateV1,
     currentPlayer: String,
     phase: PhaseV1,
-    setupState: SetupStateV1?
+    setupState: SetupStateV1?,
+    resourcesByPlayer: [String: ResourceHandV1]? = nil
 ) -> CoreGameStateV1 {
     CoreGameStateV1(
         gameId: state.gameId,
@@ -266,8 +286,38 @@ private func nextState(
         phase: phase,
         seed: state.seed,
         diceRngState: state.diceRngState,
+        resourcesByPlayer: resourcesByPlayer ?? state.resourcesByPlayer,
         boardRules: state.boardRules,
         board: state.board,
         setupState: setupState
     ).rehashed()
+}
+
+private func grantStartingResourcesIfEligible(
+    from state: CoreGameStateV1,
+    player: String,
+    settlementNode: NodeID?,
+    topology: BoardGraphV1
+) -> [String: ResourceHandV1] {
+    guard let settlementNode, let board = state.board else {
+        return state.resourcesByPlayer
+    }
+
+    var updatedResourcesByPlayer = state.resourcesByPlayer
+    var hand = updatedResourcesByPlayer[player] ?? .zero
+
+    for tileID in topology.tiles(adjacentToNode: settlementNode) {
+        guard tileID >= 0, tileID < board.resourcesByTile.count else {
+            continue
+        }
+
+        if tileID == board.robberTile {
+            continue
+        }
+
+        hand = hand.addingOne(for: board.resourcesByTile[tileID])
+    }
+
+    updatedResourcesByPlayer[player] = hand
+    return updatedResourcesByPlayer
 }
