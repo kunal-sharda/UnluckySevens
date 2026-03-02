@@ -36,6 +36,51 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         throw CoreGameError.actorMismatch
     }
 
+    func nextTurnState(
+        from state: CoreGameStateV1,
+        currentPlayer: String,
+        diceRngState: UInt64?,
+        robberRngState: UInt64?,
+        board: BoardSetupV1?,
+        turnState: TurnStateV1,
+        resourcesByPlayer: [String: ResourceHandV1]? = nil,
+        bankResources: ResourceHandV1? = nil,
+        devDeck: [DevCardV1]? = nil,
+        devCardsByPlayer: [String: DevCardInventoryV1]? = nil,
+        newDevCardsByPlayer: [String: DevCardInventoryV1]? = nil,
+        revealedVictoryPointsByPlayer: [String: Int]? = nil,
+        devCardActionPlayedThisTurn: Bool? = nil,
+        knightsPlayedByPlayer: [String: Int]? = nil,
+        activeTradeOffer: TradeOfferV1?? = nil,
+        pendingTradeAccepts: [TradeAcceptV1]?? = nil,
+        settlementsByNode: [NodeID: String]? = nil,
+        citiesByNode: [NodeID: String]? = nil,
+        roadsByEdge: [EdgeID: String]? = nil
+    ) -> CoreGameStateV1 {
+        baseNextTurnState(
+            from: state,
+            currentPlayer: currentPlayer,
+            diceRngState: diceRngState,
+            robberRngState: robberRngState,
+            board: board,
+            turnState: turnState,
+            resourcesByPlayer: resourcesByPlayer,
+            bankResources: bankResources,
+            devDeck: devDeck,
+            devCardsByPlayer: devCardsByPlayer,
+            newDevCardsByPlayer: newDevCardsByPlayer,
+            revealedVictoryPointsByPlayer: revealedVictoryPointsByPlayer,
+            devCardActionPlayedThisTurn: devCardActionPlayedThisTurn,
+            knightsPlayedByPlayer: knightsPlayedByPlayer,
+            activeTradeOffer: activeTradeOffer,
+            pendingTradeAccepts: pendingTradeAccepts,
+            settlementsByNode: settlementsByNode,
+            citiesByNode: citiesByNode,
+            roadsByEdge: roadsByEdge,
+            intent: intent
+        )
+    }
+
     switch intent {
     case .rollDice:
         guard turnState.step == .needsRoll else {
@@ -801,6 +846,8 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
                 longestRoadLength: workingState.longestRoadLength,
                 winnerPlayer: workingState.winnerPlayer,
                 winningVictoryPoints: workingState.winningVictoryPoints,
+                auditLog: workingState.auditLog,
+                lastTurnRecap: workingState.lastTurnRecap,
                 activeTradeOffer: workingState.activeTradeOffer,
                 pendingTradeAccepts: workingState.pendingTradeAccepts,
                 settlementsByNode: workingState.settlementsByNode,
@@ -899,7 +946,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
     }
 }
 
-private func nextTurnState(
+private func baseNextTurnState(
     from state: CoreGameStateV1,
     currentPlayer: String,
     diceRngState: UInt64?,
@@ -918,7 +965,8 @@ private func nextTurnState(
     pendingTradeAccepts: [TradeAcceptV1]?? = nil,
     settlementsByNode: [NodeID: String]? = nil,
     citiesByNode: [NodeID: String]? = nil,
-    roadsByEdge: [EdgeID: String]? = nil
+    roadsByEdge: [EdgeID: String]? = nil,
+    intent: TurnIntentV1
 ) -> CoreGameStateV1 {
     let provisional = CoreGameStateV1(
         gameId: state.gameId,
@@ -945,6 +993,8 @@ private func nextTurnState(
         longestRoadLength: state.longestRoadLength,
         winnerPlayer: state.winnerPlayer,
         winningVictoryPoints: state.winningVictoryPoints,
+        auditLog: state.auditLog,
+        lastTurnRecap: state.lastTurnRecap,
         activeTradeOffer: activeTradeOffer ?? state.activeTradeOffer,
         pendingTradeAccepts: (pendingTradeAccepts ?? state.pendingTradeAccepts) ?? state.pendingTradeAccepts,
         settlementsByNode: settlementsByNode ?? state.settlementsByNode,
@@ -958,12 +1008,13 @@ private func nextTurnState(
 
     let awards = recomputeAwards(from: state, for: provisional)
     let withAwards = stateByApplyingAwards(provisional, awards: awards)
-    if shouldTransitionToGameOver(from: state, to: withAwards) {
+    let withAudit = stateByAppendingAuditEntry(from: state, to: withAwards, intent: intent)
+    if shouldTransitionToGameOver(from: state, to: withAudit) {
         let winner = state.currentPlayer
-        let winningPoints = victoryPoints(for: winner, in: withAwards)
-        return stateByApplyingGameOver(withAwards, winner: winner, winningPoints: winningPoints).rehashed()
+        let winningPoints = victoryPoints(for: winner, in: withAudit)
+        return stateByApplyingGameOver(withAudit, winner: winner, winningPoints: winningPoints).rehashed()
     }
-    return withAwards.rehashed()
+    return withAudit.rehashed()
 }
 
 private func stateByApplyingAwards(_ state: CoreGameStateV1, awards: AwardStateV1) -> CoreGameStateV1 {
@@ -992,6 +1043,8 @@ private func stateByApplyingAwards(_ state: CoreGameStateV1, awards: AwardStateV
         longestRoadLength: awards.longestRoadLength,
         winnerPlayer: state.winnerPlayer,
         winningVictoryPoints: state.winningVictoryPoints,
+        auditLog: state.auditLog,
+        lastTurnRecap: state.lastTurnRecap,
         activeTradeOffer: state.activeTradeOffer,
         pendingTradeAccepts: state.pendingTradeAccepts,
         settlementsByNode: state.settlementsByNode,
@@ -1046,6 +1099,8 @@ private func stateByApplyingGameOver(
         longestRoadLength: state.longestRoadLength,
         winnerPlayer: winner,
         winningVictoryPoints: max(10, winningPoints),
+        auditLog: state.auditLog,
+        lastTurnRecap: state.lastTurnRecap,
         activeTradeOffer: nil,
         pendingTradeAccepts: [],
         settlementsByNode: state.settlementsByNode,
@@ -1056,6 +1111,109 @@ private func stateByApplyingGameOver(
         setupState: nil,
         turnState: nil
     )
+}
+
+private func stateByAppendingAuditEntry(
+    from previous: CoreGameStateV1,
+    to next: CoreGameStateV1,
+    intent: TurnIntentV1
+) -> CoreGameStateV1 {
+    let action = auditAction(for: intent)
+    let rollTotal = auditRollTotal(for: intent, turnState: next.turnState)
+    let entry = AuditEntryV1(
+        rev: next.rev,
+        actor: previous.currentPlayer,
+        action: action,
+        rollTotal: rollTotal
+    )
+    let updatedAuditLog = previous.auditLog + [entry]
+    let recap = computeLastTurnRecap(from: updatedAuditLog)
+
+    return CoreGameStateV1(
+        gameId: next.gameId,
+        rev: next.rev,
+        prevHash: next.prevHash,
+        stateHash: next.stateHash,
+        roster: next.roster,
+        currentPlayer: next.currentPlayer,
+        phase: next.phase,
+        seed: next.seed,
+        diceRngState: next.diceRngState,
+        robberRngState: next.robberRngState,
+        resourcesByPlayer: next.resourcesByPlayer,
+        bankResources: next.bankResources,
+        devDeck: next.devDeck,
+        devCardsByPlayer: next.devCardsByPlayer,
+        newDevCardsByPlayer: next.newDevCardsByPlayer,
+        revealedVictoryPointsByPlayer: next.revealedVictoryPointsByPlayer,
+        devCardActionPlayedThisTurn: next.devCardActionPlayedThisTurn,
+        knightsPlayedByPlayer: next.knightsPlayedByPlayer,
+        largestArmyOwner: next.largestArmyOwner,
+        largestArmySize: next.largestArmySize,
+        longestRoadOwner: next.longestRoadOwner,
+        longestRoadLength: next.longestRoadLength,
+        winnerPlayer: next.winnerPlayer,
+        winningVictoryPoints: next.winningVictoryPoints,
+        auditLog: updatedAuditLog,
+        lastTurnRecap: recap,
+        activeTradeOffer: next.activeTradeOffer,
+        pendingTradeAccepts: next.pendingTradeAccepts,
+        settlementsByNode: next.settlementsByNode,
+        citiesByNode: next.citiesByNode,
+        roadsByEdge: next.roadsByEdge,
+        boardRules: next.boardRules,
+        board: next.board,
+        setupState: next.setupState,
+        turnState: next.turnState
+    )
+}
+
+private func auditAction(for intent: TurnIntentV1) -> AuditActionV1 {
+    switch intent {
+    case .rollDice:
+        return .rollDice
+    case .submitDiscard:
+        return .submitDiscard
+    case .moveRobber:
+        return .moveRobber
+    case .selectStealVictim:
+        return .selectStealVictim
+    case .buildRoad:
+        return .buildRoad
+    case .buildSettlement:
+        return .buildSettlement
+    case .buildCity:
+        return .buildCity
+    case .proposeTrade:
+        return .proposeTrade
+    case .acceptTrade:
+        return .acceptTrade
+    case .executeTrade:
+        return .executeTrade
+    case .maritimeTrade:
+        return .maritimeTrade
+    case .buyDevCard:
+        return .buyDevCard
+    case .playKnight:
+        return .playKnight
+    case .playMonopoly:
+        return .playMonopoly
+    case .playYearOfPlenty:
+        return .playYearOfPlenty
+    case .playRoadBuilding:
+        return .playRoadBuilding
+    case .revealVictoryPoint:
+        return .revealVictoryPoint
+    case .endTurn:
+        return .endTurn
+    }
+}
+
+private func auditRollTotal(for intent: TurnIntentV1, turnState: TurnStateV1?) -> Int? {
+    guard case .rollDice = intent, let roll = turnState?.lastRoll else {
+        return nil
+    }
+    return roll.d1 + roll.d2
 }
 
 private func requiredDiscards(for resourcesByPlayer: [String: ResourceHandV1]) -> [String: Int] {

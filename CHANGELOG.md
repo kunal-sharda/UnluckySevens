@@ -116,3 +116,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 8.2 updated turn reducer win gating to transition to `phase = gameOver` only for the active player’s own post-roll action when VP reaches 10+, and to reject further gameplay intents after game over.
 - Stage 8.2 extended transition validation to enforce legal game-over transitions (winner correctness, VP threshold, actor-turn gating) while preserving award/ownership/economy checks for turn->gameOver moves.
 - Stage 8.2 updated Messages debug-driver readouts with per-player VP totals and game-over winner status, plus focused tests for win gating, post-game rejection, and non-current-player >=10 behavior.
+- Stage 9.1 added deterministic audit state (`auditLog`, `lastTurnRecap`) to canonical game hashing and reducer transitions, with one canonical audit entry appended per turn intent.
+- Stage 9.1 added deterministic last-turn recap derivation from the audit stream and surfaced recap data in Messages debug-driver readouts.
+- Stage 9.1 extended transition validation with strict audit append/actor/rev/action checks plus recap consistency enforcement.
+- Stage 9.1 added focused CoreGame tests for audit determinism across identical sequences, recap correctness, and tampered-audit invariant rejection.

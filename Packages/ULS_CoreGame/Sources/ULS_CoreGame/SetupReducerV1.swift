@@ -324,6 +324,8 @@ private func nextState(
         longestRoadLength: state.longestRoadLength,
         winnerPlayer: state.winnerPlayer,
         winningVictoryPoints: state.winningVictoryPoints,
+        auditLog: state.auditLog,
+        lastTurnRecap: state.lastTurnRecap,
         settlementsByNode: settlementsByNode ?? state.settlementsByNode,
         citiesByNode: state.citiesByNode,
         roadsByEdge: roadsByEdge ?? state.roadsByEdge,

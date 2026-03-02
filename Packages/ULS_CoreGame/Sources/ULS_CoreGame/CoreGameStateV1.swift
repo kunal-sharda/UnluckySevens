@@ -33,6 +33,8 @@ public struct CoreGameStateV1: Codable, Equatable {
     public let longestRoadLength: Int
     public let winnerPlayer: String?
     public let winningVictoryPoints: Int
+    public let auditLog: [AuditEntryV1]
+    public let lastTurnRecap: TurnRecapV1?
     public let activeTradeOffer: TradeOfferV1?
     public let pendingTradeAccepts: [TradeAcceptV1]
     public let settlementsByNode: [NodeID: String]
@@ -68,6 +70,8 @@ public struct CoreGameStateV1: Codable, Equatable {
         longestRoadLength: Int = 0,
         winnerPlayer: String? = nil,
         winningVictoryPoints: Int = 0,
+        auditLog: [AuditEntryV1] = [],
+        lastTurnRecap: TurnRecapV1? = nil,
         activeTradeOffer: TradeOfferV1? = nil,
         pendingTradeAccepts: [TradeAcceptV1] = [],
         settlementsByNode: [NodeID: String] = [:],
@@ -106,6 +110,8 @@ public struct CoreGameStateV1: Codable, Equatable {
         self.longestRoadLength = max(0, longestRoadLength)
         self.winnerPlayer = Self.normalizedAwardOwner(winnerPlayer, roster: roster)
         self.winningVictoryPoints = max(0, winningVictoryPoints)
+        self.auditLog = auditLog
+        self.lastTurnRecap = lastTurnRecap
         self.activeTradeOffer = activeTradeOffer
         self.pendingTradeAccepts = pendingTradeAccepts
         self.settlementsByNode = settlementsByNode
@@ -143,6 +149,8 @@ public struct CoreGameStateV1: Codable, Equatable {
             longestRoadLength: longestRoadLength,
             winnerPlayer: winnerPlayer,
             winningVictoryPoints: winningVictoryPoints,
+            auditLog: auditLog,
+            lastTurnRecap: lastTurnRecap,
             activeTradeOffer: activeTradeOffer,
             pendingTradeAccepts: pendingTradeAccepts,
             settlementsByNode: settlementsByNode,
@@ -191,6 +199,8 @@ public struct CoreGameStateV1: Codable, Equatable {
             "longestRoadLength": longestRoadLength,
             "winnerPlayer": winnerPlayer ?? NSNull(),
             "winningVictoryPoints": winningVictoryPoints,
+            "auditLog": auditLog.map { $0.canonicalJSONValue() },
+            "lastTurnRecap": lastTurnRecap?.canonicalJSONValue() ?? NSNull(),
             "activeTradeOffer": activeTradeOffer?.canonicalJSONValue() ?? NSNull(),
             "pendingTradeAccepts": pendingTradeAccepts.map { $0.canonicalJSONValue() },
             "settlementsByNode": canonicalOwnershipMap(settlementsByNode),

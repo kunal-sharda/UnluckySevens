@@ -54,6 +54,7 @@ struct LobbyDriverView: View {
                     field("longestRoad", viewModel.longestRoadStatus)
                     field("vpTotals", viewModel.victoryPointsSummary)
                     field("gameOver", viewModel.gameOverSummary)
+                    field("lastTurnRecap", viewModel.lastTurnRecapSummary)
                     field("visibleHands", viewModel.visibleHands)
                     field("bankResources", viewModel.bankResources)
                     field("devDeckRemaining", viewModel.devDeckRemaining)

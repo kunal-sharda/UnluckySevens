@@ -19,7 +19,7 @@ final class CoreGameKernelV1Tests: XCTestCase {
         )
 
         let hash = state.rehashed().stateHash
-        XCTAssertEqual(hash, "462b4ae47ec3417d9729c275b7ce3189781b27cd6e75011fb235c9334286ceae")
+        XCTAssertEqual(hash, "26f1e4f42ea9864021399452bde4ddfdd089fef782bf6e94fd7834cec49ab443")
     }
 
     func testHashChangesWhenSeedChanges() {
@@ -138,21 +138,9 @@ final class CoreGameKernelV1Tests: XCTestCase {
 
     func testTransitionAllowsDiceRngStateChangeOutsideStart() {
         let from = makeValidState().rehashed()
-        let to = CoreGameStateV1(
-            gameId: from.gameId,
-            rev: from.rev + 1,
-            prevHash: from.stateHash,
-            stateHash: "",
-            roster: from.roster,
-            currentPlayer: from.currentPlayer,
-            phase: .turn,
-            seed: from.seed,
-            diceRngState: 999,
-            boardRules: from.boardRules,
-            board: from.board,
-            turnState: from.turnState
-        ).rehashed()
+        let to = makeValidNextState(from: from, actor: from.currentPlayer)
 
+        XCTAssertNotEqual(to.diceRngState, from.diceRngState)
         XCTAssertNoThrow(try validateTransition(from: from, to: to, actor: from.currentPlayer))
     }
 
@@ -303,23 +291,45 @@ final class CoreGameKernelV1Tests: XCTestCase {
 
     func testTransitionFailsOnResourcesByPlayerChangedOutsideAllowedSetupPayout() {
         let from = makeValidState().rehashed()
-        let tamperedResources = from.resourcesByPlayer.merging([
+        let validNext = makeValidNextState(from: from, actor: from.currentPlayer)
+        let tamperedResources = validNext.resourcesByPlayer.merging([
             "alice": ResourceHandV1(wood: 1),
         ]) { _, new in new }
         let tampered = CoreGameStateV1(
-            gameId: from.gameId,
-            rev: from.rev + 1,
-            prevHash: from.stateHash,
+            gameId: validNext.gameId,
+            rev: validNext.rev,
+            prevHash: validNext.prevHash,
             stateHash: "",
-            roster: from.roster,
-            currentPlayer: from.currentPlayer,
+            roster: validNext.roster,
+            currentPlayer: validNext.currentPlayer,
             phase: .turn,
-            seed: from.seed,
-            diceRngState: from.diceRngState,
+            seed: validNext.seed,
+            diceRngState: validNext.diceRngState,
+            robberRngState: validNext.robberRngState,
             resourcesByPlayer: tamperedResources,
-            boardRules: from.boardRules,
-            board: from.board,
-            turnState: from.turnState
+            bankResources: validNext.bankResources,
+            devDeck: validNext.devDeck,
+            devCardsByPlayer: validNext.devCardsByPlayer,
+            newDevCardsByPlayer: validNext.newDevCardsByPlayer,
+            revealedVictoryPointsByPlayer: validNext.revealedVictoryPointsByPlayer,
+            devCardActionPlayedThisTurn: validNext.devCardActionPlayedThisTurn,
+            knightsPlayedByPlayer: validNext.knightsPlayedByPlayer,
+            largestArmyOwner: validNext.largestArmyOwner,
+            largestArmySize: validNext.largestArmySize,
+            longestRoadOwner: validNext.longestRoadOwner,
+            longestRoadLength: validNext.longestRoadLength,
+            winnerPlayer: validNext.winnerPlayer,
+            winningVictoryPoints: validNext.winningVictoryPoints,
+            auditLog: validNext.auditLog,
+            lastTurnRecap: validNext.lastTurnRecap,
+            activeTradeOffer: validNext.activeTradeOffer,
+            pendingTradeAccepts: validNext.pendingTradeAccepts,
+            settlementsByNode: validNext.settlementsByNode,
+            citiesByNode: validNext.citiesByNode,
+            roadsByEdge: validNext.roadsByEdge,
+            boardRules: validNext.boardRules,
+            board: validNext.board,
+            turnState: validNext.turnState
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -434,6 +444,28 @@ final class CoreGameKernelV1Tests: XCTestCase {
             phase: to.phase,
             seed: to.seed,
             diceRngState: to.diceRngState,
+            robberRngState: to.robberRngState,
+            resourcesByPlayer: to.resourcesByPlayer,
+            bankResources: to.bankResources,
+            devDeck: to.devDeck,
+            devCardsByPlayer: to.devCardsByPlayer,
+            newDevCardsByPlayer: to.newDevCardsByPlayer,
+            revealedVictoryPointsByPlayer: to.revealedVictoryPointsByPlayer,
+            devCardActionPlayedThisTurn: to.devCardActionPlayedThisTurn,
+            knightsPlayedByPlayer: to.knightsPlayedByPlayer,
+            largestArmyOwner: to.largestArmyOwner,
+            largestArmySize: to.largestArmySize,
+            longestRoadOwner: to.longestRoadOwner,
+            longestRoadLength: to.longestRoadLength,
+            winnerPlayer: to.winnerPlayer,
+            winningVictoryPoints: to.winningVictoryPoints,
+            auditLog: to.auditLog,
+            lastTurnRecap: to.lastTurnRecap,
+            activeTradeOffer: to.activeTradeOffer,
+            pendingTradeAccepts: to.pendingTradeAccepts,
+            settlementsByNode: to.settlementsByNode,
+            citiesByNode: to.citiesByNode,
+            roadsByEdge: to.roadsByEdge,
             boardRules: to.boardRules,
             board: to.board,
             turnState: to.turnState
@@ -531,19 +563,9 @@ final class CoreGameKernelV1Tests: XCTestCase {
     }
 
     private func makeValidNextState(from: CoreGameStateV1, actor: String) -> CoreGameStateV1 {
-        CoreGameStateV1(
-            gameId: from.gameId,
-            rev: from.rev + 1,
-            prevHash: from.stateHash,
-            stateHash: "",
-            roster: from.roster,
-            currentPlayer: actor,
-            phase: .turn,
-            seed: from.seed,
-            diceRngState: from.diceRngState,
-            boardRules: from.boardRules,
-            board: from.board,
-            turnState: from.turnState
-        ).rehashed()
+        guard let next = try? apply(intent: .rollDice, to: from, actor: actor) else {
+            preconditionFailure("Expected deterministic roll transition to succeed in test fixture.")
+        }
+        return next
     }
 }

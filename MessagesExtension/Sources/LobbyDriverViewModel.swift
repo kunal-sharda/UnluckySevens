@@ -30,6 +30,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var longestRoadStatus: String = "-"
     @Published var victoryPointsSummary: String = "-"
     @Published var gameOverSummary: String = "-"
+    @Published var lastTurnRecapSummary: String = "-"
     @Published var pendingJoiners: String = "[]"
     @Published var selectionStatus: String = "No message selected"
     @Published var lastError: String = "-"
@@ -1397,6 +1398,7 @@ final class LobbyDriverViewModel: ObservableObject {
         longestRoadStatus = longestRoadSummary(for: state)
         victoryPointsSummary = vpSummary(for: state)
         gameOverSummary = gameOverStateSummary(for: state)
+        lastTurnRecapSummary = recapSummary(for: state)
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = visibleHandsSummary(for: state)
@@ -1433,6 +1435,7 @@ final class LobbyDriverViewModel: ObservableObject {
         longestRoadStatus = "-"
         victoryPointsSummary = "-"
         gameOverSummary = "-"
+        lastTurnRecapSummary = "-"
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = "-"
@@ -1469,6 +1472,7 @@ final class LobbyDriverViewModel: ObservableObject {
         longestRoadStatus = "-"
         victoryPointsSummary = "-"
         gameOverSummary = "-"
+        lastTurnRecapSummary = "-"
         turnIntent = "-"
         visibleHands = "-"
         bankResources = "-"
@@ -1514,6 +1518,7 @@ final class LobbyDriverViewModel: ObservableObject {
         longestRoadStatus = "-"
         victoryPointsSummary = "-"
         gameOverSummary = "-"
+        lastTurnRecapSummary = "-"
         setupPlacement = "-"
         switch decodedTurnIntent.kind {
         case .rollDice, .endTurn:
@@ -1633,6 +1638,7 @@ final class LobbyDriverViewModel: ObservableObject {
         longestRoadStatus = "-"
         victoryPointsSummary = "-"
         gameOverSummary = "-"
+        lastTurnRecapSummary = "-"
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = "-"
@@ -1807,6 +1813,15 @@ final class LobbyDriverViewModel: ObservableObject {
         }
         let winner = state.winnerPlayer ?? "none"
         return "winner: \(winner) vp: \(state.winningVictoryPoints)"
+    }
+
+    private func recapSummary(for state: CoreGameStateV1) -> String {
+        guard let recap = state.lastTurnRecap else {
+            return "none"
+        }
+        let actions = recap.actions.map(\.rawValue).joined(separator: "->")
+        let roll = recap.rollTotal.map(String.init) ?? "n/a"
+        return "actor: \(recap.actor) rev: \(recap.startRev)-\(recap.endRev) roll: \(roll) actions: \(actions)"
     }
 
     private func canSendNamedDevCardIntentDebug(
