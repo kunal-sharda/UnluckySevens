@@ -544,6 +544,7 @@ private func nextTurnState(
         robberRngState: robberRngState,
         resourcesByPlayer: resourcesByPlayer ?? state.resourcesByPlayer,
         bankResources: bankResources ?? state.bankResources,
+        devDeck: state.devDeck,
         activeTradeOffer: activeTradeOffer ?? state.activeTradeOffer,
         pendingTradeAccepts: (pendingTradeAccepts ?? state.pendingTradeAccepts) ?? state.pendingTradeAccepts,
         settlementsByNode: settlementsByNode ?? state.settlementsByNode,

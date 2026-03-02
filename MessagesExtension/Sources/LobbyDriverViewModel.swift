@@ -37,6 +37,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var boardPortsByIndex: String = "-"
     @Published var visibleHands: String = "-"
     @Published var bankResources: String = "-"
+    @Published var devDeckRemaining: String = "-"
     @Published var setupPlacement: String = "-"
     @Published var turnIntent: String = "-"
 
@@ -372,6 +373,7 @@ final class LobbyDriverViewModel: ObservableObject {
         let diceSeed = seedDeriver.seed(for: .dice)
         let robberSeed = seedDeriver.seed(for: .robber)
         let boardSeed = seedDeriver.seed(for: .board)
+        let devDeck = makeDeterministicDevDeck(masterSeed: masterSeed)
         let rules = BoardRulesV1(strategy: boardStrategy)
         let board = StandardBoardGeneratorV1.generate(boardSeed: boardSeed, rules: rules)
         let setupState = initializeSetupState(roster: finalRoster)
@@ -392,6 +394,7 @@ final class LobbyDriverViewModel: ObservableObject {
             diceRngState: diceSeed,
             robberRngState: robberSeed,
             resourcesByPlayer: Dictionary(uniqueKeysWithValues: finalRoster.map { ($0, .zero) }),
+            devDeck: devDeck,
             boardRules: rules,
             board: board,
             setupState: setupState
@@ -1052,6 +1055,7 @@ final class LobbyDriverViewModel: ObservableObject {
         turnIntent = "-"
         visibleHands = visibleHandsSummary(for: state)
         bankResources = resourceHandDescription(state.bankResources)
+        devDeckRemaining = String(state.devDeck.count)
         render(board: state.board)
         selectionStatus = "Decoded STATE rev\(state.rev) via \(source.label)"
         refreshPendingJoiners(for: state.gameId)
@@ -1081,6 +1085,7 @@ final class LobbyDriverViewModel: ObservableObject {
         turnIntent = "-"
         visibleHands = "-"
         bankResources = "-"
+        devDeckRemaining = "-"
         resetBoardDebugFields()
         selectionStatus = "Decoded JOIN intent via \(source.label)"
         refreshPendingJoiners(for: joinIntent.gameId)
@@ -1109,6 +1114,7 @@ final class LobbyDriverViewModel: ObservableObject {
         turnIntent = "-"
         visibleHands = "-"
         bankResources = "-"
+        devDeckRemaining = "-"
         switch setupIntent.kind {
         case .placeSetupSettlement:
             setupPlacement = "node: \(setupIntent.node.map(String.init) ?? "-")"
@@ -1182,6 +1188,7 @@ final class LobbyDriverViewModel: ObservableObject {
         }
         visibleHands = "-"
         bankResources = "-"
+        devDeckRemaining = "-"
         resetBoardDebugFields()
         selectionStatus = "Decoded \(decodedTurnIntent.kind.rawValue) intent via \(source.label)"
         refreshPendingJoiners(for: decodedTurnIntent.gameId)
@@ -1231,6 +1238,7 @@ final class LobbyDriverViewModel: ObservableObject {
         turnIntent = "-"
         visibleHands = "-"
         bankResources = "-"
+        devDeckRemaining = "-"
         resetBoardDebugFields()
     }
 

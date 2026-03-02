@@ -94,3 +94,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 6.2 added atomic trade execution in the turn reducer (`executeTrade`) with offer/accept anchor checks, current-player commit gating, and no-partial-mutation failure behavior.
 - Stage 6.2 extended turn intent transport/UI with `executeTrade` payload/button support and execution-target selection from pending accepts.
 - Stage 6.2 added focused CoreGame tests for successful invariant-preserving transfer, insufficient-resource rejection, and expired-offer rejection.
+- Stage 7.1 added deterministic development deck modeling (`DevCardV1`) with domain-seeded Fisher-Yates shuffle and deterministic top-draw helper APIs.
+- Stage 7.1 persisted development deck state in canonical `CoreGameStateV1` hashing and initialized deck order from master seed on game start.
+- Stage 7.1 updated Messages debug-driver state readouts with remaining development-deck count and added deterministic deck sequence/hash continuity tests.

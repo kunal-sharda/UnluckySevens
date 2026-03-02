@@ -21,6 +21,7 @@ public struct CoreGameStateV1: Codable, Equatable {
     public let robberRngState: UInt64?
     public let resourcesByPlayer: [String: ResourceHandV1]
     public let bankResources: ResourceHandV1
+    public let devDeck: [DevCardV1]
     public let activeTradeOffer: TradeOfferV1?
     public let pendingTradeAccepts: [TradeAcceptV1]
     public let settlementsByNode: [NodeID: String]
@@ -44,6 +45,7 @@ public struct CoreGameStateV1: Codable, Equatable {
         robberRngState: UInt64? = nil,
         resourcesByPlayer: [String: ResourceHandV1] = [:],
         bankResources: ResourceHandV1 = .standardBank,
+        devDeck: [DevCardV1] = [],
         activeTradeOffer: TradeOfferV1? = nil,
         pendingTradeAccepts: [TradeAcceptV1] = [],
         settlementsByNode: [NodeID: String] = [:],
@@ -70,6 +72,7 @@ public struct CoreGameStateV1: Codable, Equatable {
         }
         self.resourcesByPlayer = normalizedResourcesByPlayer
         self.bankResources = bankResources
+        self.devDeck = devDeck
         self.activeTradeOffer = activeTradeOffer
         self.pendingTradeAccepts = pendingTradeAccepts
         self.settlementsByNode = settlementsByNode
@@ -95,6 +98,7 @@ public struct CoreGameStateV1: Codable, Equatable {
             robberRngState: robberRngState,
             resourcesByPlayer: resourcesByPlayer,
             bankResources: bankResources,
+            devDeck: devDeck,
             activeTradeOffer: activeTradeOffer,
             pendingTradeAccepts: pendingTradeAccepts,
             settlementsByNode: settlementsByNode,
@@ -131,6 +135,7 @@ public struct CoreGameStateV1: Codable, Equatable {
             "robberRngState": robberRngState ?? NSNull(),
             "resourcesByPlayer": resourcesByPlayer.mapValues { $0.canonicalJSONValue() },
             "bankResources": bankResources.canonicalJSONValue(),
+            "devDeck": devDeck.map(\.rawValue),
             "activeTradeOffer": activeTradeOffer?.canonicalJSONValue() ?? NSNull(),
             "pendingTradeAccepts": pendingTradeAccepts.map { $0.canonicalJSONValue() },
             "settlementsByNode": canonicalOwnershipMap(settlementsByNode),

@@ -51,6 +51,7 @@ struct LobbyDriverView: View {
                     field("tradeAccepts", viewModel.pendingTradeAccepts)
                     field("visibleHands", viewModel.visibleHands)
                     field("bankResources", viewModel.bankResources)
+                    field("devDeckRemaining", viewModel.devDeckRemaining)
                     field("setupPlacement", viewModel.setupPlacement)
                     field("turnIntent", viewModel.turnIntent)
                     field("pendingJoiners", viewModel.pendingJoiners)

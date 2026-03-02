@@ -57,6 +57,7 @@ public enum CoreGameError: Error, Equatable {
     case tradeAcceptMissing
     case tradeExecutionInsufficientResources
     case tradeStateInvalid
+    case devDeckInvalid
 }
 
 public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor: String) throws {
@@ -122,6 +123,10 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
 
         guard to.boardRules == from.boardRules else {
             throw CoreGameError.boardRulesChanged
+        }
+
+        guard to.devDeck == from.devDeck else {
+            throw CoreGameError.devDeckInvalid
         }
 
         if !isRobberMoveBoardTransition(from: from, to: to) {

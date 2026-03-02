@@ -312,6 +312,7 @@ private func nextState(
         robberRngState: state.robberRngState,
         resourcesByPlayer: resourcesByPlayer ?? state.resourcesByPlayer,
         bankResources: bankResources ?? state.bankResources,
+        devDeck: state.devDeck,
         settlementsByNode: settlementsByNode ?? state.settlementsByNode,
         citiesByNode: state.citiesByNode,
         roadsByEdge: roadsByEdge ?? state.roadsByEdge,
