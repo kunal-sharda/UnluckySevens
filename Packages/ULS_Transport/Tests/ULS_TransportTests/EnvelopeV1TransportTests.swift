@@ -301,6 +301,83 @@ final class EnvelopeV1TransportTests: XCTestCase {
         XCTAssertThrowsError(try JSONDecoder().decode(TurnIntentV1.self, from: Data(invalidJSON.utf8)))
     }
 
+    func testTurnBuildRoadIntentPayloadRoundTrip() throws {
+        let intent = TurnIntentV1(
+            buildRoadEdgeID: 12,
+            gameId: "game-123",
+            anchorRev: 11,
+            anchorHash: "hash-11",
+            actor: "player-1"
+        )
+        let payload = try jsonString(intent)
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+
+        let encoded = try encode(envelope)
+        let decoded = try decode(encoded)
+
+        guard case let .intent(decodedPayload) = decoded.body else {
+            XCTFail("Expected INTENT body.")
+            return
+        }
+
+        let decodedIntent = try JSONDecoder().decode(TurnIntentV1.self, from: Data(decodedPayload.utf8))
+        XCTAssertEqual(decodedIntent, intent)
+    }
+
+    func testTurnBuildSettlementIntentPayloadRoundTrip() throws {
+        let intent = TurnIntentV1(
+            buildSettlementNodeID: 24,
+            gameId: "game-123",
+            anchorRev: 11,
+            anchorHash: "hash-11",
+            actor: "player-1"
+        )
+        let payload = try jsonString(intent)
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+
+        let encoded = try encode(envelope)
+        let decoded = try decode(encoded)
+
+        guard case let .intent(decodedPayload) = decoded.body else {
+            XCTFail("Expected INTENT body.")
+            return
+        }
+
+        let decodedIntent = try JSONDecoder().decode(TurnIntentV1.self, from: Data(decodedPayload.utf8))
+        XCTAssertEqual(decodedIntent, intent)
+    }
+
+    func testTurnBuildCityIntentPayloadRoundTrip() throws {
+        let intent = TurnIntentV1(
+            buildCityNodeID: 24,
+            gameId: "game-123",
+            anchorRev: 11,
+            anchorHash: "hash-11",
+            actor: "player-1"
+        )
+        let payload = try jsonString(intent)
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+
+        let encoded = try encode(envelope)
+        let decoded = try decode(encoded)
+
+        guard case let .intent(decodedPayload) = decoded.body else {
+            XCTFail("Expected INTENT body.")
+            return
+        }
+
+        let decodedIntent = try JSONDecoder().decode(TurnIntentV1.self, from: Data(decodedPayload.utf8))
+        XCTAssertEqual(decodedIntent, intent)
+    }
+
+    func testTurnBuildRoadDecodeFailsWithoutEdgeID() {
+        let invalidJSON = """
+        {"kind":"buildRoad","gameId":"game-123","anchorRev":11,"anchorHash":"hash-11","actor":"player-1"}
+        """
+
+        XCTAssertThrowsError(try JSONDecoder().decode(TurnIntentV1.self, from: Data(invalidJSON.utf8)))
+    }
+
     func testSetupIntentDecodeFailsWhenKindAndPayloadDoNotMatch() throws {
         let invalidIntentJSON = """
         {"kind":"placeSetupSettlement","gameId":"game-123","anchorRev":1,"anchorHash":"hash-1","actor":"player-1"}

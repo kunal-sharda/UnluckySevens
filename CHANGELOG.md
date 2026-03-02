@@ -83,3 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 4.4 introduced persisted robber RNG state (`robberRngState`) in canonical core state hashing and used it to deterministically choose stolen resources on victim selection.
 - Stage 4.4 extended turn intent transport/UI with `selectStealVictim` payloads and debug buttons (`Steal From <player>`) plus victim-list readouts.
 - Stage 4.4 added focused tests for no-victim auto-skip, deterministic steal outcome/state progression, and actor gating for steal selection.
+- Stage 5.1 added turn-phase build actions (`buildRoad`, `buildSettlement`, `buildCity`) with resource costs, piece-limit checks, occupancy/distance validation, and connectivity gating.
+- Stage 5.1 extended transition validation/economy checks to accept legal build ownership deltas and enforce expected cost-to-bank/resource conservation.
+- Stage 5.1 extended transport and debug-driver controls for build intents, including build payload roundtrips and remaining-piece readouts in MessagesExtension.
+- Stage 5.1 added focused tests for legal/illegal builds, cost/bank invariants, and non-mutating failure behavior.

@@ -1,10 +1,15 @@
 import Foundation
 
+private let turnBuildTopology = StandardBoardTopologyV1.standard()
+
 public enum TurnIntentV1: Codable, Equatable {
     case rollDice
     case submitDiscard(player: String, discarded: ResourceHandV1)
     case moveRobber(tileID: Int)
     case selectStealVictim(victimPlayer: String)
+    case buildRoad(edgeID: Int)
+    case buildSettlement(nodeID: Int)
+    case buildCity(nodeID: Int)
     case endTurn
 }
 
@@ -225,6 +230,138 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             resourcesByPlayer: updatedResourcesByPlayer
         )
 
+    case let .buildRoad(edgeID):
+        guard turnState.step == .afterRoll else {
+            throw CoreGameError.turnStepMismatch
+        }
+        guard edgeID >= 0, edgeID < turnBuildTopology.edges.count else {
+            throw CoreGameError.invalidEdge
+        }
+        guard state.roadsByEdge[edgeID] == nil else {
+            throw CoreGameError.edgeOccupied
+        }
+
+        let player = state.currentPlayer
+        let playerRoadCount = state.roadsByEdge.values.filter { $0 == player }.count
+        guard playerRoadCount < 15 else {
+            throw CoreGameError.buildPieceLimitReached
+        }
+        guard isRoadConnected(edgeID: edgeID, for: player, in: state) else {
+            throw CoreGameError.roadConnectionRequired
+        }
+
+        let cost = ResourceHandV1(wood: 1, brick: 1)
+        guard canAfford(hand: state.resourcesByPlayer[player] ?? .zero, cost: cost) else {
+            throw CoreGameError.buildInsufficientResources
+        }
+        let economy = applyBuildCost(player: player, cost: cost, state: state)
+
+        var roads = state.roadsByEdge
+        roads[edgeID] = player
+
+        return nextTurnState(
+            from: state,
+            currentPlayer: player,
+            diceRngState: state.diceRngState,
+            robberRngState: state.robberRngState,
+            board: state.board,
+            turnState: turnState,
+            resourcesByPlayer: economy.resourcesByPlayer,
+            bankResources: economy.bankResources,
+            roadsByEdge: roads
+        )
+
+    case let .buildSettlement(nodeID):
+        guard turnState.step == .afterRoll else {
+            throw CoreGameError.turnStepMismatch
+        }
+        guard nodeID >= 0, nodeID < turnBuildTopology.nodesCount else {
+            throw CoreGameError.invalidNode
+        }
+        guard state.settlementsByNode[nodeID] == nil, state.citiesByNode[nodeID] == nil else {
+            throw CoreGameError.nodeOccupied
+        }
+
+        let occupiedNodes = Set(state.settlementsByNode.keys).union(Set(state.citiesByNode.keys))
+        let adjacentNodes = Set(turnBuildTopology.nodes(adjacentTo: nodeID))
+        if !adjacentNodes.isDisjoint(with: occupiedNodes) {
+            throw CoreGameError.distanceRuleViolation
+        }
+
+        let player = state.currentPlayer
+        let playerSettlementCount = state.settlementsByNode.values.filter { $0 == player }.count
+        guard playerSettlementCount < 5 else {
+            throw CoreGameError.buildPieceLimitReached
+        }
+        guard isSettlementConnected(nodeID: nodeID, for: player, in: state) else {
+            throw CoreGameError.settlementConnectionRequired
+        }
+
+        let cost = ResourceHandV1(wood: 1, brick: 1, sheep: 1, wheat: 1)
+        guard canAfford(hand: state.resourcesByPlayer[player] ?? .zero, cost: cost) else {
+            throw CoreGameError.buildInsufficientResources
+        }
+        let economy = applyBuildCost(player: player, cost: cost, state: state)
+
+        var settlements = state.settlementsByNode
+        settlements[nodeID] = player
+
+        return nextTurnState(
+            from: state,
+            currentPlayer: player,
+            diceRngState: state.diceRngState,
+            robberRngState: state.robberRngState,
+            board: state.board,
+            turnState: turnState,
+            resourcesByPlayer: economy.resourcesByPlayer,
+            bankResources: economy.bankResources,
+            settlementsByNode: settlements
+        )
+
+    case let .buildCity(nodeID):
+        guard turnState.step == .afterRoll else {
+            throw CoreGameError.turnStepMismatch
+        }
+        guard nodeID >= 0, nodeID < turnBuildTopology.nodesCount else {
+            throw CoreGameError.invalidNode
+        }
+        let player = state.currentPlayer
+        guard state.settlementsByNode[nodeID] == player else {
+            throw CoreGameError.cityRequiresOwnSettlement
+        }
+        guard state.citiesByNode[nodeID] == nil else {
+            throw CoreGameError.nodeOccupied
+        }
+
+        let playerCityCount = state.citiesByNode.values.filter { $0 == player }.count
+        guard playerCityCount < 4 else {
+            throw CoreGameError.buildPieceLimitReached
+        }
+
+        let cost = ResourceHandV1(wheat: 2, ore: 3)
+        guard canAfford(hand: state.resourcesByPlayer[player] ?? .zero, cost: cost) else {
+            throw CoreGameError.buildInsufficientResources
+        }
+        let economy = applyBuildCost(player: player, cost: cost, state: state)
+
+        var settlements = state.settlementsByNode
+        settlements.removeValue(forKey: nodeID)
+        var cities = state.citiesByNode
+        cities[nodeID] = player
+
+        return nextTurnState(
+            from: state,
+            currentPlayer: player,
+            diceRngState: state.diceRngState,
+            robberRngState: state.robberRngState,
+            board: state.board,
+            turnState: turnState,
+            resourcesByPlayer: economy.resourcesByPlayer,
+            bankResources: economy.bankResources,
+            settlementsByNode: settlements,
+            citiesByNode: cities
+        )
+
     case .endTurn:
         guard turnState.step == .afterRoll else {
             throw CoreGameError.turnStepMismatch
@@ -257,7 +394,10 @@ private func nextTurnState(
     board: BoardSetupV1?,
     turnState: TurnStateV1,
     resourcesByPlayer: [String: ResourceHandV1]? = nil,
-    bankResources: ResourceHandV1? = nil
+    bankResources: ResourceHandV1? = nil,
+    settlementsByNode: [NodeID: String]? = nil,
+    citiesByNode: [NodeID: String]? = nil,
+    roadsByEdge: [EdgeID: String]? = nil
 ) -> CoreGameStateV1 {
     CoreGameStateV1(
         gameId: state.gameId,
@@ -272,9 +412,9 @@ private func nextTurnState(
         robberRngState: robberRngState,
         resourcesByPlayer: resourcesByPlayer ?? state.resourcesByPlayer,
         bankResources: bankResources ?? state.bankResources,
-        settlementsByNode: state.settlementsByNode,
-        citiesByNode: state.citiesByNode,
-        roadsByEdge: state.roadsByEdge,
+        settlementsByNode: settlementsByNode ?? state.settlementsByNode,
+        citiesByNode: citiesByNode ?? state.citiesByNode,
+        roadsByEdge: roadsByEdge ?? state.roadsByEdge,
         boardRules: state.boardRules,
         board: board,
         setupState: nil,
@@ -346,4 +486,61 @@ private func deterministicStolenResource(from hand: ResourceHandV1, rng: inout D
     }
 
     return .wood
+}
+
+private func canAfford(hand: ResourceHandV1, cost: ResourceHandV1) -> Bool {
+    hand.wood >= cost.wood &&
+        hand.brick >= cost.brick &&
+        hand.sheep >= cost.sheep &&
+        hand.wheat >= cost.wheat &&
+        hand.ore >= cost.ore
+}
+
+private func applyBuildCost(player: String, cost: ResourceHandV1, state: CoreGameStateV1) -> EconomyUpdateV1 {
+    let hand = state.resourcesByPlayer[player] ?? .zero
+    var resourcesByPlayer = state.resourcesByPlayer
+    resourcesByPlayer[player] = ResourceHandV1(
+        wood: hand.wood - cost.wood,
+        brick: hand.brick - cost.brick,
+        sheep: hand.sheep - cost.sheep,
+        wheat: hand.wheat - cost.wheat,
+        ore: hand.ore - cost.ore
+    )
+    let bank = state.bankResources
+    let bankResources = ResourceHandV1(
+        wood: bank.wood + cost.wood,
+        brick: bank.brick + cost.brick,
+        sheep: bank.sheep + cost.sheep,
+        wheat: bank.wheat + cost.wheat,
+        ore: bank.ore + cost.ore
+    )
+    return EconomyUpdateV1(resourcesByPlayer: resourcesByPlayer, bankResources: bankResources)
+}
+
+private func isRoadConnected(edgeID: Int, for player: String, in state: CoreGameStateV1) -> Bool {
+    let edge = turnBuildTopology.edges[edgeID]
+    let nodes = [edge.a, edge.b]
+    for node in nodes {
+        if state.settlementsByNode[node] == player || state.citiesByNode[node] == player {
+            return true
+        }
+        if state.settlementsByNode[node] != nil || state.citiesByNode[node] != nil {
+            continue
+        }
+        for adjacentEdge in turnBuildTopology.edges(incidentTo: node) where adjacentEdge != edgeID {
+            if state.roadsByEdge[adjacentEdge] == player {
+                return true
+            }
+        }
+    }
+    return false
+}
+
+private func isSettlementConnected(nodeID: Int, for player: String, in state: CoreGameStateV1) -> Bool {
+    for edge in turnBuildTopology.edges(incidentTo: nodeID) {
+        if state.roadsByEdge[edge] == player {
+            return true
+        }
+    }
+    return false
 }

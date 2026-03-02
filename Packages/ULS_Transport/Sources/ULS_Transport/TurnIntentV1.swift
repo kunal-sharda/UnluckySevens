@@ -22,6 +22,9 @@ public struct TurnIntentV1: Codable, Equatable {
         case submitDiscard
         case moveRobber
         case selectStealVictim
+        case buildRoad
+        case buildSettlement
+        case buildCity
         case endTurn
     }
 
@@ -34,6 +37,8 @@ public struct TurnIntentV1: Codable, Equatable {
     public let discardPlayer: String?
     public let robberTileID: Int?
     public let stealVictimPlayer: String?
+    public let buildEdgeID: Int?
+    public let buildNodeID: Int?
 
     public init(
         kind: Kind,
@@ -51,6 +56,8 @@ public struct TurnIntentV1: Codable, Equatable {
         discardPlayer = nil
         robberTileID = nil
         stealVictimPlayer = nil
+        buildEdgeID = nil
+        buildNodeID = nil
     }
 
     public init(
@@ -70,6 +77,8 @@ public struct TurnIntentV1: Codable, Equatable {
         self.discardPlayer = discardPlayer
         robberTileID = nil
         stealVictimPlayer = nil
+        buildEdgeID = nil
+        buildNodeID = nil
     }
 
     public init(
@@ -88,6 +97,8 @@ public struct TurnIntentV1: Codable, Equatable {
         discardPlayer = nil
         self.robberTileID = robberTileID
         stealVictimPlayer = nil
+        buildEdgeID = nil
+        buildNodeID = nil
     }
 
     public init(
@@ -106,6 +117,68 @@ public struct TurnIntentV1: Codable, Equatable {
         discardPlayer = nil
         robberTileID = nil
         self.stealVictimPlayer = stealVictimPlayer
+        buildEdgeID = nil
+        buildNodeID = nil
+    }
+
+    public init(
+        buildRoadEdgeID buildEdgeID: Int,
+        gameId: String,
+        anchorRev: Int,
+        anchorHash: String,
+        actor: String
+    ) {
+        kind = .buildRoad
+        self.gameId = gameId
+        self.anchorRev = anchorRev
+        self.anchorHash = anchorHash
+        self.actor = actor
+        discarded = nil
+        discardPlayer = nil
+        robberTileID = nil
+        stealVictimPlayer = nil
+        self.buildEdgeID = buildEdgeID
+        buildNodeID = nil
+    }
+
+    public init(
+        buildSettlementNodeID buildNodeID: Int,
+        gameId: String,
+        anchorRev: Int,
+        anchorHash: String,
+        actor: String
+    ) {
+        kind = .buildSettlement
+        self.gameId = gameId
+        self.anchorRev = anchorRev
+        self.anchorHash = anchorHash
+        self.actor = actor
+        discarded = nil
+        discardPlayer = nil
+        robberTileID = nil
+        stealVictimPlayer = nil
+        buildEdgeID = nil
+        self.buildNodeID = buildNodeID
+    }
+
+    public init(
+        buildCityNodeID buildNodeID: Int,
+        gameId: String,
+        anchorRev: Int,
+        anchorHash: String,
+        actor: String
+    ) {
+        kind = .buildCity
+        self.gameId = gameId
+        self.anchorRev = anchorRev
+        self.anchorHash = anchorHash
+        self.actor = actor
+        discarded = nil
+        discardPlayer = nil
+        robberTileID = nil
+        stealVictimPlayer = nil
+        buildEdgeID = nil
+        self.buildNodeID = buildNodeID
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -118,6 +191,8 @@ public struct TurnIntentV1: Codable, Equatable {
         case discardPlayer
         case robberTileID
         case stealVictimPlayer
+        case buildEdgeID
+        case buildNodeID
     }
 
     public init(from decoder: Decoder) throws {
@@ -131,10 +206,12 @@ public struct TurnIntentV1: Codable, Equatable {
         discardPlayer = try container.decodeIfPresent(String.self, forKey: .discardPlayer)
         robberTileID = try container.decodeIfPresent(Int.self, forKey: .robberTileID)
         stealVictimPlayer = try container.decodeIfPresent(String.self, forKey: .stealVictimPlayer)
+        buildEdgeID = try container.decodeIfPresent(Int.self, forKey: .buildEdgeID)
+        buildNodeID = try container.decodeIfPresent(Int.self, forKey: .buildNodeID)
 
         switch kind {
         case .rollDice, .endTurn:
-            guard discarded == nil, discardPlayer == nil, robberTileID == nil, stealVictimPlayer == nil else {
+            guard discarded == nil, discardPlayer == nil, robberTileID == nil, stealVictimPlayer == nil, buildEdgeID == nil, buildNodeID == nil else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .kind,
                     in: container,
@@ -142,7 +219,7 @@ public struct TurnIntentV1: Codable, Equatable {
                 )
             }
         case .submitDiscard:
-            guard discarded != nil, discardPlayer != nil, robberTileID == nil, stealVictimPlayer == nil else {
+            guard discarded != nil, discardPlayer != nil, robberTileID == nil, stealVictimPlayer == nil, buildEdgeID == nil, buildNodeID == nil else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .kind,
                     in: container,
@@ -150,7 +227,7 @@ public struct TurnIntentV1: Codable, Equatable {
                 )
             }
         case .moveRobber:
-            guard robberTileID != nil, discarded == nil, discardPlayer == nil, stealVictimPlayer == nil else {
+            guard robberTileID != nil, discarded == nil, discardPlayer == nil, stealVictimPlayer == nil, buildEdgeID == nil, buildNodeID == nil else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .kind,
                     in: container,
@@ -158,11 +235,35 @@ public struct TurnIntentV1: Codable, Equatable {
                 )
             }
         case .selectStealVictim:
-            guard stealVictimPlayer != nil, discarded == nil, discardPlayer == nil, robberTileID == nil else {
+            guard stealVictimPlayer != nil, discarded == nil, discardPlayer == nil, robberTileID == nil, buildEdgeID == nil, buildNodeID == nil else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .kind,
                     in: container,
                     debugDescription: "selectStealVictim must include stealVictimPlayer."
+                )
+            }
+        case .buildRoad:
+            guard buildEdgeID != nil, buildNodeID == nil, discarded == nil, discardPlayer == nil, robberTileID == nil, stealVictimPlayer == nil else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .kind,
+                    in: container,
+                    debugDescription: "buildRoad must include buildEdgeID."
+                )
+            }
+        case .buildSettlement:
+            guard buildNodeID != nil, buildEdgeID == nil, discarded == nil, discardPlayer == nil, robberTileID == nil, stealVictimPlayer == nil else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .kind,
+                    in: container,
+                    debugDescription: "buildSettlement must include buildNodeID."
+                )
+            }
+        case .buildCity:
+            guard buildNodeID != nil, buildEdgeID == nil, discarded == nil, discardPlayer == nil, robberTileID == nil, stealVictimPlayer == nil else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .kind,
+                    in: container,
+                    debugDescription: "buildCity must include buildNodeID."
                 )
             }
         }

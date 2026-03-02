@@ -22,6 +22,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var submittedDiscardsStatus: String = "-"
     @Published var robberMoveReadiness: String = "-"
     @Published var eligibleStealVictims: String = "-"
+    @Published var remainingPieces: String = "-"
     @Published var pendingJoiners: String = "[]"
     @Published var selectionStatus: String = "No message selected"
     @Published var lastError: String = "-"
@@ -127,6 +128,45 @@ final class LobbyDriverViewModel: ObservableObject {
             return []
         }
         return state.turnState?.eligibleStealVictims.sorted() ?? []
+    }
+
+    var canSendBuildRoadIntentDebug: Bool {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            state.turnState?.step == .afterRoll,
+            let actor = localActorIdentifier(),
+            actor == state.currentPlayer
+        else {
+            return false
+        }
+        return firstLegalRoadEdge(for: actor, in: state) != nil
+    }
+
+    var canSendBuildSettlementIntentDebug: Bool {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            state.turnState?.step == .afterRoll,
+            let actor = localActorIdentifier(),
+            actor == state.currentPlayer
+        else {
+            return false
+        }
+        return firstLegalSettlementNode(for: actor, in: state) != nil
+    }
+
+    var canSendBuildCityIntentDebug: Bool {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            state.turnState?.step == .afterRoll,
+            let actor = localActorIdentifier(),
+            actor == state.currentPlayer
+        else {
+            return false
+        }
+        return firstUpgradeableCityNode(for: actor, in: state) != nil
     }
 
     var canSendEndTurnIntentDebug: Bool {
@@ -600,6 +640,117 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
+    func sendBuildRoadIntentDebug() {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+        guard state.phase == .turn, state.turnState?.step == .afterRoll else {
+            setLastError("Build road intent is only available in post-roll step.")
+            return
+        }
+        guard let actor = localActorIdentifier(), actor == state.currentPlayer else {
+            setLastError("Only current player can send build road intent.")
+            return
+        }
+        guard let edgeID = firstLegalRoadEdge(for: actor, in: state) else {
+            setLastError("No legal road edge available.")
+            return
+        }
+
+        let intent = ULS_Transport.TurnIntentV1(
+            buildRoadEdgeID: edgeID,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT buildRoad", sessionPolicy: .new)
+            selectionStatus = "Build road intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Build road intent failed: \(error.localizedDescription)")
+        }
+    }
+
+    func sendBuildSettlementIntentDebug() {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+        guard state.phase == .turn, state.turnState?.step == .afterRoll else {
+            setLastError("Build settlement intent is only available in post-roll step.")
+            return
+        }
+        guard let actor = localActorIdentifier(), actor == state.currentPlayer else {
+            setLastError("Only current player can send build settlement intent.")
+            return
+        }
+        guard let nodeID = firstLegalSettlementNode(for: actor, in: state) else {
+            setLastError("No legal settlement node available.")
+            return
+        }
+
+        let intent = ULS_Transport.TurnIntentV1(
+            buildSettlementNodeID: nodeID,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT buildSettlement", sessionPolicy: .new)
+            selectionStatus = "Build settlement intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Build settlement intent failed: \(error.localizedDescription)")
+        }
+    }
+
+    func sendBuildCityIntentDebug() {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+        guard state.phase == .turn, state.turnState?.step == .afterRoll else {
+            setLastError("Build city intent is only available in post-roll step.")
+            return
+        }
+        guard let actor = localActorIdentifier(), actor == state.currentPlayer else {
+            setLastError("Only current player can send build city intent.")
+            return
+        }
+        guard let nodeID = firstUpgradeableCityNode(for: actor, in: state) else {
+            setLastError("No settlement available for city upgrade.")
+            return
+        }
+
+        let intent = ULS_Transport.TurnIntentV1(
+            buildCityNodeID: nodeID,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT buildCity", sessionPolicy: .new)
+            selectionStatus = "Build city intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Build city intent failed: \(error.localizedDescription)")
+        }
+    }
+
     func sendEndTurnIntentDebug() {
         guard let state = selectedState else {
             setLastError("Select a turn STATE first.")
@@ -726,6 +877,7 @@ final class LobbyDriverViewModel: ObservableObject {
         submittedDiscardsStatus = discardSubmissionSummary(for: state.turnState)
         robberMoveReadiness = robberReadinessSummary(for: state.turnState)
         eligibleStealVictims = stealVictimsSummary(for: state.turnState)
+        remainingPieces = remainingPiecesSummary(for: state)
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = visibleHandsSummary(for: state)
@@ -752,6 +904,7 @@ final class LobbyDriverViewModel: ObservableObject {
         submittedDiscardsStatus = "-"
         robberMoveReadiness = "-"
         eligibleStealVictims = "-"
+        remainingPieces = "-"
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = "-"
@@ -778,6 +931,7 @@ final class LobbyDriverViewModel: ObservableObject {
         submittedDiscardsStatus = "-"
         robberMoveReadiness = "-"
         eligibleStealVictims = "-"
+        remainingPieces = "-"
         turnIntent = "-"
         visibleHands = "-"
         bankResources = "-"
@@ -813,6 +967,7 @@ final class LobbyDriverViewModel: ObservableObject {
         submittedDiscardsStatus = "-"
         robberMoveReadiness = "-"
         eligibleStealVictims = "-"
+        remainingPieces = "-"
         setupPlacement = "-"
         switch decodedTurnIntent.kind {
         case .rollDice, .endTurn:
@@ -827,6 +982,15 @@ final class LobbyDriverViewModel: ObservableObject {
         case .selectStealVictim:
             let victim = decodedTurnIntent.stealVictimPlayer ?? "-"
             turnIntent = "kind: selectStealVictim victim: \(victim)"
+        case .buildRoad:
+            let edge = decodedTurnIntent.buildEdgeID.map(String.init) ?? "-"
+            turnIntent = "kind: buildRoad edge: \(edge)"
+        case .buildSettlement:
+            let node = decodedTurnIntent.buildNodeID.map(String.init) ?? "-"
+            turnIntent = "kind: buildSettlement node: \(node)"
+        case .buildCity:
+            let node = decodedTurnIntent.buildNodeID.map(String.init) ?? "-"
+            turnIntent = "kind: buildCity node: \(node)"
         }
         visibleHands = "-"
         bankResources = "-"
@@ -872,6 +1036,7 @@ final class LobbyDriverViewModel: ObservableObject {
         submittedDiscardsStatus = "-"
         robberMoveReadiness = "-"
         eligibleStealVictims = "-"
+        remainingPieces = "-"
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = "-"
@@ -963,6 +1128,76 @@ final class LobbyDriverViewModel: ObservableObject {
             return "none"
         }
         return turnState.eligibleStealVictims.sorted().joined(separator: ", ")
+    }
+
+    private func remainingPiecesSummary(for state: CoreGameStateV1) -> String {
+        state.roster.map { player in
+            let roadsUsed = state.roadsByEdge.values.filter { $0 == player }.count
+            let settlementsUsed = state.settlementsByNode.values.filter { $0 == player }.count
+            let citiesUsed = state.citiesByNode.values.filter { $0 == player }.count
+            return "\(player):R\(max(0, 15 - roadsUsed))/S\(max(0, 5 - settlementsUsed))/C\(max(0, 4 - citiesUsed))"
+        }.joined(separator: " | ")
+    }
+
+    private func firstLegalRoadEdge(for player: String, in state: CoreGameStateV1) -> Int? {
+        let topology = StandardBoardTopologyV1.standard()
+        for edgeID in topology.edges.indices {
+            if state.roadsByEdge[edgeID] != nil {
+                continue
+            }
+            let edge = topology.edges[edgeID]
+            let nodes = [edge.a, edge.b]
+            var connected = false
+            for node in nodes {
+                if state.settlementsByNode[node] == player || state.citiesByNode[node] == player {
+                    connected = true
+                    break
+                }
+                if state.settlementsByNode[node] != nil || state.citiesByNode[node] != nil {
+                    continue
+                }
+                for adjacentEdge in topology.edges(incidentTo: node) where adjacentEdge != edgeID {
+                    if state.roadsByEdge[adjacentEdge] == player {
+                        connected = true
+                        break
+                    }
+                }
+                if connected {
+                    break
+                }
+            }
+            if connected {
+                return edgeID
+            }
+        }
+        return nil
+    }
+
+    private func firstLegalSettlementNode(for player: String, in state: CoreGameStateV1) -> Int? {
+        let topology = StandardBoardTopologyV1.standard()
+        let occupiedNodes = Set(state.settlementsByNode.keys).union(Set(state.citiesByNode.keys))
+        for nodeID in 0 ..< topology.nodesCount {
+            if occupiedNodes.contains(nodeID) {
+                continue
+            }
+            let adjacent = Set(topology.nodes(adjacentTo: nodeID))
+            if !adjacent.isDisjoint(with: occupiedNodes) {
+                continue
+            }
+            let hasRoad = topology.edges(incidentTo: nodeID).contains { state.roadsByEdge[$0] == player }
+            if hasRoad {
+                return nodeID
+            }
+        }
+        return nil
+    }
+
+    private func firstUpgradeableCityNode(for player: String, in state: CoreGameStateV1) -> Int? {
+        state.settlementsByNode
+            .filter { $0.value == player }
+            .keys
+            .sorted()
+            .first
     }
 
     private func defaultDiscardForLocalActor(from state: CoreGameStateV1) -> TransportResourceHandV1? {

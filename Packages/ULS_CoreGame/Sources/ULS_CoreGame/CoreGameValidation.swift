@@ -43,6 +43,11 @@ public enum CoreGameError: Error, Equatable {
     case robberTileUnchanged
     case missingRobberRngState
     case robberStealVictimNotEligible
+    case buildInsufficientResources
+    case buildPieceLimitReached
+    case roadConnectionRequired
+    case settlementConnectionRequired
+    case cityRequiresOwnSettlement
 }
 
 public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor: String) throws {
@@ -182,6 +187,12 @@ private func validateOwnershipTransition(
         return
     }
 
+    if from.phase == .turn, to.phase == .turn, from.currentPlayer == to.currentPlayer {
+        if try validateTurnBuildOwnershipTransitionIfAny(from: from, to: to, actor: actor) {
+            return
+        }
+    }
+
     guard to.settlementsByNode == from.settlementsByNode else {
         throw CoreGameError.settlementsByNodeInvalid
     }
@@ -191,6 +202,126 @@ private func validateOwnershipTransition(
     guard to.roadsByEdge == from.roadsByEdge else {
         throw CoreGameError.roadsByEdgeInvalid
     }
+}
+
+private func validateTurnBuildOwnershipTransitionIfAny(
+    from: CoreGameStateV1,
+    to: CoreGameStateV1,
+    actor: String
+) throws -> Bool {
+    let ownershipUnchanged =
+        from.settlementsByNode == to.settlementsByNode &&
+        from.citiesByNode == to.citiesByNode &&
+        from.roadsByEdge == to.roadsByEdge
+    if ownershipUnchanged {
+        return false
+    }
+
+    guard actor == from.currentPlayer else {
+        throw CoreGameError.actorMismatch
+    }
+    guard from.turnState == to.turnState, from.turnState?.step == .afterRoll else {
+        throw CoreGameError.turnStepMismatch
+    }
+
+    for (node, owner) in from.settlementsByNode where to.settlementsByNode[node] != nil && to.settlementsByNode[node] != owner {
+        _ = node
+        throw CoreGameError.settlementsByNodeInvalid
+    }
+    for (node, owner) in from.citiesByNode where to.citiesByNode[node] != nil && to.citiesByNode[node] != owner {
+        _ = node
+        throw CoreGameError.citiesByNodeInvalid
+    }
+    for (edge, owner) in from.roadsByEdge where to.roadsByEdge[edge] != nil && to.roadsByEdge[edge] != owner {
+        _ = edge
+        throw CoreGameError.roadsByEdgeInvalid
+    }
+
+    let addedSettlements = to.settlementsByNode.filter { from.settlementsByNode[$0.key] == nil }
+    let removedSettlements = from.settlementsByNode.filter { to.settlementsByNode[$0.key] == nil }
+    let addedCities = to.citiesByNode.filter { from.citiesByNode[$0.key] == nil }
+    let removedCities = from.citiesByNode.filter { to.citiesByNode[$0.key] == nil }
+    let addedRoads = to.roadsByEdge.filter { from.roadsByEdge[$0.key] == nil }
+    let removedRoads = from.roadsByEdge.filter { to.roadsByEdge[$0.key] == nil }
+
+    if !addedRoads.isEmpty || !removedRoads.isEmpty {
+        guard addedRoads.count == 1, removedRoads.isEmpty else {
+            throw CoreGameError.roadsByEdgeInvalid
+        }
+        guard addedSettlements.isEmpty, removedSettlements.isEmpty, addedCities.isEmpty, removedCities.isEmpty else {
+            throw CoreGameError.roadsByEdgeInvalid
+        }
+        guard let (edge, owner) = addedRoads.first, owner == actor else {
+            throw CoreGameError.roadsByEdgeInvalid
+        }
+        guard edge >= 0, edge < validationTopology.edges.count else {
+            throw CoreGameError.invalidEdge
+        }
+        let roadCount = from.roadsByEdge.values.filter { $0 == actor }.count
+        guard roadCount < 15 else {
+            throw CoreGameError.roadsByEdgeInvalid
+        }
+        guard isRoadConnectedForBuildValidation(edgeID: edge, player: actor, state: from) else {
+            throw CoreGameError.roadsByEdgeInvalid
+        }
+        return true
+    }
+
+    if !addedCities.isEmpty || !removedSettlements.isEmpty || !removedCities.isEmpty {
+        guard addedCities.count == 1, removedSettlements.count == 1, removedCities.isEmpty else {
+            throw CoreGameError.citiesByNodeInvalid
+        }
+        guard addedRoads.isEmpty, removedRoads.isEmpty, addedSettlements.isEmpty else {
+            throw CoreGameError.citiesByNodeInvalid
+        }
+        guard let (cityNode, cityOwner) = addedCities.first, cityOwner == actor else {
+            throw CoreGameError.citiesByNodeInvalid
+        }
+        guard let (settlementNode, settlementOwner) = removedSettlements.first, settlementOwner == actor else {
+            throw CoreGameError.settlementsByNodeInvalid
+        }
+        guard cityNode == settlementNode else {
+            throw CoreGameError.citiesByNodeInvalid
+        }
+        let cityCount = from.citiesByNode.values.filter { $0 == actor }.count
+        guard cityCount < 4 else {
+            throw CoreGameError.citiesByNodeInvalid
+        }
+        return true
+    }
+
+    if !addedSettlements.isEmpty || !removedSettlements.isEmpty {
+        guard addedSettlements.count == 1, removedSettlements.isEmpty else {
+            throw CoreGameError.settlementsByNodeInvalid
+        }
+        guard addedRoads.isEmpty, removedRoads.isEmpty, addedCities.isEmpty, removedCities.isEmpty else {
+            throw CoreGameError.settlementsByNodeInvalid
+        }
+        guard let (node, owner) = addedSettlements.first, owner == actor else {
+            throw CoreGameError.settlementsByNodeInvalid
+        }
+        guard node >= 0, node < validationTopology.nodesCount else {
+            throw CoreGameError.invalidNode
+        }
+        guard from.citiesByNode[node] == nil else {
+            throw CoreGameError.nodeOccupied
+        }
+        let occupiedNodes = Set(from.settlementsByNode.keys).union(Set(from.citiesByNode.keys))
+        let adjacentNodes = Set(validationTopology.nodes(adjacentTo: node))
+        if !adjacentNodes.isDisjoint(with: occupiedNodes) {
+            throw CoreGameError.distanceRuleViolation
+        }
+        let settlementCount = from.settlementsByNode.values.filter { $0 == actor }.count
+        guard settlementCount < 5 else {
+            throw CoreGameError.settlementsByNodeInvalid
+        }
+        guard isSettlementConnectedForBuildValidation(nodeID: node, player: actor, state: from) else {
+            throw CoreGameError.settlementsByNodeInvalid
+        }
+        return true
+    }
+
+    throw CoreGameError.roadsByEdgeInvalid
 }
 
 private func validateSetupCompletionOwnership(from: CoreGameStateV1, to: CoreGameStateV1, actor: String) throws {
@@ -466,6 +597,10 @@ private func expectedEconomyAfterTransition(
         if stealUpdate.resourcesByPlayer != original.resourcesByPlayer || stealUpdate.bankResources != original.bankResources {
             return stealUpdate
         }
+        let buildUpdate = expectedEconomyAfterBuildIfAny(from: from, to: to)
+        if buildUpdate.resourcesByPlayer != original.resourcesByPlayer || buildUpdate.bankResources != original.bankResources {
+            return buildUpdate
+        }
         return original
     }
 
@@ -566,6 +701,67 @@ private func expectedEconomyAfterRobberStealIfAny(from: CoreGameStateV1, to: Cor
     expectedResourcesByPlayer[victim] = victimBefore.subtracting(1, for: stolenResource)
 
     return EconomyUpdateV1(resourcesByPlayer: expectedResourcesByPlayer, bankResources: from.bankResources)
+}
+
+private func expectedEconomyAfterBuildIfAny(from: CoreGameStateV1, to: CoreGameStateV1) -> EconomyUpdateV1 {
+    guard
+        from.phase == .turn,
+        to.phase == .turn,
+        from.currentPlayer == to.currentPlayer,
+        from.turnState == to.turnState,
+        from.turnState?.step == .afterRoll
+    else {
+        return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
+    }
+
+    let roadsChanged = from.roadsByEdge != to.roadsByEdge
+    let settlementsChanged = from.settlementsByNode != to.settlementsByNode
+    let citiesChanged = from.citiesByNode != to.citiesByNode
+    let changeCount = [roadsChanged, settlementsChanged, citiesChanged].filter { $0 }.count
+    if changeCount == 0 {
+        return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
+    }
+
+    let cost: ResourceHandV1
+    if roadsChanged && !settlementsChanged && !citiesChanged {
+        cost = ResourceHandV1(wood: 1, brick: 1)
+    } else if settlementsChanged && !roadsChanged && !citiesChanged {
+        cost = ResourceHandV1(wood: 1, brick: 1, sheep: 1, wheat: 1)
+    } else if settlementsChanged && citiesChanged && !roadsChanged {
+        cost = ResourceHandV1(wheat: 2, ore: 3)
+    } else {
+        return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
+    }
+
+    let player = from.currentPlayer
+    let hand = from.resourcesByPlayer[player] ?? .zero
+    guard
+        hand.wood >= cost.wood,
+        hand.brick >= cost.brick,
+        hand.sheep >= cost.sheep,
+        hand.wheat >= cost.wheat,
+        hand.ore >= cost.ore
+    else {
+        return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
+    }
+
+    var resourcesByPlayer = from.resourcesByPlayer
+    resourcesByPlayer[player] = ResourceHandV1(
+        wood: hand.wood - cost.wood,
+        brick: hand.brick - cost.brick,
+        sheep: hand.sheep - cost.sheep,
+        wheat: hand.wheat - cost.wheat,
+        ore: hand.ore - cost.ore
+    )
+    let bank = from.bankResources
+    let bankResources = ResourceHandV1(
+        wood: bank.wood + cost.wood,
+        brick: bank.brick + cost.brick,
+        sheep: bank.sheep + cost.sheep,
+        wheat: bank.wheat + cost.wheat,
+        ore: bank.ore + cost.ore
+    )
+    return EconomyUpdateV1(resourcesByPlayer: resourcesByPlayer, bankResources: bankResources)
 }
 
 private func startingResourceSettlementNodeGrantedDuringTransition(
@@ -732,4 +928,32 @@ private func deterministicStolenResourceForValidation(from hand: ResourceHandV1,
         cursor += count
     }
     return .wood
+}
+
+private func isRoadConnectedForBuildValidation(edgeID: Int, player: String, state: CoreGameStateV1) -> Bool {
+    let edge = validationTopology.edges[edgeID]
+    let nodes = [edge.a, edge.b]
+    for node in nodes {
+        if state.settlementsByNode[node] == player || state.citiesByNode[node] == player {
+            return true
+        }
+        if state.settlementsByNode[node] != nil || state.citiesByNode[node] != nil {
+            continue
+        }
+        for adjacentEdge in validationTopology.edges(incidentTo: node) where adjacentEdge != edgeID {
+            if state.roadsByEdge[adjacentEdge] == player {
+                return true
+            }
+        }
+    }
+    return false
+}
+
+private func isSettlementConnectedForBuildValidation(nodeID: Int, player: String, state: CoreGameStateV1) -> Bool {
+    for edge in validationTopology.edges(incidentTo: nodeID) {
+        if state.roadsByEdge[edge] == player {
+            return true
+        }
+    }
+    return false
 }
