@@ -4,6 +4,7 @@ public enum TurnStepV1: String, Codable, Equatable {
     case needsRoll
     case pendingDiscards
     case needsRobberMove
+    case needsRobberSteal
     case afterRoll
 }
 
@@ -22,17 +23,20 @@ public struct TurnStateV1: Codable, Equatable {
     public let lastRoll: DiceRollV1?
     public let discardRequirementsByPlayer: [String: Int]
     public let submittedDiscardsByPlayer: [String: ResourceHandV1]
+    public let eligibleStealVictims: [String]
 
     public init(
         step: TurnStepV1,
         lastRoll: DiceRollV1?,
         discardRequirementsByPlayer: [String: Int] = [:],
-        submittedDiscardsByPlayer: [String: ResourceHandV1] = [:]
+        submittedDiscardsByPlayer: [String: ResourceHandV1] = [:],
+        eligibleStealVictims: [String] = []
     ) {
         self.step = step
         self.lastRoll = lastRoll
         self.discardRequirementsByPlayer = discardRequirementsByPlayer
         self.submittedDiscardsByPlayer = submittedDiscardsByPlayer
+        self.eligibleStealVictims = eligibleStealVictims
     }
 
     internal func canonicalJSONValue() -> [String: Any] {
@@ -41,6 +45,7 @@ public struct TurnStateV1: Codable, Equatable {
             "lastRoll": lastRoll?.canonicalJSONValue() ?? NSNull(),
             "discardRequirementsByPlayer": discardRequirementsByPlayer,
             "submittedDiscardsByPlayer": submittedDiscardsByPlayer.mapValues { $0.canonicalJSONValue() },
+            "eligibleStealVictims": eligibleStealVictims,
         ]
     }
 }

@@ -21,6 +21,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var pendingDiscardRequirements: String = "-"
     @Published var submittedDiscardsStatus: String = "-"
     @Published var robberMoveReadiness: String = "-"
+    @Published var eligibleStealVictims: String = "-"
     @Published var pendingJoiners: String = "[]"
     @Published var selectionStatus: String = "No message selected"
     @Published var lastError: String = "-"
@@ -115,6 +116,17 @@ final class LobbyDriverViewModel: ObservableObject {
             return false
         }
         return state.turnState?.step == .needsRobberMove && state.board != nil && localActorIdentifier() != nil
+    }
+
+    var stealVictimOptions: [String] {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            state.turnState?.step == .needsRobberSteal
+        else {
+            return []
+        }
+        return state.turnState?.eligibleStealVictims.sorted() ?? []
     }
 
     var canSendEndTurnIntentDebug: Bool {
@@ -275,6 +287,7 @@ final class LobbyDriverViewModel: ObservableObject {
         let masterSeed = UInt64.random(in: .min ... .max)
         let seedDeriver = SeedDeriver(masterSeed: masterSeed)
         let diceSeed = seedDeriver.seed(for: .dice)
+        let robberSeed = seedDeriver.seed(for: .robber)
         let boardSeed = seedDeriver.seed(for: .board)
         let rules = BoardRulesV1(strategy: boardStrategy)
         let board = StandardBoardGeneratorV1.generate(boardSeed: boardSeed, rules: rules)
@@ -294,6 +307,7 @@ final class LobbyDriverViewModel: ObservableObject {
             phase: .setup,
             seed: masterSeed,
             diceRngState: diceSeed,
+            robberRngState: robberSeed,
             resourcesByPlayer: Dictionary(uniqueKeysWithValues: finalRoster.map { ($0, .zero) }),
             boardRules: rules,
             board: board,
@@ -551,6 +565,41 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
+    func sendSelectStealVictimIntentDebug(victimPlayer: String) {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+
+        guard state.phase == .turn, state.turnState?.step == .needsRobberSteal else {
+            setLastError("Steal intent is only available when a robber steal is pending.")
+            return
+        }
+
+        guard let actor = localActorIdentifier() else {
+            setLastError("Missing local participant identifier.")
+            return
+        }
+
+        let intent = ULS_Transport.TurnIntentV1(
+            selectStealVictimPlayer: victimPlayer,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT selectStealVictim", sessionPolicy: .new)
+            selectionStatus = "Steal victim intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Steal victim intent failed: \(error.localizedDescription)")
+        }
+    }
+
     func sendEndTurnIntentDebug() {
         guard let state = selectedState else {
             setLastError("Select a turn STATE first.")
@@ -676,6 +725,7 @@ final class LobbyDriverViewModel: ObservableObject {
         pendingDiscardRequirements = discardRequirementsSummary(for: state.turnState)
         submittedDiscardsStatus = discardSubmissionSummary(for: state.turnState)
         robberMoveReadiness = robberReadinessSummary(for: state.turnState)
+        eligibleStealVictims = stealVictimsSummary(for: state.turnState)
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = visibleHandsSummary(for: state)
@@ -701,6 +751,7 @@ final class LobbyDriverViewModel: ObservableObject {
         pendingDiscardRequirements = "-"
         submittedDiscardsStatus = "-"
         robberMoveReadiness = "-"
+        eligibleStealVictims = "-"
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = "-"
@@ -726,6 +777,7 @@ final class LobbyDriverViewModel: ObservableObject {
         pendingDiscardRequirements = "-"
         submittedDiscardsStatus = "-"
         robberMoveReadiness = "-"
+        eligibleStealVictims = "-"
         turnIntent = "-"
         visibleHands = "-"
         bankResources = "-"
@@ -760,6 +812,7 @@ final class LobbyDriverViewModel: ObservableObject {
         pendingDiscardRequirements = "-"
         submittedDiscardsStatus = "-"
         robberMoveReadiness = "-"
+        eligibleStealVictims = "-"
         setupPlacement = "-"
         switch decodedTurnIntent.kind {
         case .rollDice, .endTurn:
@@ -771,6 +824,9 @@ final class LobbyDriverViewModel: ObservableObject {
         case .moveRobber:
             let tile = decodedTurnIntent.robberTileID.map(String.init) ?? "-"
             turnIntent = "kind: moveRobber tile: \(tile)"
+        case .selectStealVictim:
+            let victim = decodedTurnIntent.stealVictimPlayer ?? "-"
+            turnIntent = "kind: selectStealVictim victim: \(victim)"
         }
         visibleHands = "-"
         bankResources = "-"
@@ -815,6 +871,7 @@ final class LobbyDriverViewModel: ObservableObject {
         pendingDiscardRequirements = "-"
         submittedDiscardsStatus = "-"
         robberMoveReadiness = "-"
+        eligibleStealVictims = "-"
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = "-"
@@ -896,6 +953,16 @@ final class LobbyDriverViewModel: ObservableObject {
         default:
             return "n/a"
         }
+    }
+
+    private func stealVictimsSummary(for turnState: TurnStateV1?) -> String {
+        guard let turnState else {
+            return "-"
+        }
+        if turnState.eligibleStealVictims.isEmpty {
+            return "none"
+        }
+        return turnState.eligibleStealVictims.sorted().joined(separator: ", ")
     }
 
     private func defaultDiscardForLocalActor(from state: CoreGameStateV1) -> TransportResourceHandV1? {

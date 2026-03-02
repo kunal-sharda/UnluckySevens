@@ -309,6 +309,7 @@ private func nextState(
         phase: phase,
         seed: state.seed,
         diceRngState: state.diceRngState,
+        robberRngState: state.robberRngState,
         resourcesByPlayer: resourcesByPlayer ?? state.resourcesByPlayer,
         bankResources: bankResources ?? state.bankResources,
         settlementsByNode: settlementsByNode ?? state.settlementsByNode,

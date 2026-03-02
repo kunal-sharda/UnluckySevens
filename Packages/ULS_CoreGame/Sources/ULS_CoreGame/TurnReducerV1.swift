@@ -4,6 +4,7 @@ public enum TurnIntentV1: Codable, Equatable {
     case rollDice
     case submitDiscard(player: String, discarded: ResourceHandV1)
     case moveRobber(tileID: Int)
+    case selectStealVictim(victimPlayer: String)
     case endTurn
 }
 
@@ -37,12 +38,14 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
                 from: state,
                 currentPlayer: state.currentPlayer,
                 diceRngState: rng.state,
+                robberRngState: state.robberRngState,
                 board: state.board,
                 turnState: TurnStateV1(
                     step: nextStep,
                     lastRoll: DiceRollV1(d1: roll.0, d2: roll.1),
                     discardRequirementsByPlayer: requirements,
-                    submittedDiscardsByPlayer: [:]
+                    submittedDiscardsByPlayer: [:],
+                    eligibleStealVictims: []
                 )
             )
         }
@@ -60,6 +63,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             from: state,
             currentPlayer: state.currentPlayer,
             diceRngState: rng.state,
+            robberRngState: state.robberRngState,
             board: state.board,
             turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: roll.0, d2: roll.1)),
             resourcesByPlayer: economy.resourcesByPlayer,
@@ -129,12 +133,14 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             from: state,
             currentPlayer: state.currentPlayer,
             diceRngState: state.diceRngState,
+            robberRngState: state.robberRngState,
             board: state.board,
             turnState: TurnStateV1(
                 step: allSubmitted ? .needsRobberMove : .pendingDiscards,
                 lastRoll: turnState.lastRoll,
                 discardRequirementsByPlayer: turnState.discardRequirementsByPlayer,
-                submittedDiscardsByPlayer: submitted
+                submittedDiscardsByPlayer: submitted,
+                eligibleStealVictims: []
             ),
             resourcesByPlayer: updatedResourcesByPlayer,
             bankResources: updatedBankResources
@@ -163,12 +169,60 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             boardHash: ""
         ).rehashed()
 
+        let victims = eligibleRobberVictims(
+            for: tileID,
+            settlementsByNode: state.settlementsByNode,
+            citiesByNode: state.citiesByNode,
+            resourcesByPlayer: state.resourcesByPlayer,
+            currentPlayer: state.currentPlayer
+        )
+        let nextStep: TurnStepV1 = victims.isEmpty ? .afterRoll : .needsRobberSteal
+
         return nextTurnState(
             from: state,
             currentPlayer: state.currentPlayer,
             diceRngState: state.diceRngState,
+            robberRngState: state.robberRngState,
             board: movedBoard,
-            turnState: TurnStateV1(step: .afterRoll, lastRoll: turnState.lastRoll)
+            turnState: TurnStateV1(
+                step: nextStep,
+                lastRoll: turnState.lastRoll,
+                eligibleStealVictims: victims
+            )
+        )
+
+    case let .selectStealVictim(victimPlayer):
+        guard turnState.step == .needsRobberSteal else {
+            throw CoreGameError.turnStepMismatch
+        }
+        guard turnState.eligibleStealVictims.contains(victimPlayer) else {
+            throw CoreGameError.robberStealVictimNotEligible
+        }
+        guard let robberRngState = state.robberRngState else {
+            throw CoreGameError.missingRobberRngState
+        }
+
+        let victimHand = state.resourcesByPlayer[victimPlayer] ?? .zero
+        guard victimHand.totalCount > 0 else {
+            throw CoreGameError.robberStealVictimNotEligible
+        }
+
+        var rng = DeterministicRNG(seed: robberRngState)
+        let stolen = deterministicStolenResource(from: victimHand, rng: &rng)
+
+        let stealerHand = state.resourcesByPlayer[state.currentPlayer] ?? .zero
+        var updatedResourcesByPlayer = state.resourcesByPlayer
+        updatedResourcesByPlayer[state.currentPlayer] = stealerHand.addingOne(for: stolen)
+        updatedResourcesByPlayer[victimPlayer] = victimHand.subtracting(1, for: stolen)
+
+        return nextTurnState(
+            from: state,
+            currentPlayer: state.currentPlayer,
+            diceRngState: state.diceRngState,
+            robberRngState: rng.state,
+            board: state.board,
+            turnState: TurnStateV1(step: .afterRoll, lastRoll: turnState.lastRoll),
+            resourcesByPlayer: updatedResourcesByPlayer
         )
 
     case .endTurn:
@@ -188,6 +242,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             from: state,
             currentPlayer: nextPlayer,
             diceRngState: state.diceRngState,
+            robberRngState: state.robberRngState,
             board: state.board,
             turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
         )
@@ -198,6 +253,7 @@ private func nextTurnState(
     from state: CoreGameStateV1,
     currentPlayer: String,
     diceRngState: UInt64?,
+    robberRngState: UInt64?,
     board: BoardSetupV1?,
     turnState: TurnStateV1,
     resourcesByPlayer: [String: ResourceHandV1]? = nil,
@@ -213,6 +269,7 @@ private func nextTurnState(
         phase: .turn,
         seed: state.seed,
         diceRngState: diceRngState,
+        robberRngState: robberRngState,
         resourcesByPlayer: resourcesByPlayer ?? state.resourcesByPlayer,
         bankResources: bankResources ?? state.bankResources,
         settlementsByNode: state.settlementsByNode,
@@ -233,4 +290,60 @@ private func requiredDiscards(for resourcesByPlayer: [String: ResourceHandV1]) -
         }
     }
     return result
+}
+
+private func eligibleRobberVictims(
+    for tileID: Int,
+    settlementsByNode: [NodeID: String],
+    citiesByNode: [NodeID: String],
+    resourcesByPlayer: [String: ResourceHandV1],
+    currentPlayer: String
+) -> [String] {
+    let topology = StandardBoardTopologyV1.standard()
+    guard tileID >= 0, tileID < topology.tiles.count else {
+        return []
+    }
+
+    var victims: Set<String> = []
+    for node in topology.tiles[tileID].nodes {
+        if let cityOwner = citiesByNode[node],
+           cityOwner != currentPlayer,
+           (resourcesByPlayer[cityOwner] ?? .zero).totalCount > 0
+        {
+            victims.insert(cityOwner)
+            continue
+        }
+
+        if let settlementOwner = settlementsByNode[node],
+           settlementOwner != currentPlayer,
+           (resourcesByPlayer[settlementOwner] ?? .zero).totalCount > 0
+        {
+            victims.insert(settlementOwner)
+        }
+    }
+
+    return victims.sorted()
+}
+
+private func deterministicStolenResource(from hand: ResourceHandV1, rng: inout DeterministicRNG) -> ResourceV1 {
+    let total = hand.totalCount
+    let pick = Int(rng.nextUInt64() % UInt64(total))
+
+    let resources: [(ResourceV1, Int)] = [
+        (.wood, hand.wood),
+        (.brick, hand.brick),
+        (.sheep, hand.sheep),
+        (.wheat, hand.wheat),
+        (.ore, hand.ore),
+    ]
+
+    var cursor = 0
+    for (resource, count) in resources {
+        if pick < cursor + count {
+            return resource
+        }
+        cursor += count
+    }
+
+    return .wood
 }

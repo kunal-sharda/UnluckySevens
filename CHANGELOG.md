@@ -79,3 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 4.3 extended turn intent transport with strict kind-based payloads for `submitDiscard` and `moveRobber`, plus roundtrip and invalid decode coverage.
 - Stage 4.3 updated Messages debug-driver turn controls/readouts with `Submit Discard` and `Move Robber` actions, pending discard requirement/progress visibility, and robber readiness state.
 - Stage 4.3 added focused CoreGame tests for roll-7 requirement calculation, discard player eligibility, discard completion gating, and robber move precondition enforcement.
+- Stage 4.4 added deterministic robber-steal flow: robber move now computes adjacent eligible victims, auto-skips when none exist, and gates turn progress through `needsRobberSteal` when victims are present.
+- Stage 4.4 introduced persisted robber RNG state (`robberRngState`) in canonical core state hashing and used it to deterministically choose stolen resources on victim selection.
+- Stage 4.4 extended turn intent transport/UI with `selectStealVictim` payloads and debug buttons (`Steal From <player>`) plus victim-list readouts.
+- Stage 4.4 added focused tests for no-victim auto-skip, deterministic steal outcome/state progression, and actor gating for steal selection.

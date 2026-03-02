@@ -18,6 +18,7 @@ public struct CoreGameStateV1: Codable, Equatable {
     public let phase: PhaseV1
     public let seed: UInt64?
     public let diceRngState: UInt64?
+    public let robberRngState: UInt64?
     public let resourcesByPlayer: [String: ResourceHandV1]
     public let bankResources: ResourceHandV1
     public let settlementsByNode: [NodeID: String]
@@ -38,6 +39,7 @@ public struct CoreGameStateV1: Codable, Equatable {
         phase: PhaseV1,
         seed: UInt64?,
         diceRngState: UInt64?,
+        robberRngState: UInt64? = nil,
         resourcesByPlayer: [String: ResourceHandV1] = [:],
         bankResources: ResourceHandV1 = .standardBank,
         settlementsByNode: [NodeID: String] = [:],
@@ -57,6 +59,7 @@ public struct CoreGameStateV1: Codable, Equatable {
         self.phase = phase
         self.seed = seed
         self.diceRngState = diceRngState
+        self.robberRngState = robberRngState
         var normalizedResourcesByPlayer: [String: ResourceHandV1] = [:]
         for player in roster {
             normalizedResourcesByPlayer[player] = resourcesByPlayer[player] ?? .zero
@@ -83,6 +86,7 @@ public struct CoreGameStateV1: Codable, Equatable {
             phase: phase,
             seed: seed,
             diceRngState: diceRngState,
+            robberRngState: robberRngState,
             resourcesByPlayer: resourcesByPlayer,
             bankResources: bankResources,
             settlementsByNode: settlementsByNode,
@@ -116,6 +120,7 @@ public struct CoreGameStateV1: Codable, Equatable {
             "phase": phase.rawValue,
             "seed": seed ?? NSNull(),
             "diceRngState": diceRngState ?? NSNull(),
+            "robberRngState": robberRngState ?? NSNull(),
             "resourcesByPlayer": resourcesByPlayer.mapValues { $0.canonicalJSONValue() },
             "bankResources": bankResources.canonicalJSONValue(),
             "settlementsByNode": canonicalOwnershipMap(settlementsByNode),

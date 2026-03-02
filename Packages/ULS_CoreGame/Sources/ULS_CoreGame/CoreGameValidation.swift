@@ -41,6 +41,8 @@ public enum CoreGameError: Error, Equatable {
     case insufficientResourcesForDiscard
     case invalidRobberTile
     case robberTileUnchanged
+    case missingRobberRngState
+    case robberStealVictimNotEligible
 }
 
 public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor: String) throws {
@@ -281,6 +283,9 @@ private func validateTurnStepTransition(from: CoreGameStateV1, to: CoreGameState
         guard toTurn.submittedDiscardsByPlayer.isEmpty else {
             throw CoreGameError.turnStepMismatch
         }
+        guard toTurn.eligibleStealVictims.isEmpty else {
+            throw CoreGameError.turnStepMismatch
+        }
         return
     }
 
@@ -298,6 +303,9 @@ private func validateTurnStepTransition(from: CoreGameStateV1, to: CoreGameState
         guard toTurn.submittedDiscardsByPlayer.isEmpty else {
             throw CoreGameError.turnStepMismatch
         }
+        guard toTurn.eligibleStealVictims.isEmpty else {
+            throw CoreGameError.turnStepMismatch
+        }
 
     case (.needsRoll, .pendingDiscards), (.needsRoll, .needsRobberMove):
         guard let roll = toTurn.lastRoll, roll.d1 + roll.d2 == 7 else {
@@ -309,6 +317,9 @@ private func validateTurnStepTransition(from: CoreGameStateV1, to: CoreGameState
             throw CoreGameError.turnStepMismatch
         }
         guard toTurn.submittedDiscardsByPlayer.isEmpty else {
+            throw CoreGameError.turnStepMismatch
+        }
+        guard toTurn.eligibleStealVictims.isEmpty else {
             throw CoreGameError.turnStepMismatch
         }
         if toTurn.step == .pendingDiscards {
@@ -356,13 +367,16 @@ private func validateTurnStepTransition(from: CoreGameStateV1, to: CoreGameState
         guard newDiscard.totalCount == fromTurn.discardRequirementsByPlayer[newPlayer] else {
             throw CoreGameError.turnStepMismatch
         }
+        guard toTurn.eligibleStealVictims.isEmpty else {
+            throw CoreGameError.turnStepMismatch
+        }
 
         let allSubmitted = fromTurn.discardRequirementsByPlayer.keys.allSatisfy { toSubmitted[$0] != nil }
         guard (toTurn.step == .needsRobberMove) == allSubmitted else {
             throw CoreGameError.turnStepMismatch
         }
 
-    case (.needsRobberMove, .afterRoll):
+    case (.needsRobberMove, .afterRoll), (.needsRobberMove, .needsRobberSteal):
         guard toTurn.lastRoll == fromTurn.lastRoll else {
             throw CoreGameError.turnStepMismatch
         }
@@ -370,6 +384,29 @@ private func validateTurnStepTransition(from: CoreGameStateV1, to: CoreGameState
             throw CoreGameError.turnStepMismatch
         }
         guard toTurn.submittedDiscardsByPlayer.isEmpty else {
+            throw CoreGameError.turnStepMismatch
+        }
+        if toTurn.step == .afterRoll {
+            guard toTurn.eligibleStealVictims.isEmpty else {
+                throw CoreGameError.turnStepMismatch
+            }
+        } else {
+            guard !toTurn.eligibleStealVictims.isEmpty else {
+                throw CoreGameError.turnStepMismatch
+            }
+        }
+
+    case (.needsRobberSteal, .afterRoll):
+        guard toTurn.lastRoll == fromTurn.lastRoll else {
+            throw CoreGameError.turnStepMismatch
+        }
+        guard toTurn.discardRequirementsByPlayer.isEmpty else {
+            throw CoreGameError.turnStepMismatch
+        }
+        guard toTurn.submittedDiscardsByPlayer.isEmpty else {
+            throw CoreGameError.turnStepMismatch
+        }
+        guard toTurn.eligibleStealVictims.isEmpty else {
             throw CoreGameError.turnStepMismatch
         }
 
@@ -420,7 +457,16 @@ private func expectedEconomyAfterTransition(
     }
 
     if from.phase == .turn, to.phase == .turn, to.currentPlayer == from.currentPlayer {
-        return expectedEconomyAfterDiscardSubmissionIfAny(from: from, to: to)
+        let original = EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
+        let discardUpdate = expectedEconomyAfterDiscardSubmissionIfAny(from: from, to: to)
+        if discardUpdate.resourcesByPlayer != original.resourcesByPlayer || discardUpdate.bankResources != original.bankResources {
+            return discardUpdate
+        }
+        let stealUpdate = expectedEconomyAfterRobberStealIfAny(from: from, to: to)
+        if stealUpdate.resourcesByPlayer != original.resourcesByPlayer || stealUpdate.bankResources != original.bankResources {
+            return stealUpdate
+        }
+        return original
     }
 
     return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
@@ -472,6 +518,54 @@ private func expectedEconomyAfterDiscardSubmissionIfAny(from: CoreGameStateV1, t
     )
 
     return EconomyUpdateV1(resourcesByPlayer: updatedResourcesByPlayer, bankResources: updatedBankResources)
+}
+
+private func expectedEconomyAfterRobberStealIfAny(from: CoreGameStateV1, to: CoreGameStateV1) -> EconomyUpdateV1 {
+    guard
+        let fromTurn = from.turnState,
+        let toTurn = to.turnState,
+        fromTurn.step == .needsRobberSteal,
+        toTurn.step == .afterRoll,
+        let robberRngState = from.robberRngState
+    else {
+        return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
+    }
+
+    let stealer = from.currentPlayer
+    let stealerBefore = from.resourcesByPlayer[stealer] ?? .zero
+    let stealerAfter = to.resourcesByPlayer[stealer] ?? .zero
+    guard stealerAfter.totalCount == stealerBefore.totalCount + 1 else {
+        return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
+    }
+
+    let victimCandidates = fromTurn.eligibleStealVictims.filter { victim in
+        let before = from.resourcesByPlayer[victim] ?? .zero
+        let after = to.resourcesByPlayer[victim] ?? .zero
+        return after.totalCount == before.totalCount - 1
+    }
+    guard victimCandidates.count == 1, let victim = victimCandidates.first else {
+        return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
+    }
+
+    for player in from.roster where player != stealer && player != victim {
+        guard to.resourcesByPlayer[player] == from.resourcesByPlayer[player] else {
+            return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
+        }
+    }
+
+    let victimBefore = from.resourcesByPlayer[victim] ?? .zero
+    guard victimBefore.totalCount > 0 else {
+        return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
+    }
+
+    var rng = DeterministicRNG(seed: robberRngState)
+    let stolenResource = deterministicStolenResourceForValidation(from: victimBefore, rng: &rng)
+
+    var expectedResourcesByPlayer = from.resourcesByPlayer
+    expectedResourcesByPlayer[stealer] = stealerBefore.addingOne(for: stolenResource)
+    expectedResourcesByPlayer[victim] = victimBefore.subtracting(1, for: stolenResource)
+
+    return EconomyUpdateV1(resourcesByPlayer: expectedResourcesByPlayer, bankResources: from.bankResources)
 }
 
 private func startingResourceSettlementNodeGrantedDuringTransition(
@@ -590,7 +684,7 @@ private func isRobberMoveBoardTransition(from: CoreGameStateV1, to: CoreGameStat
         to.phase == .turn,
         from.currentPlayer == to.currentPlayer,
         from.turnState?.step == .needsRobberMove,
-        to.turnState?.step == .afterRoll
+        to.turnState?.step == .afterRoll || to.turnState?.step == .needsRobberSteal
     else {
         return false
     }
@@ -616,4 +710,26 @@ private func isOnlyRobberTileChanged(from: BoardSetupV1?, to: BoardSetupV1?) -> 
         return false
     }
     return true
+}
+
+private func deterministicStolenResourceForValidation(from hand: ResourceHandV1, rng: inout DeterministicRNG) -> ResourceV1 {
+    let total = hand.totalCount
+    let pick = Int(rng.nextUInt64() % UInt64(total))
+
+    let ordered: [(ResourceV1, Int)] = [
+        (.wood, hand.wood),
+        (.brick, hand.brick),
+        (.sheep, hand.sheep),
+        (.wheat, hand.wheat),
+        (.ore, hand.ore),
+    ]
+
+    var cursor = 0
+    for (resource, count) in ordered {
+        if pick < cursor + count {
+            return resource
+        }
+        cursor += count
+    }
+    return .wood
 }

@@ -21,6 +21,7 @@ public struct TurnIntentV1: Codable, Equatable {
         case rollDice
         case submitDiscard
         case moveRobber
+        case selectStealVictim
         case endTurn
     }
 
@@ -32,6 +33,7 @@ public struct TurnIntentV1: Codable, Equatable {
     public let discarded: TransportResourceHandV1?
     public let discardPlayer: String?
     public let robberTileID: Int?
+    public let stealVictimPlayer: String?
 
     public init(
         kind: Kind,
@@ -48,6 +50,7 @@ public struct TurnIntentV1: Codable, Equatable {
         discarded = nil
         discardPlayer = nil
         robberTileID = nil
+        stealVictimPlayer = nil
     }
 
     public init(
@@ -66,6 +69,7 @@ public struct TurnIntentV1: Codable, Equatable {
         self.discarded = discarded
         self.discardPlayer = discardPlayer
         robberTileID = nil
+        stealVictimPlayer = nil
     }
 
     public init(
@@ -83,6 +87,25 @@ public struct TurnIntentV1: Codable, Equatable {
         discarded = nil
         discardPlayer = nil
         self.robberTileID = robberTileID
+        stealVictimPlayer = nil
+    }
+
+    public init(
+        selectStealVictimPlayer stealVictimPlayer: String,
+        gameId: String,
+        anchorRev: Int,
+        anchorHash: String,
+        actor: String
+    ) {
+        kind = .selectStealVictim
+        self.gameId = gameId
+        self.anchorRev = anchorRev
+        self.anchorHash = anchorHash
+        self.actor = actor
+        discarded = nil
+        discardPlayer = nil
+        robberTileID = nil
+        self.stealVictimPlayer = stealVictimPlayer
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -94,6 +117,7 @@ public struct TurnIntentV1: Codable, Equatable {
         case discarded
         case discardPlayer
         case robberTileID
+        case stealVictimPlayer
     }
 
     public init(from decoder: Decoder) throws {
@@ -106,10 +130,11 @@ public struct TurnIntentV1: Codable, Equatable {
         discarded = try container.decodeIfPresent(TransportResourceHandV1.self, forKey: .discarded)
         discardPlayer = try container.decodeIfPresent(String.self, forKey: .discardPlayer)
         robberTileID = try container.decodeIfPresent(Int.self, forKey: .robberTileID)
+        stealVictimPlayer = try container.decodeIfPresent(String.self, forKey: .stealVictimPlayer)
 
         switch kind {
         case .rollDice, .endTurn:
-            guard discarded == nil, discardPlayer == nil, robberTileID == nil else {
+            guard discarded == nil, discardPlayer == nil, robberTileID == nil, stealVictimPlayer == nil else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .kind,
                     in: container,
@@ -117,7 +142,7 @@ public struct TurnIntentV1: Codable, Equatable {
                 )
             }
         case .submitDiscard:
-            guard discarded != nil, discardPlayer != nil, robberTileID == nil else {
+            guard discarded != nil, discardPlayer != nil, robberTileID == nil, stealVictimPlayer == nil else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .kind,
                     in: container,
@@ -125,11 +150,19 @@ public struct TurnIntentV1: Codable, Equatable {
                 )
             }
         case .moveRobber:
-            guard robberTileID != nil, discarded == nil, discardPlayer == nil else {
+            guard robberTileID != nil, discarded == nil, discardPlayer == nil, stealVictimPlayer == nil else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .kind,
                     in: container,
                     debugDescription: "moveRobber must include robberTileID."
+                )
+            }
+        case .selectStealVictim:
+            guard stealVictimPlayer != nil, discarded == nil, discardPlayer == nil, robberTileID == nil else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .kind,
+                    in: container,
+                    debugDescription: "selectStealVictim must include stealVictimPlayer."
                 )
             }
         }

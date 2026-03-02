@@ -45,6 +45,7 @@ struct LobbyDriverView: View {
                     field("pendingDiscards", viewModel.pendingDiscardRequirements)
                     field("discardStatus", viewModel.submittedDiscardsStatus)
                     field("robberReady", viewModel.robberMoveReadiness)
+                    field("stealVictims", viewModel.eligibleStealVictims)
                     field("visibleHands", viewModel.visibleHands)
                     field("bankResources", viewModel.bankResources)
                     field("setupPlacement", viewModel.setupPlacement)
@@ -132,6 +133,13 @@ struct LobbyDriverView: View {
                         }
                         .buttonStyle(.bordered)
                         .disabled(!viewModel.canSendMoveRobberIntentDebug)
+
+                        ForEach(viewModel.stealVictimOptions, id: \.self) { victim in
+                            Button("Steal From \(victim)") {
+                                viewModel.sendSelectStealVictimIntentDebug(victimPlayer: victim)
+                            }
+                            .buttonStyle(.bordered)
+                        }
 
                         Button("End Turn") {
                             viewModel.sendEndTurnIntentDebug()
