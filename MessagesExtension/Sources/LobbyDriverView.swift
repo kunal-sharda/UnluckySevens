@@ -40,7 +40,10 @@ struct LobbyDriverView: View {
                     field("phase", viewModel.phase)
                     field("seed", viewModel.seed)
                     field("diceRngState", viewModel.diceRngState)
+                    field("turnStep", viewModel.turnStep)
+                    field("lastRoll", viewModel.lastRoll)
                     field("setupPlacement", viewModel.setupPlacement)
+                    field("turnIntent", viewModel.turnIntent)
                     field("pendingJoiners", viewModel.pendingJoiners)
                 }
                 .font(.system(.caption, design: .monospaced))
@@ -104,6 +107,20 @@ struct LobbyDriverView: View {
                         }
                         .buttonStyle(.bordered)
                         .disabled(!viewModel.canSendSetupPairIntentDebug)
+                    }
+
+                    if viewModel.isTurnSelectedState {
+                        Button("Roll Dice") {
+                            viewModel.sendRollDiceIntentDebug()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.canSendRollDiceIntentDebug)
+
+                        Button("End Turn") {
+                            viewModel.sendEndTurnIntentDebug()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.canSendEndTurnIntentDebug)
                     }
 
                     Button("Clear Pending Joins") {

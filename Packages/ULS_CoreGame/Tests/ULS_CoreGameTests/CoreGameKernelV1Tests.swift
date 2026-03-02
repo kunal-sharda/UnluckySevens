@@ -14,11 +14,12 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: 42,
             diceRngState: nil,
             boardRules: nil,
-            board: nil
+            board: nil,
+            turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
         )
 
         let hash = state.rehashed().stateHash
-        XCTAssertEqual(hash, "6cefd119ef224df03575a678403dbe12cfa4c33a8ab417e492526ae3f957775b")
+        XCTAssertEqual(hash, "6fda545a8f7579b7ec9fdb37d3883586816e007040e6dbc01b35fbd9bf241862")
     }
 
     func testHashChangesWhenSeedChanges() {
@@ -33,7 +34,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: 111,
             diceRngState: 222,
             boardRules: nil,
-            board: nil
+            board: nil,
+            turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
         )
 
         let changed = CoreGameStateV1(
@@ -47,7 +49,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: 222,
             diceRngState: base.diceRngState,
             boardRules: base.boardRules,
-            board: base.board
+            board: base.board,
+            turnState: base.turnState
         )
 
         XCTAssertNotEqual(base.rehashed().stateHash, changed.rehashed().stateHash)
@@ -65,7 +68,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: 111,
             diceRngState: 333,
             boardRules: nil,
-            board: nil
+            board: nil,
+            turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
         )
 
         let changed = CoreGameStateV1(
@@ -79,7 +83,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: base.seed,
             diceRngState: 444,
             boardRules: base.boardRules,
-            board: base.board
+            board: base.board,
+            turnState: base.turnState
         )
 
         XCTAssertNotEqual(base.rehashed().stateHash, changed.rehashed().stateHash)
@@ -144,7 +149,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: from.seed,
             diceRngState: 999,
             boardRules: from.boardRules,
-            board: from.board
+            board: from.board,
+            turnState: from.turnState
         ).rehashed()
 
         XCTAssertNoThrow(try validateTransition(from: from, to: to, actor: from.currentPlayer))
@@ -163,7 +169,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: from.seed,
             diceRngState: from.diceRngState,
             boardRules: from.boardRules,
-            board: from.board
+            board: from.board,
+            turnState: from.turnState
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: to, actor: from.currentPlayer)) { error in
@@ -184,7 +191,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: from.seed,
             diceRngState: from.diceRngState,
             boardRules: from.boardRules,
-            board: from.board
+            board: from.board,
+            turnState: from.turnState
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -214,7 +222,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: from.seed,
             diceRngState: from.diceRngState,
             boardRules: from.boardRules,
-            board: from.board
+            board: from.board,
+            turnState: from.turnState
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -235,7 +244,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: 999,
             diceRngState: from.diceRngState,
             boardRules: from.boardRules,
-            board: from.board
+            board: from.board,
+            turnState: from.turnState
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -256,7 +266,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: from.seed,
             diceRngState: from.diceRngState,
             boardRules: BoardRulesV1(strategy: .noRedAdjacentV1),
-            board: from.board
+            board: from.board,
+            turnState: from.turnState
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -281,7 +292,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: from.seed,
             diceRngState: from.diceRngState,
             boardRules: from.boardRules,
-            board: alternateBoard
+            board: alternateBoard,
+            turnState: from.turnState
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -306,7 +318,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             diceRngState: from.diceRngState,
             resourcesByPlayer: tamperedResources,
             boardRules: from.boardRules,
-            board: from.board
+            board: from.board,
+            turnState: from.turnState
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -422,7 +435,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: to.seed,
             diceRngState: to.diceRngState,
             boardRules: to.boardRules,
-            board: to.board
+            board: to.board,
+            turnState: to.turnState
         )
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -443,7 +457,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: from.seed,
             diceRngState: from.diceRngState,
             boardRules: from.boardRules,
-            board: from.board
+            board: from.board,
+            turnState: from.turnState
         ).rehashed()
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
@@ -510,7 +525,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: 555,
             diceRngState: 777,
             boardRules: rules,
-            board: board
+            board: board,
+            turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
         )
     }
 
@@ -526,7 +542,8 @@ final class CoreGameKernelV1Tests: XCTestCase {
             seed: from.seed,
             diceRngState: from.diceRngState,
             boardRules: from.boardRules,
-            board: from.board
+            board: from.board,
+            turnState: from.turnState
         ).rehashed()
     }
 }

@@ -42,7 +42,8 @@ public func apply(intent: SetupIntentV1, to state: CoreGameStateV1, actor: Strin
             from: state,
             currentPlayer: player,
             phase: .setup,
-            setupState: advancedSetup
+            setupState: advancedSetup,
+            turnState: nil
         )
 
     case let .placeSetupRoad(edge):
@@ -65,6 +66,7 @@ public func apply(intent: SetupIntentV1, to state: CoreGameStateV1, actor: Strin
             currentPlayer: roadResult.currentPlayer,
             phase: roadResult.phase,
             setupState: roadResult.setupState,
+            turnState: roadResult.phase == .turn ? TurnStateV1(step: .needsRoll, lastRoll: nil) : nil,
             resourcesByPlayer: updatedResourcesByPlayer
         )
 
@@ -94,6 +96,7 @@ public func apply(intent: SetupIntentV1, to state: CoreGameStateV1, actor: Strin
             currentPlayer: roadResult.currentPlayer,
             phase: roadResult.phase,
             setupState: roadResult.setupState,
+            turnState: roadResult.phase == .turn ? TurnStateV1(step: .needsRoll, lastRoll: nil) : nil,
             resourcesByPlayer: updatedResourcesByPlayer
         )
     }
@@ -276,6 +279,7 @@ private func nextState(
     currentPlayer: String,
     phase: PhaseV1,
     setupState: SetupStateV1?,
+    turnState: TurnStateV1?,
     resourcesByPlayer: [String: ResourceHandV1]? = nil
 ) -> CoreGameStateV1 {
     CoreGameStateV1(
@@ -291,7 +295,8 @@ private func nextState(
         resourcesByPlayer: resourcesByPlayer ?? state.resourcesByPlayer,
         boardRules: state.boardRules,
         board: state.board,
-        setupState: setupState
+        setupState: setupState,
+        turnState: turnState
     ).rehashed()
 }
 

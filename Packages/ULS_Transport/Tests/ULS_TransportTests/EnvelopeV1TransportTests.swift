@@ -161,6 +161,52 @@ final class EnvelopeV1TransportTests: XCTestCase {
         XCTAssertEqual(decodedIntent, intent)
     }
 
+    func testTurnRollDiceIntentPayloadRoundTrip() throws {
+        let intent = TurnIntentV1(
+            kind: .rollDice,
+            gameId: "game-123",
+            anchorRev: 7,
+            anchorHash: "hash-7",
+            actor: "player-1"
+        )
+        let payload = try jsonString(intent)
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+
+        let encoded = try encode(envelope)
+        let decoded = try decode(encoded)
+
+        guard case let .intent(decodedPayload) = decoded.body else {
+            XCTFail("Expected INTENT body.")
+            return
+        }
+
+        let decodedIntent = try JSONDecoder().decode(TurnIntentV1.self, from: Data(decodedPayload.utf8))
+        XCTAssertEqual(decodedIntent, intent)
+    }
+
+    func testTurnEndTurnIntentPayloadRoundTrip() throws {
+        let intent = TurnIntentV1(
+            kind: .endTurn,
+            gameId: "game-123",
+            anchorRev: 8,
+            anchorHash: "hash-8",
+            actor: "player-1"
+        )
+        let payload = try jsonString(intent)
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+
+        let encoded = try encode(envelope)
+        let decoded = try decode(encoded)
+
+        guard case let .intent(decodedPayload) = decoded.body else {
+            XCTFail("Expected INTENT body.")
+            return
+        }
+
+        let decodedIntent = try JSONDecoder().decode(TurnIntentV1.self, from: Data(decodedPayload.utf8))
+        XCTAssertEqual(decodedIntent, intent)
+    }
+
     func testSetupIntentDecodeFailsWhenKindAndPayloadDoNotMatch() throws {
         let invalidIntentJSON = """
         {"kind":"placeSetupSettlement","gameId":"game-123","anchorRev":1,"anchorHash":"hash-1","actor":"player-1"}

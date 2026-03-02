@@ -22,6 +22,7 @@ public struct CoreGameStateV1: Codable, Equatable {
     public let boardRules: BoardRulesV1?
     public let board: BoardSetupV1?
     public let setupState: SetupStateV1?
+    public let turnState: TurnStateV1?
 
     public init(
         gameId: String,
@@ -36,7 +37,8 @@ public struct CoreGameStateV1: Codable, Equatable {
         resourcesByPlayer: [String: ResourceHandV1] = [:],
         boardRules: BoardRulesV1? = nil,
         board: BoardSetupV1? = nil,
-        setupState: SetupStateV1? = nil
+        setupState: SetupStateV1? = nil,
+        turnState: TurnStateV1? = nil
     ) {
         self.gameId = gameId
         self.rev = rev
@@ -55,6 +57,7 @@ public struct CoreGameStateV1: Codable, Equatable {
         self.boardRules = boardRules
         self.board = board
         self.setupState = setupState
+        self.turnState = turnState
     }
 
     public func rehashed() -> CoreGameStateV1 {
@@ -71,7 +74,8 @@ public struct CoreGameStateV1: Codable, Equatable {
             resourcesByPlayer: resourcesByPlayer,
             boardRules: boardRules,
             board: board,
-            setupState: setupState
+            setupState: setupState,
+            turnState: turnState
         )
     }
 
@@ -100,6 +104,7 @@ public struct CoreGameStateV1: Codable, Equatable {
             "boardRules": boardRules?.canonicalJSONValue() ?? NSNull(),
             "board": board?.canonicalJSONIncludingHash() ?? NSNull(),
             "setupState": setupState?.canonicalJSONValue() ?? NSNull(),
+            "turnState": turnState?.canonicalJSONValue() ?? NSNull(),
         ]
     }
 }

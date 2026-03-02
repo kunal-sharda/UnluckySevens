@@ -16,6 +16,8 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var phase: String = "-"
     @Published var seed: String = "-"
     @Published var diceRngState: String = "-"
+    @Published var turnStep: String = "-"
+    @Published var lastRoll: String = "-"
     @Published var pendingJoiners: String = "[]"
     @Published var selectionStatus: String = "No message selected"
     @Published var lastError: String = "-"
@@ -27,6 +29,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var boardNumbersByTile: String = "-"
     @Published var boardPortsByIndex: String = "-"
     @Published var setupPlacement: String = "-"
+    @Published var turnIntent: String = "-"
 
     private let summaryPayloadPrefix = "ulsenv:"
     private let boardStrategyKey = "uls.boardStrategy"
@@ -36,6 +39,7 @@ final class LobbyDriverViewModel: ObservableObject {
     private var selectedState: CoreGameStateV1?
     private var selectedJoinIntent: JoinIntentV1?
     private var selectedSetupIntent: SetupPlacementIntentV1?
+    private var selectedTurnIntent: ULS_Transport.TurnIntentV1?
     private var stateSessionsByGameId: [String: MSSession] = [:]
 
     init(userDefaults: UserDefaults = .standard) {
@@ -64,6 +68,10 @@ final class LobbyDriverViewModel: ObservableObject {
         selectedState?.phase == .setup
     }
 
+    var isTurnSelectedState: Bool {
+        selectedState?.phase == .turn
+    }
+
     var canSendSetupSettlementIntentDebug: Bool {
         isSetupSelectedState && localActorIdentifier() != nil
     }
@@ -74,6 +82,20 @@ final class LobbyDriverViewModel: ObservableObject {
 
     var canSendSetupPairIntentDebug: Bool {
         isSetupSelectedState && localActorIdentifier() != nil
+    }
+
+    var canSendRollDiceIntentDebug: Bool {
+        guard let state = selectedState, state.phase == .turn else {
+            return false
+        }
+        return state.turnState?.step == .needsRoll && localActorIdentifier() != nil
+    }
+
+    var canSendEndTurnIntentDebug: Bool {
+        guard let state = selectedState, state.phase == .turn else {
+            return false
+        }
+        return state.turnState?.step == .afterRoll && localActorIdentifier() != nil
     }
 
     var canStartGame: Bool {
@@ -386,10 +408,81 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
+    func sendRollDiceIntentDebug() {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+
+        guard state.phase == .turn else {
+            setLastError("Roll intent is only available in turn phase.")
+            return
+        }
+
+        guard let actor = localActorIdentifier() else {
+            setLastError("Missing local participant identifier.")
+            return
+        }
+
+        let intent = ULS_Transport.TurnIntentV1(
+            kind: .rollDice,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT rollDice", sessionPolicy: .new)
+            selectionStatus = "Turn roll intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Roll intent failed: \(error.localizedDescription)")
+        }
+    }
+
+    func sendEndTurnIntentDebug() {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+
+        guard state.phase == .turn else {
+            setLastError("End turn intent is only available in turn phase.")
+            return
+        }
+
+        guard let actor = localActorIdentifier() else {
+            setLastError("Missing local participant identifier.")
+            return
+        }
+
+        let intent = ULS_Transport.TurnIntentV1(
+            kind: .endTurn,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT endTurn", sessionPolicy: .new)
+            selectionStatus = "Turn end intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("End turn intent failed: \(error.localizedDescription)")
+        }
+    }
+
     private func decodeSelectedMessage(_ message: MSMessage?) {
         selectedState = nil
         selectedJoinIntent = nil
         selectedSetupIntent = nil
+        selectedTurnIntent = nil
 
         guard let message else {
             selectionStatus = "No message selected"
@@ -424,6 +517,7 @@ final class LobbyDriverViewModel: ObservableObject {
             selectedState = state
             selectedJoinIntent = nil
             selectedSetupIntent = nil
+            selectedTurnIntent = nil
             stateSessionsByGameId[state.gameId] = message.session
             render(state: state, source: source)
         case let .intent(payload):
@@ -431,13 +525,24 @@ final class LobbyDriverViewModel: ObservableObject {
                 selectedSetupIntent = setupIntent
                 selectedJoinIntent = nil
                 selectedState = nil
+                selectedTurnIntent = nil
                 render(setupIntent: setupIntent, source: source)
+                return
+            }
+
+            if let turnIntent = try? decodePayload(ULS_Transport.TurnIntentV1.self, from: payload) {
+                selectedTurnIntent = turnIntent
+                selectedSetupIntent = nil
+                selectedJoinIntent = nil
+                selectedState = nil
+                render(turnIntent: turnIntent, source: source)
                 return
             }
 
             let intent = try decodePayload(JoinIntentV1.self, from: payload)
             selectedJoinIntent = intent
             selectedSetupIntent = nil
+            selectedTurnIntent = nil
             selectedState = nil
             render(joinIntent: intent, source: source)
         }
@@ -454,7 +559,14 @@ final class LobbyDriverViewModel: ObservableObject {
         phase = state.phase.rawValue
         seed = state.seed.map(String.init) ?? "nil"
         diceRngState = state.diceRngState.map(String.init) ?? "nil"
+        turnStep = state.turnState?.step.rawValue ?? "nil"
+        if let lastRollValue = state.turnState?.lastRoll {
+            lastRoll = "\(lastRollValue.d1)+\(lastRollValue.d2)"
+        } else {
+            lastRoll = "nil"
+        }
         setupPlacement = "-"
+        turnIntent = "-"
         render(board: state.board)
         selectionStatus = "Decoded STATE rev\(state.rev) via \(source.label)"
         refreshPendingJoiners(for: state.gameId)
@@ -471,7 +583,10 @@ final class LobbyDriverViewModel: ObservableObject {
         phase = "-"
         seed = "-"
         diceRngState = "-"
+        turnStep = "-"
+        lastRoll = "-"
         setupPlacement = "-"
+        turnIntent = "-"
         resetBoardDebugFields()
         selectionStatus = "Decoded JOIN intent via \(source.label)"
         refreshPendingJoiners(for: joinIntent.gameId)
@@ -488,6 +603,9 @@ final class LobbyDriverViewModel: ObservableObject {
         phase = "-"
         seed = "-"
         diceRngState = "-"
+        turnStep = "-"
+        lastRoll = "-"
+        turnIntent = "-"
         switch setupIntent.kind {
         case .placeSetupSettlement:
             setupPlacement = "node: \(setupIntent.node.map(String.init) ?? "-")"
@@ -501,6 +619,26 @@ final class LobbyDriverViewModel: ObservableObject {
         resetBoardDebugFields()
         selectionStatus = "Decoded \(setupIntent.kind.rawValue) intent via \(source.label)"
         refreshPendingJoiners(for: setupIntent.gameId)
+    }
+
+    private func render(turnIntent decodedTurnIntent: ULS_Transport.TurnIntentV1, source: PayloadSource) {
+        kind = "INTENT(\(decodedTurnIntent.kind.rawValue))"
+        gameId = decodedTurnIntent.gameId
+        rev = String(decodedTurnIntent.anchorRev)
+        prevHash = "-"
+        stateHash = decodedTurnIntent.anchorHash
+        roster = "-"
+        currentPlayer = decodedTurnIntent.actor
+        phase = "-"
+        seed = "-"
+        diceRngState = "-"
+        turnStep = "-"
+        lastRoll = "-"
+        setupPlacement = "-"
+        turnIntent = "kind: \(decodedTurnIntent.kind.rawValue)"
+        resetBoardDebugFields()
+        selectionStatus = "Decoded \(decodedTurnIntent.kind.rawValue) intent via \(source.label)"
+        refreshPendingJoiners(for: decodedTurnIntent.gameId)
     }
 
     private func render(board: BoardSetupV1?) {
@@ -534,7 +672,10 @@ final class LobbyDriverViewModel: ObservableObject {
         phase = "-"
         seed = "-"
         diceRngState = "-"
+        turnStep = "-"
+        lastRoll = "-"
         setupPlacement = "-"
+        turnIntent = "-"
         resetBoardDebugFields()
     }
 
@@ -647,6 +788,9 @@ final class LobbyDriverViewModel: ObservableObject {
         }
         if let setupIntent = selectedSetupIntent {
             return setupIntent.gameId
+        }
+        if let turnIntent = selectedTurnIntent {
+            return turnIntent.gameId
         }
         return nil
     }

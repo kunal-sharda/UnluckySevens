@@ -67,3 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 3.3 follow-up: `validateTransition` now enforces deterministic `resourcesByPlayer` transitions, including zeroed resources on Start and setup second-road payouts only.
 - Stage 3.3 follow-up: `CoreGameStateV1` now normalizes `resourcesByPlayer` to roster keys with zero defaults.
 - Stage 3.3 follow-up: setup/validation paths now reuse cached standard topology instances instead of rebuilding per action.
+- Stage 4.1 added turn sequencing state models (`TurnStepV1`, `DiceRollV1`, `TurnStateV1`) and persisted `turnState` in canonical core state hashing.
+- Stage 4.1 added turn reducer support for deterministic `rollDice` and `endTurn` intents with current-player actor gating.
+- Stage 4.1 added transport payload model `TurnIntentV1` and intent envelope roundtrip tests for `rollDice`/`endTurn`.
+- Stage 4.1 updated Messages lobby driver with turn debug fields and `Roll Dice` / `End Turn` intent buttons for turn-phase states.

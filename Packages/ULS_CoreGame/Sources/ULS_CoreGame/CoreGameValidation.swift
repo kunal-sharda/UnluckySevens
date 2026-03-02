@@ -24,6 +24,11 @@ public enum CoreGameError: Error, Equatable {
     case distanceRuleViolation
     case roadNotAdjacentToLastSettlement
     case resourcesByPlayerInvalid
+    case turnStateMissing
+    case turnStateUnexpected
+    case turnStepMismatch
+    case missingDiceRngState
+    case turnCurrentPlayerNotInRoster
     case invalidStateHash
     case gameIdMismatch
 }
@@ -66,6 +71,16 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
     } else {
         guard to.setupState == nil else {
             throw CoreGameError.setupStateMissing
+        }
+    }
+
+    if to.phase == .turn {
+        guard to.turnState != nil else {
+            throw CoreGameError.turnStateMissing
+        }
+    } else {
+        guard to.turnState == nil else {
+            throw CoreGameError.turnStateUnexpected
         }
     }
 
