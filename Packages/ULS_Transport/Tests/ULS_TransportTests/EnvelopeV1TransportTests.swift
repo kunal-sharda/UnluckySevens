@@ -137,11 +137,52 @@ final class EnvelopeV1TransportTests: XCTestCase {
         XCTAssertEqual(decodedIntent, intent)
     }
 
+    func testSetupPairIntentPayloadRoundTrip() throws {
+        let intent = SetupPlacementIntentV1(
+            gameId: "game-123",
+            anchorRev: 1,
+            anchorHash: "hash-1",
+            actor: "player-1",
+            settlementNode: 6,
+            roadEdge: 12
+        )
+        let payload = try jsonString(intent)
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+
+        let encoded = try encode(envelope)
+        let decoded = try decode(encoded)
+
+        guard case let .intent(decodedPayload) = decoded.body else {
+            XCTFail("Expected INTENT body.")
+            return
+        }
+
+        let decodedIntent = try JSONDecoder().decode(SetupPlacementIntentV1.self, from: Data(decodedPayload.utf8))
+        XCTAssertEqual(decodedIntent, intent)
+    }
+
     func testSetupIntentDecodeFailsWhenKindAndPayloadDoNotMatch() throws {
         let invalidIntentJSON = """
         {"kind":"placeSetupSettlement","gameId":"game-123","anchorRev":1,"anchorHash":"hash-1","actor":"player-1"}
         """
         let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: invalidIntentJSON))
+
+        let encoded = try encode(envelope)
+        let decoded = try decode(encoded)
+
+        guard case let .intent(payload) = decoded.body else {
+            XCTFail("Expected INTENT body.")
+            return
+        }
+
+        XCTAssertThrowsError(try JSONDecoder().decode(SetupPlacementIntentV1.self, from: Data(payload.utf8)))
+    }
+
+    func testSetupPairIntentDecodeFailsWhenNodeOrEdgeMissing() throws {
+        let invalidPairJSON = """
+        {"kind":"placeSetupPair","gameId":"game-123","anchorRev":1,"anchorHash":"hash-1","actor":"player-1","node":6}
+        """
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: invalidPairJSON))
 
         let encoded = try encode(envelope)
         let decoded = try decode(encoded)

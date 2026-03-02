@@ -4,6 +4,7 @@ public struct SetupPlacementIntentV1: Codable, Equatable {
     public enum Kind: String, Codable, Equatable {
         case placeSetupSettlement
         case placeSetupRoad
+        case placeSetupPair
     }
 
     public let kind: Kind
@@ -46,6 +47,23 @@ public struct SetupPlacementIntentV1: Codable, Equatable {
         self.edge = edge
     }
 
+    public init(
+        gameId: String,
+        anchorRev: Int,
+        anchorHash: String,
+        actor: String,
+        settlementNode: Int,
+        roadEdge: Int
+    ) {
+        kind = .placeSetupPair
+        self.gameId = gameId
+        self.anchorRev = anchorRev
+        self.anchorHash = anchorHash
+        self.actor = actor
+        node = settlementNode
+        edge = roadEdge
+    }
+
     private enum CodingKeys: String, CodingKey {
         case kind
         case gameId
@@ -81,6 +99,14 @@ public struct SetupPlacementIntentV1: Codable, Equatable {
                     forKey: .edge,
                     in: container,
                     debugDescription: "placeSetupRoad must include edge and exclude node."
+                )
+            }
+        case .placeSetupPair:
+            guard edge != nil, node != nil else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .kind,
+                    in: container,
+                    debugDescription: "placeSetupPair must include both node and edge."
                 )
             }
         }

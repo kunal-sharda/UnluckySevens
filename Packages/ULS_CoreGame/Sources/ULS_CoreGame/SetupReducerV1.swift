@@ -3,12 +3,14 @@ import Foundation
 public enum SetupIntentV1: Codable, Equatable {
     case placeSetupSettlement(node: Int)
     case placeSetupRoad(edge: Int)
+    case placeSetupPair(settlementNode: Int, roadEdge: Int)
 }
 
 public func apply(intent: SetupIntentV1, to state: CoreGameStateV1, actor: String) throws -> CoreGameStateV1 {
-    guard state.phase == .setup, var setupState = state.setupState else {
+    guard state.phase == .setup, let setupState = state.setupState else {
         throw CoreGameError.setupStateMissing
     }
+
     let topology = StandardBoardTopologyV1.standard()
 
     guard actor == state.currentPlayer else {
@@ -24,140 +26,202 @@ public func apply(intent: SetupIntentV1, to state: CoreGameStateV1, actor: Strin
     }
 
     let player = state.currentPlayer
-    let occupiedNodes = occupiedSettlementNodes(from: setupState.placements)
-    let occupiedEdges = occupiedRoadEdges(from: setupState.placements)
 
     switch intent {
     case let .placeSetupSettlement(node):
-        guard setupState.step == .placeSettlement else {
-            throw CoreGameError.setupStepMismatch
-        }
-
-        guard node >= 0, node < topology.nodesCount else {
-            throw CoreGameError.invalidNode
-        }
-
-        guard !occupiedNodes.contains(node) else {
-            throw CoreGameError.nodeOccupied
-        }
-
-        let adjacentNodes = Set(topology.nodes(adjacentTo: node))
-        if !adjacentNodes.isDisjoint(with: occupiedNodes) {
-            throw CoreGameError.distanceRuleViolation
-        }
-
-        var playerPlacements = setupState.placements[player] ?? PlayerSetupPlacementsV1()
-        if playerPlacements.settlement1 == nil {
-            playerPlacements = PlayerSetupPlacementsV1(
-                settlement1: node,
-                road1: playerPlacements.road1,
-                settlement2: playerPlacements.settlement2,
-                road2: playerPlacements.road2
-            )
-        } else if playerPlacements.settlement2 == nil {
-            playerPlacements = PlayerSetupPlacementsV1(
-                settlement1: playerPlacements.settlement1,
-                road1: playerPlacements.road1,
-                settlement2: node,
-                road2: playerPlacements.road2
-            )
-        } else {
-            throw CoreGameError.setupPlacementSlotUnavailable
-        }
-
-        setupState = SetupStateV1(
-            order: setupState.order,
-            turnIndex: setupState.turnIndex,
-            step: .placeRoad,
-            placements: setupState.placements.merging([player: playerPlacements]) { _, new in new },
-            lastPlacedSettlementNode: node
+        let advancedSetup = try applySettlementPlacement(
+            node: node,
+            setupState: setupState,
+            player: player,
+            topology: topology
         )
 
         return nextState(
             from: state,
             currentPlayer: player,
             phase: .setup,
-            setupState: setupState
+            setupState: advancedSetup
         )
 
     case let .placeSetupRoad(edge):
-        guard setupState.step == .placeRoad else {
-            throw CoreGameError.setupStepMismatch
-        }
-
-        guard edge >= 0, edge < topology.edges.count else {
-            throw CoreGameError.invalidEdge
-        }
-
-        guard !occupiedEdges.contains(edge) else {
-            throw CoreGameError.edgeOccupied
-        }
-
-        guard let lastSettlementNode = setupState.lastPlacedSettlementNode else {
-            throw CoreGameError.roadBeforeSettlement
-        }
-
-        let selectedEdge = topology.edges[edge]
-        guard selectedEdge.a == lastSettlementNode || selectedEdge.b == lastSettlementNode else {
-            throw CoreGameError.roadNotAdjacentToLastSettlement
-        }
-
-        var playerPlacements = setupState.placements[player] ?? PlayerSetupPlacementsV1()
-        if playerPlacements.road1 == nil {
-            guard playerPlacements.settlement1 != nil else {
-                throw CoreGameError.roadBeforeSettlement
-            }
-            playerPlacements = PlayerSetupPlacementsV1(
-                settlement1: playerPlacements.settlement1,
-                road1: edge,
-                settlement2: playerPlacements.settlement2,
-                road2: playerPlacements.road2
-            )
-        } else if playerPlacements.road2 == nil {
-            guard playerPlacements.settlement2 != nil else {
-                throw CoreGameError.roadBeforeSettlement
-            }
-            playerPlacements = PlayerSetupPlacementsV1(
-                settlement1: playerPlacements.settlement1,
-                road1: playerPlacements.road1,
-                settlement2: playerPlacements.settlement2,
-                road2: edge
-            )
-        } else {
-            throw CoreGameError.setupPlacementSlotUnavailable
-        }
-
-        let advancedTurnIndex = setupState.turnIndex + 1
-        let updatedPlacements = setupState.placements.merging([player: playerPlacements]) { _, new in new }
-
-        if advancedTurnIndex >= setupState.order.count {
-            guard let firstPlayer = state.roster.first else {
-                throw CoreGameError.setupTurnIndexOutOfRange
-            }
-
-            return nextState(
-                from: state,
-                currentPlayer: firstPlayer,
-                phase: .turn,
-                setupState: nil
-            )
-        }
-
-        let advancedSetup = SetupStateV1(
-            order: setupState.order,
-            turnIndex: advancedTurnIndex,
-            step: .placeSettlement,
-            placements: updatedPlacements,
-            lastPlacedSettlementNode: nil
+        let roadResult = try applyRoadPlacement(
+            edge: edge,
+            setupState: setupState,
+            player: player,
+            roster: state.roster,
+            topology: topology
         )
 
         return nextState(
             from: state,
-            currentPlayer: advancedSetup.order[advancedSetup.turnIndex],
-            phase: .setup,
-            setupState: advancedSetup
+            currentPlayer: roadResult.currentPlayer,
+            phase: roadResult.phase,
+            setupState: roadResult.setupState
+        )
+
+    case let .placeSetupPair(settlementNode, roadEdge):
+        let afterSettlement = try applySettlementPlacement(
+            node: settlementNode,
+            setupState: setupState,
+            player: player,
+            topology: topology
+        )
+        let roadResult = try applyRoadPlacement(
+            edge: roadEdge,
+            setupState: afterSettlement,
+            player: player,
+            roster: state.roster,
+            topology: topology
+        )
+
+        return nextState(
+            from: state,
+            currentPlayer: roadResult.currentPlayer,
+            phase: roadResult.phase,
+            setupState: roadResult.setupState
         )
     }
+}
+
+private func applySettlementPlacement(
+    node: Int,
+    setupState: SetupStateV1,
+    player: String,
+    topology: BoardGraphV1
+) throws -> SetupStateV1 {
+    guard setupState.step == .placeSettlement else {
+        throw CoreGameError.setupStepMismatch
+    }
+
+    guard node >= 0, node < topology.nodesCount else {
+        throw CoreGameError.invalidNode
+    }
+
+    let occupiedNodes = occupiedSettlementNodes(from: setupState.placements)
+    guard !occupiedNodes.contains(node) else {
+        throw CoreGameError.nodeOccupied
+    }
+
+    let adjacentNodes = Set(topology.nodes(adjacentTo: node))
+    if !adjacentNodes.isDisjoint(with: occupiedNodes) {
+        throw CoreGameError.distanceRuleViolation
+    }
+
+    var playerPlacements = setupState.placements[player] ?? PlayerSetupPlacementsV1()
+    if playerPlacements.settlement1 == nil {
+        playerPlacements = PlayerSetupPlacementsV1(
+            settlement1: node,
+            road1: playerPlacements.road1,
+            settlement2: playerPlacements.settlement2,
+            road2: playerPlacements.road2
+        )
+    } else if playerPlacements.settlement2 == nil {
+        playerPlacements = PlayerSetupPlacementsV1(
+            settlement1: playerPlacements.settlement1,
+            road1: playerPlacements.road1,
+            settlement2: node,
+            road2: playerPlacements.road2
+        )
+    } else {
+        throw CoreGameError.setupPlacementSlotUnavailable
+    }
+
+    return SetupStateV1(
+        order: setupState.order,
+        turnIndex: setupState.turnIndex,
+        step: .placeRoad,
+        placements: setupState.placements.merging([player: playerPlacements]) { _, new in new },
+        lastPlacedSettlementNode: node
+    )
+}
+
+private func applyRoadPlacement(
+    edge: Int,
+    setupState: SetupStateV1,
+    player: String,
+    roster: [String],
+    topology: BoardGraphV1
+) throws -> RoadPlacementResult {
+    guard setupState.step == .placeRoad else {
+        throw CoreGameError.setupStepMismatch
+    }
+
+    guard edge >= 0, edge < topology.edges.count else {
+        throw CoreGameError.invalidEdge
+    }
+
+    let occupiedEdges = occupiedRoadEdges(from: setupState.placements)
+    guard !occupiedEdges.contains(edge) else {
+        throw CoreGameError.edgeOccupied
+    }
+
+    guard let lastSettlementNode = setupState.lastPlacedSettlementNode else {
+        throw CoreGameError.roadBeforeSettlement
+    }
+
+    let selectedEdge = topology.edges[edge]
+    guard selectedEdge.a == lastSettlementNode || selectedEdge.b == lastSettlementNode else {
+        throw CoreGameError.roadNotAdjacentToLastSettlement
+    }
+
+    var playerPlacements = setupState.placements[player] ?? PlayerSetupPlacementsV1()
+    if playerPlacements.road1 == nil {
+        guard playerPlacements.settlement1 != nil else {
+            throw CoreGameError.roadBeforeSettlement
+        }
+        playerPlacements = PlayerSetupPlacementsV1(
+            settlement1: playerPlacements.settlement1,
+            road1: edge,
+            settlement2: playerPlacements.settlement2,
+            road2: playerPlacements.road2
+        )
+    } else if playerPlacements.road2 == nil {
+        guard playerPlacements.settlement2 != nil else {
+            throw CoreGameError.roadBeforeSettlement
+        }
+        playerPlacements = PlayerSetupPlacementsV1(
+            settlement1: playerPlacements.settlement1,
+            road1: playerPlacements.road1,
+            settlement2: playerPlacements.settlement2,
+            road2: edge
+        )
+    } else {
+        throw CoreGameError.setupPlacementSlotUnavailable
+    }
+
+    let updatedPlacements = setupState.placements.merging([player: playerPlacements]) { _, new in new }
+    let advancedTurnIndex = setupState.turnIndex + 1
+
+    if advancedTurnIndex >= setupState.order.count {
+        guard let firstPlayer = roster.first else {
+            throw CoreGameError.setupTurnIndexOutOfRange
+        }
+        return RoadPlacementResult(
+            phase: .turn,
+            currentPlayer: firstPlayer,
+            setupState: nil
+        )
+    }
+
+    let advancedSetupState = SetupStateV1(
+        order: setupState.order,
+        turnIndex: advancedTurnIndex,
+        step: .placeSettlement,
+        placements: updatedPlacements,
+        lastPlacedSettlementNode: nil
+    )
+
+    return RoadPlacementResult(
+        phase: .setup,
+        currentPlayer: advancedSetupState.order[advancedSetupState.turnIndex],
+        setupState: advancedSetupState
+    )
+}
+
+private struct RoadPlacementResult {
+    let phase: PhaseV1
+    let currentPlayer: String
+    let setupState: SetupStateV1?
 }
 
 private func occupiedSettlementNodes(from placements: [String: PlayerSetupPlacementsV1]) -> Set<NodeID> {

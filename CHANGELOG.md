@@ -57,3 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 3.2 setup placement legality: settlement distance rule and setup-road adjacency to the just-placed settlement.
 - Stage 3.2 setup placement legality now validates node/edge bounds and enforces occupied node/edge rejection from setup placements.
 - Stage 3.2 added runtime-topology CoreGame tests for distance, adjacency, and occupancy legality during setup.
+- Stage 3.2.1 added `placeSetupPair` as an additive setup placement INTENT payload in `ULS_Transport`.
+- Stage 3.2.1 added atomic setup pair reducer handling in `ULS_CoreGame` by reusing settlement/road legality helpers in one transition.
+- Stage 3.2.1 added pair roundtrip transport test and CoreGame pair behavior tests (success path, bad adjacency, wrong-step rejection).
+- Stage 3.2.1 added a debug setup UI action in Messages extension: `Place Pair (node 0, edge 0)`.

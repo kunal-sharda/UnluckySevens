@@ -98,6 +98,12 @@ struct LobbyDriverView: View {
                         }
                         .buttonStyle(.bordered)
                         .disabled(!viewModel.canSendSetupRoadIntentDebug)
+
+                        Button("Place Pair (node 0, edge 0)") {
+                            viewModel.sendSetupPairIntentDebug(settlementNode: 0, roadEdge: 0)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.canSendSetupPairIntentDebug)
                     }
 
                     Button("Clear Pending Joins") {

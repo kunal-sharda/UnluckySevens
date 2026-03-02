@@ -135,6 +135,59 @@ final class SetupStateMachineV1Tests: XCTestCase {
         XCTAssertNoThrow(try apply(intent: .placeSetupRoad(edge: incident), to: state, actor: "A"))
     }
 
+    func testSetupPairRecordsBothPlacementsAndAdvancesTurn() throws {
+        var state = makeSetupPhaseState(roster: ["A", "B"])
+        let settlement = try firstLegalSettlementNode(occupiedNodes: [])
+        let road = try firstIncidentEdge(for: settlement, occupiedEdges: [])
+
+        state = try apply(
+            intent: .placeSetupPair(settlementNode: settlement, roadEdge: road),
+            to: state,
+            actor: "A"
+        )
+
+        XCTAssertEqual(state.phase, .setup)
+        XCTAssertEqual(state.currentPlayer, "B")
+        XCTAssertEqual(state.setupState?.turnIndex, 1)
+        XCTAssertEqual(state.setupState?.step, .placeSettlement)
+        XCTAssertNil(state.setupState?.lastPlacedSettlementNode)
+        XCTAssertEqual(state.setupState?.placements["A"]?.settlement1, settlement)
+        XCTAssertEqual(state.setupState?.placements["A"]?.road1, road)
+    }
+
+    func testSetupPairFailsWhenRoadNotIncidentToSettlement() throws {
+        let state = makeSetupPhaseState(roster: ["A", "B"])
+        let settlement = try firstLegalSettlementNode(occupiedNodes: [])
+        let nonIncident = try firstNonIncidentEdge(for: settlement, occupiedEdges: [])
+
+        XCTAssertThrowsError(
+            try apply(
+                intent: .placeSetupPair(settlementNode: settlement, roadEdge: nonIncident),
+                to: state,
+                actor: "A"
+            )
+        ) { error in
+            XCTAssertEqual(error as? CoreGameError, .roadNotAdjacentToLastSettlement)
+        }
+    }
+
+    func testSetupPairRejectedWhenStepExpectsRoad() throws {
+        var state = makeSetupPhaseState(roster: ["A", "B"])
+        let settlement = try firstLegalSettlementNode(occupiedNodes: [])
+        state = try apply(intent: .placeSetupSettlement(node: settlement), to: state, actor: "A")
+
+        let incident = try firstIncidentEdge(for: settlement, occupiedEdges: [])
+        XCTAssertThrowsError(
+            try apply(
+                intent: .placeSetupPair(settlementNode: settlement, roadEdge: incident),
+                to: state,
+                actor: "A"
+            )
+        ) { error in
+            XCTAssertEqual(error as? CoreGameError, .setupStepMismatch)
+        }
+    }
+
     func testNodeOccupiedThrows() {
         guard let edgeID = topology.edges.indices.first else {
             XCTFail("Expected topology with at least one edge.")

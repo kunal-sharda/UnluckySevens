@@ -72,6 +72,10 @@ final class LobbyDriverViewModel: ObservableObject {
         isSetupSelectedState && localActorIdentifier() != nil
     }
 
+    var canSendSetupPairIntentDebug: Bool {
+        isSetupSelectedState && localActorIdentifier() != nil
+    }
+
     var canStartGame: Bool {
         guard
             let state = selectedState,
@@ -344,6 +348,42 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
+    func sendSetupPairIntentDebug(settlementNode: Int = 0, roadEdge: Int = 0) {
+        guard let state = selectedState else {
+            setLastError("Select a setup STATE first.")
+            return
+        }
+
+        guard state.phase == .setup else {
+            setLastError("Setup pair intent is only available in setup phase.")
+            return
+        }
+
+        guard let actor = localActorIdentifier() else {
+            setLastError("Missing local participant identifier.")
+            return
+        }
+
+        let intent = SetupPlacementIntentV1(
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor,
+            settlementNode: settlementNode,
+            roadEdge: roadEdge
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT setupPair", sessionPolicy: .new)
+            selectionStatus = "Setup pair intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Setup pair failed: \(error.localizedDescription)")
+        }
+    }
+
     private func decodeSelectedMessage(_ message: MSMessage?) {
         selectedState = nil
         selectedJoinIntent = nil
@@ -446,12 +486,15 @@ final class LobbyDriverViewModel: ObservableObject {
         phase = "-"
         seed = "-"
         diceRngState = "-"
-        if let node = setupIntent.node {
-            setupPlacement = "node: \(node)"
-        } else if let edge = setupIntent.edge {
-            setupPlacement = "edge: \(edge)"
-        } else {
-            setupPlacement = "-"
+        switch setupIntent.kind {
+        case .placeSetupSettlement:
+            setupPlacement = "node: \(setupIntent.node.map(String.init) ?? "-")"
+        case .placeSetupRoad:
+            setupPlacement = "edge: \(setupIntent.edge.map(String.init) ?? "-")"
+        case .placeSetupPair:
+            let node = setupIntent.node.map(String.init) ?? "-"
+            let edge = setupIntent.edge.map(String.init) ?? "-"
+            setupPlacement = "node: \(node), edge: \(edge)"
         }
         resetBoardDebugFields()
         selectionStatus = "Decoded \(setupIntent.kind.rawValue) intent via \(source.label)"
