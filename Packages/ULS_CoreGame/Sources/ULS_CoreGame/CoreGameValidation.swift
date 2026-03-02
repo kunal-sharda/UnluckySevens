@@ -15,6 +15,12 @@ public enum CoreGameError: Error, Equatable {
     case setupStepMismatch
     case roadBeforeSettlement
     case setupPlacementSlotUnavailable
+    case invalidNode
+    case invalidEdge
+    case nodeOccupied
+    case edgeOccupied
+    case distanceRuleViolation
+    case roadNotAdjacentToLastSettlement
     case invalidStateHash
     case gameIdMismatch
 }

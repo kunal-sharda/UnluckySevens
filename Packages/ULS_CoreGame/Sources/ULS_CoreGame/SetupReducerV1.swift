@@ -9,6 +9,7 @@ public func apply(intent: SetupIntentV1, to state: CoreGameStateV1, actor: Strin
     guard state.phase == .setup, var setupState = state.setupState else {
         throw CoreGameError.setupStateMissing
     }
+    let topology = StandardBoardTopologyV1.standard()
 
     guard actor == state.currentPlayer else {
         throw CoreGameError.actorMismatch
@@ -23,11 +24,26 @@ public func apply(intent: SetupIntentV1, to state: CoreGameStateV1, actor: Strin
     }
 
     let player = state.currentPlayer
+    let occupiedNodes = occupiedSettlementNodes(from: setupState.placements)
+    let occupiedEdges = occupiedRoadEdges(from: setupState.placements)
 
     switch intent {
     case let .placeSetupSettlement(node):
         guard setupState.step == .placeSettlement else {
             throw CoreGameError.setupStepMismatch
+        }
+
+        guard node >= 0, node < topology.nodesCount else {
+            throw CoreGameError.invalidNode
+        }
+
+        guard !occupiedNodes.contains(node) else {
+            throw CoreGameError.nodeOccupied
+        }
+
+        let adjacentNodes = Set(topology.nodes(adjacentTo: node))
+        if !adjacentNodes.isDisjoint(with: occupiedNodes) {
+            throw CoreGameError.distanceRuleViolation
         }
 
         var playerPlacements = setupState.placements[player] ?? PlayerSetupPlacementsV1()
@@ -69,8 +85,21 @@ public func apply(intent: SetupIntentV1, to state: CoreGameStateV1, actor: Strin
             throw CoreGameError.setupStepMismatch
         }
 
-        guard setupState.lastPlacedSettlementNode != nil else {
+        guard edge >= 0, edge < topology.edges.count else {
+            throw CoreGameError.invalidEdge
+        }
+
+        guard !occupiedEdges.contains(edge) else {
+            throw CoreGameError.edgeOccupied
+        }
+
+        guard let lastSettlementNode = setupState.lastPlacedSettlementNode else {
             throw CoreGameError.roadBeforeSettlement
+        }
+
+        let selectedEdge = topology.edges[edge]
+        guard selectedEdge.a == lastSettlementNode || selectedEdge.b == lastSettlementNode else {
+            throw CoreGameError.roadNotAdjacentToLastSettlement
         }
 
         var playerPlacements = setupState.placements[player] ?? PlayerSetupPlacementsV1()
@@ -129,6 +158,32 @@ public func apply(intent: SetupIntentV1, to state: CoreGameStateV1, actor: Strin
             setupState: advancedSetup
         )
     }
+}
+
+private func occupiedSettlementNodes(from placements: [String: PlayerSetupPlacementsV1]) -> Set<NodeID> {
+    var nodes = Set<NodeID>()
+    for placement in placements.values {
+        if let settlement1 = placement.settlement1 {
+            nodes.insert(settlement1)
+        }
+        if let settlement2 = placement.settlement2 {
+            nodes.insert(settlement2)
+        }
+    }
+    return nodes
+}
+
+private func occupiedRoadEdges(from placements: [String: PlayerSetupPlacementsV1]) -> Set<EdgeID> {
+    var edges = Set<EdgeID>()
+    for placement in placements.values {
+        if let road1 = placement.road1 {
+            edges.insert(road1)
+        }
+        if let road2 = placement.road2 {
+            edges.insert(road2)
+        }
+    }
+    return edges
 }
 
 private func nextState(

@@ -54,3 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 3.1 added setup placement transport payload model (`SetupPlacementIntentV1`) for anchored setup INTENT bubbles.
 - Stage 3.1 updated lobby Start flow to initialize `setupState` and added setup debug intent buttons (`Place Settlement`, `Place Road`) in Messages UI.
 - Stage 3.1 added CoreGame and Transport test coverage for setup sequencing/validation and setup intent roundtrips.
+- Stage 3.2 setup placement legality: settlement distance rule and setup-road adjacency to the just-placed settlement.
+- Stage 3.2 setup placement legality now validates node/edge bounds and enforces occupied node/edge rejection from setup placements.
+- Stage 3.2 added runtime-topology CoreGame tests for distance, adjacency, and occupancy legality during setup.
