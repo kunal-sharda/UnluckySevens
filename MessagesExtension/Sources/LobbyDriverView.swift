@@ -47,6 +47,8 @@ struct LobbyDriverView: View {
                     field("robberReady", viewModel.robberMoveReadiness)
                     field("stealVictims", viewModel.eligibleStealVictims)
                     field("remainingPieces", viewModel.remainingPieces)
+                    field("activeTrade", viewModel.activeTradeOffer)
+                    field("tradeAccepts", viewModel.pendingTradeAccepts)
                     field("visibleHands", viewModel.visibleHands)
                     field("bankResources", viewModel.bankResources)
                     field("setupPlacement", viewModel.setupPlacement)
@@ -159,6 +161,18 @@ struct LobbyDriverView: View {
                         }
                         .buttonStyle(.bordered)
                         .disabled(!viewModel.canSendBuildCityIntentDebug)
+
+                        Button("Propose Trade") {
+                            viewModel.sendProposeTradeIntentDebug()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.canSendProposeTradeIntentDebug)
+
+                        Button("Accept Trade") {
+                            viewModel.sendAcceptTradeIntentDebug()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.canSendAcceptTradeIntentDebug)
 
                         Button("End Turn") {
                             viewModel.sendEndTurnIntentDebug()

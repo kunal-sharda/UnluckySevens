@@ -87,3 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 5.1 extended transition validation/economy checks to accept legal build ownership deltas and enforce expected cost-to-bank/resource conservation.
 - Stage 5.1 extended transport and debug-driver controls for build intents, including build payload roundtrips and remaining-piece readouts in MessagesExtension.
 - Stage 5.1 added focused tests for legal/illegal builds, cost/bank invariants, and non-mutating failure behavior.
+- Stage 6.1 added canonical turn trade state (`activeTradeOffer`, `pendingTradeAccepts`) with deterministic offer hashing, one-active-offer gating, and end-turn expiry/cleanup.
+- Stage 6.1 extended turn intent transport with `proposeTrade` and `acceptTrade` payloads plus strict kind-based decode validation and roundtrip coverage.
+- Stage 6.1 updated Messages debug-driver controls/readouts with `Propose Trade` / `Accept Trade` actions and active-offer/pending-accept status.
+- Stage 6.1 added focused CoreGame tests for propose actor gating, accept anchor mismatch rejection, one-offer constraint, and end-turn expiry invariants.

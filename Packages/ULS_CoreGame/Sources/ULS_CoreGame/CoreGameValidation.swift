@@ -48,6 +48,13 @@ public enum CoreGameError: Error, Equatable {
     case roadConnectionRequired
     case settlementConnectionRequired
     case cityRequiresOwnSettlement
+    case tradeOfferAlreadyActive
+    case tradeOfferMissing
+    case tradeOfferInvalid
+    case tradeOfferAnchorMismatch
+    case tradeAcceptPlayerInvalid
+    case tradeAcceptAlreadySubmitted
+    case tradeStateInvalid
 }
 
 public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor: String) throws {
@@ -126,6 +133,7 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
 
     try validateOwnershipTransition(from: from, to: to, actor: actor, isStartTransition: isStartTransition)
     try validateTurnStepTransition(from: from, to: to)
+    try validateTradeTransition(from: from, to: to)
 
     let expectedEconomy = expectedEconomyAfterTransition(
         from: from,
@@ -143,6 +151,108 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
     let expectedStateHash = to.rehashed().stateHash
     guard to.stateHash == expectedStateHash else {
         throw CoreGameError.invalidStateHash
+    }
+}
+
+private func validateTradeTransition(from: CoreGameStateV1, to: CoreGameStateV1) throws {
+    if to.phase != .turn {
+        guard to.activeTradeOffer == nil, to.pendingTradeAccepts.isEmpty else {
+            throw CoreGameError.tradeStateInvalid
+        }
+        return
+    }
+
+    guard from.phase == .turn else {
+        guard to.activeTradeOffer == nil, to.pendingTradeAccepts.isEmpty else {
+            throw CoreGameError.tradeStateInvalid
+        }
+        return
+    }
+
+    if from.currentPlayer != to.currentPlayer {
+        guard to.activeTradeOffer == nil, to.pendingTradeAccepts.isEmpty else {
+            throw CoreGameError.tradeStateInvalid
+        }
+        return
+    }
+
+    if from.activeTradeOffer == to.activeTradeOffer, from.pendingTradeAccepts == to.pendingTradeAccepts {
+        return
+    }
+
+    guard from.turnState?.step == .afterRoll, to.turnState?.step == .afterRoll else {
+        throw CoreGameError.tradeStateInvalid
+    }
+
+    if from.activeTradeOffer == nil {
+        guard let offer = to.activeTradeOffer else {
+            throw CoreGameError.tradeStateInvalid
+        }
+        guard to.pendingTradeAccepts.isEmpty else {
+            throw CoreGameError.tradeStateInvalid
+        }
+        guard offer.proposer == from.currentPlayer else {
+            throw CoreGameError.tradeStateInvalid
+        }
+        guard
+            isValidTradeHandForValidation(offer.give),
+            isValidTradeHandForValidation(offer.receive),
+            offer.give.totalCount > 0,
+            offer.receive.totalCount > 0
+        else {
+            throw CoreGameError.tradeStateInvalid
+        }
+        guard canAffordForValidation(hand: from.resourcesByPlayer[from.currentPlayer] ?? .zero, cost: offer.give) else {
+            throw CoreGameError.tradeStateInvalid
+        }
+        let expectedHash = deterministicTradeOfferHash(
+            gameId: from.gameId,
+            proposer: from.currentPlayer,
+            give: offer.give,
+            receive: offer.receive,
+            anchorRev: from.rev,
+            anchorHash: from.stateHash
+        )
+        guard offer.offerHash == expectedHash else {
+            throw CoreGameError.tradeStateInvalid
+        }
+        guard offer.createdRev == to.rev else {
+            throw CoreGameError.tradeStateInvalid
+        }
+        return
+    }
+
+    guard let fromOffer = from.activeTradeOffer else {
+        throw CoreGameError.tradeStateInvalid
+    }
+    guard to.activeTradeOffer == fromOffer else {
+        throw CoreGameError.tradeStateInvalid
+    }
+
+    for priorAccept in from.pendingTradeAccepts {
+        guard to.pendingTradeAccepts.contains(priorAccept) else {
+            throw CoreGameError.tradeStateInvalid
+        }
+    }
+
+    let priorPlayers = Set(from.pendingTradeAccepts.map(\.acceptingPlayer))
+    let newAccepts = to.pendingTradeAccepts.filter { !priorPlayers.contains($0.acceptingPlayer) }
+    guard newAccepts.count == 1, let addedAccept = newAccepts.first else {
+        throw CoreGameError.tradeStateInvalid
+    }
+    guard addedAccept.offerHash == fromOffer.offerHash else {
+        throw CoreGameError.tradeStateInvalid
+    }
+    guard addedAccept.acceptedAtRev == to.rev else {
+        throw CoreGameError.tradeStateInvalid
+    }
+    guard addedAccept.acceptingPlayer != from.currentPlayer, from.roster.contains(addedAccept.acceptingPlayer) else {
+        throw CoreGameError.tradeStateInvalid
+    }
+
+    let acceptPlayers = to.pendingTradeAccepts.map(\.acceptingPlayer)
+    guard Set(acceptPlayers).count == acceptPlayers.count else {
+        throw CoreGameError.tradeStateInvalid
     }
 }
 
@@ -956,4 +1066,20 @@ private func isSettlementConnectedForBuildValidation(nodeID: Int, player: String
         }
     }
     return false
+}
+
+private func isValidTradeHandForValidation(_ hand: ResourceHandV1) -> Bool {
+    hand.wood >= 0 &&
+        hand.brick >= 0 &&
+        hand.sheep >= 0 &&
+        hand.wheat >= 0 &&
+        hand.ore >= 0
+}
+
+private func canAffordForValidation(hand: ResourceHandV1, cost: ResourceHandV1) -> Bool {
+    hand.wood >= cost.wood &&
+        hand.brick >= cost.brick &&
+        hand.sheep >= cost.sheep &&
+        hand.wheat >= cost.wheat &&
+        hand.ore >= cost.ore
 }

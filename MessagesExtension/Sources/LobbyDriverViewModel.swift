@@ -23,6 +23,8 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var robberMoveReadiness: String = "-"
     @Published var eligibleStealVictims: String = "-"
     @Published var remainingPieces: String = "-"
+    @Published var activeTradeOffer: String = "-"
+    @Published var pendingTradeAccepts: String = "-"
     @Published var pendingJoiners: String = "[]"
     @Published var selectionStatus: String = "No message selected"
     @Published var lastError: String = "-"
@@ -167,6 +169,33 @@ final class LobbyDriverViewModel: ObservableObject {
             return false
         }
         return firstUpgradeableCityNode(for: actor, in: state) != nil
+    }
+
+    var canSendProposeTradeIntentDebug: Bool {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            state.turnState?.step == .afterRoll,
+            state.activeTradeOffer == nil,
+            let actor = localActorIdentifier(),
+            actor == state.currentPlayer
+        else {
+            return false
+        }
+        return defaultTradeProposal(for: actor, from: state) != nil
+    }
+
+    var canSendAcceptTradeIntentDebug: Bool {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            state.turnState?.step == .afterRoll,
+            state.activeTradeOffer != nil,
+            let actor = localActorIdentifier()
+        else {
+            return false
+        }
+        return actor != state.currentPlayer
     }
 
     var canSendEndTurnIntentDebug: Bool {
@@ -751,6 +780,86 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
+    func sendProposeTradeIntentDebug() {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+        guard state.phase == .turn, state.turnState?.step == .afterRoll else {
+            setLastError("Propose trade intent is only available in post-roll step.")
+            return
+        }
+        guard state.activeTradeOffer == nil else {
+            setLastError("An active trade offer already exists.")
+            return
+        }
+        guard let actor = localActorIdentifier(), actor == state.currentPlayer else {
+            setLastError("Only current player can propose a trade.")
+            return
+        }
+        guard let proposal = defaultTradeProposal(for: actor, from: state) else {
+            setLastError("No valid default trade proposal available.")
+            return
+        }
+
+        let intent = ULS_Transport.TurnIntentV1(
+            proposeTradeGive: proposal.give,
+            receive: proposal.receive,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT proposeTrade", sessionPolicy: .new)
+            selectionStatus = "Propose trade intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Propose trade intent failed: \(error.localizedDescription)")
+        }
+    }
+
+    func sendAcceptTradeIntentDebug() {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+        guard state.phase == .turn, state.turnState?.step == .afterRoll else {
+            setLastError("Accept trade intent is only available in post-roll step.")
+            return
+        }
+        guard let offer = state.activeTradeOffer else {
+            setLastError("No active trade offer to accept.")
+            return
+        }
+        guard let actor = localActorIdentifier(), actor != state.currentPlayer else {
+            setLastError("Only non-current players can send accept trade intent.")
+            return
+        }
+
+        let intent = ULS_Transport.TurnIntentV1(
+            acceptTradePlayer: actor,
+            offerHash: offer.offerHash,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT acceptTrade", sessionPolicy: .new)
+            selectionStatus = "Accept trade intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Accept trade intent failed: \(error.localizedDescription)")
+        }
+    }
+
     func sendEndTurnIntentDebug() {
         guard let state = selectedState else {
             setLastError("Select a turn STATE first.")
@@ -878,6 +987,8 @@ final class LobbyDriverViewModel: ObservableObject {
         robberMoveReadiness = robberReadinessSummary(for: state.turnState)
         eligibleStealVictims = stealVictimsSummary(for: state.turnState)
         remainingPieces = remainingPiecesSummary(for: state)
+        activeTradeOffer = activeTradeOfferSummary(for: state)
+        pendingTradeAccepts = pendingTradeAcceptsSummary(for: state)
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = visibleHandsSummary(for: state)
@@ -905,6 +1016,8 @@ final class LobbyDriverViewModel: ObservableObject {
         robberMoveReadiness = "-"
         eligibleStealVictims = "-"
         remainingPieces = "-"
+        activeTradeOffer = "-"
+        pendingTradeAccepts = "-"
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = "-"
@@ -932,6 +1045,8 @@ final class LobbyDriverViewModel: ObservableObject {
         robberMoveReadiness = "-"
         eligibleStealVictims = "-"
         remainingPieces = "-"
+        activeTradeOffer = "-"
+        pendingTradeAccepts = "-"
         turnIntent = "-"
         visibleHands = "-"
         bankResources = "-"
@@ -968,6 +1083,8 @@ final class LobbyDriverViewModel: ObservableObject {
         robberMoveReadiness = "-"
         eligibleStealVictims = "-"
         remainingPieces = "-"
+        activeTradeOffer = "-"
+        pendingTradeAccepts = "-"
         setupPlacement = "-"
         switch decodedTurnIntent.kind {
         case .rollDice, .endTurn:
@@ -991,6 +1108,14 @@ final class LobbyDriverViewModel: ObservableObject {
         case .buildCity:
             let node = decodedTurnIntent.buildNodeID.map(String.init) ?? "-"
             turnIntent = "kind: buildCity node: \(node)"
+        case .proposeTrade:
+            let give = decodedTurnIntent.tradeGive.map(resourceHandDescription) ?? "-"
+            let receive = decodedTurnIntent.tradeReceive.map(resourceHandDescription) ?? "-"
+            turnIntent = "kind: proposeTrade give: \(give) receive: \(receive)"
+        case .acceptTrade:
+            let player = decodedTurnIntent.tradeAcceptPlayer ?? "-"
+            let offer = decodedTurnIntent.tradeOfferHash ?? "-"
+            turnIntent = "kind: acceptTrade player: \(player) offer: \(offer)"
         }
         visibleHands = "-"
         bankResources = "-"
@@ -1037,6 +1162,8 @@ final class LobbyDriverViewModel: ObservableObject {
         robberMoveReadiness = "-"
         eligibleStealVictims = "-"
         remainingPieces = "-"
+        activeTradeOffer = "-"
+        pendingTradeAccepts = "-"
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = "-"
@@ -1137,6 +1264,24 @@ final class LobbyDriverViewModel: ObservableObject {
             let citiesUsed = state.citiesByNode.values.filter { $0 == player }.count
             return "\(player):R\(max(0, 15 - roadsUsed))/S\(max(0, 5 - settlementsUsed))/C\(max(0, 4 - citiesUsed))"
         }.joined(separator: " | ")
+    }
+
+    private func activeTradeOfferSummary(for state: CoreGameStateV1) -> String {
+        guard let offer = state.activeTradeOffer else {
+            return "none"
+        }
+        let shortHash = String(offer.offerHash.prefix(8))
+        return "\(offer.proposer) \(resourceHandDescription(offer.give)) -> \(resourceHandDescription(offer.receive)) [\(shortHash)]"
+    }
+
+    private func pendingTradeAcceptsSummary(for state: CoreGameStateV1) -> String {
+        if state.pendingTradeAccepts.isEmpty {
+            return "none"
+        }
+        return state.pendingTradeAccepts
+            .sorted { $0.acceptingPlayer < $1.acceptingPlayer }
+            .map(\.acceptingPlayer)
+            .joined(separator: ", ")
     }
 
     private func firstLegalRoadEdge(for player: String, in state: CoreGameStateV1) -> Int? {
@@ -1247,6 +1392,47 @@ final class LobbyDriverViewModel: ObservableObject {
             wheat: wheat,
             ore: ore
         )
+    }
+
+    private func defaultTradeProposal(
+        for actor: String,
+        from state: CoreGameStateV1
+    ) -> (give: TransportResourceHandV1, receive: TransportResourceHandV1)? {
+        let hand = state.resourcesByPlayer[actor] ?? .zero
+        let ordered: [(ResourceV1, Int)] = [
+            (.wood, hand.wood),
+            (.brick, hand.brick),
+            (.sheep, hand.sheep),
+            (.wheat, hand.wheat),
+            (.ore, hand.ore),
+        ]
+        guard let giveResource = ordered.first(where: { $0.1 > 0 })?.0 else {
+            return nil
+        }
+        guard let receiveResource = ordered.first(where: { $0.0 != giveResource })?.0 else {
+            return nil
+        }
+        return (
+            give: transportHand(for: giveResource, count: 1),
+            receive: transportHand(for: receiveResource, count: 1)
+        )
+    }
+
+    private func transportHand(for resource: ResourceV1, count: Int) -> TransportResourceHandV1 {
+        switch resource {
+        case .wood:
+            return TransportResourceHandV1(wood: count)
+        case .brick:
+            return TransportResourceHandV1(brick: count)
+        case .sheep:
+            return TransportResourceHandV1(sheep: count)
+        case .wheat:
+            return TransportResourceHandV1(wheat: count)
+        case .ore:
+            return TransportResourceHandV1(ore: count)
+        case .desert:
+            return TransportResourceHandV1()
+        }
     }
 
     private func payloadValue(from message: MSMessage) -> DecodedPayloadSource? {

@@ -378,6 +378,70 @@ final class EnvelopeV1TransportTests: XCTestCase {
         XCTAssertThrowsError(try JSONDecoder().decode(TurnIntentV1.self, from: Data(invalidJSON.utf8)))
     }
 
+    func testTurnProposeTradeIntentPayloadRoundTrip() throws {
+        let intent = TurnIntentV1(
+            proposeTradeGive: TransportResourceHandV1(wood: 1),
+            receive: TransportResourceHandV1(brick: 1),
+            gameId: "game-123",
+            anchorRev: 12,
+            anchorHash: "hash-12",
+            actor: "player-1"
+        )
+        let payload = try jsonString(intent)
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+
+        let encoded = try encode(envelope)
+        let decoded = try decode(encoded)
+
+        guard case let .intent(decodedPayload) = decoded.body else {
+            XCTFail("Expected INTENT body.")
+            return
+        }
+
+        let decodedIntent = try JSONDecoder().decode(TurnIntentV1.self, from: Data(decodedPayload.utf8))
+        XCTAssertEqual(decodedIntent, intent)
+    }
+
+    func testTurnAcceptTradeIntentPayloadRoundTrip() throws {
+        let intent = TurnIntentV1(
+            acceptTradePlayer: "player-2",
+            offerHash: "offer-hash",
+            gameId: "game-123",
+            anchorRev: 12,
+            anchorHash: "hash-12",
+            actor: "player-2"
+        )
+        let payload = try jsonString(intent)
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+
+        let encoded = try encode(envelope)
+        let decoded = try decode(encoded)
+
+        guard case let .intent(decodedPayload) = decoded.body else {
+            XCTFail("Expected INTENT body.")
+            return
+        }
+
+        let decodedIntent = try JSONDecoder().decode(TurnIntentV1.self, from: Data(decodedPayload.utf8))
+        XCTAssertEqual(decodedIntent, intent)
+    }
+
+    func testTurnProposeTradeDecodeFailsWithoutTradeHands() {
+        let invalidJSON = """
+        {"kind":"proposeTrade","gameId":"game-123","anchorRev":12,"anchorHash":"hash-12","actor":"player-1"}
+        """
+
+        XCTAssertThrowsError(try JSONDecoder().decode(TurnIntentV1.self, from: Data(invalidJSON.utf8)))
+    }
+
+    func testTurnAcceptTradeDecodeFailsWithoutOfferHash() {
+        let invalidJSON = """
+        {"kind":"acceptTrade","gameId":"game-123","anchorRev":12,"anchorHash":"hash-12","actor":"player-2","tradeAcceptPlayer":"player-2"}
+        """
+
+        XCTAssertThrowsError(try JSONDecoder().decode(TurnIntentV1.self, from: Data(invalidJSON.utf8)))
+    }
+
     func testSetupIntentDecodeFailsWhenKindAndPayloadDoNotMatch() throws {
         let invalidIntentJSON = """
         {"kind":"placeSetupSettlement","gameId":"game-123","anchorRev":1,"anchorHash":"hash-1","actor":"player-1"}

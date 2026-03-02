@@ -25,6 +25,8 @@ public struct TurnIntentV1: Codable, Equatable {
         case buildRoad
         case buildSettlement
         case buildCity
+        case proposeTrade
+        case acceptTrade
         case endTurn
     }
 
@@ -39,6 +41,10 @@ public struct TurnIntentV1: Codable, Equatable {
     public let stealVictimPlayer: String?
     public let buildEdgeID: Int?
     public let buildNodeID: Int?
+    public let tradeGive: TransportResourceHandV1?
+    public let tradeReceive: TransportResourceHandV1?
+    public let tradeAcceptPlayer: String?
+    public let tradeOfferHash: String?
 
     public init(
         kind: Kind,
@@ -58,6 +64,10 @@ public struct TurnIntentV1: Codable, Equatable {
         stealVictimPlayer = nil
         buildEdgeID = nil
         buildNodeID = nil
+        tradeGive = nil
+        tradeReceive = nil
+        tradeAcceptPlayer = nil
+        tradeOfferHash = nil
     }
 
     public init(
@@ -79,6 +89,10 @@ public struct TurnIntentV1: Codable, Equatable {
         stealVictimPlayer = nil
         buildEdgeID = nil
         buildNodeID = nil
+        tradeGive = nil
+        tradeReceive = nil
+        tradeAcceptPlayer = nil
+        tradeOfferHash = nil
     }
 
     public init(
@@ -99,6 +113,10 @@ public struct TurnIntentV1: Codable, Equatable {
         stealVictimPlayer = nil
         buildEdgeID = nil
         buildNodeID = nil
+        tradeGive = nil
+        tradeReceive = nil
+        tradeAcceptPlayer = nil
+        tradeOfferHash = nil
     }
 
     public init(
@@ -119,6 +137,10 @@ public struct TurnIntentV1: Codable, Equatable {
         self.stealVictimPlayer = stealVictimPlayer
         buildEdgeID = nil
         buildNodeID = nil
+        tradeGive = nil
+        tradeReceive = nil
+        tradeAcceptPlayer = nil
+        tradeOfferHash = nil
     }
 
     public init(
@@ -139,6 +161,10 @@ public struct TurnIntentV1: Codable, Equatable {
         stealVictimPlayer = nil
         self.buildEdgeID = buildEdgeID
         buildNodeID = nil
+        tradeGive = nil
+        tradeReceive = nil
+        tradeAcceptPlayer = nil
+        tradeOfferHash = nil
     }
 
     public init(
@@ -159,6 +185,10 @@ public struct TurnIntentV1: Codable, Equatable {
         stealVictimPlayer = nil
         buildEdgeID = nil
         self.buildNodeID = buildNodeID
+        tradeGive = nil
+        tradeReceive = nil
+        tradeAcceptPlayer = nil
+        tradeOfferHash = nil
     }
 
     public init(
@@ -179,6 +209,60 @@ public struct TurnIntentV1: Codable, Equatable {
         stealVictimPlayer = nil
         buildEdgeID = nil
         self.buildNodeID = buildNodeID
+        tradeGive = nil
+        tradeReceive = nil
+        tradeAcceptPlayer = nil
+        tradeOfferHash = nil
+    }
+
+    public init(
+        proposeTradeGive tradeGive: TransportResourceHandV1,
+        receive tradeReceive: TransportResourceHandV1,
+        gameId: String,
+        anchorRev: Int,
+        anchorHash: String,
+        actor: String
+    ) {
+        kind = .proposeTrade
+        self.gameId = gameId
+        self.anchorRev = anchorRev
+        self.anchorHash = anchorHash
+        self.actor = actor
+        discarded = nil
+        discardPlayer = nil
+        robberTileID = nil
+        stealVictimPlayer = nil
+        buildEdgeID = nil
+        buildNodeID = nil
+        self.tradeGive = tradeGive
+        self.tradeReceive = tradeReceive
+        tradeAcceptPlayer = nil
+        tradeOfferHash = nil
+    }
+
+    public init(
+        acceptTradePlayer tradeAcceptPlayer: String,
+        offerHash tradeOfferHash: String,
+        gameId: String,
+        anchorRev: Int,
+        anchorHash: String,
+        actor: String
+    ) {
+        kind = .acceptTrade
+        self.gameId = gameId
+        self.anchorRev = anchorRev
+        self.anchorHash = anchorHash
+        self.actor = actor
+        discarded = nil
+        discardPlayer = nil
+        robberTileID = nil
+        stealVictimPlayer = nil
+        buildEdgeID = nil
+        buildNodeID = nil
+        tradeGive = nil
+        tradeReceive = nil
+        self.tradeAcceptPlayer = tradeAcceptPlayer
+        self.tradeOfferHash = tradeOfferHash
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -193,6 +277,10 @@ public struct TurnIntentV1: Codable, Equatable {
         case stealVictimPlayer
         case buildEdgeID
         case buildNodeID
+        case tradeGive
+        case tradeReceive
+        case tradeAcceptPlayer
+        case tradeOfferHash
     }
 
     public init(from decoder: Decoder) throws {
@@ -208,18 +296,22 @@ public struct TurnIntentV1: Codable, Equatable {
         stealVictimPlayer = try container.decodeIfPresent(String.self, forKey: .stealVictimPlayer)
         buildEdgeID = try container.decodeIfPresent(Int.self, forKey: .buildEdgeID)
         buildNodeID = try container.decodeIfPresent(Int.self, forKey: .buildNodeID)
+        tradeGive = try container.decodeIfPresent(TransportResourceHandV1.self, forKey: .tradeGive)
+        tradeReceive = try container.decodeIfPresent(TransportResourceHandV1.self, forKey: .tradeReceive)
+        tradeAcceptPlayer = try container.decodeIfPresent(String.self, forKey: .tradeAcceptPlayer)
+        tradeOfferHash = try container.decodeIfPresent(String.self, forKey: .tradeOfferHash)
 
         switch kind {
         case .rollDice, .endTurn:
-            guard discarded == nil, discardPlayer == nil, robberTileID == nil, stealVictimPlayer == nil, buildEdgeID == nil, buildNodeID == nil else {
+            guard allOptionalPayloadsEmpty else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .kind,
                     in: container,
-                    debugDescription: "\(kind.rawValue) must not include stage-4.3 payload fields."
+                    debugDescription: "\(kind.rawValue) must not include additional payload fields."
                 )
             }
         case .submitDiscard:
-            guard discarded != nil, discardPlayer != nil, robberTileID == nil, stealVictimPlayer == nil, buildEdgeID == nil, buildNodeID == nil else {
+            guard discarded != nil, discardPlayer != nil, otherPayloadsForDiscardEmpty else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .kind,
                     in: container,
@@ -227,7 +319,7 @@ public struct TurnIntentV1: Codable, Equatable {
                 )
             }
         case .moveRobber:
-            guard robberTileID != nil, discarded == nil, discardPlayer == nil, stealVictimPlayer == nil, buildEdgeID == nil, buildNodeID == nil else {
+            guard robberTileID != nil, otherPayloadsForMoveRobberEmpty else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .kind,
                     in: container,
@@ -235,7 +327,7 @@ public struct TurnIntentV1: Codable, Equatable {
                 )
             }
         case .selectStealVictim:
-            guard stealVictimPlayer != nil, discarded == nil, discardPlayer == nil, robberTileID == nil, buildEdgeID == nil, buildNodeID == nil else {
+            guard stealVictimPlayer != nil, otherPayloadsForStealVictimEmpty else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .kind,
                     in: container,
@@ -243,7 +335,7 @@ public struct TurnIntentV1: Codable, Equatable {
                 )
             }
         case .buildRoad:
-            guard buildEdgeID != nil, buildNodeID == nil, discarded == nil, discardPlayer == nil, robberTileID == nil, stealVictimPlayer == nil else {
+            guard buildEdgeID != nil, otherPayloadsForBuildRoadEmpty else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .kind,
                     in: container,
@@ -251,7 +343,7 @@ public struct TurnIntentV1: Codable, Equatable {
                 )
             }
         case .buildSettlement:
-            guard buildNodeID != nil, buildEdgeID == nil, discarded == nil, discardPlayer == nil, robberTileID == nil, stealVictimPlayer == nil else {
+            guard buildNodeID != nil, otherPayloadsForBuildNodeEmpty else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .kind,
                     in: container,
@@ -259,13 +351,123 @@ public struct TurnIntentV1: Codable, Equatable {
                 )
             }
         case .buildCity:
-            guard buildNodeID != nil, buildEdgeID == nil, discarded == nil, discardPlayer == nil, robberTileID == nil, stealVictimPlayer == nil else {
+            guard buildNodeID != nil, otherPayloadsForBuildNodeEmpty else {
                 throw DecodingError.dataCorruptedError(
                     forKey: .kind,
                     in: container,
                     debugDescription: "buildCity must include buildNodeID."
                 )
             }
+        case .proposeTrade:
+            guard tradeGive != nil, tradeReceive != nil, otherPayloadsForProposeTradeEmpty else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .kind,
+                    in: container,
+                    debugDescription: "proposeTrade must include tradeGive and tradeReceive."
+                )
+            }
+        case .acceptTrade:
+            guard tradeAcceptPlayer != nil, tradeOfferHash != nil, otherPayloadsForAcceptTradeEmpty else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .kind,
+                    in: container,
+                    debugDescription: "acceptTrade must include tradeAcceptPlayer and tradeOfferHash."
+                )
+            }
         }
+    }
+
+    private var allOptionalPayloadsEmpty: Bool {
+        discarded == nil &&
+            discardPlayer == nil &&
+            robberTileID == nil &&
+            stealVictimPlayer == nil &&
+            buildEdgeID == nil &&
+            buildNodeID == nil &&
+            tradeGive == nil &&
+            tradeReceive == nil &&
+            tradeAcceptPlayer == nil &&
+            tradeOfferHash == nil
+    }
+
+    private var otherPayloadsForDiscardEmpty: Bool {
+        robberTileID == nil &&
+            stealVictimPlayer == nil &&
+            buildEdgeID == nil &&
+            buildNodeID == nil &&
+            tradeGive == nil &&
+            tradeReceive == nil &&
+            tradeAcceptPlayer == nil &&
+            tradeOfferHash == nil
+    }
+
+    private var otherPayloadsForMoveRobberEmpty: Bool {
+        discarded == nil &&
+            discardPlayer == nil &&
+            stealVictimPlayer == nil &&
+            buildEdgeID == nil &&
+            buildNodeID == nil &&
+            tradeGive == nil &&
+            tradeReceive == nil &&
+            tradeAcceptPlayer == nil &&
+            tradeOfferHash == nil
+    }
+
+    private var otherPayloadsForStealVictimEmpty: Bool {
+        discarded == nil &&
+            discardPlayer == nil &&
+            robberTileID == nil &&
+            buildEdgeID == nil &&
+            buildNodeID == nil &&
+            tradeGive == nil &&
+            tradeReceive == nil &&
+            tradeAcceptPlayer == nil &&
+            tradeOfferHash == nil
+    }
+
+    private var otherPayloadsForBuildRoadEmpty: Bool {
+        discarded == nil &&
+            discardPlayer == nil &&
+            robberTileID == nil &&
+            stealVictimPlayer == nil &&
+            buildNodeID == nil &&
+            tradeGive == nil &&
+            tradeReceive == nil &&
+            tradeAcceptPlayer == nil &&
+            tradeOfferHash == nil
+    }
+
+    private var otherPayloadsForBuildNodeEmpty: Bool {
+        discarded == nil &&
+            discardPlayer == nil &&
+            robberTileID == nil &&
+            stealVictimPlayer == nil &&
+            buildEdgeID == nil &&
+            tradeGive == nil &&
+            tradeReceive == nil &&
+            tradeAcceptPlayer == nil &&
+            tradeOfferHash == nil
+    }
+
+    private var otherPayloadsForProposeTradeEmpty: Bool {
+        discarded == nil &&
+            discardPlayer == nil &&
+            robberTileID == nil &&
+            stealVictimPlayer == nil &&
+            buildEdgeID == nil &&
+            buildNodeID == nil &&
+            tradeAcceptPlayer == nil &&
+            tradeOfferHash == nil
+    }
+
+    private var otherPayloadsForAcceptTradeEmpty: Bool {
+        discarded == nil &&
+            discardPlayer == nil &&
+            robberTileID == nil &&
+            stealVictimPlayer == nil &&
+            buildEdgeID == nil &&
+            buildNodeID == nil &&
+            tradeGive == nil &&
+            tradeReceive == nil
     }
 }

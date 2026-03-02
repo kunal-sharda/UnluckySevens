@@ -21,6 +21,8 @@ public struct CoreGameStateV1: Codable, Equatable {
     public let robberRngState: UInt64?
     public let resourcesByPlayer: [String: ResourceHandV1]
     public let bankResources: ResourceHandV1
+    public let activeTradeOffer: TradeOfferV1?
+    public let pendingTradeAccepts: [TradeAcceptV1]
     public let settlementsByNode: [NodeID: String]
     public let citiesByNode: [NodeID: String]
     public let roadsByEdge: [EdgeID: String]
@@ -42,6 +44,8 @@ public struct CoreGameStateV1: Codable, Equatable {
         robberRngState: UInt64? = nil,
         resourcesByPlayer: [String: ResourceHandV1] = [:],
         bankResources: ResourceHandV1 = .standardBank,
+        activeTradeOffer: TradeOfferV1? = nil,
+        pendingTradeAccepts: [TradeAcceptV1] = [],
         settlementsByNode: [NodeID: String] = [:],
         citiesByNode: [NodeID: String] = [:],
         roadsByEdge: [EdgeID: String] = [:],
@@ -66,6 +70,8 @@ public struct CoreGameStateV1: Codable, Equatable {
         }
         self.resourcesByPlayer = normalizedResourcesByPlayer
         self.bankResources = bankResources
+        self.activeTradeOffer = activeTradeOffer
+        self.pendingTradeAccepts = pendingTradeAccepts
         self.settlementsByNode = settlementsByNode
         self.citiesByNode = citiesByNode
         self.roadsByEdge = roadsByEdge
@@ -89,6 +95,8 @@ public struct CoreGameStateV1: Codable, Equatable {
             robberRngState: robberRngState,
             resourcesByPlayer: resourcesByPlayer,
             bankResources: bankResources,
+            activeTradeOffer: activeTradeOffer,
+            pendingTradeAccepts: pendingTradeAccepts,
             settlementsByNode: settlementsByNode,
             citiesByNode: citiesByNode,
             roadsByEdge: roadsByEdge,
@@ -123,6 +131,8 @@ public struct CoreGameStateV1: Codable, Equatable {
             "robberRngState": robberRngState ?? NSNull(),
             "resourcesByPlayer": resourcesByPlayer.mapValues { $0.canonicalJSONValue() },
             "bankResources": bankResources.canonicalJSONValue(),
+            "activeTradeOffer": activeTradeOffer?.canonicalJSONValue() ?? NSNull(),
+            "pendingTradeAccepts": pendingTradeAccepts.map { $0.canonicalJSONValue() },
             "settlementsByNode": canonicalOwnershipMap(settlementsByNode),
             "citiesByNode": canonicalOwnershipMap(citiesByNode),
             "roadsByEdge": canonicalOwnershipMap(roadsByEdge),
