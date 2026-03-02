@@ -18,6 +18,9 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var diceRngState: String = "-"
     @Published var turnStep: String = "-"
     @Published var lastRoll: String = "-"
+    @Published var pendingDiscardRequirements: String = "-"
+    @Published var submittedDiscardsStatus: String = "-"
+    @Published var robberMoveReadiness: String = "-"
     @Published var pendingJoiners: String = "[]"
     @Published var selectionStatus: String = "No message selected"
     @Published var lastError: String = "-"
@@ -91,6 +94,27 @@ final class LobbyDriverViewModel: ObservableObject {
             return false
         }
         return state.turnState?.step == .needsRoll && localActorIdentifier() != nil
+    }
+
+    var canSendSubmitDiscardIntentDebug: Bool {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            state.turnState?.step == .pendingDiscards,
+            let actor = localActorIdentifier(),
+            let required = state.turnState?.discardRequirementsByPlayer[actor],
+            required > 0
+        else {
+            return false
+        }
+        return defaultDiscardForLocalActor(from: state) != nil
+    }
+
+    var canSendMoveRobberIntentDebug: Bool {
+        guard let state = selectedState, state.phase == .turn else {
+            return false
+        }
+        return state.turnState?.step == .needsRobberMove && state.board != nil && localActorIdentifier() != nil
     }
 
     var canSendEndTurnIntentDebug: Bool {
@@ -445,6 +469,88 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
+    func sendSubmitDiscardIntentDebug() {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+
+        guard state.phase == .turn, state.turnState?.step == .pendingDiscards else {
+            setLastError("Discard intent is only available when pending discards are active.")
+            return
+        }
+
+        guard let actor = localActorIdentifier() else {
+            setLastError("Missing local participant identifier.")
+            return
+        }
+
+        guard let discarded = defaultDiscardForLocalActor(from: state) else {
+            setLastError("No valid discard payload for local actor.")
+            return
+        }
+
+        let intent = ULS_Transport.TurnIntentV1(
+            submitDiscardFor: actor,
+            discarded: discarded,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT submitDiscard", sessionPolicy: .new)
+            selectionStatus = "Discard intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Discard intent failed: \(error.localizedDescription)")
+        }
+    }
+
+    func sendMoveRobberIntentDebug() {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+
+        guard state.phase == .turn, state.turnState?.step == .needsRobberMove else {
+            setLastError("Move robber intent is only available when robber move is pending.")
+            return
+        }
+
+        guard let actor = localActorIdentifier() else {
+            setLastError("Missing local participant identifier.")
+            return
+        }
+
+        guard let board = state.board, !board.resourcesByTile.isEmpty else {
+            setLastError("Selected state has no valid board.")
+            return
+        }
+
+        let targetTile = (board.robberTile + 1) % board.resourcesByTile.count
+        let intent = ULS_Transport.TurnIntentV1(
+            moveRobberTileID: targetTile,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT moveRobber", sessionPolicy: .new)
+            selectionStatus = "Move robber intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Move robber intent failed: \(error.localizedDescription)")
+        }
+    }
+
     func sendEndTurnIntentDebug() {
         guard let state = selectedState else {
             setLastError("Select a turn STATE first.")
@@ -567,6 +673,9 @@ final class LobbyDriverViewModel: ObservableObject {
         } else {
             lastRoll = "nil"
         }
+        pendingDiscardRequirements = discardRequirementsSummary(for: state.turnState)
+        submittedDiscardsStatus = discardSubmissionSummary(for: state.turnState)
+        robberMoveReadiness = robberReadinessSummary(for: state.turnState)
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = visibleHandsSummary(for: state)
@@ -589,6 +698,9 @@ final class LobbyDriverViewModel: ObservableObject {
         diceRngState = "-"
         turnStep = "-"
         lastRoll = "-"
+        pendingDiscardRequirements = "-"
+        submittedDiscardsStatus = "-"
+        robberMoveReadiness = "-"
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = "-"
@@ -611,6 +723,9 @@ final class LobbyDriverViewModel: ObservableObject {
         diceRngState = "-"
         turnStep = "-"
         lastRoll = "-"
+        pendingDiscardRequirements = "-"
+        submittedDiscardsStatus = "-"
+        robberMoveReadiness = "-"
         turnIntent = "-"
         visibleHands = "-"
         bankResources = "-"
@@ -642,8 +757,21 @@ final class LobbyDriverViewModel: ObservableObject {
         diceRngState = "-"
         turnStep = "-"
         lastRoll = "-"
+        pendingDiscardRequirements = "-"
+        submittedDiscardsStatus = "-"
+        robberMoveReadiness = "-"
         setupPlacement = "-"
-        turnIntent = "kind: \(decodedTurnIntent.kind.rawValue)"
+        switch decodedTurnIntent.kind {
+        case .rollDice, .endTurn:
+            turnIntent = "kind: \(decodedTurnIntent.kind.rawValue)"
+        case .submitDiscard:
+            let player = decodedTurnIntent.discardPlayer ?? "-"
+            let hand = decodedTurnIntent.discarded.map(resourceHandDescription) ?? "-"
+            turnIntent = "kind: submitDiscard player: \(player) hand: \(hand)"
+        case .moveRobber:
+            let tile = decodedTurnIntent.robberTileID.map(String.init) ?? "-"
+            turnIntent = "kind: moveRobber tile: \(tile)"
+        }
         visibleHands = "-"
         bankResources = "-"
         resetBoardDebugFields()
@@ -684,6 +812,9 @@ final class LobbyDriverViewModel: ObservableObject {
         diceRngState = "-"
         turnStep = "-"
         lastRoll = "-"
+        pendingDiscardRequirements = "-"
+        submittedDiscardsStatus = "-"
+        robberMoveReadiness = "-"
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = "-"
@@ -722,6 +853,98 @@ final class LobbyDriverViewModel: ObservableObject {
 
     private func resourceHandDescription(_ hand: ResourceHandV1) -> String {
         "w:\(hand.wood), b:\(hand.brick), s:\(hand.sheep), wh:\(hand.wheat), o:\(hand.ore)"
+    }
+
+    private func resourceHandDescription(_ hand: TransportResourceHandV1) -> String {
+        "w:\(hand.wood), b:\(hand.brick), s:\(hand.sheep), wh:\(hand.wheat), o:\(hand.ore)"
+    }
+
+    private func discardRequirementsSummary(for turnState: TurnStateV1?) -> String {
+        guard let turnState else {
+            return "-"
+        }
+        if turnState.discardRequirementsByPlayer.isEmpty {
+            return "none"
+        }
+        return turnState.discardRequirementsByPlayer.keys.sorted().map { player in
+            "\(player):\(turnState.discardRequirementsByPlayer[player] ?? 0)"
+        }.joined(separator: ", ")
+    }
+
+    private func discardSubmissionSummary(for turnState: TurnStateV1?) -> String {
+        guard let turnState else {
+            return "-"
+        }
+        let requiredCount = turnState.discardRequirementsByPlayer.count
+        let submittedCount = turnState.submittedDiscardsByPlayer.count
+        if requiredCount == 0 {
+            return "0/0"
+        }
+        let submittedPlayers = turnState.submittedDiscardsByPlayer.keys.sorted().joined(separator: ",")
+        return "\(submittedCount)/\(requiredCount) [\(submittedPlayers)]"
+    }
+
+    private func robberReadinessSummary(for turnState: TurnStateV1?) -> String {
+        guard let turnState else {
+            return "-"
+        }
+        switch turnState.step {
+        case .needsRobberMove:
+            return "ready"
+        case .pendingDiscards:
+            return "waiting"
+        default:
+            return "n/a"
+        }
+    }
+
+    private func defaultDiscardForLocalActor(from state: CoreGameStateV1) -> TransportResourceHandV1? {
+        guard let actor = localActorIdentifier(), let turnState = state.turnState else {
+            return nil
+        }
+        guard let required = turnState.discardRequirementsByPlayer[actor], required > 0 else {
+            return nil
+        }
+
+        let hand = state.resourcesByPlayer[actor] ?? .zero
+        var remaining = required
+        var wood = 0
+        var brick = 0
+        var sheep = 0
+        var wheat = 0
+        var ore = 0
+
+        let woodTake = min(hand.wood, remaining)
+        wood += woodTake
+        remaining -= woodTake
+
+        let brickTake = min(hand.brick, remaining)
+        brick += brickTake
+        remaining -= brickTake
+
+        let sheepTake = min(hand.sheep, remaining)
+        sheep += sheepTake
+        remaining -= sheepTake
+
+        let wheatTake = min(hand.wheat, remaining)
+        wheat += wheatTake
+        remaining -= wheatTake
+
+        let oreTake = min(hand.ore, remaining)
+        ore += oreTake
+        remaining -= oreTake
+
+        guard remaining == 0 else {
+            return nil
+        }
+
+        return TransportResourceHandV1(
+            wood: wood,
+            brick: brick,
+            sheep: sheep,
+            wheat: wheat,
+            ore: ore
+        )
     }
 
     private func payloadValue(from message: MSMessage) -> DecodedPayloadSource? {

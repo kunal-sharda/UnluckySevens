@@ -1,8 +1,26 @@
 import Foundation
 
+public struct TransportResourceHandV1: Codable, Equatable {
+    public let wood: Int
+    public let brick: Int
+    public let sheep: Int
+    public let wheat: Int
+    public let ore: Int
+
+    public init(wood: Int = 0, brick: Int = 0, sheep: Int = 0, wheat: Int = 0, ore: Int = 0) {
+        self.wood = wood
+        self.brick = brick
+        self.sheep = sheep
+        self.wheat = wheat
+        self.ore = ore
+    }
+}
+
 public struct TurnIntentV1: Codable, Equatable {
     public enum Kind: String, Codable, Equatable {
         case rollDice
+        case submitDiscard
+        case moveRobber
         case endTurn
     }
 
@@ -11,6 +29,9 @@ public struct TurnIntentV1: Codable, Equatable {
     public let anchorRev: Int
     public let anchorHash: String
     public let actor: String
+    public let discarded: TransportResourceHandV1?
+    public let discardPlayer: String?
+    public let robberTileID: Int?
 
     public init(
         kind: Kind,
@@ -24,5 +45,93 @@ public struct TurnIntentV1: Codable, Equatable {
         self.anchorRev = anchorRev
         self.anchorHash = anchorHash
         self.actor = actor
+        discarded = nil
+        discardPlayer = nil
+        robberTileID = nil
+    }
+
+    public init(
+        submitDiscardFor discardPlayer: String,
+        discarded: TransportResourceHandV1,
+        gameId: String,
+        anchorRev: Int,
+        anchorHash: String,
+        actor: String
+    ) {
+        kind = .submitDiscard
+        self.gameId = gameId
+        self.anchorRev = anchorRev
+        self.anchorHash = anchorHash
+        self.actor = actor
+        self.discarded = discarded
+        self.discardPlayer = discardPlayer
+        robberTileID = nil
+    }
+
+    public init(
+        moveRobberTileID robberTileID: Int,
+        gameId: String,
+        anchorRev: Int,
+        anchorHash: String,
+        actor: String
+    ) {
+        kind = .moveRobber
+        self.gameId = gameId
+        self.anchorRev = anchorRev
+        self.anchorHash = anchorHash
+        self.actor = actor
+        discarded = nil
+        discardPlayer = nil
+        self.robberTileID = robberTileID
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case kind
+        case gameId
+        case anchorRev
+        case anchorHash
+        case actor
+        case discarded
+        case discardPlayer
+        case robberTileID
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        kind = try container.decode(Kind.self, forKey: .kind)
+        gameId = try container.decode(String.self, forKey: .gameId)
+        anchorRev = try container.decode(Int.self, forKey: .anchorRev)
+        anchorHash = try container.decode(String.self, forKey: .anchorHash)
+        actor = try container.decode(String.self, forKey: .actor)
+        discarded = try container.decodeIfPresent(TransportResourceHandV1.self, forKey: .discarded)
+        discardPlayer = try container.decodeIfPresent(String.self, forKey: .discardPlayer)
+        robberTileID = try container.decodeIfPresent(Int.self, forKey: .robberTileID)
+
+        switch kind {
+        case .rollDice, .endTurn:
+            guard discarded == nil, discardPlayer == nil, robberTileID == nil else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .kind,
+                    in: container,
+                    debugDescription: "\(kind.rawValue) must not include stage-4.3 payload fields."
+                )
+            }
+        case .submitDiscard:
+            guard discarded != nil, discardPlayer != nil, robberTileID == nil else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .kind,
+                    in: container,
+                    debugDescription: "submitDiscard must include discarded and discardPlayer."
+                )
+            }
+        case .moveRobber:
+            guard robberTileID != nil, discarded == nil, discardPlayer == nil else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .kind,
+                    in: container,
+                    debugDescription: "moveRobber must include robberTileID."
+                )
+            }
+        }
     }
 }

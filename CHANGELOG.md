@@ -75,3 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 4.2 introduced canonical state fields for bank and board occupancy (`bankResources`, `settlementsByNode`, `citiesByNode`, `roadsByEdge`) and updated setup->turn carryover plus transition validation to gate expected economy/ownership deltas.
 - Stage 4.2 expanded debug driver state readouts with secrecy-safe hand visibility (`local full hand`, `opponent hand size only`) and bank resource counts.
 - Stage 4.2 added focused unit coverage for payout path, robber block path, and bank depletion skip behavior.
+- Stage 4.3 added roll-7 subflow in turn reducer: deterministic discard requirements (`floor(hand/2)` for players with `>7`), staged discard submissions, and gated robber movement before returning to `afterRoll`.
+- Stage 4.3 extended turn intent transport with strict kind-based payloads for `submitDiscard` and `moveRobber`, plus roundtrip and invalid decode coverage.
+- Stage 4.3 updated Messages debug-driver turn controls/readouts with `Submit Discard` and `Move Robber` actions, pending discard requirement/progress visibility, and robber readiness state.
+- Stage 4.3 added focused CoreGame tests for roll-7 requirement calculation, discard player eligibility, discard completion gating, and robber move precondition enforcement.

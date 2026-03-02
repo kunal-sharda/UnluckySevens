@@ -42,6 +42,9 @@ struct LobbyDriverView: View {
                     field("diceRngState", viewModel.diceRngState)
                     field("turnStep", viewModel.turnStep)
                     field("lastRoll", viewModel.lastRoll)
+                    field("pendingDiscards", viewModel.pendingDiscardRequirements)
+                    field("discardStatus", viewModel.submittedDiscardsStatus)
+                    field("robberReady", viewModel.robberMoveReadiness)
                     field("visibleHands", viewModel.visibleHands)
                     field("bankResources", viewModel.bankResources)
                     field("setupPlacement", viewModel.setupPlacement)
@@ -117,6 +120,18 @@ struct LobbyDriverView: View {
                         }
                         .buttonStyle(.bordered)
                         .disabled(!viewModel.canSendRollDiceIntentDebug)
+
+                        Button("Submit Discard") {
+                            viewModel.sendSubmitDiscardIntentDebug()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.canSendSubmitDiscardIntentDebug)
+
+                        Button("Move Robber") {
+                            viewModel.sendMoveRobberIntentDebug()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.canSendMoveRobberIntentDebug)
 
                         Button("End Turn") {
                             viewModel.sendEndTurnIntentDebug()
