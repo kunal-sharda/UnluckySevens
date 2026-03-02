@@ -27,6 +27,7 @@ public struct TurnIntentV1: Codable, Equatable {
         case buildCity
         case proposeTrade
         case acceptTrade
+        case executeTrade
         case endTurn
     }
 
@@ -265,6 +266,31 @@ public struct TurnIntentV1: Codable, Equatable {
         self.tradeOfferHash = tradeOfferHash
     }
 
+    public init(
+        executeTradePlayer tradeAcceptPlayer: String,
+        offerHash tradeOfferHash: String,
+        gameId: String,
+        anchorRev: Int,
+        anchorHash: String,
+        actor: String
+    ) {
+        kind = .executeTrade
+        self.gameId = gameId
+        self.anchorRev = anchorRev
+        self.anchorHash = anchorHash
+        self.actor = actor
+        discarded = nil
+        discardPlayer = nil
+        robberTileID = nil
+        stealVictimPlayer = nil
+        buildEdgeID = nil
+        buildNodeID = nil
+        tradeGive = nil
+        tradeReceive = nil
+        self.tradeAcceptPlayer = tradeAcceptPlayer
+        self.tradeOfferHash = tradeOfferHash
+    }
+
     private enum CodingKeys: String, CodingKey {
         case kind
         case gameId
@@ -372,6 +398,14 @@ public struct TurnIntentV1: Codable, Equatable {
                     forKey: .kind,
                     in: container,
                     debugDescription: "acceptTrade must include tradeAcceptPlayer and tradeOfferHash."
+                )
+            }
+        case .executeTrade:
+            guard tradeAcceptPlayer != nil, tradeOfferHash != nil, otherPayloadsForAcceptTradeEmpty else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .kind,
+                    in: container,
+                    debugDescription: "executeTrade must include tradeAcceptPlayer and tradeOfferHash."
                 )
             }
         }

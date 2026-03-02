@@ -91,3 +91,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 6.1 extended turn intent transport with `proposeTrade` and `acceptTrade` payloads plus strict kind-based decode validation and roundtrip coverage.
 - Stage 6.1 updated Messages debug-driver controls/readouts with `Propose Trade` / `Accept Trade` actions and active-offer/pending-accept status.
 - Stage 6.1 added focused CoreGame tests for propose actor gating, accept anchor mismatch rejection, one-offer constraint, and end-turn expiry invariants.
+- Stage 6.2 added atomic trade execution in the turn reducer (`executeTrade`) with offer/accept anchor checks, current-player commit gating, and no-partial-mutation failure behavior.
+- Stage 6.2 extended turn intent transport/UI with `executeTrade` payload/button support and execution-target selection from pending accepts.
+- Stage 6.2 added focused CoreGame tests for successful invariant-preserving transfer, insufficient-resource rejection, and expired-offer rejection.

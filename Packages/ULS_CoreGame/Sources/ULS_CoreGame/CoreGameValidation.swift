@@ -54,6 +54,8 @@ public enum CoreGameError: Error, Equatable {
     case tradeOfferAnchorMismatch
     case tradeAcceptPlayerInvalid
     case tradeAcceptAlreadySubmitted
+    case tradeAcceptMissing
+    case tradeExecutionInsufficientResources
     case tradeStateInvalid
 }
 
@@ -198,7 +200,8 @@ private func validateTradeTransition(from: CoreGameStateV1, to: CoreGameStateV1)
             isValidTradeHandForValidation(offer.give),
             isValidTradeHandForValidation(offer.receive),
             offer.give.totalCount > 0,
-            offer.receive.totalCount > 0
+            offer.receive.totalCount > 0,
+            offer.give != offer.receive
         else {
             throw CoreGameError.tradeStateInvalid
         }
@@ -225,6 +228,19 @@ private func validateTradeTransition(from: CoreGameStateV1, to: CoreGameStateV1)
     guard let fromOffer = from.activeTradeOffer else {
         throw CoreGameError.tradeStateInvalid
     }
+    if to.activeTradeOffer == nil {
+        guard to.pendingTradeAccepts.isEmpty else {
+            throw CoreGameError.tradeStateInvalid
+        }
+        guard !from.pendingTradeAccepts.isEmpty else {
+            throw CoreGameError.tradeStateInvalid
+        }
+        guard to.resourcesByPlayer != from.resourcesByPlayer else {
+            throw CoreGameError.tradeStateInvalid
+        }
+        return
+    }
+
     guard to.activeTradeOffer == fromOffer else {
         throw CoreGameError.tradeStateInvalid
     }
@@ -707,6 +723,12 @@ private func expectedEconomyAfterTransition(
         if stealUpdate.resourcesByPlayer != original.resourcesByPlayer || stealUpdate.bankResources != original.bankResources {
             return stealUpdate
         }
+        let tradeExecutionUpdate = expectedEconomyAfterTradeExecutionIfAny(from: from, to: to)
+        if tradeExecutionUpdate.resourcesByPlayer != original.resourcesByPlayer ||
+            tradeExecutionUpdate.bankResources != original.bankResources
+        {
+            return tradeExecutionUpdate
+        }
         let buildUpdate = expectedEconomyAfterBuildIfAny(from: from, to: to)
         if buildUpdate.resourcesByPlayer != original.resourcesByPlayer || buildUpdate.bankResources != original.bankResources {
             return buildUpdate
@@ -872,6 +894,53 @@ private func expectedEconomyAfterBuildIfAny(from: CoreGameStateV1, to: CoreGameS
         ore: bank.ore + cost.ore
     )
     return EconomyUpdateV1(resourcesByPlayer: resourcesByPlayer, bankResources: bankResources)
+}
+
+private func expectedEconomyAfterTradeExecutionIfAny(from: CoreGameStateV1, to: CoreGameStateV1) -> EconomyUpdateV1 {
+    guard
+        from.phase == .turn,
+        to.phase == .turn,
+        from.currentPlayer == to.currentPlayer,
+        from.turnState == to.turnState,
+        from.turnState?.step == .afterRoll,
+        let offer = from.activeTradeOffer,
+        to.activeTradeOffer == nil,
+        to.pendingTradeAccepts.isEmpty
+    else {
+        return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
+    }
+
+    for accept in from.pendingTradeAccepts where accept.offerHash == offer.offerHash {
+        let proposer = from.currentPlayer
+        let acceptor = accept.acceptingPlayer
+        let proposerHand = from.resourcesByPlayer[proposer] ?? .zero
+        let acceptorHand = from.resourcesByPlayer[acceptor] ?? .zero
+        guard
+            canAffordForValidation(hand: proposerHand, cost: offer.give),
+            canAffordForValidation(hand: acceptorHand, cost: offer.receive)
+        else {
+            continue
+        }
+
+        var expectedResourcesByPlayer = from.resourcesByPlayer
+        expectedResourcesByPlayer[proposer] = addHandsForValidation(
+            subtractHandsForValidation(proposerHand, offer.give),
+            offer.receive
+        )
+        expectedResourcesByPlayer[acceptor] = addHandsForValidation(
+            subtractHandsForValidation(acceptorHand, offer.receive),
+            offer.give
+        )
+
+        if to.resourcesByPlayer == expectedResourcesByPlayer {
+            return EconomyUpdateV1(
+                resourcesByPlayer: expectedResourcesByPlayer,
+                bankResources: from.bankResources
+            )
+        }
+    }
+
+    return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
 }
 
 private func startingResourceSettlementNodeGrantedDuringTransition(
@@ -1082,4 +1151,24 @@ private func canAffordForValidation(hand: ResourceHandV1, cost: ResourceHandV1) 
         hand.sheep >= cost.sheep &&
         hand.wheat >= cost.wheat &&
         hand.ore >= cost.ore
+}
+
+private func addHandsForValidation(_ lhs: ResourceHandV1, _ rhs: ResourceHandV1) -> ResourceHandV1 {
+    ResourceHandV1(
+        wood: lhs.wood + rhs.wood,
+        brick: lhs.brick + rhs.brick,
+        sheep: lhs.sheep + rhs.sheep,
+        wheat: lhs.wheat + rhs.wheat,
+        ore: lhs.ore + rhs.ore
+    )
+}
+
+private func subtractHandsForValidation(_ lhs: ResourceHandV1, _ rhs: ResourceHandV1) -> ResourceHandV1 {
+    ResourceHandV1(
+        wood: lhs.wood - rhs.wood,
+        brick: lhs.brick - rhs.brick,
+        sheep: lhs.sheep - rhs.sheep,
+        wheat: lhs.wheat - rhs.wheat,
+        ore: lhs.ore - rhs.ore
+    )
 }

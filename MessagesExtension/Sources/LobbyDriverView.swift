@@ -174,6 +174,12 @@ struct LobbyDriverView: View {
                         .buttonStyle(.bordered)
                         .disabled(!viewModel.canSendAcceptTradeIntentDebug)
 
+                        Button("Execute Trade Accept") {
+                            viewModel.sendExecuteTradeIntentDebug()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.canSendExecuteTradeIntentDebug)
+
                         Button("End Turn") {
                             viewModel.sendEndTurnIntentDebug()
                         }

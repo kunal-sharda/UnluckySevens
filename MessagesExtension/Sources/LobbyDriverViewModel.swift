@@ -198,6 +198,20 @@ final class LobbyDriverViewModel: ObservableObject {
         return actor != state.currentPlayer
     }
 
+    var canSendExecuteTradeIntentDebug: Bool {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            state.turnState?.step == .afterRoll,
+            state.activeTradeOffer != nil,
+            !state.pendingTradeAccepts.isEmpty,
+            let actor = localActorIdentifier()
+        else {
+            return false
+        }
+        return actor == state.currentPlayer
+    }
+
     var canSendEndTurnIntentDebug: Bool {
         guard let state = selectedState, state.phase == .turn else {
             return false
@@ -860,6 +874,51 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
+    func sendExecuteTradeIntentDebug() {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+        guard state.phase == .turn, state.turnState?.step == .afterRoll else {
+            setLastError("Execute trade intent is only available in post-roll step.")
+            return
+        }
+        guard let offer = state.activeTradeOffer else {
+            setLastError("No active trade offer to execute.")
+            return
+        }
+        guard let actor = localActorIdentifier(), actor == state.currentPlayer else {
+            setLastError("Only current player can execute a trade accept.")
+            return
+        }
+        guard let acceptPlayer = state.pendingTradeAccepts
+            .sorted(by: { $0.acceptingPlayer < $1.acceptingPlayer })
+            .first?.acceptingPlayer
+        else {
+            setLastError("No pending trade accepts to execute.")
+            return
+        }
+
+        let intent = ULS_Transport.TurnIntentV1(
+            executeTradePlayer: acceptPlayer,
+            offerHash: offer.offerHash,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT executeTrade", sessionPolicy: .new)
+            selectionStatus = "Execute trade intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Execute trade intent failed: \(error.localizedDescription)")
+        }
+    }
+
     func sendEndTurnIntentDebug() {
         guard let state = selectedState else {
             setLastError("Select a turn STATE first.")
@@ -1116,6 +1175,10 @@ final class LobbyDriverViewModel: ObservableObject {
             let player = decodedTurnIntent.tradeAcceptPlayer ?? "-"
             let offer = decodedTurnIntent.tradeOfferHash ?? "-"
             turnIntent = "kind: acceptTrade player: \(player) offer: \(offer)"
+        case .executeTrade:
+            let player = decodedTurnIntent.tradeAcceptPlayer ?? "-"
+            let offer = decodedTurnIntent.tradeOfferHash ?? "-"
+            turnIntent = "kind: executeTrade player: \(player) offer: \(offer)"
         }
         visibleHands = "-"
         bankResources = "-"

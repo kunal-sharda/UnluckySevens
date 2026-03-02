@@ -12,6 +12,7 @@ public enum TurnIntentV1: Codable, Equatable {
     case buildCity(nodeID: Int)
     case proposeTrade(give: ResourceHandV1, receive: ResourceHandV1)
     case acceptTrade(acceptingPlayer: String, offerHash: String)
+    case executeTrade(acceptingPlayer: String, offerHash: String)
     case endTurn
 }
 
@@ -371,7 +372,13 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         guard state.activeTradeOffer == nil else {
             throw CoreGameError.tradeOfferAlreadyActive
         }
-        guard isValidTradeHand(give), isValidTradeHand(receive), give.totalCount > 0, receive.totalCount > 0 else {
+        guard
+            isValidTradeHand(give),
+            isValidTradeHand(receive),
+            give.totalCount > 0,
+            receive.totalCount > 0,
+            give != receive
+        else {
             throw CoreGameError.tradeOfferInvalid
         }
         guard canAfford(hand: state.resourcesByPlayer[state.currentPlayer] ?? .zero, cost: give) else {
@@ -438,6 +445,49 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             turnState: turnState,
             activeTradeOffer: .some(offer),
             pendingTradeAccepts: .some(accepts)
+        )
+
+    case let .executeTrade(acceptingPlayer, offerHash):
+        guard turnState.step == .afterRoll else {
+            throw CoreGameError.turnStepMismatch
+        }
+        guard let offer = state.activeTradeOffer else {
+            throw CoreGameError.tradeOfferMissing
+        }
+        guard offer.offerHash == offerHash else {
+            throw CoreGameError.tradeOfferAnchorMismatch
+        }
+        guard state.pendingTradeAccepts.contains(where: { $0.acceptingPlayer == acceptingPlayer && $0.offerHash == offerHash }) else {
+            throw CoreGameError.tradeAcceptMissing
+        }
+
+        let proposer = state.currentPlayer
+        let proposerHand = state.resourcesByPlayer[proposer] ?? .zero
+        let acceptorHand = state.resourcesByPlayer[acceptingPlayer] ?? .zero
+        guard canAfford(hand: proposerHand, cost: offer.give), canAfford(hand: acceptorHand, cost: offer.receive) else {
+            throw CoreGameError.tradeExecutionInsufficientResources
+        }
+
+        var updatedResourcesByPlayer = state.resourcesByPlayer
+        updatedResourcesByPlayer[proposer] = addHands(
+            subtractHands(proposerHand, offer.give),
+            offer.receive
+        )
+        updatedResourcesByPlayer[acceptingPlayer] = addHands(
+            subtractHands(acceptorHand, offer.receive),
+            offer.give
+        )
+
+        return nextTurnState(
+            from: state,
+            currentPlayer: proposer,
+            diceRngState: state.diceRngState,
+            robberRngState: state.robberRngState,
+            board: state.board,
+            turnState: turnState,
+            resourcesByPlayer: updatedResourcesByPlayer,
+            activeTradeOffer: .some(nil),
+            pendingTradeAccepts: .some([])
         )
 
     case .endTurn:
@@ -586,6 +636,26 @@ private func isValidTradeHand(_ hand: ResourceHandV1) -> Bool {
         hand.sheep >= 0 &&
         hand.wheat >= 0 &&
         hand.ore >= 0
+}
+
+private func addHands(_ lhs: ResourceHandV1, _ rhs: ResourceHandV1) -> ResourceHandV1 {
+    ResourceHandV1(
+        wood: lhs.wood + rhs.wood,
+        brick: lhs.brick + rhs.brick,
+        sheep: lhs.sheep + rhs.sheep,
+        wheat: lhs.wheat + rhs.wheat,
+        ore: lhs.ore + rhs.ore
+    )
+}
+
+private func subtractHands(_ lhs: ResourceHandV1, _ rhs: ResourceHandV1) -> ResourceHandV1 {
+    ResourceHandV1(
+        wood: lhs.wood - rhs.wood,
+        brick: lhs.brick - rhs.brick,
+        sheep: lhs.sheep - rhs.sheep,
+        wheat: lhs.wheat - rhs.wheat,
+        ore: lhs.ore - rhs.ore
+    )
 }
 
 private func applyBuildCost(player: String, cost: ResourceHandV1, state: CoreGameStateV1) -> EconomyUpdateV1 {
