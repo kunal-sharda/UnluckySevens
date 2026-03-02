@@ -28,6 +28,8 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var maritimeTradePreview: String = "-"
     @Published var largestArmyStatus: String = "-"
     @Published var longestRoadStatus: String = "-"
+    @Published var victoryPointsSummary: String = "-"
+    @Published var gameOverSummary: String = "-"
     @Published var pendingJoiners: String = "[]"
     @Published var selectionStatus: String = "No message selected"
     @Published var lastError: String = "-"
@@ -1393,6 +1395,8 @@ final class LobbyDriverViewModel: ObservableObject {
         maritimeTradePreview = maritimeTradeSummary(for: state)
         largestArmyStatus = largestArmySummary(for: state)
         longestRoadStatus = longestRoadSummary(for: state)
+        victoryPointsSummary = vpSummary(for: state)
+        gameOverSummary = gameOverStateSummary(for: state)
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = visibleHandsSummary(for: state)
@@ -1427,6 +1431,8 @@ final class LobbyDriverViewModel: ObservableObject {
         maritimeTradePreview = "-"
         largestArmyStatus = "-"
         longestRoadStatus = "-"
+        victoryPointsSummary = "-"
+        gameOverSummary = "-"
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = "-"
@@ -1461,6 +1467,8 @@ final class LobbyDriverViewModel: ObservableObject {
         maritimeTradePreview = "-"
         largestArmyStatus = "-"
         longestRoadStatus = "-"
+        victoryPointsSummary = "-"
+        gameOverSummary = "-"
         turnIntent = "-"
         visibleHands = "-"
         bankResources = "-"
@@ -1504,6 +1512,8 @@ final class LobbyDriverViewModel: ObservableObject {
         maritimeTradePreview = "-"
         largestArmyStatus = "-"
         longestRoadStatus = "-"
+        victoryPointsSummary = "-"
+        gameOverSummary = "-"
         setupPlacement = "-"
         switch decodedTurnIntent.kind {
         case .rollDice, .endTurn:
@@ -1621,6 +1631,8 @@ final class LobbyDriverViewModel: ObservableObject {
         maritimeTradePreview = "-"
         largestArmyStatus = "-"
         longestRoadStatus = "-"
+        victoryPointsSummary = "-"
+        gameOverSummary = "-"
         setupPlacement = "-"
         turnIntent = "-"
         visibleHands = "-"
@@ -1781,6 +1793,20 @@ final class LobbyDriverViewModel: ObservableObject {
     private func longestRoadSummary(for state: CoreGameStateV1) -> String {
         let owner = state.longestRoadOwner ?? "none"
         return "\(owner) (\(state.longestRoadLength))"
+    }
+
+    private func vpSummary(for state: CoreGameStateV1) -> String {
+        state.roster
+            .map { "\($0):\(victoryPoints(for: $0, in: state))" }
+            .joined(separator: " | ")
+    }
+
+    private func gameOverStateSummary(for state: CoreGameStateV1) -> String {
+        guard state.phase == .gameOver else {
+            return "no"
+        }
+        let winner = state.winnerPlayer ?? "none"
+        return "winner: \(winner) vp: \(state.winningVictoryPoints)"
     }
 
     private func canSendNamedDevCardIntentDebug(

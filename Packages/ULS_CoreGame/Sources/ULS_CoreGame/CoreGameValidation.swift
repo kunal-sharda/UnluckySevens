@@ -66,9 +66,15 @@ public enum CoreGameError: Error, Equatable {
     case devCardNotOwned
     case devCardPayloadInvalid
     case awardStateInvalid
+    case victoryStateInvalid
+    case gameAlreadyOver
 }
 
 public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor: String) throws {
+    if from.phase == .gameOver {
+        throw CoreGameError.gameAlreadyOver
+    }
+
     guard to.gameId == from.gameId else {
         throw CoreGameError.gameIdMismatch
     }
@@ -150,6 +156,7 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
     try validateTradeTransition(from: from, to: to)
     try validateDevCardTransition(from: from, to: to, isStartTransition: isStartTransition)
     try validateAwardTransition(from: from, to: to, isStartTransition: isStartTransition)
+    try validateVictoryTransition(from: from, to: to, isStartTransition: isStartTransition)
 
     let expectedEconomy = expectedEconomyAfterTransition(
         from: from,
@@ -192,7 +199,11 @@ private func validateAwardTransition(
         throw CoreGameError.awardStateInvalid
     }
 
-    if from.phase != .turn || to.phase != .turn {
+    let shouldRecomputeAwards =
+        from.phase == .turn &&
+        (to.phase == .turn || to.phase == .gameOver) &&
+        from.currentPlayer == to.currentPlayer
+    if !shouldRecomputeAwards {
         guard to.largestArmyOwner == from.largestArmyOwner else {
             throw CoreGameError.awardStateInvalid
         }
@@ -220,6 +231,44 @@ private func validateAwardTransition(
     }
     guard to.longestRoadLength == expected.longestRoadLength else {
         throw CoreGameError.awardStateInvalid
+    }
+}
+
+private func validateVictoryTransition(
+    from: CoreGameStateV1,
+    to: CoreGameStateV1,
+    isStartTransition: Bool
+) throws {
+    if isStartTransition {
+        guard to.winnerPlayer == nil, to.winningVictoryPoints == 0 else {
+            throw CoreGameError.victoryStateInvalid
+        }
+        return
+    }
+
+    if to.phase != .gameOver {
+        guard to.winnerPlayer == nil, to.winningVictoryPoints == 0 else {
+            throw CoreGameError.victoryStateInvalid
+        }
+        return
+    }
+
+    guard from.phase == .turn else {
+        throw CoreGameError.victoryStateInvalid
+    }
+    guard to.currentPlayer == from.currentPlayer else {
+        throw CoreGameError.victoryStateInvalid
+    }
+    guard let winner = to.winnerPlayer, winner == from.currentPlayer else {
+        throw CoreGameError.victoryStateInvalid
+    }
+
+    let computedPoints = victoryPoints(for: winner, in: to)
+    guard computedPoints >= 10 else {
+        throw CoreGameError.victoryStateInvalid
+    }
+    guard to.winningVictoryPoints == computedPoints else {
+        throw CoreGameError.victoryStateInvalid
     }
 }
 
@@ -356,24 +405,34 @@ private func validateDevCardTransition(
         from.devCardActionPlayedThisTurn == to.devCardActionPlayedThisTurn &&
         from.knightsPlayedByPlayer == to.knightsPlayedByPlayer
 
-    if from.phase != .turn || to.phase != .turn {
+    let turnLikeTransition = from.phase == .turn && (to.phase == .turn || to.phase == .gameOver)
+    if !turnLikeTransition {
         guard devStateUnchanged else {
             throw CoreGameError.devDeckInvalid
         }
         return
     }
 
-    if from.currentPlayer != to.currentPlayer {
+    if to.phase == .turn, from.currentPlayer != to.currentPlayer {
         try validateEndTurnDevCardCarryover(from: from, to: to)
         return
+    }
+    guard from.currentPlayer == to.currentPlayer else {
+        throw CoreGameError.devDeckInvalid
     }
 
     if devStateUnchanged {
         return
     }
 
-    guard from.turnState?.step == .afterRoll, to.turnState?.step == .afterRoll else {
-        throw CoreGameError.devDeckInvalid
+    if to.phase == .turn {
+        guard from.turnState?.step == .afterRoll, to.turnState?.step == .afterRoll else {
+            throw CoreGameError.devDeckInvalid
+        }
+    } else {
+        guard from.turnState?.step == .afterRoll, to.turnState == nil else {
+            throw CoreGameError.devDeckInvalid
+        }
     }
 
     if to.devDeck != from.devDeck {
@@ -513,7 +572,7 @@ private func validateOwnershipTransition(
         return
     }
 
-    if from.phase == .turn, to.phase == .turn, from.currentPlayer == to.currentPlayer {
+    if from.phase == .turn, (to.phase == .turn || to.phase == .gameOver), from.currentPlayer == to.currentPlayer {
         if try validateTurnBuildOwnershipTransitionIfAny(from: from, to: to, actor: actor) {
             return
         }
@@ -546,7 +605,18 @@ private func validateTurnBuildOwnershipTransitionIfAny(
     guard actor == from.currentPlayer else {
         throw CoreGameError.actorMismatch
     }
-    guard from.turnState == to.turnState, from.turnState?.step == .afterRoll else {
+    guard from.turnState?.step == .afterRoll else {
+        throw CoreGameError.turnStepMismatch
+    }
+    if to.phase == .turn {
+        guard from.turnState == to.turnState else {
+            throw CoreGameError.turnStepMismatch
+        }
+    } else if to.phase == .gameOver {
+        guard to.turnState == nil else {
+            throw CoreGameError.turnStepMismatch
+        }
+    } else {
         throw CoreGameError.turnStepMismatch
     }
 
@@ -932,7 +1002,11 @@ private func expectedEconomyAfterTransition(
         )
     }
 
-    if from.phase == .turn, to.phase == .turn, to.currentPlayer == from.currentPlayer {
+    if
+        from.phase == .turn,
+        (to.phase == .turn || to.phase == .gameOver),
+        to.currentPlayer == from.currentPlayer
+    {
         let original = EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
         let discardUpdate = expectedEconomyAfterDiscardSubmissionIfAny(from: from, to: to)
         if discardUpdate.resourcesByPlayer != original.resourcesByPlayer || discardUpdate.bankResources != original.bankResources {
@@ -968,6 +1042,22 @@ private func expectedEconomyAfterTransition(
     }
 
     return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
+}
+
+private func isAfterRollEconomyTransition(from: CoreGameStateV1, to: CoreGameStateV1) -> Bool {
+    guard
+        from.phase == .turn,
+        (to.phase == .turn || to.phase == .gameOver),
+        from.currentPlayer == to.currentPlayer,
+        from.turnState?.step == .afterRoll
+    else {
+        return false
+    }
+
+    if to.phase == .turn {
+        return from.turnState == to.turnState
+    }
+    return to.turnState == nil
 }
 
 private func expectedEconomyAfterDiscardSubmissionIfAny(from: CoreGameStateV1, to: CoreGameStateV1) -> EconomyUpdateV1 {
@@ -1068,11 +1158,7 @@ private func expectedEconomyAfterRobberStealIfAny(from: CoreGameStateV1, to: Cor
 
 private func expectedEconomyAfterBuildIfAny(from: CoreGameStateV1, to: CoreGameStateV1) -> EconomyUpdateV1 {
     guard
-        from.phase == .turn,
-        to.phase == .turn,
-        from.currentPlayer == to.currentPlayer,
-        from.turnState == to.turnState,
-        from.turnState?.step == .afterRoll,
+        isAfterRollEconomyTransition(from: from, to: to),
         from.devCardsByPlayer == to.devCardsByPlayer,
         from.newDevCardsByPlayer == to.newDevCardsByPlayer,
         from.revealedVictoryPointsByPlayer == to.revealedVictoryPointsByPlayer,
@@ -1134,11 +1220,7 @@ private func expectedEconomyAfterBuildIfAny(from: CoreGameStateV1, to: CoreGameS
 
 private func expectedEconomyAfterMaritimeTradeIfAny(from: CoreGameStateV1, to: CoreGameStateV1) -> EconomyUpdateV1 {
     guard
-        from.phase == .turn,
-        to.phase == .turn,
-        from.currentPlayer == to.currentPlayer,
-        from.turnState == to.turnState,
-        from.turnState?.step == .afterRoll,
+        isAfterRollEconomyTransition(from: from, to: to),
         from.board == to.board,
         from.activeTradeOffer == to.activeTradeOffer,
         from.pendingTradeAccepts == to.pendingTradeAccepts,
@@ -1197,11 +1279,7 @@ private func expectedEconomyAfterMaritimeTradeIfAny(from: CoreGameStateV1, to: C
 
 private func expectedEconomyAfterTradeExecutionIfAny(from: CoreGameStateV1, to: CoreGameStateV1) -> EconomyUpdateV1 {
     guard
-        from.phase == .turn,
-        to.phase == .turn,
-        from.currentPlayer == to.currentPlayer,
-        from.turnState == to.turnState,
-        from.turnState?.step == .afterRoll,
+        isAfterRollEconomyTransition(from: from, to: to),
         let offer = from.activeTradeOffer,
         to.activeTradeOffer == nil,
         to.pendingTradeAccepts.isEmpty
@@ -1244,11 +1322,7 @@ private func expectedEconomyAfterTradeExecutionIfAny(from: CoreGameStateV1, to: 
 
 private func expectedEconomyAfterDevCardIfAny(from: CoreGameStateV1, to: CoreGameStateV1) -> EconomyUpdateV1 {
     guard
-        from.phase == .turn,
-        to.phase == .turn,
-        from.currentPlayer == to.currentPlayer,
-        from.turnState == to.turnState,
-        from.turnState?.step == .afterRoll
+        isAfterRollEconomyTransition(from: from, to: to)
     else {
         return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
     }
@@ -1469,10 +1543,10 @@ private func isRobberMoveBoardTransition(from: CoreGameStateV1, to: CoreGameStat
 private func isKnightDevCardBoardTransition(from: CoreGameStateV1, to: CoreGameStateV1) -> Bool {
     guard
         from.phase == .turn,
-        to.phase == .turn,
+        to.phase == .turn || to.phase == .gameOver,
         from.currentPlayer == to.currentPlayer,
         from.turnState?.step == .afterRoll,
-        to.turnState?.step == .afterRoll
+        (to.phase == .turn && to.turnState?.step == .afterRoll) || (to.phase == .gameOver && to.turnState == nil)
     else {
         return false
     }
@@ -1679,6 +1753,12 @@ private func validationStateWithRoads(state: CoreGameStateV1, roadsByEdge: [Edge
         revealedVictoryPointsByPlayer: state.revealedVictoryPointsByPlayer,
         devCardActionPlayedThisTurn: state.devCardActionPlayedThisTurn,
         knightsPlayedByPlayer: state.knightsPlayedByPlayer,
+        largestArmyOwner: state.largestArmyOwner,
+        largestArmySize: state.largestArmySize,
+        longestRoadOwner: state.longestRoadOwner,
+        longestRoadLength: state.longestRoadLength,
+        winnerPlayer: state.winnerPlayer,
+        winningVictoryPoints: state.winningVictoryPoints,
         activeTradeOffer: state.activeTradeOffer,
         pendingTradeAccepts: state.pendingTradeAccepts,
         settlementsByNode: state.settlementsByNode,

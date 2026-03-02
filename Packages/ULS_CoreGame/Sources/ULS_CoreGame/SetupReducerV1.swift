@@ -322,6 +322,8 @@ private func nextState(
         largestArmySize: state.largestArmySize,
         longestRoadOwner: state.longestRoadOwner,
         longestRoadLength: state.longestRoadLength,
+        winnerPlayer: state.winnerPlayer,
+        winningVictoryPoints: state.winningVictoryPoints,
         settlementsByNode: settlementsByNode ?? state.settlementsByNode,
         citiesByNode: state.citiesByNode,
         roadsByEdge: roadsByEdge ?? state.roadsByEdge,

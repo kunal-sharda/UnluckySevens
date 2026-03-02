@@ -31,6 +31,8 @@ public struct CoreGameStateV1: Codable, Equatable {
     public let largestArmySize: Int
     public let longestRoadOwner: String?
     public let longestRoadLength: Int
+    public let winnerPlayer: String?
+    public let winningVictoryPoints: Int
     public let activeTradeOffer: TradeOfferV1?
     public let pendingTradeAccepts: [TradeAcceptV1]
     public let settlementsByNode: [NodeID: String]
@@ -64,6 +66,8 @@ public struct CoreGameStateV1: Codable, Equatable {
         largestArmySize: Int = 0,
         longestRoadOwner: String? = nil,
         longestRoadLength: Int = 0,
+        winnerPlayer: String? = nil,
+        winningVictoryPoints: Int = 0,
         activeTradeOffer: TradeOfferV1? = nil,
         pendingTradeAccepts: [TradeAcceptV1] = [],
         settlementsByNode: [NodeID: String] = [:],
@@ -100,6 +104,8 @@ public struct CoreGameStateV1: Codable, Equatable {
         self.largestArmySize = max(0, largestArmySize)
         self.longestRoadOwner = Self.normalizedAwardOwner(longestRoadOwner, roster: roster)
         self.longestRoadLength = max(0, longestRoadLength)
+        self.winnerPlayer = Self.normalizedAwardOwner(winnerPlayer, roster: roster)
+        self.winningVictoryPoints = max(0, winningVictoryPoints)
         self.activeTradeOffer = activeTradeOffer
         self.pendingTradeAccepts = pendingTradeAccepts
         self.settlementsByNode = settlementsByNode
@@ -135,6 +141,8 @@ public struct CoreGameStateV1: Codable, Equatable {
             largestArmySize: largestArmySize,
             longestRoadOwner: longestRoadOwner,
             longestRoadLength: longestRoadLength,
+            winnerPlayer: winnerPlayer,
+            winningVictoryPoints: winningVictoryPoints,
             activeTradeOffer: activeTradeOffer,
             pendingTradeAccepts: pendingTradeAccepts,
             settlementsByNode: settlementsByNode,
@@ -181,6 +189,8 @@ public struct CoreGameStateV1: Codable, Equatable {
             "largestArmySize": largestArmySize,
             "longestRoadOwner": longestRoadOwner ?? NSNull(),
             "longestRoadLength": longestRoadLength,
+            "winnerPlayer": winnerPlayer ?? NSNull(),
+            "winningVictoryPoints": winningVictoryPoints,
             "activeTradeOffer": activeTradeOffer?.canonicalJSONValue() ?? NSNull(),
             "pendingTradeAccepts": pendingTradeAccepts.map { $0.canonicalJSONValue() },
             "settlementsByNode": canonicalOwnershipMap(settlementsByNode),

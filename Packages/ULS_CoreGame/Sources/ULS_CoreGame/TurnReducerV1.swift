@@ -24,6 +24,10 @@ public enum TurnIntentV1: Codable, Equatable {
 }
 
 public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String) throws -> CoreGameStateV1 {
+    if state.phase == .gameOver {
+        throw CoreGameError.gameAlreadyOver
+    }
+
     guard state.phase == .turn, let turnState = state.turnState else {
         throw CoreGameError.turnStateMissing
     }
@@ -795,6 +799,8 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
                 largestArmySize: workingState.largestArmySize,
                 longestRoadOwner: workingState.longestRoadOwner,
                 longestRoadLength: workingState.longestRoadLength,
+                winnerPlayer: workingState.winnerPlayer,
+                winningVictoryPoints: workingState.winningVictoryPoints,
                 activeTradeOffer: workingState.activeTradeOffer,
                 pendingTradeAccepts: workingState.pendingTradeAccepts,
                 settlementsByNode: workingState.settlementsByNode,
@@ -937,6 +943,8 @@ private func nextTurnState(
         largestArmySize: state.largestArmySize,
         longestRoadOwner: state.longestRoadOwner,
         longestRoadLength: state.longestRoadLength,
+        winnerPlayer: state.winnerPlayer,
+        winningVictoryPoints: state.winningVictoryPoints,
         activeTradeOffer: activeTradeOffer ?? state.activeTradeOffer,
         pendingTradeAccepts: (pendingTradeAccepts ?? state.pendingTradeAccepts) ?? state.pendingTradeAccepts,
         settlementsByNode: settlementsByNode ?? state.settlementsByNode,
@@ -949,7 +957,13 @@ private func nextTurnState(
     )
 
     let awards = recomputeAwards(from: state, for: provisional)
-    return stateByApplyingAwards(provisional, awards: awards).rehashed()
+    let withAwards = stateByApplyingAwards(provisional, awards: awards)
+    if shouldTransitionToGameOver(from: state, to: withAwards) {
+        let winner = state.currentPlayer
+        let winningPoints = victoryPoints(for: winner, in: withAwards)
+        return stateByApplyingGameOver(withAwards, winner: winner, winningPoints: winningPoints).rehashed()
+    }
+    return withAwards.rehashed()
 }
 
 private func stateByApplyingAwards(_ state: CoreGameStateV1, awards: AwardStateV1) -> CoreGameStateV1 {
@@ -976,6 +990,8 @@ private func stateByApplyingAwards(_ state: CoreGameStateV1, awards: AwardStateV
         largestArmySize: awards.largestArmySize,
         longestRoadOwner: awards.longestRoadOwner,
         longestRoadLength: awards.longestRoadLength,
+        winnerPlayer: state.winnerPlayer,
+        winningVictoryPoints: state.winningVictoryPoints,
         activeTradeOffer: state.activeTradeOffer,
         pendingTradeAccepts: state.pendingTradeAccepts,
         settlementsByNode: state.settlementsByNode,
@@ -985,6 +1001,60 @@ private func stateByApplyingAwards(_ state: CoreGameStateV1, awards: AwardStateV
         board: state.board,
         setupState: state.setupState,
         turnState: state.turnState
+    )
+}
+
+private func shouldTransitionToGameOver(from previous: CoreGameStateV1, to candidate: CoreGameStateV1) -> Bool {
+    guard
+        previous.phase == .turn,
+        candidate.phase == .turn,
+        previous.currentPlayer == candidate.currentPlayer,
+        previous.turnState?.step == .afterRoll
+    else {
+        return false
+    }
+    return victoryPoints(for: previous.currentPlayer, in: candidate) >= 10
+}
+
+private func stateByApplyingGameOver(
+    _ state: CoreGameStateV1,
+    winner: String,
+    winningPoints: Int
+) -> CoreGameStateV1 {
+    CoreGameStateV1(
+        gameId: state.gameId,
+        rev: state.rev,
+        prevHash: state.prevHash,
+        stateHash: state.stateHash,
+        roster: state.roster,
+        currentPlayer: winner,
+        phase: .gameOver,
+        seed: state.seed,
+        diceRngState: state.diceRngState,
+        robberRngState: state.robberRngState,
+        resourcesByPlayer: state.resourcesByPlayer,
+        bankResources: state.bankResources,
+        devDeck: state.devDeck,
+        devCardsByPlayer: state.devCardsByPlayer,
+        newDevCardsByPlayer: state.newDevCardsByPlayer,
+        revealedVictoryPointsByPlayer: state.revealedVictoryPointsByPlayer,
+        devCardActionPlayedThisTurn: state.devCardActionPlayedThisTurn,
+        knightsPlayedByPlayer: state.knightsPlayedByPlayer,
+        largestArmyOwner: state.largestArmyOwner,
+        largestArmySize: state.largestArmySize,
+        longestRoadOwner: state.longestRoadOwner,
+        longestRoadLength: state.longestRoadLength,
+        winnerPlayer: winner,
+        winningVictoryPoints: max(10, winningPoints),
+        activeTradeOffer: nil,
+        pendingTradeAccepts: [],
+        settlementsByNode: state.settlementsByNode,
+        citiesByNode: state.citiesByNode,
+        roadsByEdge: state.roadsByEdge,
+        boardRules: state.boardRules,
+        board: state.board,
+        setupState: nil,
+        turnState: nil
     )
 }
 

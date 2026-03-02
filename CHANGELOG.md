@@ -112,3 +112,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 8.1 extended transition economy validation to recognize legal maritime bank/player transfers without broadening other turn-phase mutation allowances.
 - Stage 8.1 updated Messages debug-driver controls/readouts with a `Maritime Trade` action and an effective-ratio preview for the current player.
 - Stage 8.1 added focused tests for ratio selection, insufficient-resource/bank rejection, and no-mutation failure invariants.
+- Stage 8.2 added deterministic VP utilities (`victoryPoints`/`victoryPointsByPlayer`) and canonical game-over winner metadata (`winnerPlayer`, `winningVictoryPoints`) in core state hashing.
+- Stage 8.2 updated turn reducer win gating to transition to `phase = gameOver` only for the active player’s own post-roll action when VP reaches 10+, and to reject further gameplay intents after game over.
+- Stage 8.2 extended transition validation to enforce legal game-over transitions (winner correctness, VP threshold, actor-turn gating) while preserving award/ownership/economy checks for turn->gameOver moves.
+- Stage 8.2 updated Messages debug-driver readouts with per-player VP totals and game-over winner status, plus focused tests for win gating, post-game rejection, and non-current-player >=10 behavior.
