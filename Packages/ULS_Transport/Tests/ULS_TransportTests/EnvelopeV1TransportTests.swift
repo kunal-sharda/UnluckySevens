@@ -474,6 +474,38 @@ final class EnvelopeV1TransportTests: XCTestCase {
         XCTAssertThrowsError(try JSONDecoder().decode(TurnIntentV1.self, from: Data(invalidJSON.utf8)))
     }
 
+    func testTurnMaritimeTradeIntentPayloadRoundTrip() throws {
+        let intent = TurnIntentV1(
+            maritimeTradeGive: TransportResourceHandV1(wood: 3),
+            receive: TransportResourceHandV1(brick: 1),
+            gameId: "game-123",
+            anchorRev: 13,
+            anchorHash: "hash-13",
+            actor: "player-1"
+        )
+        let payload = try jsonString(intent)
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+
+        let encoded = try encode(envelope)
+        let decoded = try decode(encoded)
+
+        guard case let .intent(decodedPayload) = decoded.body else {
+            XCTFail("Expected INTENT body.")
+            return
+        }
+
+        let decodedIntent = try JSONDecoder().decode(TurnIntentV1.self, from: Data(decodedPayload.utf8))
+        XCTAssertEqual(decodedIntent, intent)
+    }
+
+    func testTurnMaritimeTradeDecodeFailsWithoutTradeHands() {
+        let invalidJSON = """
+        {"kind":"maritimeTrade","gameId":"game-123","anchorRev":13,"anchorHash":"hash-13","actor":"player-1"}
+        """
+
+        XCTAssertThrowsError(try JSONDecoder().decode(TurnIntentV1.self, from: Data(invalidJSON.utf8)))
+    }
+
     func testTurnBuyDevCardIntentPayloadRoundTrip() throws {
         let intent = TurnIntentV1(
             kind: .buyDevCard,

@@ -25,6 +25,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var remainingPieces: String = "-"
     @Published var activeTradeOffer: String = "-"
     @Published var pendingTradeAccepts: String = "-"
+    @Published var maritimeTradePreview: String = "-"
     @Published var largestArmyStatus: String = "-"
     @Published var longestRoadStatus: String = "-"
     @Published var pendingJoiners: String = "[]"
@@ -214,6 +215,19 @@ final class LobbyDriverViewModel: ObservableObject {
             return false
         }
         return actor == state.currentPlayer
+    }
+
+    var canSendMaritimeTradeIntentDebug: Bool {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            state.turnState?.step == .afterRoll,
+            let actor = localActorIdentifier(),
+            actor == state.currentPlayer
+        else {
+            return false
+        }
+        return defaultMaritimeTrade(for: actor, from: state) != nil
     }
 
     var canSendBuyDevCardIntentDebug: Bool {
@@ -986,6 +1000,44 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
+    func sendMaritimeTradeIntentDebug() {
+        guard let state = selectedState else {
+            setLastError("Select a turn STATE first.")
+            return
+        }
+        guard canSendMaritimeTradeIntentDebug else {
+            setLastError("Maritime trade intent is not currently legal.")
+            return
+        }
+        guard let actor = localActorIdentifier(), actor == state.currentPlayer else {
+            setLastError("Only current player can send maritime trade intent.")
+            return
+        }
+        guard let maritime = defaultMaritimeTrade(for: actor, from: state) else {
+            setLastError("No legal maritime trade available.")
+            return
+        }
+
+        let intent = ULS_Transport.TurnIntentV1(
+            maritimeTradeGive: maritime.give,
+            receive: maritime.receive,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actor
+        )
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT maritimeTrade", sessionPolicy: .new)
+            selectionStatus = "Maritime trade intent sent"
+            setLastError(nil)
+        } catch {
+            setLastError("Maritime trade intent failed: \(error.localizedDescription)")
+        }
+    }
+
     func sendBuyDevCardIntentDebug() {
         guard let state = selectedState else {
             setLastError("Select a turn STATE first.")
@@ -1338,6 +1390,7 @@ final class LobbyDriverViewModel: ObservableObject {
         remainingPieces = remainingPiecesSummary(for: state)
         activeTradeOffer = activeTradeOfferSummary(for: state)
         pendingTradeAccepts = pendingTradeAcceptsSummary(for: state)
+        maritimeTradePreview = maritimeTradeSummary(for: state)
         largestArmyStatus = largestArmySummary(for: state)
         longestRoadStatus = longestRoadSummary(for: state)
         setupPlacement = "-"
@@ -1371,6 +1424,7 @@ final class LobbyDriverViewModel: ObservableObject {
         remainingPieces = "-"
         activeTradeOffer = "-"
         pendingTradeAccepts = "-"
+        maritimeTradePreview = "-"
         largestArmyStatus = "-"
         longestRoadStatus = "-"
         setupPlacement = "-"
@@ -1404,6 +1458,7 @@ final class LobbyDriverViewModel: ObservableObject {
         remainingPieces = "-"
         activeTradeOffer = "-"
         pendingTradeAccepts = "-"
+        maritimeTradePreview = "-"
         largestArmyStatus = "-"
         longestRoadStatus = "-"
         turnIntent = "-"
@@ -1446,6 +1501,7 @@ final class LobbyDriverViewModel: ObservableObject {
         remainingPieces = "-"
         activeTradeOffer = "-"
         pendingTradeAccepts = "-"
+        maritimeTradePreview = "-"
         largestArmyStatus = "-"
         longestRoadStatus = "-"
         setupPlacement = "-"
@@ -1483,6 +1539,10 @@ final class LobbyDriverViewModel: ObservableObject {
             let player = decodedTurnIntent.tradeAcceptPlayer ?? "-"
             let offer = decodedTurnIntent.tradeOfferHash ?? "-"
             turnIntent = "kind: executeTrade player: \(player) offer: \(offer)"
+        case .maritimeTrade:
+            let give = decodedTurnIntent.tradeGive.map(resourceHandDescription) ?? "-"
+            let receive = decodedTurnIntent.tradeReceive.map(resourceHandDescription) ?? "-"
+            turnIntent = "kind: maritimeTrade give: \(give) receive: \(receive)"
         case .buyDevCard:
             turnIntent = "kind: buyDevCard"
         case .playDevCard:
@@ -1558,6 +1618,7 @@ final class LobbyDriverViewModel: ObservableObject {
         remainingPieces = "-"
         activeTradeOffer = "-"
         pendingTradeAccepts = "-"
+        maritimeTradePreview = "-"
         largestArmyStatus = "-"
         longestRoadStatus = "-"
         setupPlacement = "-"
@@ -1697,6 +1758,19 @@ final class LobbyDriverViewModel: ObservableObject {
             .sorted { $0.acceptingPlayer < $1.acceptingPlayer }
             .map(\.acceptingPlayer)
             .joined(separator: ", ")
+    }
+
+    private func maritimeTradeSummary(for state: CoreGameStateV1) -> String {
+        guard
+            state.phase == .turn,
+            state.turnState?.step == .afterRoll,
+            let actor = localActorIdentifier(),
+            actor == state.currentPlayer,
+            let maritime = defaultMaritimeTrade(for: actor, from: state)
+        else {
+            return "none"
+        }
+        return "give: \(resourceHandDescription(maritime.give)) receive: \(resourceHandDescription(maritime.receive)) ratio: \(maritime.ratio):1"
     }
 
     private func largestArmySummary(for state: CoreGameStateV1) -> String {
@@ -1961,6 +2035,86 @@ final class LobbyDriverViewModel: ObservableObject {
             give: transportHand(for: giveResource, count: 1),
             receive: transportHand(for: receiveResource, count: 1)
         )
+    }
+
+    private func defaultMaritimeTrade(
+        for actor: String,
+        from state: CoreGameStateV1
+    ) -> (give: TransportResourceHandV1, receive: TransportResourceHandV1, ratio: Int)? {
+        guard let board = state.board else {
+            return nil
+        }
+
+        let resources: [ResourceV1] = [.wood, .brick, .sheep, .wheat, .ore]
+        let hand = state.resourcesByPlayer[actor] ?? .zero
+        for giveResource in resources {
+            let ratio = bestMaritimeTradeRatio(
+                for: actor,
+                giveResource: giveResource,
+                board: board,
+                state: state
+            )
+            guard hand.count(for: giveResource) >= ratio else {
+                continue
+            }
+
+            for receiveResource in resources where receiveResource != giveResource {
+                guard state.bankResources.count(for: receiveResource) >= 1 else {
+                    continue
+                }
+                return (
+                    give: transportHand(for: giveResource, count: ratio),
+                    receive: transportHand(for: receiveResource, count: 1),
+                    ratio: ratio
+                )
+            }
+        }
+
+        return nil
+    }
+
+    private func bestMaritimeTradeRatio(
+        for actor: String,
+        giveResource: ResourceV1,
+        board: BoardSetupV1,
+        state: CoreGameStateV1
+    ) -> Int {
+        let topology = StandardBoardTopologyV1.standard()
+        var hasThreeToOne = false
+        var hasMatchingTwoToOne = false
+
+        for portIndex in board.portsByIndex.indices {
+            guard portIndex < topology.ports.count else {
+                continue
+            }
+            let port = topology.ports[portIndex]
+            let edge = topology.edges[port.edge]
+            let ownsPort =
+                state.settlementsByNode[edge.a] == actor ||
+                state.settlementsByNode[edge.b] == actor ||
+                state.citiesByNode[edge.a] == actor ||
+                state.citiesByNode[edge.b] == actor
+            if !ownsPort {
+                continue
+            }
+
+            switch board.portsByIndex[portIndex] {
+            case .threeToOne:
+                hasThreeToOne = true
+            case let .twoToOne(resource):
+                if resource == giveResource {
+                    hasMatchingTwoToOne = true
+                }
+            }
+        }
+
+        if hasMatchingTwoToOne {
+            return 2
+        }
+        if hasThreeToOne {
+            return 3
+        }
+        return 4
     }
 
     private func transportHand(for resource: ResourceV1, count: Int) -> TransportResourceHandV1 {

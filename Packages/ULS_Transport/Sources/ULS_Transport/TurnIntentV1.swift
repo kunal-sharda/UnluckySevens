@@ -44,6 +44,7 @@ public struct TurnIntentV1: Codable, Equatable {
         case proposeTrade
         case acceptTrade
         case executeTrade
+        case maritimeTrade
         case buyDevCard
         case playDevCard
         case endTurn
@@ -398,6 +399,39 @@ public struct TurnIntentV1: Codable, Equatable {
     }
 
     public init(
+        maritimeTradeGive tradeGive: TransportResourceHandV1,
+        receive tradeReceive: TransportResourceHandV1,
+        gameId: String,
+        anchorRev: Int,
+        anchorHash: String,
+        actor: String
+    ) {
+        kind = .maritimeTrade
+        self.gameId = gameId
+        self.anchorRev = anchorRev
+        self.anchorHash = anchorHash
+        self.actor = actor
+        discarded = nil
+        discardPlayer = nil
+        robberTileID = nil
+        stealVictimPlayer = nil
+        buildEdgeID = nil
+        buildNodeID = nil
+        self.tradeGive = tradeGive
+        self.tradeReceive = tradeReceive
+        tradeAcceptPlayer = nil
+        tradeOfferHash = nil
+        devCardPlayKind = nil
+        devCardResource = nil
+        devCardFirstResource = nil
+        devCardSecondResource = nil
+        devCardTileID = nil
+        devCardVictimPlayer = nil
+        devCardFirstEdgeID = nil
+        devCardSecondEdgeID = nil
+    }
+
+    public init(
         playDevCardKind: TransportDevCardPlayKindV1,
         resource: TransportResourceV1? = nil,
         firstResource: TransportResourceV1? = nil,
@@ -567,6 +601,14 @@ public struct TurnIntentV1: Codable, Equatable {
                     forKey: .kind,
                     in: container,
                     debugDescription: "executeTrade must include tradeAcceptPlayer and tradeOfferHash."
+                )
+            }
+        case .maritimeTrade:
+            guard tradeGive != nil, tradeReceive != nil, otherPayloadsForProposeTradeEmpty else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .kind,
+                    in: container,
+                    debugDescription: "maritimeTrade must include tradeGive and tradeReceive."
                 )
             }
         case .playDevCard:

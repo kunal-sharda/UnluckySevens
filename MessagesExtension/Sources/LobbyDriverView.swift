@@ -49,6 +49,7 @@ struct LobbyDriverView: View {
                     field("remainingPieces", viewModel.remainingPieces)
                     field("activeTrade", viewModel.activeTradeOffer)
                     field("tradeAccepts", viewModel.pendingTradeAccepts)
+                    field("maritimeTrade", viewModel.maritimeTradePreview)
                     field("largestArmy", viewModel.largestArmyStatus)
                     field("longestRoad", viewModel.longestRoadStatus)
                     field("visibleHands", viewModel.visibleHands)
@@ -183,6 +184,12 @@ struct LobbyDriverView: View {
                         }
                         .buttonStyle(.bordered)
                         .disabled(!viewModel.canSendExecuteTradeIntentDebug)
+
+                        Button("Maritime Trade") {
+                            viewModel.sendMaritimeTradeIntentDebug()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.canSendMaritimeTradeIntentDebug)
 
                         Button("Buy Dev Card") {
                             viewModel.sendBuyDevCardIntentDebug()

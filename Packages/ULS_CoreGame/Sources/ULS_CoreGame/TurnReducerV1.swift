@@ -13,6 +13,7 @@ public enum TurnIntentV1: Codable, Equatable {
     case proposeTrade(give: ResourceHandV1, receive: ResourceHandV1)
     case acceptTrade(acceptingPlayer: String, offerHash: String)
     case executeTrade(acceptingPlayer: String, offerHash: String)
+    case maritimeTrade(give: ResourceHandV1, receive: ResourceHandV1)
     case buyDevCard
     case playKnight(tileID: Int, victimPlayer: String?)
     case playMonopoly(resource: ResourceV1)
@@ -494,6 +495,62 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             resourcesByPlayer: updatedResourcesByPlayer,
             activeTradeOffer: .some(nil),
             pendingTradeAccepts: .some([])
+        )
+
+    case let .maritimeTrade(give, receive):
+        guard turnState.step == .afterRoll else {
+            throw CoreGameError.turnStepMismatch
+        }
+        guard let board = state.board else {
+            throw CoreGameError.boardChanged
+        }
+        guard
+            let (giveResource, giveCount) = singleResourceAndCount(in: give),
+            let (receiveResource, receiveCount) = singleResourceAndCount(in: receive),
+            giveCount > 0,
+            receiveCount == 1,
+            giveResource != receiveResource
+        else {
+            throw CoreGameError.maritimeTradeInvalid
+        }
+
+        let player = state.currentPlayer
+        let requiredRatio = bestMaritimeTradeRatio(
+            player: player,
+            giveResource: giveResource,
+            board: board,
+            settlementsByNode: state.settlementsByNode,
+            citiesByNode: state.citiesByNode
+        )
+        guard giveCount == requiredRatio else {
+            throw CoreGameError.maritimeTradeInvalid
+        }
+
+        let playerHand = state.resourcesByPlayer[player] ?? .zero
+        guard playerHand.count(for: giveResource) >= giveCount else {
+            throw CoreGameError.maritimeTradeInsufficientResources
+        }
+        guard state.bankResources.count(for: receiveResource) >= receiveCount else {
+            throw CoreGameError.bankResourcesInvalid
+        }
+
+        var updatedResourcesByPlayer = state.resourcesByPlayer
+        updatedResourcesByPlayer[player] = playerHand
+            .subtracting(giveCount, for: giveResource)
+            .adding(receiveCount, for: receiveResource)
+        let updatedBankResources = state.bankResources
+            .adding(giveCount, for: giveResource)
+            .subtracting(receiveCount, for: receiveResource)
+
+        return nextTurnState(
+            from: state,
+            currentPlayer: player,
+            diceRngState: state.diceRngState,
+            robberRngState: state.robberRngState,
+            board: state.board,
+            turnState: turnState,
+            resourcesByPlayer: updatedResourcesByPlayer,
+            bankResources: updatedBankResources
         )
 
     case .buyDevCard:
@@ -1075,6 +1132,65 @@ private func applyBuildCost(player: String, cost: ResourceHandV1, state: CoreGam
         ore: bank.ore + cost.ore
     )
     return EconomyUpdateV1(resourcesByPlayer: resourcesByPlayer, bankResources: bankResources)
+}
+
+private func singleResourceAndCount(in hand: ResourceHandV1) -> (resource: ResourceV1, count: Int)? {
+    let entries: [(ResourceV1, Int)] = [
+        (.wood, hand.wood),
+        (.brick, hand.brick),
+        (.sheep, hand.sheep),
+        (.wheat, hand.wheat),
+        (.ore, hand.ore),
+    ].filter { $0.1 > 0 }
+
+    guard entries.count == 1, let entry = entries.first else {
+        return nil
+    }
+    return entry
+}
+
+private func bestMaritimeTradeRatio(
+    player: String,
+    giveResource: ResourceV1,
+    board: BoardSetupV1,
+    settlementsByNode: [NodeID: String],
+    citiesByNode: [NodeID: String]
+) -> Int {
+    var hasThreeToOne = false
+    var hasMatchingTwoToOne = false
+
+    for portIndex in board.portsByIndex.indices {
+        guard portIndex < turnBuildTopology.ports.count else {
+            continue
+        }
+        let port = turnBuildTopology.ports[portIndex]
+        let edge = turnBuildTopology.edges[port.edge]
+        let ownsPort =
+            settlementsByNode[edge.a] == player ||
+            settlementsByNode[edge.b] == player ||
+            citiesByNode[edge.a] == player ||
+            citiesByNode[edge.b] == player
+        if !ownsPort {
+            continue
+        }
+
+        switch board.portsByIndex[portIndex] {
+        case .threeToOne:
+            hasThreeToOne = true
+        case let .twoToOne(resource):
+            if resource == giveResource {
+                hasMatchingTwoToOne = true
+            }
+        }
+    }
+
+    if hasMatchingTwoToOne {
+        return 2
+    }
+    if hasThreeToOne {
+        return 3
+    }
+    return 4
 }
 
 private func isRoadConnected(edgeID: Int, for player: String, in state: CoreGameStateV1) -> Bool {

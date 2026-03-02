@@ -56,6 +56,8 @@ public enum CoreGameError: Error, Equatable {
     case tradeAcceptAlreadySubmitted
     case tradeAcceptMissing
     case tradeExecutionInsufficientResources
+    case maritimeTradeInvalid
+    case maritimeTradeInsufficientResources
     case tradeStateInvalid
     case devDeckInvalid
     case devDeckEmpty
@@ -952,6 +954,12 @@ private func expectedEconomyAfterTransition(
         {
             return devCardUpdate
         }
+        let maritimeUpdate = expectedEconomyAfterMaritimeTradeIfAny(from: from, to: to)
+        if maritimeUpdate.resourcesByPlayer != original.resourcesByPlayer ||
+            maritimeUpdate.bankResources != original.bankResources
+        {
+            return maritimeUpdate
+        }
         let buildUpdate = expectedEconomyAfterBuildIfAny(from: from, to: to)
         if buildUpdate.resourcesByPlayer != original.resourcesByPlayer || buildUpdate.bankResources != original.bankResources {
             return buildUpdate
@@ -1122,6 +1130,69 @@ private func expectedEconomyAfterBuildIfAny(from: CoreGameStateV1, to: CoreGameS
         ore: bank.ore + cost.ore
     )
     return EconomyUpdateV1(resourcesByPlayer: resourcesByPlayer, bankResources: bankResources)
+}
+
+private func expectedEconomyAfterMaritimeTradeIfAny(from: CoreGameStateV1, to: CoreGameStateV1) -> EconomyUpdateV1 {
+    guard
+        from.phase == .turn,
+        to.phase == .turn,
+        from.currentPlayer == to.currentPlayer,
+        from.turnState == to.turnState,
+        from.turnState?.step == .afterRoll,
+        from.board == to.board,
+        from.activeTradeOffer == to.activeTradeOffer,
+        from.pendingTradeAccepts == to.pendingTradeAccepts,
+        from.devDeck == to.devDeck,
+        from.devCardsByPlayer == to.devCardsByPlayer,
+        from.newDevCardsByPlayer == to.newDevCardsByPlayer,
+        from.revealedVictoryPointsByPlayer == to.revealedVictoryPointsByPlayer,
+        from.devCardActionPlayedThisTurn == to.devCardActionPlayedThisTurn,
+        from.knightsPlayedByPlayer == to.knightsPlayedByPlayer,
+        from.settlementsByNode == to.settlementsByNode,
+        from.citiesByNode == to.citiesByNode,
+        from.roadsByEdge == to.roadsByEdge,
+        let board = from.board
+    else {
+        return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
+    }
+
+    let player = from.currentPlayer
+    let playerHand = from.resourcesByPlayer[player] ?? .zero
+    for giveResource in [ResourceV1.wood, .brick, .sheep, .wheat, .ore] {
+        let ratio = bestMaritimeTradeRatioForValidation(
+            player: player,
+            giveResource: giveResource,
+            board: board,
+            settlementsByNode: from.settlementsByNode,
+            citiesByNode: from.citiesByNode
+        )
+        guard playerHand.count(for: giveResource) >= ratio else {
+            continue
+        }
+
+        for receiveResource in [ResourceV1.wood, .brick, .sheep, .wheat, .ore] where receiveResource != giveResource {
+            guard from.bankResources.count(for: receiveResource) >= 1 else {
+                continue
+            }
+
+            var expectedResourcesByPlayer = from.resourcesByPlayer
+            expectedResourcesByPlayer[player] = playerHand
+                .subtracting(ratio, for: giveResource)
+                .adding(1, for: receiveResource)
+            let expectedBank = from.bankResources
+                .adding(ratio, for: giveResource)
+                .subtracting(1, for: receiveResource)
+
+            if to.resourcesByPlayer == expectedResourcesByPlayer && to.bankResources == expectedBank {
+                return EconomyUpdateV1(
+                    resourcesByPlayer: expectedResourcesByPlayer,
+                    bankResources: expectedBank
+                )
+            }
+        }
+    }
+
+    return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
 }
 
 private func expectedEconomyAfterTradeExecutionIfAny(from: CoreGameStateV1, to: CoreGameStateV1) -> EconomyUpdateV1 {
@@ -1654,6 +1725,50 @@ private func isValidTradeHandForValidation(_ hand: ResourceHandV1) -> Bool {
         hand.sheep >= 0 &&
         hand.wheat >= 0 &&
         hand.ore >= 0
+}
+
+private func bestMaritimeTradeRatioForValidation(
+    player: String,
+    giveResource: ResourceV1,
+    board: BoardSetupV1,
+    settlementsByNode: [NodeID: String],
+    citiesByNode: [NodeID: String]
+) -> Int {
+    var hasThreeToOne = false
+    var hasMatchingTwoToOne = false
+
+    for portIndex in board.portsByIndex.indices {
+        guard portIndex < validationTopology.ports.count else {
+            continue
+        }
+        let port = validationTopology.ports[portIndex]
+        let edge = validationTopology.edges[port.edge]
+        let ownsPort =
+            settlementsByNode[edge.a] == player ||
+            settlementsByNode[edge.b] == player ||
+            citiesByNode[edge.a] == player ||
+            citiesByNode[edge.b] == player
+        if !ownsPort {
+            continue
+        }
+
+        switch board.portsByIndex[portIndex] {
+        case .threeToOne:
+            hasThreeToOne = true
+        case let .twoToOne(resource):
+            if resource == giveResource {
+                hasMatchingTwoToOne = true
+            }
+        }
+    }
+
+    if hasMatchingTwoToOne {
+        return 2
+    }
+    if hasThreeToOne {
+        return 3
+    }
+    return 4
 }
 
 private func canAffordForValidation(hand: ResourceHandV1, cost: ResourceHandV1) -> Bool {

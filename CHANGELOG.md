@@ -108,3 +108,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 7.3 extended transition validation with strict deterministic award recomputation checks and illegal award mutation rejection.
 - Stage 7.3 added debug-driver readouts for current Largest Army and Longest Road owners/sizes in MessagesExtension.
 - Stage 7.3 added focused CoreGame tests for threshold acquisition, tie/transfer behavior, and deterministic award recomputation across identical action sequences.
+- Stage 8.1 added maritime trading intent/action support with deterministic best-ratio selection from owned ports (2:1 specific, then 3:1 generic, else 4:1).
+- Stage 8.1 extended transition economy validation to recognize legal maritime bank/player transfers without broadening other turn-phase mutation allowances.
+- Stage 8.1 updated Messages debug-driver controls/readouts with a `Maritime Trade` action and an effective-ratio preview for the current player.
+- Stage 8.1 added focused tests for ratio selection, insufficient-resource/bank rejection, and no-mutation failure invariants.
