@@ -64,3 +64,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 3.3 added `ResourceHandV1` and `resourcesByPlayer` to canonical core game state hashing.
 - Stage 3.3 setup reducer now grants starting resources after successful `road2` completion from each player's `settlement2` adjacency (excluding desert and robber tile).
 - Stage 3.3 added setup starting-resource unit coverage for deterministic payout timing and correctness.
+- Stage 3.3 follow-up: `validateTransition` now enforces deterministic `resourcesByPlayer` transitions, including zeroed resources on Start and setup second-road payouts only.
+- Stage 3.3 follow-up: `CoreGameStateV1` now normalizes `resourcesByPlayer` to roster keys with zero defaults.
+- Stage 3.3 follow-up: setup/validation paths now reuse cached standard topology instances instead of rebuilding per action.

@@ -1,5 +1,7 @@
 import Foundation
 
+private let setupTopology = StandardBoardTopologyV1.standard()
+
 public enum SetupIntentV1: Codable, Equatable {
     case placeSetupSettlement(node: Int)
     case placeSetupRoad(edge: Int)
@@ -11,7 +13,7 @@ public func apply(intent: SetupIntentV1, to state: CoreGameStateV1, actor: Strin
         throw CoreGameError.setupStateMissing
     }
 
-    let topology = StandardBoardTopologyV1.standard()
+    let topology = setupTopology
 
     guard actor == state.currentPlayer else {
         throw CoreGameError.actorMismatch

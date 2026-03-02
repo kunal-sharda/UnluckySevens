@@ -18,7 +18,7 @@ final class CoreGameKernelV1Tests: XCTestCase {
         )
 
         let hash = state.rehashed().stateHash
-        XCTAssertEqual(hash, "086bbb69f33c55055fdba30a8981273b3456065da4f7d6abe443ed046be8d933")
+        XCTAssertEqual(hash, "6cefd119ef224df03575a678403dbe12cfa4c33a8ab417e492526ae3f957775b")
     }
 
     func testHashChangesWhenSeedChanges() {
@@ -286,6 +286,76 @@ final class CoreGameKernelV1Tests: XCTestCase {
 
         XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
             XCTAssertEqual(error as? CoreGameError, .boardChanged)
+        }
+    }
+
+    func testTransitionFailsOnResourcesByPlayerChangedOutsideAllowedSetupPayout() {
+        let from = makeValidState().rehashed()
+        let tamperedResources = from.resourcesByPlayer.merging([
+            "alice": ResourceHandV1(wood: 1),
+        ]) { _, new in new }
+        let tampered = CoreGameStateV1(
+            gameId: from.gameId,
+            rev: from.rev + 1,
+            prevHash: from.stateHash,
+            stateHash: "",
+            roster: from.roster,
+            currentPlayer: from.currentPlayer,
+            phase: .turn,
+            seed: from.seed,
+            diceRngState: from.diceRngState,
+            resourcesByPlayer: tamperedResources,
+            boardRules: from.boardRules,
+            board: from.board
+        ).rehashed()
+
+        XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
+            XCTAssertEqual(error as? CoreGameError, .resourcesByPlayerInvalid)
+        }
+    }
+
+    func testStartTransitionFailsWhenResourcesByPlayerIsNotZeroedForRoster() {
+        let from = CoreGameStateV1(
+            gameId: "game-123",
+            rev: 0,
+            prevHash: nil,
+            stateHash: "",
+            roster: ["alice"],
+            currentPlayer: "alice",
+            phase: .lobby,
+            seed: nil,
+            diceRngState: nil,
+            boardRules: nil,
+            board: nil
+        ).rehashed()
+
+        let boardRules = BoardRulesV1(strategy: .randomV1)
+        let board = StandardBoardGeneratorV1.generate(
+            boardSeed: SeedDeriver(masterSeed: 12345).seed(for: .board),
+            rules: boardRules
+        )
+        let setupState = initializeSetupState(roster: ["alice", "bob"])
+        let to = CoreGameStateV1(
+            gameId: from.gameId,
+            rev: 1,
+            prevHash: from.stateHash,
+            stateHash: "",
+            roster: ["alice", "bob"],
+            currentPlayer: "alice",
+            phase: .setup,
+            seed: 12345,
+            diceRngState: 67890,
+            resourcesByPlayer: [
+                "alice": ResourceHandV1(wood: 1),
+                "bob": .zero,
+            ],
+            boardRules: boardRules,
+            board: board,
+            setupState: setupState
+        ).rehashed()
+
+        XCTAssertThrowsError(try validateTransition(from: from, to: to, actor: "alice")) { error in
+            XCTAssertEqual(error as? CoreGameError, .resourcesByPlayerInvalid)
         }
     }
 

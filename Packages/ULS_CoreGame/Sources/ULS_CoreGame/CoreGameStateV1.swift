@@ -47,7 +47,11 @@ public struct CoreGameStateV1: Codable, Equatable {
         self.phase = phase
         self.seed = seed
         self.diceRngState = diceRngState
-        self.resourcesByPlayer = resourcesByPlayer
+        var normalizedResourcesByPlayer: [String: ResourceHandV1] = [:]
+        for player in roster {
+            normalizedResourcesByPlayer[player] = resourcesByPlayer[player] ?? .zero
+        }
+        self.resourcesByPlayer = normalizedResourcesByPlayer
         self.boardRules = boardRules
         self.board = board
         self.setupState = setupState

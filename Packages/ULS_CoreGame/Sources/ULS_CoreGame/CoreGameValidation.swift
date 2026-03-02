@@ -1,5 +1,7 @@
 import Foundation
 
+private let validationTopology = StandardBoardTopologyV1.standard()
+
 public enum CoreGameError: Error, Equatable {
     case revMismatch
     case prevHashMismatch
@@ -21,6 +23,7 @@ public enum CoreGameError: Error, Equatable {
     case edgeOccupied
     case distanceRuleViolation
     case roadNotAdjacentToLastSettlement
+    case resourcesByPlayerInvalid
     case invalidStateHash
     case gameIdMismatch
 }
@@ -85,8 +88,57 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
         }
     }
 
+    let expectedResourcesByPlayer = expectedResourcesByPlayerAfterTransition(
+        from: from,
+        to: to,
+        actor: actor,
+        isStartTransition: isStartTransition
+    )
+    guard to.resourcesByPlayer == expectedResourcesByPlayer else {
+        throw CoreGameError.resourcesByPlayerInvalid
+    }
+
     let expectedStateHash = to.rehashed().stateHash
     guard to.stateHash == expectedStateHash else {
         throw CoreGameError.invalidStateHash
     }
+}
+
+private func expectedResourcesByPlayerAfterTransition(
+    from: CoreGameStateV1,
+    to: CoreGameStateV1,
+    actor: String,
+    isStartTransition: Bool
+) -> [String: ResourceHandV1] {
+    if isStartTransition {
+        return Dictionary(uniqueKeysWithValues: to.roster.map { ($0, .zero) })
+    }
+
+    guard
+        from.phase == .setup,
+        let setupState = from.setupState,
+        setupState.step == .placeRoad,
+        let placement = setupState.placements[actor],
+        placement.road1 != nil,
+        placement.road2 == nil,
+        let settlement2 = placement.settlement2,
+        let board = from.board
+    else {
+        return from.resourcesByPlayer
+    }
+
+    var expectedResourcesByPlayer = from.resourcesByPlayer
+    var hand = expectedResourcesByPlayer[actor] ?? .zero
+    for tileID in validationTopology.tiles(adjacentToNode: settlement2) {
+        guard tileID >= 0, tileID < board.resourcesByTile.count else {
+            continue
+        }
+        if tileID == board.robberTile {
+            continue
+        }
+        hand = hand.addingOne(for: board.resourcesByTile[tileID])
+    }
+
+    expectedResourcesByPlayer[actor] = hand
+    return expectedResourcesByPlayer
 }
