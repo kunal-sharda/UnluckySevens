@@ -22,22 +22,82 @@ public struct ResourceHandV1: Codable, Equatable {
     }
 
     public static let zero = ResourceHandV1()
+    public static let standardBank = ResourceHandV1(wood: 19, brick: 19, sheep: 19, wheat: 19, ore: 19)
 
-    public func addingOne(for resource: ResourceV1) -> ResourceHandV1 {
+    public var totalCount: Int {
+        wood + brick + sheep + wheat + ore
+    }
+
+    public func count(for resource: ResourceV1) -> Int {
         switch resource {
         case .wood:
-            return ResourceHandV1(wood: wood + 1, brick: brick, sheep: sheep, wheat: wheat, ore: ore)
+            return wood
         case .brick:
-            return ResourceHandV1(wood: wood, brick: brick + 1, sheep: sheep, wheat: wheat, ore: ore)
+            return brick
         case .sheep:
-            return ResourceHandV1(wood: wood, brick: brick, sheep: sheep + 1, wheat: wheat, ore: ore)
+            return sheep
         case .wheat:
-            return ResourceHandV1(wood: wood, brick: brick, sheep: sheep, wheat: wheat + 1, ore: ore)
+            return wheat
         case .ore:
-            return ResourceHandV1(wood: wood, brick: brick, sheep: sheep, wheat: wheat, ore: ore + 1)
+            return ore
+        case .desert:
+            return 0
+        }
+    }
+
+    public func adding(_ amount: Int, for resource: ResourceV1) -> ResourceHandV1 {
+        switch resource {
+        case .wood:
+            return ResourceHandV1(
+                wood: wood + amount,
+                brick: brick,
+                sheep: sheep,
+                wheat: wheat,
+                ore: ore
+            )
+        case .brick:
+            return ResourceHandV1(
+                wood: wood,
+                brick: brick + amount,
+                sheep: sheep,
+                wheat: wheat,
+                ore: ore
+            )
+        case .sheep:
+            return ResourceHandV1(
+                wood: wood,
+                brick: brick,
+                sheep: sheep + amount,
+                wheat: wheat,
+                ore: ore
+            )
+        case .wheat:
+            return ResourceHandV1(
+                wood: wood,
+                brick: brick,
+                sheep: sheep,
+                wheat: wheat + amount,
+                ore: ore
+            )
+        case .ore:
+            return ResourceHandV1(
+                wood: wood,
+                brick: brick,
+                sheep: sheep,
+                wheat: wheat,
+                ore: ore + amount
+            )
         case .desert:
             return self
         }
+    }
+
+    public func subtracting(_ amount: Int, for resource: ResourceV1) -> ResourceHandV1 {
+        adding(-amount, for: resource)
+    }
+
+    public func addingOne(for resource: ResourceV1) -> ResourceHandV1 {
+        adding(1, for: resource)
     }
 
     internal func canonicalJSONValue() -> [String: Any] {

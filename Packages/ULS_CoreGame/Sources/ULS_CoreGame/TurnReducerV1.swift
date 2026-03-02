@@ -26,12 +26,23 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
 
         var rng = DeterministicRNG(seed: diceRngState)
         let roll = rng.rollDice()
+        let rollTotal = roll.0 + roll.1
+        let economy = applyProductionPayout(
+            rollTotal: rollTotal,
+            board: state.board,
+            settlementsByNode: state.settlementsByNode,
+            citiesByNode: state.citiesByNode,
+            resourcesByPlayer: state.resourcesByPlayer,
+            bankResources: state.bankResources
+        )
 
         return nextTurnState(
             from: state,
             currentPlayer: state.currentPlayer,
             diceRngState: rng.state,
-            turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: roll.0, d2: roll.1))
+            turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: roll.0, d2: roll.1)),
+            resourcesByPlayer: economy.resourcesByPlayer,
+            bankResources: economy.bankResources
         )
 
     case .endTurn:
@@ -60,7 +71,9 @@ private func nextTurnState(
     from state: CoreGameStateV1,
     currentPlayer: String,
     diceRngState: UInt64?,
-    turnState: TurnStateV1
+    turnState: TurnStateV1,
+    resourcesByPlayer: [String: ResourceHandV1]? = nil,
+    bankResources: ResourceHandV1? = nil
 ) -> CoreGameStateV1 {
     CoreGameStateV1(
         gameId: state.gameId,
@@ -72,7 +85,11 @@ private func nextTurnState(
         phase: .turn,
         seed: state.seed,
         diceRngState: diceRngState,
-        resourcesByPlayer: state.resourcesByPlayer,
+        resourcesByPlayer: resourcesByPlayer ?? state.resourcesByPlayer,
+        bankResources: bankResources ?? state.bankResources,
+        settlementsByNode: state.settlementsByNode,
+        citiesByNode: state.citiesByNode,
+        roadsByEdge: state.roadsByEdge,
         boardRules: state.boardRules,
         board: state.board,
         setupState: nil,

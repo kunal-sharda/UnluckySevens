@@ -28,6 +28,8 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var boardResourcesByTile: String = "-"
     @Published var boardNumbersByTile: String = "-"
     @Published var boardPortsByIndex: String = "-"
+    @Published var visibleHands: String = "-"
+    @Published var bankResources: String = "-"
     @Published var setupPlacement: String = "-"
     @Published var turnIntent: String = "-"
 
@@ -567,6 +569,8 @@ final class LobbyDriverViewModel: ObservableObject {
         }
         setupPlacement = "-"
         turnIntent = "-"
+        visibleHands = visibleHandsSummary(for: state)
+        bankResources = resourceHandDescription(state.bankResources)
         render(board: state.board)
         selectionStatus = "Decoded STATE rev\(state.rev) via \(source.label)"
         refreshPendingJoiners(for: state.gameId)
@@ -587,6 +591,8 @@ final class LobbyDriverViewModel: ObservableObject {
         lastRoll = "-"
         setupPlacement = "-"
         turnIntent = "-"
+        visibleHands = "-"
+        bankResources = "-"
         resetBoardDebugFields()
         selectionStatus = "Decoded JOIN intent via \(source.label)"
         refreshPendingJoiners(for: joinIntent.gameId)
@@ -606,6 +612,8 @@ final class LobbyDriverViewModel: ObservableObject {
         turnStep = "-"
         lastRoll = "-"
         turnIntent = "-"
+        visibleHands = "-"
+        bankResources = "-"
         switch setupIntent.kind {
         case .placeSetupSettlement:
             setupPlacement = "node: \(setupIntent.node.map(String.init) ?? "-")"
@@ -636,6 +644,8 @@ final class LobbyDriverViewModel: ObservableObject {
         lastRoll = "-"
         setupPlacement = "-"
         turnIntent = "kind: \(decodedTurnIntent.kind.rawValue)"
+        visibleHands = "-"
+        bankResources = "-"
         resetBoardDebugFields()
         selectionStatus = "Decoded \(decodedTurnIntent.kind.rawValue) intent via \(source.label)"
         refreshPendingJoiners(for: decodedTurnIntent.gameId)
@@ -676,6 +686,8 @@ final class LobbyDriverViewModel: ObservableObject {
         lastRoll = "-"
         setupPlacement = "-"
         turnIntent = "-"
+        visibleHands = "-"
+        bankResources = "-"
         resetBoardDebugFields()
     }
 
@@ -695,6 +707,21 @@ final class LobbyDriverViewModel: ObservableObject {
         case let .twoToOne(resource):
             return "2:1 \(resource.rawValue)"
         }
+    }
+
+    private func visibleHandsSummary(for state: CoreGameStateV1) -> String {
+        let localActor = localActorIdentifier()
+        return state.roster.map { player in
+            let hand = state.resourcesByPlayer[player] ?? .zero
+            if localActor == player {
+                return "\(player): \(resourceHandDescription(hand))"
+            }
+            return "\(player): \(hand.totalCount)"
+        }.joined(separator: " | ")
+    }
+
+    private func resourceHandDescription(_ hand: ResourceHandV1) -> String {
+        "w:\(hand.wood), b:\(hand.brick), s:\(hand.sheep), wh:\(hand.wheat), o:\(hand.ore)"
     }
 
     private func payloadValue(from message: MSMessage) -> DecodedPayloadSource? {

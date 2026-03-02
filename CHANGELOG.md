@@ -71,3 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 4.1 added turn reducer support for deterministic `rollDice` and `endTurn` intents with current-player actor gating.
 - Stage 4.1 added transport payload model `TurnIntentV1` and intent envelope roundtrip tests for `rollDice`/`endTurn`.
 - Stage 4.1 updated Messages lobby driver with turn debug fields and `Roll Dice` / `End Turn` intent buttons for turn-phase states.
+- Stage 4.2 added deterministic non-7 production payout on `rollDice` using persisted board occupancy (settlements/cities), with robber blocking and per-resource bank depletion semantics (all-or-nothing when supply is insufficient).
+- Stage 4.2 introduced canonical state fields for bank and board occupancy (`bankResources`, `settlementsByNode`, `citiesByNode`, `roadsByEdge`) and updated setup->turn carryover plus transition validation to gate expected economy/ownership deltas.
+- Stage 4.2 expanded debug driver state readouts with secrecy-safe hand visibility (`local full hand`, `opponent hand size only`) and bank resource counts.
+- Stage 4.2 added focused unit coverage for payout path, robber block path, and bank depletion skip behavior.

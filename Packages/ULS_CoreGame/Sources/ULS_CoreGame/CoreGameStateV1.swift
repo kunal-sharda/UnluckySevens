@@ -19,6 +19,10 @@ public struct CoreGameStateV1: Codable, Equatable {
     public let seed: UInt64?
     public let diceRngState: UInt64?
     public let resourcesByPlayer: [String: ResourceHandV1]
+    public let bankResources: ResourceHandV1
+    public let settlementsByNode: [NodeID: String]
+    public let citiesByNode: [NodeID: String]
+    public let roadsByEdge: [EdgeID: String]
     public let boardRules: BoardRulesV1?
     public let board: BoardSetupV1?
     public let setupState: SetupStateV1?
@@ -35,6 +39,10 @@ public struct CoreGameStateV1: Codable, Equatable {
         seed: UInt64?,
         diceRngState: UInt64?,
         resourcesByPlayer: [String: ResourceHandV1] = [:],
+        bankResources: ResourceHandV1 = .standardBank,
+        settlementsByNode: [NodeID: String] = [:],
+        citiesByNode: [NodeID: String] = [:],
+        roadsByEdge: [EdgeID: String] = [:],
         boardRules: BoardRulesV1? = nil,
         board: BoardSetupV1? = nil,
         setupState: SetupStateV1? = nil,
@@ -54,6 +62,10 @@ public struct CoreGameStateV1: Codable, Equatable {
             normalizedResourcesByPlayer[player] = resourcesByPlayer[player] ?? .zero
         }
         self.resourcesByPlayer = normalizedResourcesByPlayer
+        self.bankResources = bankResources
+        self.settlementsByNode = settlementsByNode
+        self.citiesByNode = citiesByNode
+        self.roadsByEdge = roadsByEdge
         self.boardRules = boardRules
         self.board = board
         self.setupState = setupState
@@ -72,6 +84,10 @@ public struct CoreGameStateV1: Codable, Equatable {
             seed: seed,
             diceRngState: diceRngState,
             resourcesByPlayer: resourcesByPlayer,
+            bankResources: bankResources,
+            settlementsByNode: settlementsByNode,
+            citiesByNode: citiesByNode,
+            roadsByEdge: roadsByEdge,
             boardRules: boardRules,
             board: board,
             setupState: setupState,
@@ -101,10 +117,22 @@ public struct CoreGameStateV1: Codable, Equatable {
             "seed": seed ?? NSNull(),
             "diceRngState": diceRngState ?? NSNull(),
             "resourcesByPlayer": resourcesByPlayer.mapValues { $0.canonicalJSONValue() },
+            "bankResources": bankResources.canonicalJSONValue(),
+            "settlementsByNode": canonicalOwnershipMap(settlementsByNode),
+            "citiesByNode": canonicalOwnershipMap(citiesByNode),
+            "roadsByEdge": canonicalOwnershipMap(roadsByEdge),
             "boardRules": boardRules?.canonicalJSONValue() ?? NSNull(),
             "board": board?.canonicalJSONIncludingHash() ?? NSNull(),
             "setupState": setupState?.canonicalJSONValue() ?? NSNull(),
             "turnState": turnState?.canonicalJSONValue() ?? NSNull(),
         ]
+    }
+
+    private func canonicalOwnershipMap(_ ownership: [Int: String]) -> [String: Any] {
+        var result: [String: Any] = [:]
+        for (key, owner) in ownership {
+            result[String(key)] = owner
+        }
+        return result
     }
 }

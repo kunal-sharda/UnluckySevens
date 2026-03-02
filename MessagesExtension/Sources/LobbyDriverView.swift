@@ -42,6 +42,8 @@ struct LobbyDriverView: View {
                     field("diceRngState", viewModel.diceRngState)
                     field("turnStep", viewModel.turnStep)
                     field("lastRoll", viewModel.lastRoll)
+                    field("visibleHands", viewModel.visibleHands)
+                    field("bankResources", viewModel.bankResources)
                     field("setupPlacement", viewModel.setupPlacement)
                     field("turnIntent", viewModel.turnIntent)
                     field("pendingJoiners", viewModel.pendingJoiners)
