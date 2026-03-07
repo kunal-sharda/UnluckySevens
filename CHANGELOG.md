@@ -120,3 +120,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 9.1 added deterministic last-turn recap derivation from the audit stream and surfaced recap data in Messages debug-driver readouts.
 - Stage 9.1 extended transition validation with strict audit append/actor/rev/action checks plus recap consistency enforcement.
 - Stage 9.1 added focused CoreGame tests for audit determinism across identical sequences, recap correctness, and tampered-audit invariant rejection.
+- Phase 1 debug regression added `ScriptedFullMatchesV1Tests` with four deterministic multi-player scripted match scenarios (setup-to-win, road/city, dev/army, trade/maritime) plus replay-hash invariant coverage.
+- Messages debug harness now uses sticky Active Context state with explicit `Reload Selected Bubble` and `Clear Context` controls, staleness warning, context-source metadata, and in-memory debug logs.
+- Messages debug harness now supports local `Acting As` simulation from active roster, reasoned button disabling, and debug apply-as-state actions for selected setup/turn intent bubbles.
+- Messages debug transcript/debug plumbing now includes optional single-session intent threading and short `summaryText` labels for STATE/INTENT bubbles without leaking secret hand composition.
