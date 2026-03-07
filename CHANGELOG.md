@@ -127,3 +127,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Phase 1 regression coverage now uses fully legal setup-to-gameOver simulations (no synthetic VP injection) with five seeded multi-player policy-driven matches, including a deterministic non-`A` winner path.
 - Scripted full-match suite now performs live in-turn violation probes (actor mismatch, step gating, bad trade anchor) and asserts transition validation catches tampered post-reducer state.
 - Scripted full-match invariants now enforce resource-bank conservation, dev deck/card conservation, piece bounds, and deterministic replay for representative full-match seeds.
+- Added two additional seeded randomized full-match regressions with dev-card pressure: a 3-player dev-race scenario and a 4-player mixed economy scenario (dev/trade/maritime), each with deterministic replay assertions.

@@ -116,6 +116,47 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
         assertActionsObserved(result.finalState, required: config.requiredActions, anyOf: config.requiredAnyActions)
     }
 
+    func testMatch6RandomizedThreePlayerDevRaceIsDeterministic() throws {
+        let config = MatchConfigV1(
+            gameId: "full-sim-match-6",
+            roster: ["A", "B", "C"],
+            seed: 7606,
+            policyByPlayer: [
+                "A": .devHeavy,
+                "B": .balanced,
+                "C": .tradeHeavy,
+            ],
+            maxTurns: 260,
+            requiredActions: [.buyDevCard, .playKnight],
+            requiredAnyActions: [.playMonopoly, .playYearOfPlenty, .revealVictoryPoint],
+            expectedWinner: nil
+        )
+        let result = try runMatch(config)
+        assertTerminalState(result, roster: config.roster, expectedWinner: config.expectedWinner)
+        assertActionsObserved(result.finalState, required: config.requiredActions, anyOf: config.requiredAnyActions)
+    }
+
+    func testMatch7RandomizedFourPlayerMixedEconomyWithDevIsDeterministic() throws {
+        let config = MatchConfigV1(
+            gameId: "full-sim-match-7",
+            roster: ["A", "B", "C", "D"],
+            seed: 7707,
+            policyByPlayer: [
+                "A": .devHeavy,
+                "B": .maritimeHeavy,
+                "C": .tradeHeavy,
+                "D": .balanced,
+            ],
+            maxTurns: 320,
+            requiredActions: [.buyDevCard, .proposeTrade, .executeTrade, .maritimeTrade],
+            requiredAnyActions: [.playKnight, .playMonopoly, .playYearOfPlenty, .revealVictoryPoint, .buildCity],
+            expectedWinner: nil
+        )
+        let result = try runMatch(config)
+        assertTerminalState(result, roster: config.roster, expectedWinner: config.expectedWinner)
+        assertActionsObserved(result.finalState, required: config.requiredActions, anyOf: config.requiredAnyActions)
+    }
+
     func testDeterministicReplayForRepresentativeMatches() throws {
         let threePlayer = allConfigs()[0]
         let nonAWinner = allConfigs()[4]
@@ -127,6 +168,19 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
         let nonAA = try runMatch(nonAWinner).finalState
         let nonAB = try runMatch(nonAWinner).finalState
         assertDeterministicReplay(nonAA, nonAB)
+    }
+
+    func testDeterministicReplayForRandomizedMatches6And7() throws {
+        let randomizedThreePlayer = allConfigs()[5]
+        let randomizedFourPlayer = allConfigs()[6]
+
+        let threeA = try runMatch(randomizedThreePlayer).finalState
+        let threeB = try runMatch(randomizedThreePlayer).finalState
+        assertDeterministicReplay(threeA, threeB)
+
+        let fourA = try runMatch(randomizedFourPlayer).finalState
+        let fourB = try runMatch(randomizedFourPlayer).finalState
+        assertDeterministicReplay(fourA, fourB)
     }
 
     func testLiveStateInvariantViolationsAreRejected() throws {
@@ -237,6 +291,26 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
                 requiredActions: [.submitDiscard, .moveRobber],
                 requiredAnyActions: [.buildCity, .revealVictoryPoint, .playKnight],
                 expectedWinner: "B"
+            ),
+            MatchConfigV1(
+                gameId: "full-sim-match-6",
+                roster: ["A", "B", "C"],
+                seed: 7606,
+                policyByPlayer: ["A": .devHeavy, "B": .balanced, "C": .tradeHeavy],
+                maxTurns: 260,
+                requiredActions: [.buyDevCard, .playKnight],
+                requiredAnyActions: [.playMonopoly, .playYearOfPlenty, .revealVictoryPoint],
+                expectedWinner: nil
+            ),
+            MatchConfigV1(
+                gameId: "full-sim-match-7",
+                roster: ["A", "B", "C", "D"],
+                seed: 7707,
+                policyByPlayer: ["A": .devHeavy, "B": .maritimeHeavy, "C": .tradeHeavy, "D": .balanced],
+                maxTurns: 320,
+                requiredActions: [.buyDevCard, .proposeTrade, .executeTrade, .maritimeTrade],
+                requiredAnyActions: [.playKnight, .playMonopoly, .playYearOfPlenty, .revealVictoryPoint, .buildCity],
+                expectedWinner: nil
             ),
         ]
     }
