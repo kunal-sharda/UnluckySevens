@@ -9,13 +9,19 @@ let package = Package(
             targets: ["ULS_Transport"]
         ),
     ],
+    dependencies: [
+        .package(path: "../ULS_CoreGame"),
+    ],
     targets: [
         .target(
             name: "ULS_Transport"
         ),
         .testTarget(
             name: "ULS_TransportTests",
-            dependencies: ["ULS_Transport"]
+            dependencies: [
+                "ULS_Transport",
+                .product(name: "ULS_CoreGame", package: "ULS_CoreGame"),
+            ]
         ),
     ]
 )

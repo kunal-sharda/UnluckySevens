@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Engine readiness audit docs: `docs/EngineReadinessAudit.md`, `docs/GameEngineTechSpec.md`, and `docs/QA.md`.
+- Transport regression coverage for a large canonical `STATE` envelope budget and roundtrip decode.
+- README documentation index entries for engine audit, tech spec, and QA docs.
 - Stage 0.A bootstrap scaffolding for `Tuist/`, `App/`, `MessagesExtension/`, `Packages/`, and `scripts/`.
 - Stage 0.A developer scripts: `scripts/gen.sh` and `scripts/clean.sh`.
 - Stage 0.A repository baseline files: `.gitignore`, `README.md`, and `Makefile`.

@@ -51,3 +51,6 @@ open UnluckySevens.xcworkspace
 
 - [Product Requirements Document](docs/UnluckySevensPRD.pdf)
 - [Architecture / Decisions](docs/decisions.md)
+- [Engine Readiness Audit](docs/EngineReadinessAudit.md)
+- [Game Engine Technical Specification](docs/GameEngineTechSpec.md)
+- [QA Guide](docs/QA.md)
