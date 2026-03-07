@@ -46,6 +46,7 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
             runMatch2RoadCityRace(),
             runMatch3DevArmyPath(),
             runMatch4TradeMaritimePath(),
+            runMatch5NonAWinnerBPath(),
         ]
 
         let run2 = try [
@@ -53,9 +54,19 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
             runMatch2RoadCityRace(),
             runMatch3DevArmyPath(),
             runMatch4TradeMaritimePath(),
+            runMatch5NonAWinnerBPath(),
         ]
 
         XCTAssertEqual(run1.map(\.stateHash), run2.map(\.stateHash))
+    }
+
+    func testMatch5NonAWinnerBPathIsDeterministic() throws {
+        let first = try runMatch5NonAWinnerBPath()
+        let second = try runMatch5NonAWinnerBPath()
+
+        assertTerminalState(first, expectedWinner: "B", roster: ["A", "B", "C"])
+        assertTerminalState(second, expectedWinner: "B", roster: ["A", "B", "C"])
+        assertDeterministicReplay(first, second)
     }
 
     private func runMatch1SetupToWin() throws -> CoreGameStateV1 {
@@ -255,6 +266,45 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
         try performTurn(state: &state, expectedActor: "C")
         try performTurn(state: &state, expectedActor: "D")
         try performTurn(state: &state, expectedActor: "A") { working in
+            try applyTurnIntent(.revealVictoryPoint, state: &working)
+        }
+
+        return state
+    }
+
+    private func runMatch5NonAWinnerBPath() throws -> CoreGameStateV1 {
+        let roster = ["A", "B", "C"]
+        let base = try makeTurnStateFromSetup(
+            gameId: "scripted-match-5",
+            roster: roster,
+            seed: 5005
+        )
+
+        var state = preparedTurnSnapshot(
+            from: base,
+            currentPlayer: "A",
+            resourcesByPlayer: [
+                "A": ResourceHandV1(wood: 3, brick: 3, sheep: 3, wheat: 3, ore: 3),
+                "B": ResourceHandV1(wood: 3, brick: 3, sheep: 3, wheat: 3, ore: 3),
+                "C": ResourceHandV1(wood: 3, brick: 3, sheep: 3, wheat: 3, ore: 3),
+            ],
+            devCardsByPlayer: [
+                "A": .zero,
+                "B": DevCardInventoryV1(victoryPoint: 1),
+                "C": .zero,
+            ],
+            revealedVPByPlayer: [
+                "A": 0,
+                "B": 7,
+                "C": 0,
+            ]
+        )
+
+        try performTurn(state: &state, expectedActor: "A")
+        try performTurn(state: &state, expectedActor: "B")
+        try performTurn(state: &state, expectedActor: "C")
+        try performTurn(state: &state, expectedActor: "A")
+        try performTurn(state: &state, expectedActor: "B") { working in
             try applyTurnIntent(.revealVictoryPoint, state: &working)
         }
 
