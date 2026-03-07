@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  practical-gate:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Tuist 4.146.0
+        run: |
+          brew tap tuist/tuist
+          brew install --formula tuist@4.146.0
+          brew link --overwrite tuist@4.146.0
+
+      - name: Print toolchain versions
+        run: |
+          tuist version
+          swift --version
+          xcodebuild -version
+
+      - name: Generate workspace
+        run: bash ./scripts/gen.sh
+
+      - name: Test ULS_CoreGame
+        run: swift test --package-path Packages/ULS_CoreGame
+
+      - name: Test ULS_Transport
+        run: swift test --package-path Packages/ULS_Transport
+
+      - name: Build MessagesExtension
+        run: xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build

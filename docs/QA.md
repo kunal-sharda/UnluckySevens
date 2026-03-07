@@ -8,8 +8,10 @@ These commands should stay green for the current MVP engine baseline:
 bash ./scripts/gen.sh
 swift test --package-path Packages/ULS_CoreGame
 swift test --package-path Packages/ULS_Transport
-xcodebuild -workspace /Users/kunalsharda/Documents/Code/UnluckySevens/UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build
+xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build
 ```
+
+GitHub Actions mirrors this practical gate in `.github/workflows/ci.yml`.
 
 ## What Is Already Covered Well
 
@@ -30,7 +32,6 @@ xcodebuild -workspace /Users/kunalsharda/Documents/Code/UnluckySevens/UnluckySev
 
 - shared engine-level legal-action query coverage once those helpers exist
 - shared secrecy-safe projection coverage once those helpers exist
-- CI execution of the practical gate above
 
 ## Manual Simulator Runbook
 

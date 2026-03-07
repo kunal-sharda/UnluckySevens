@@ -4,6 +4,8 @@ Date: 2026-03-06
 
 Verdict: `Ready with caveats`
 
+Follow-up (2026-03-07): `.github/workflows/ci.yml` now runs the practical gate on `pull_request` and pushes to `main`. This closes the repo-level CI caveat below; the remaining caveats are UI legal-action derivation and secrecy-safe projection ownership.
+
 ## Summary
 
 The engine is in good shape for the next stage. The audited surface shows strong deterministic rule enforcement, clear authority semantics, and unusually deep package-level test coverage for a side-project iMessage game.
