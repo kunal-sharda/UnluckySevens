@@ -51,19 +51,29 @@ This repo is an iMessage-first, GamePigeon-style implementation of **standard Ca
 
 ## 3) Repo structure
 
-Target structure (generated Xcode files are NOT committed):
+Conceptual source-of-truth structure:
 ```
+.github/workflows/       # repo CI
 App/                     # minimal host app required to run Messages extension
 MessagesExtension/       # MSMessagesAppViewController + SwiftUI/SpriteKit UI
 Packages/
   ULS_CoreGame/          # pure logic (rules, reducer, validation, determinism)
   ULS_Transport/         # encoding, hashing, compression, size guards
-scripts/
-docs/ 
-  UnluckySevensPRD.pdf
+docs/                    # PRD, decisions, audit, tech spec, QA
+scripts/                 # generate / clean helpers
+Project.swift            # Tuist project manifest
+Workspace.swift          # Tuist workspace manifest
+Tuist.swift              # Tuist config entrypoint
 CHANGELOG.md
-AGENT.md
+AGENTS.md
 README.md
+```
+
+Generated local artifacts may appear after `./scripts/gen.sh`, but are not source-of-truth and must not be committed:
+```
+UnluckySevens.xcodeproj/
+UnluckySevens.xcworkspace/
+Derived/
 ```
 
 ---
@@ -73,6 +83,7 @@ README.md
 ### Tuist
 - Tuist manifests are the source of truth for targets/settings.
 - Do **not** commit generated `.xcodeproj` / `.xcworkspace`.
+- `./scripts/gen.sh` generates local Xcode artifacts when needed; `./scripts/clean.sh` removes them.
 
 ### Swift packages
 - `ULS_CoreGame` must stay **pure** (no UIKit, no Messages framework).
@@ -106,7 +117,8 @@ README.md
 ### Tests (must stay green)
 - Always add/maintain tests in packages:
   - `ULS_TransportTests`: roundtrip encoding/decoding + size guards
-  - `ULS_CoreGameTests`: determinism + rules validation
+  - `ULS_CoreGameTests`: normal deterministic core tests
+  - `ULS_CoreGameEvals`: deterministic full-match eval harness
 - Prefer deterministic automated tests for logic/transport/board generation; keep simulator transcript interaction checks as manual QA.
 
 ---
