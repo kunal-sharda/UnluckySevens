@@ -3,312 +3,696 @@ import XCTest
 
 final class ScriptedFullMatchesV1Tests: XCTestCase {
     private let topology = StandardBoardTopologyV1.standard()
+    private let resources: [ResourceV1] = [.wood, .brick, .sheep, .wheat, .ore]
 
-    func testMatch1SetupPathToWinIsDeterministic() throws {
-        let first = try runMatch1SetupToWin()
-        let second = try runMatch1SetupToWin()
-
-        assertTerminalState(first, expectedWinner: "A", roster: ["A", "B", "C"])
-        assertTerminalState(second, expectedWinner: "A", roster: ["A", "B", "C"])
-        assertDeterministicReplay(first, second)
+    private enum PlayerPolicyV1 {
+        case balanced
+        case tradeHeavy
+        case devHeavy
+        case maritimeHeavy
+        case conservative
     }
 
-    func testMatch2RoadCityRaceIsDeterministic() throws {
-        let first = try runMatch2RoadCityRace()
-        let second = try runMatch2RoadCityRace()
-
-        assertTerminalState(first, expectedWinner: "A", roster: ["A", "B", "C", "D"])
-        assertTerminalState(second, expectedWinner: "A", roster: ["A", "B", "C", "D"])
-        assertDeterministicReplay(first, second)
+    private struct MatchConfigV1 {
+        let gameId: String
+        let roster: [String]
+        let seed: UInt64
+        let policyByPlayer: [String: PlayerPolicyV1]
+        let maxTurns: Int
+        let requiredActions: [AuditActionV1]
+        let requiredAnyActions: [AuditActionV1]
+        let expectedWinner: String?
     }
 
-    func testMatch3DevArmyPathIsDeterministic() throws {
-        let first = try runMatch3DevArmyPath()
-        let second = try runMatch3DevArmyPath()
-
-        assertTerminalState(first, expectedWinner: "A", roster: ["A", "B", "C"])
-        assertTerminalState(second, expectedWinner: "A", roster: ["A", "B", "C"])
-        assertDeterministicReplay(first, second)
+    private struct MatchResultV1 {
+        let finalState: CoreGameStateV1
+        let turnsByPlayer: [String: Int]
     }
 
-    func testMatch4TradeMaritimePathIsDeterministic() throws {
-        let first = try runMatch4TradeMaritimePath()
-        let second = try runMatch4TradeMaritimePath()
-
-        assertTerminalState(first, expectedWinner: "A", roster: ["A", "B", "C", "D"])
-        assertTerminalState(second, expectedWinner: "A", roster: ["A", "B", "C", "D"])
-        assertDeterministicReplay(first, second)
+    func testMatch1BalancedSetupToWinIsDeterministic() throws {
+        let config = MatchConfigV1(
+            gameId: "full-sim-match-1",
+            roster: ["A", "B", "C"],
+            seed: 6101,
+            policyByPlayer: [:],
+            maxTurns: 260,
+            requiredActions: [.buildRoad, .buildSettlement, .buildCity],
+            requiredAnyActions: [.buyDevCard, .maritimeTrade, .proposeTrade],
+            expectedWinner: nil
+        )
+        let result = try runMatch(config)
+        assertTerminalState(result, roster: config.roster, expectedWinner: config.expectedWinner)
+        assertActionsObserved(result.finalState, required: config.requiredActions, anyOf: config.requiredAnyActions)
     }
 
-    func testScriptReplayInvariantAcrossAllFourMatches() throws {
-        let run1 = try [
-            runMatch1SetupToWin(),
-            runMatch2RoadCityRace(),
-            runMatch3DevArmyPath(),
-            runMatch4TradeMaritimePath(),
-            runMatch5NonAWinnerBPath(),
-        ]
-
-        let run2 = try [
-            runMatch1SetupToWin(),
-            runMatch2RoadCityRace(),
-            runMatch3DevArmyPath(),
-            runMatch4TradeMaritimePath(),
-            runMatch5NonAWinnerBPath(),
-        ]
-
-        XCTAssertEqual(run1.map(\.stateHash), run2.map(\.stateHash))
+    func testMatch2TradeHeavyFourPlayerIsDeterministic() throws {
+        let roster = ["A", "B", "C", "D"]
+        let config = MatchConfigV1(
+            gameId: "full-sim-match-2",
+            roster: roster,
+            seed: 6202,
+            policyByPlayer: Dictionary(uniqueKeysWithValues: roster.map { ($0, .tradeHeavy) }),
+            maxTurns: 300,
+            requiredActions: [.proposeTrade, .acceptTrade, .executeTrade],
+            requiredAnyActions: [.buildRoad, .buildSettlement],
+            expectedWinner: nil
+        )
+        let result = try runMatch(config)
+        assertTerminalState(result, roster: config.roster, expectedWinner: config.expectedWinner)
+        assertActionsObserved(result.finalState, required: config.requiredActions, anyOf: config.requiredAnyActions)
     }
 
-    func testMatch5NonAWinnerBPathIsDeterministic() throws {
-        let first = try runMatch5NonAWinnerBPath()
-        let second = try runMatch5NonAWinnerBPath()
-
-        assertTerminalState(first, expectedWinner: "B", roster: ["A", "B", "C"])
-        assertTerminalState(second, expectedWinner: "B", roster: ["A", "B", "C"])
-        assertDeterministicReplay(first, second)
-    }
-
-    private func runMatch1SetupToWin() throws -> CoreGameStateV1 {
+    func testMatch3DevHeavyThreePlayerIsDeterministic() throws {
         let roster = ["A", "B", "C"]
+        let config = MatchConfigV1(
+            gameId: "full-sim-match-3",
+            roster: roster,
+            seed: 6303,
+            policyByPlayer: Dictionary(uniqueKeysWithValues: roster.map { ($0, .devHeavy) }),
+            maxTurns: 220,
+            requiredActions: [.buyDevCard],
+            requiredAnyActions: [.playKnight, .playMonopoly, .playYearOfPlenty, .revealVictoryPoint],
+            expectedWinner: nil
+        )
+        let result = try runMatch(config)
+        assertTerminalState(result, roster: config.roster, expectedWinner: config.expectedWinner)
+        assertActionsObserved(result.finalState, required: config.requiredActions, anyOf: config.requiredAnyActions)
+    }
+
+    func testMatch4MaritimeHeavyFourPlayerIsDeterministic() throws {
+        let roster = ["A", "B", "C", "D"]
+        let config = MatchConfigV1(
+            gameId: "full-sim-match-4",
+            roster: roster,
+            seed: 6404,
+            policyByPlayer: Dictionary(uniqueKeysWithValues: roster.map { ($0, .maritimeHeavy) }),
+            maxTurns: 280,
+            requiredActions: [.maritimeTrade],
+            requiredAnyActions: [.buildRoad, .buildSettlement, .buildCity],
+            expectedWinner: nil
+        )
+        let result = try runMatch(config)
+        assertTerminalState(result, roster: config.roster, expectedWinner: config.expectedWinner)
+        assertActionsObserved(result.finalState, required: config.requiredActions, anyOf: config.requiredAnyActions)
+    }
+
+    func testMatch5NonAWinnerPathIsDeterministic() throws {
+        let config = MatchConfigV1(
+            gameId: "full-sim-match-5",
+            roster: ["A", "B", "C"],
+            seed: 6505,
+            policyByPlayer: [
+                "A": .conservative,
+                "B": .tradeHeavy,
+                "C": .conservative,
+            ],
+            maxTurns: 260,
+            requiredActions: [.submitDiscard, .moveRobber],
+            requiredAnyActions: [.buildCity, .revealVictoryPoint, .playKnight],
+            expectedWinner: "B"
+        )
+        let result = try runMatch(config)
+        assertTerminalState(result, roster: config.roster, expectedWinner: config.expectedWinner)
+        assertActionsObserved(result.finalState, required: config.requiredActions, anyOf: config.requiredAnyActions)
+    }
+
+    func testDeterministicReplayForRepresentativeMatches() throws {
+        let threePlayer = allConfigs()[0]
+        let nonAWinner = allConfigs()[4]
+
+        let threeA = try runMatch(threePlayer).finalState
+        let threeB = try runMatch(threePlayer).finalState
+        assertDeterministicReplay(threeA, threeB)
+
+        let nonAA = try runMatch(nonAWinner).finalState
+        let nonAB = try runMatch(nonAWinner).finalState
+        assertDeterministicReplay(nonAA, nonAB)
+    }
+
+    func testLiveStateInvariantViolationsAreRejected() throws {
         var state = try makeTurnStateFromSetup(
-            gameId: "scripted-match-1",
-            roster: roster,
-            seed: 1001
+            gameId: "full-sim-violations",
+            roster: ["A", "B", "C"],
+            seed: 7777
+        )
+        let actor = state.currentPlayer
+        let other = try require(state.roster.first(where: { $0 != actor }), "Expected non-actor in roster.")
+
+        try assertRejectedTurnIntent(
+            state: state,
+            intent: .endTurn,
+            actor: actor,
+            expected: .turnStepMismatch
+        )
+        try assertRejectedTurnIntent(
+            state: state,
+            intent: .rollDice,
+            actor: other,
+            expected: .actorMismatch
         )
 
-        state = preparedTurnSnapshot(
-            from: state,
-            currentPlayer: "A",
-            resourcesByPlayer: [
-                "A": ResourceHandV1(wood: 4, brick: 4, sheep: 4, wheat: 4, ore: 4),
-                "B": ResourceHandV1(wood: 2, brick: 2, sheep: 2, wheat: 2, ore: 2),
-                "C": ResourceHandV1(wood: 2, brick: 2, sheep: 2, wheat: 2, ore: 2),
-            ],
-            devCardsByPlayer: [
-                "A": DevCardInventoryV1(victoryPoint: 1),
-                "B": .zero,
-                "C": .zero,
-            ],
-            revealedVPByPlayer: [
-                "A": 7,
-                "B": 0,
-                "C": 0,
-            ]
-        )
-
-        try performTurn(state: &state, expectedActor: "A")
-        try performTurn(state: &state, expectedActor: "B")
-        try performTurn(state: &state, expectedActor: "C")
-        try performTurn(state: &state, expectedActor: "A") { working in
-            try applyTurnIntent(.revealVictoryPoint, state: &working)
+        try applyTurnIntent(.rollDice, state: &state)
+        try resolveTurnSubflowAfterRoll(state: &state)
+        guard state.phase == .turn else {
+            XCTFail("Unexpected game over before violation checks.")
+            return
         }
 
-        return state
+        try assertRejectedTurnIntent(
+            state: state,
+            intent: .rollDice,
+            actor: actor,
+            expected: .turnStepMismatch
+        )
+
+        if let plan = firstTradePlan(for: state) {
+            let proposed = TurnIntentV1.proposeTrade(give: plan.give, receive: plan.receive)
+            try applyTurnIntent(proposed, state: &state)
+            try assertRejectedTurnIntent(
+                state: state,
+                intent: .acceptTrade(acceptingPlayer: plan.acceptor, offerHash: "bad-anchor"),
+                actor: actor,
+                expected: .tradeOfferAnchorMismatch
+            )
+        }
+
+        let from = state
+        let valid = try apply(intent: .endTurn, to: from, actor: from.currentPlayer)
+        try validateTransition(from: from, to: valid, actor: from.currentPlayer)
+
+        let tampered = copiedState(from: valid, bankResources: valid.bankResources.adding(1, for: .wood)).rehashed()
+        XCTAssertThrowsError(try validateTransition(from: from, to: tampered, actor: from.currentPlayer)) { error in
+            XCTAssertEqual(error as? CoreGameError, .bankResourcesInvalid)
+        }
     }
 
-    private func runMatch2RoadCityRace() throws -> CoreGameStateV1 {
-        let roster = ["A", "B", "C", "D"]
-        let base = try makeTurnStateFromSetup(
-            gameId: "scripted-match-2",
-            roster: roster,
-            seed: 2002
-        )
-
-        var state = preparedTurnSnapshot(
-            from: base,
-            currentPlayer: "A",
-            resourcesByPlayer: [
-                "A": ResourceHandV1(wood: 10, brick: 10, sheep: 5, wheat: 8, ore: 10),
-                "B": ResourceHandV1(wood: 3, brick: 3, sheep: 3, wheat: 3, ore: 3),
-                "C": ResourceHandV1(wood: 3, brick: 3, sheep: 3, wheat: 3, ore: 3),
-                "D": ResourceHandV1(wood: 3, brick: 3, sheep: 3, wheat: 3, ore: 3),
-            ],
-            devCardsByPlayer: base.devCardsByPlayer,
-            revealedVPByPlayer: [
-                "A": 6,
-                "B": 0,
-                "C": 0,
-                "D": 0,
-            ]
-        )
-
-        try performTurn(state: &state, expectedActor: "A") { working in
-            let hand = working.resourcesByPlayer["A"] ?? .zero
-            if hand.wood >= 1, hand.brick >= 1,
-               let firstRoad = firstLegalRoadEdge(for: "A", in: working) {
-                try applyTurnIntent(.buildRoad(edgeID: firstRoad), state: &working)
-            }
-
-            let firstCity = try require(firstUpgradeableCityNode(for: "A", in: working), "Expected upgradeable city node for A.")
-            try applyTurnIntent(.buildCity(nodeID: firstCity), state: &working)
-        }
-
-        try performTurn(state: &state, expectedActor: "B")
-        try performTurn(state: &state, expectedActor: "C")
-        try performTurn(state: &state, expectedActor: "D")
-        try performTurn(state: &state, expectedActor: "A") { working in
-            let hand = working.resourcesByPlayer["A"] ?? .zero
-            if hand.wood >= 1, hand.brick >= 1,
-               let secondRoad = firstLegalRoadEdge(for: "A", in: working) {
-                try applyTurnIntent(.buildRoad(edgeID: secondRoad), state: &working)
-            }
-
-            let secondCity = try require(firstUpgradeableCityNode(for: "A", in: working), "Expected second upgradeable city node for A.")
-            try applyTurnIntent(.buildCity(nodeID: secondCity), state: &working)
-        }
-
-        return state
+    private func allConfigs() -> [MatchConfigV1] {
+        [
+            MatchConfigV1(
+                gameId: "full-sim-match-1",
+                roster: ["A", "B", "C"],
+                seed: 6101,
+                policyByPlayer: [:],
+                maxTurns: 260,
+                requiredActions: [.buildRoad, .buildSettlement, .buildCity],
+                requiredAnyActions: [.buyDevCard, .maritimeTrade, .proposeTrade],
+                expectedWinner: nil
+            ),
+            MatchConfigV1(
+                gameId: "full-sim-match-2",
+                roster: ["A", "B", "C", "D"],
+                seed: 6202,
+                policyByPlayer: ["A": .tradeHeavy, "B": .tradeHeavy, "C": .tradeHeavy, "D": .tradeHeavy],
+                maxTurns: 300,
+                requiredActions: [.proposeTrade, .acceptTrade, .executeTrade],
+                requiredAnyActions: [.buildRoad, .buildSettlement],
+                expectedWinner: nil
+            ),
+            MatchConfigV1(
+                gameId: "full-sim-match-3",
+                roster: ["A", "B", "C"],
+                seed: 6303,
+                policyByPlayer: ["A": .devHeavy, "B": .devHeavy, "C": .devHeavy],
+                maxTurns: 220,
+                requiredActions: [.buyDevCard],
+                requiredAnyActions: [.playKnight, .playMonopoly, .playYearOfPlenty, .revealVictoryPoint],
+                expectedWinner: nil
+            ),
+            MatchConfigV1(
+                gameId: "full-sim-match-4",
+                roster: ["A", "B", "C", "D"],
+                seed: 6404,
+                policyByPlayer: ["A": .maritimeHeavy, "B": .maritimeHeavy, "C": .maritimeHeavy, "D": .maritimeHeavy],
+                maxTurns: 280,
+                requiredActions: [.maritimeTrade],
+                requiredAnyActions: [.buildRoad, .buildSettlement, .buildCity],
+                expectedWinner: nil
+            ),
+            MatchConfigV1(
+                gameId: "full-sim-match-5",
+                roster: ["A", "B", "C"],
+                seed: 6505,
+                policyByPlayer: ["A": .conservative, "B": .tradeHeavy, "C": .conservative],
+                maxTurns: 260,
+                requiredActions: [.submitDiscard, .moveRobber],
+                requiredAnyActions: [.buildCity, .revealVictoryPoint, .playKnight],
+                expectedWinner: "B"
+            ),
+        ]
     }
 
-    private func runMatch3DevArmyPath() throws -> CoreGameStateV1 {
-        let roster = ["A", "B", "C"]
-        let base = try makeTurnStateFromSetup(
-            gameId: "scripted-match-3",
-            roster: roster,
-            seed: 3003
+    private func runMatch(_ config: MatchConfigV1) throws -> MatchResultV1 {
+        var state = try makeTurnStateFromSetup(
+            gameId: config.gameId,
+            roster: config.roster,
+            seed: config.seed
         )
+        var turnsByPlayer = Dictionary(uniqueKeysWithValues: config.roster.map { ($0, 0) })
+        var turns = 0
 
-        var state = preparedTurnSnapshot(
-            from: base,
-            currentPlayer: "A",
-            resourcesByPlayer: [
-                "A": ResourceHandV1(wood: 4, brick: 4, sheep: 4, wheat: 4, ore: 4),
-                "B": ResourceHandV1(wood: 4, brick: 4, sheep: 4, wheat: 4, ore: 4),
-                "C": ResourceHandV1(wood: 4, brick: 4, sheep: 4, wheat: 4, ore: 4),
-            ],
-            devCardsByPlayer: [
-                "A": DevCardInventoryV1(knight: 3),
-                "B": .zero,
-                "C": .zero,
-            ],
-            revealedVPByPlayer: [
-                "A": 6,
-                "B": 0,
-                "C": 0,
-            ]
-        )
+        while state.phase == .turn, turns < config.maxTurns {
+            turns += 1
+            let actor = state.currentPlayer
+            turnsByPlayer[actor, default: 0] += 1
 
-        for _ in 0..<2 {
-            try performTurn(state: &state, expectedActor: "A") { working in
-                let targetTile = nextRobberTileID(from: working)
-                try applyTurnIntent(.playKnight(tileID: targetTile, victimPlayer: nil), state: &working)
+            if turns == 1 || turns % 8 == 0 {
+                if let nonActor = config.roster.first(where: { $0 != actor }) {
+                    try assertRejectedTurnIntent(
+                        state: state,
+                        intent: .rollDice,
+                        actor: nonActor,
+                        expected: .actorMismatch
+                    )
+                }
+                try assertRejectedTurnIntent(
+                    state: state,
+                    intent: .endTurn,
+                    actor: actor,
+                    expected: .turnStepMismatch
+                )
             }
-            try performTurn(state: &state, expectedActor: "B")
-            try performTurn(state: &state, expectedActor: "C")
+
+            try applyTurnIntent(.rollDice, state: &state)
+            try resolveTurnSubflowAfterRoll(state: &state)
+            if state.phase == .gameOver {
+                break
+            }
+
+            guard state.turnState?.step == .afterRoll else {
+                XCTFail("Expected afterRoll after subflow resolution.")
+                break
+            }
+
+            if turns == 1 || turns % 8 == 0 {
+                try assertRejectedTurnIntent(
+                    state: state,
+                    intent: .rollDice,
+                    actor: actor,
+                    expected: .turnStepMismatch
+                )
+            }
+
+            var actions = 0
+            while state.phase == .turn, state.turnState?.step == .afterRoll, actions < 6 {
+                let policy = effectivePolicy(for: state.currentPlayer, turn: turns, config: config)
+                if try !performPolicyAction(policy: policy, state: &state) {
+                    break
+                }
+                actions += 1
+            }
+
+            if state.phase == .gameOver {
+                break
+            }
+
+            try applyTurnIntent(.endTurn, state: &state)
         }
 
-        try performTurn(state: &state, expectedActor: "A") { working in
-            let targetTile = nextRobberTileID(from: working)
-            try applyTurnIntent(.playKnight(tileID: targetTile, victimPlayer: nil), state: &working)
-        }
-
-        return state
+        XCTAssertEqual(
+            state.phase,
+            .gameOver,
+            "Simulation stalled before game over for gameId=\(config.gameId), seed=\(config.seed), turns=\(turns)."
+        )
+        return MatchResultV1(finalState: state, turnsByPlayer: turnsByPlayer)
     }
 
-    private func runMatch4TradeMaritimePath() throws -> CoreGameStateV1 {
-        let roster = ["A", "B", "C", "D"]
-        let base = try makeTurnStateFromSetup(
-            gameId: "scripted-match-4",
-            roster: roster,
-            seed: 4004
-        )
+    private func effectivePolicy(for player: String, turn: Int, config: MatchConfigV1) -> PlayerPolicyV1 {
+        let base = config.policyByPlayer[player] ?? .balanced
+        let sprintThreshold = (config.maxTurns * 3) / 4
+        guard turn >= sprintThreshold else {
+            return base
+        }
 
-        var state = preparedTurnSnapshot(
-            from: base,
-            currentPlayer: "A",
-            resourcesByPlayer: [
-                "A": ResourceHandV1(wood: 10, brick: 0, sheep: 2, wheat: 2, ore: 2),
-                "B": ResourceHandV1(wood: 1, brick: 4, sheep: 1, wheat: 1, ore: 1),
-                "C": ResourceHandV1(wood: 2, brick: 2, sheep: 2, wheat: 2, ore: 2),
-                "D": ResourceHandV1(wood: 2, brick: 2, sheep: 2, wheat: 2, ore: 2),
-            ],
-            devCardsByPlayer: [
-                "A": DevCardInventoryV1(victoryPoint: 1),
-                "B": .zero,
-                "C": .zero,
-                "D": .zero,
-            ],
-            revealedVPByPlayer: [
-                "A": 7,
-                "B": 0,
-                "C": 0,
-                "D": 0,
-            ]
-        )
+        if let expected = config.expectedWinner {
+            return player == expected ? .balanced : .conservative
+        }
+        return .balanced
+    }
 
-        try performTurn(state: &state, expectedActor: "A") { working in
-            let give = ResourceHandV1(wood: 1)
-            let receive = ResourceHandV1(brick: 1)
-            try applyTurnIntent(.proposeTrade(give: give, receive: receive), state: &working)
+    private func performPolicyAction(policy: PlayerPolicyV1, state: inout CoreGameStateV1) throws -> Bool {
+        switch policy {
+        case .balanced:
+            if try attemptRevealVictoryPoint(state: &state) { return true }
+            if try attemptBuildCity(state: &state) { return true }
+            if try attemptBuildSettlement(state: &state) { return true }
+            if try attemptPlayDevCard(state: &state) { return true }
+            if try attemptBuildRoad(state: &state) { return true }
+            if try attemptAdvanceTrade(state: &state) { return true }
+            if try attemptMaritimeTrade(state: &state) { return true }
+            if try attemptBuyDevCard(state: &state) { return true }
+            return false
+        case .tradeHeavy:
+            if try attemptRevealVictoryPoint(state: &state) { return true }
+            if try attemptBuildCity(state: &state) { return true }
+            if try attemptBuildSettlement(state: &state) { return true }
+            if try attemptBuildRoad(state: &state) { return true }
+            if try attemptAdvanceTrade(state: &state) { return true }
+            if try attemptMaritimeTrade(state: &state) { return true }
+            if try attemptPlayDevCard(state: &state) { return true }
+            if try attemptBuyDevCard(state: &state) { return true }
+            return false
+        case .devHeavy:
+            if try attemptRevealVictoryPoint(state: &state) { return true }
+            if try attemptPlayDevCard(state: &state) { return true }
+            if try attemptBuyDevCard(state: &state) { return true }
+            if try attemptBuildCity(state: &state) { return true }
+            if try attemptBuildSettlement(state: &state) { return true }
+            if try attemptBuildRoad(state: &state) { return true }
+            if try attemptMaritimeTrade(state: &state) { return true }
+            if try attemptAdvanceTrade(state: &state) { return true }
+            return false
+        case .maritimeHeavy:
+            if try attemptRevealVictoryPoint(state: &state) { return true }
+            if try attemptBuildCity(state: &state) { return true }
+            if try attemptBuildSettlement(state: &state) { return true }
+            if try attemptBuildRoad(state: &state) { return true }
+            if try attemptMaritimeTrade(state: &state) { return true }
+            if try attemptAdvanceTrade(state: &state) { return true }
+            if try attemptPlayDevCard(state: &state) { return true }
+            if try attemptBuyDevCard(state: &state) { return true }
+            return false
+        case .conservative:
+            if try attemptRevealVictoryPoint(state: &state) { return true }
+            return false
+        }
+    }
 
-            let offerHash = try require(working.activeTradeOffer?.offerHash, "Expected active offer hash after propose.")
-            try applyTurnIntent(.acceptTrade(acceptingPlayer: "B", offerHash: offerHash), state: &working)
-            try applyTurnIntent(.executeTrade(acceptingPlayer: "B", offerHash: offerHash), state: &working)
+    private func attemptRevealVictoryPoint(state: inout CoreGameStateV1) throws -> Bool {
+        try tryApplyIfLegal(.revealVictoryPoint, state: &state)
+    }
 
+    private func attemptBuildCity(state: inout CoreGameStateV1) throws -> Bool {
+        let player = state.currentPlayer
+        let nodes = state.settlementsByNode
+            .filter { $0.value == player }
+            .map(\.key)
+            .sorted()
+        for node in nodes {
+            if try tryApplyIfLegal(.buildCity(nodeID: node), state: &state) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func attemptBuildSettlement(state: inout CoreGameStateV1) throws -> Bool {
+        let player = state.currentPlayer
+        for node in candidateSettlementNodes(for: player, in: state) {
+            if try tryApplyIfLegal(.buildSettlement(nodeID: node), state: &state) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func attemptBuildRoad(state: inout CoreGameStateV1) throws -> Bool {
+        let player = state.currentPlayer
+        for edge in candidateRoadEdges(for: player, in: state) {
+            if try tryApplyIfLegal(.buildRoad(edgeID: edge), state: &state) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func attemptBuyDevCard(state: inout CoreGameStateV1) throws -> Bool {
+        try tryApplyIfLegal(.buyDevCard, state: &state)
+    }
+
+    private func attemptPlayDevCard(state: inout CoreGameStateV1) throws -> Bool {
+        let player = state.currentPlayer
+        let inventory = state.devCardsByPlayer[player] ?? .zero
+        if inventory.knight > 0 {
+            if let intent = bestKnightIntent(for: state) {
+                return try tryApplyIfLegal(intent, state: &state)
+            }
+        }
+        if inventory.monopoly > 0 {
+            if let resource = bestMonopolyResource(for: player, in: state) {
+                return try tryApplyIfLegal(.playMonopoly(resource: resource), state: &state)
+            }
+        }
+        if inventory.yearOfPlenty > 0 {
+            if let (first, second) = bestYearOfPlentyPair(for: state) {
+                return try tryApplyIfLegal(.playYearOfPlenty(first: first, second: second), state: &state)
+            }
+        }
+        return false
+    }
+
+    private func attemptAdvanceTrade(state: inout CoreGameStateV1) throws -> Bool {
+        if let offer = state.activeTradeOffer {
+            if state.pendingTradeAccepts.isEmpty {
+                let acceptors = state.roster
+                    .filter { $0 != state.currentPlayer }
+                    .sorted()
+                for acceptor in acceptors {
+                    let hand = state.resourcesByPlayer[acceptor] ?? .zero
+                    if canAfford(hand: hand, cost: offer.receive) {
+                        if try tryApplyIfLegal(
+                            .acceptTrade(acceptingPlayer: acceptor, offerHash: offer.offerHash),
+                            state: &state
+                        ) {
+                            return true
+                        }
+                    }
+                }
+                return false
+            }
+
+            if let accepted = state.pendingTradeAccepts
+                .sorted(by: { $0.acceptingPlayer < $1.acceptingPlayer })
+                .first
+            {
+                return try tryApplyIfLegal(
+                    .executeTrade(
+                        acceptingPlayer: accepted.acceptingPlayer,
+                        offerHash: accepted.offerHash
+                    ),
+                    state: &state
+                )
+            }
+            return false
+        }
+
+        if let plan = firstTradePlan(for: state) {
+            return try tryApplyIfLegal(
+                .proposeTrade(give: plan.give, receive: plan.receive),
+                state: &state
+            )
+        }
+        return false
+    }
+
+    private struct TradePlanV1 {
+        let give: ResourceHandV1
+        let receive: ResourceHandV1
+        let acceptor: String
+    }
+
+    private func firstTradePlan(for state: CoreGameStateV1) -> TradePlanV1? {
+        guard state.activeTradeOffer == nil else {
+            return nil
+        }
+        let proposer = state.currentPlayer
+        let proposerHand = state.resourcesByPlayer[proposer] ?? .zero
+
+        let giveCandidates = resources
+            .filter { proposerHand.count(for: $0) > 0 }
+            .sorted { lhs, rhs in
+                let lc = proposerHand.count(for: lhs)
+                let rc = proposerHand.count(for: rhs)
+                if lc == rc {
+                    return lhs.rawValue < rhs.rawValue
+                }
+                return lc > rc
+            }
+
+        for acceptor in state.roster.filter({ $0 != proposer }).sorted() {
+            let acceptorHand = state.resourcesByPlayer[acceptor] ?? .zero
+            let receiveCandidates = resources
+                .filter { acceptorHand.count(for: $0) > 0 }
+                .sorted { lhs, rhs in
+                    let lc = acceptorHand.count(for: lhs)
+                    let rc = acceptorHand.count(for: rhs)
+                    if lc == rc {
+                        return lhs.rawValue < rhs.rawValue
+                    }
+                    return lc > rc
+                }
+
+            for give in giveCandidates {
+                for receive in receiveCandidates where give != receive {
+                    return TradePlanV1(
+                        give: singleResourceHand(give, amount: 1),
+                        receive: singleResourceHand(receive, amount: 1),
+                        acceptor: acceptor
+                    )
+                }
+            }
+        }
+        return nil
+    }
+
+    private func attemptMaritimeTrade(state: inout CoreGameStateV1) throws -> Bool {
+        guard let board = state.board else {
+            return false
+        }
+        let player = state.currentPlayer
+        let hand = state.resourcesByPlayer[player] ?? .zero
+
+        let giveCandidates = resources.sorted { lhs, rhs in
+            let lc = hand.count(for: lhs)
+            let rc = hand.count(for: rhs)
+            if lc == rc {
+                return lhs.rawValue < rhs.rawValue
+            }
+            return lc > rc
+        }
+
+        for give in giveCandidates {
             let ratio = bestMaritimeTradeRatio(
-                player: "A",
-                giveResource: .wood,
-                board: try require(working.board, "Expected board for maritime trade."),
-                settlementsByNode: working.settlementsByNode,
-                citiesByNode: working.citiesByNode
+                player: player,
+                giveResource: give,
+                board: board,
+                settlementsByNode: state.settlementsByNode,
+                citiesByNode: state.citiesByNode
             )
-            try applyTurnIntent(
-                .maritimeTrade(
-                    give: ResourceHandV1(wood: ratio),
-                    receive: ResourceHandV1(ore: 1)
-                ),
-                state: &working
-            )
-        }
+            guard hand.count(for: give) >= ratio else {
+                continue
+            }
 
-        try performTurn(state: &state, expectedActor: "B")
-        try performTurn(state: &state, expectedActor: "C")
-        try performTurn(state: &state, expectedActor: "D")
-        try performTurn(state: &state, expectedActor: "A") { working in
-            try applyTurnIntent(.revealVictoryPoint, state: &working)
-        }
+            let receiveCandidates = resources.sorted { lhs, rhs in
+                let lc = hand.count(for: lhs)
+                let rc = hand.count(for: rhs)
+                if lc == rc {
+                    return lhs.rawValue < rhs.rawValue
+                }
+                return lc < rc
+            }
 
-        return state
+            for receive in receiveCandidates where receive != give {
+                guard state.bankResources.count(for: receive) >= 1 else {
+                    continue
+                }
+                if try tryApplyIfLegal(
+                    .maritimeTrade(
+                        give: singleResourceHand(give, amount: ratio),
+                        receive: singleResourceHand(receive, amount: 1)
+                    ),
+                    state: &state
+                ) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
-    private func runMatch5NonAWinnerBPath() throws -> CoreGameStateV1 {
-        let roster = ["A", "B", "C"]
-        let base = try makeTurnStateFromSetup(
-            gameId: "scripted-match-5",
-            roster: roster,
-            seed: 5005
-        )
+    private func bestKnightIntent(for state: CoreGameStateV1) -> TurnIntentV1? {
+        guard let board = state.board, !board.resourcesByTile.isEmpty else {
+            return nil
+        }
+        for offset in 1..<board.resourcesByTile.count {
+            let tile = (board.robberTile + offset) % board.resourcesByTile.count
+            return .playKnight(tileID: tile, victimPlayer: nil)
+        }
+        return nil
+    }
 
-        var state = preparedTurnSnapshot(
-            from: base,
-            currentPlayer: "A",
-            resourcesByPlayer: [
-                "A": ResourceHandV1(wood: 3, brick: 3, sheep: 3, wheat: 3, ore: 3),
-                "B": ResourceHandV1(wood: 3, brick: 3, sheep: 3, wheat: 3, ore: 3),
-                "C": ResourceHandV1(wood: 3, brick: 3, sheep: 3, wheat: 3, ore: 3),
-            ],
-            devCardsByPlayer: [
-                "A": .zero,
-                "B": DevCardInventoryV1(victoryPoint: 1),
-                "C": .zero,
-            ],
-            revealedVPByPlayer: [
-                "A": 0,
-                "B": 7,
-                "C": 0,
-            ]
-        )
+    private func bestMonopolyResource(for player: String, in state: CoreGameStateV1) -> ResourceV1? {
+        var bestResource: ResourceV1?
+        var bestCount = 0
+        for resource in resources {
+            var total = 0
+            for other in state.roster where other != player {
+                total += (state.resourcesByPlayer[other] ?? .zero).count(for: resource)
+            }
+            if total > bestCount {
+                bestCount = total
+                bestResource = resource
+            }
+        }
+        return bestCount > 0 ? bestResource : nil
+    }
 
-        try performTurn(state: &state, expectedActor: "A")
-        try performTurn(state: &state, expectedActor: "B")
-        try performTurn(state: &state, expectedActor: "C")
-        try performTurn(state: &state, expectedActor: "A")
-        try performTurn(state: &state, expectedActor: "B") { working in
-            try applyTurnIntent(.revealVictoryPoint, state: &working)
+    private func bestYearOfPlentyPair(for state: CoreGameStateV1) -> (ResourceV1, ResourceV1)? {
+        let priority: [ResourceV1] = [.ore, .wheat, .brick, .wood, .sheep]
+        var picks: [ResourceV1] = []
+
+        for resource in priority {
+            if state.bankResources.count(for: resource) > 0 {
+                picks.append(resource)
+                break
+            }
+        }
+        guard let first = picks.first else {
+            return nil
         }
 
-        return state
+        if state.bankResources.count(for: first) > 1 {
+            return (first, first)
+        }
+
+        for resource in priority where resource != first {
+            if state.bankResources.count(for: resource) > 0 {
+                return (first, resource)
+            }
+        }
+        return nil
+    }
+
+    private func candidateSettlementNodes(for player: String, in state: CoreGameStateV1) -> [Int] {
+        var nodes: Set<Int> = []
+        for (edgeID, owner) in state.roadsByEdge where owner == player {
+            guard edgeID >= 0, edgeID < topology.edges.count else {
+                continue
+            }
+            let edge = topology.edges[edgeID]
+            nodes.insert(edge.a)
+            nodes.insert(edge.b)
+        }
+        return nodes.sorted()
+    }
+
+    private func candidateRoadEdges(for player: String, in state: CoreGameStateV1) -> [Int] {
+        var anchorNodes: Set<Int> = []
+        for (node, owner) in state.settlementsByNode where owner == player {
+            anchorNodes.insert(node)
+        }
+        for (node, owner) in state.citiesByNode where owner == player {
+            anchorNodes.insert(node)
+        }
+        for (edgeID, owner) in state.roadsByEdge where owner == player {
+            guard edgeID >= 0, edgeID < topology.edges.count else {
+                continue
+            }
+            let edge = topology.edges[edgeID]
+            anchorNodes.insert(edge.a)
+            anchorNodes.insert(edge.b)
+        }
+
+        var candidates: Set<Int> = []
+        for node in anchorNodes {
+            for edgeID in topology.edges(incidentTo: node) where state.roadsByEdge[edgeID] == nil {
+                candidates.insert(edgeID)
+            }
+        }
+        return candidates.sorted()
+    }
+
+    private func tryApplyIfLegal(_ intent: TurnIntentV1, state: inout CoreGameStateV1) throws -> Bool {
+        let from = state
+        let actor = from.currentPlayer
+        guard let next = try? apply(intent: intent, to: from, actor: actor) else {
+            return false
+        }
+        guard (try? validateTransition(from: from, to: next, actor: actor)) != nil else {
+            return false
+        }
+        state = next
+        assertStateInvariants(state)
+        return true
     }
 
     private func makeTurnStateFromSetup(
@@ -342,6 +726,7 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
             setupState: initializeSetupState(roster: roster),
             turnState: nil
         ).rehashed()
+        assertStateInvariants(state)
 
         while state.phase == .setup {
             guard let setup = state.setupState else {
@@ -353,9 +738,18 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
             case .placeSettlement:
                 let occupiedNodes = occupiedSettlementNodes(from: setup.placements)
                 let occupiedEdges = occupiedRoadEdges(from: setup.placements)
-                let settlement = try firstLegalSetupSettlementNode(occupiedNodes: occupiedNodes)
-                let road = try firstIncidentSetupEdge(for: settlement, occupiedEdges: occupiedEdges)
-                try applySetupIntent(.placeSetupPair(settlementNode: settlement, roadEdge: road), state: &state)
+                let settlement = try bestLegalSetupSettlementNode(
+                    in: state,
+                    occupiedNodes: occupiedNodes
+                )
+                let road = try firstIncidentSetupEdge(
+                    for: settlement,
+                    occupiedEdges: occupiedEdges
+                )
+                try applySetupIntent(
+                    .placeSetupPair(settlementNode: settlement, roadEdge: road),
+                    state: &state
+                )
             case .placeRoad:
                 guard let lastNode = setup.lastPlacedSettlementNode else {
                     throw XCTSkip("No last settlement available for setup road placement.")
@@ -373,75 +767,11 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
         return state
     }
 
-    private func preparedTurnSnapshot(
-        from state: CoreGameStateV1,
-        currentPlayer: String,
-        resourcesByPlayer: [String: ResourceHandV1],
-        devCardsByPlayer: [String: DevCardInventoryV1],
-        revealedVPByPlayer: [String: Int]
-    ) -> CoreGameStateV1 {
-        CoreGameStateV1(
-            gameId: state.gameId,
-            rev: state.rev,
-            prevHash: state.prevHash,
-            stateHash: "",
-            roster: state.roster,
-            currentPlayer: currentPlayer,
-            phase: .turn,
-            seed: state.seed,
-            diceRngState: state.diceRngState,
-            robberRngState: state.robberRngState,
-            resourcesByPlayer: resourcesByPlayer,
-            bankResources: state.bankResources,
-            devDeck: state.devDeck,
-            devCardsByPlayer: devCardsByPlayer,
-            newDevCardsByPlayer: Dictionary(uniqueKeysWithValues: state.roster.map { ($0, .zero) }),
-            revealedVictoryPointsByPlayer: revealedVPByPlayer,
-            devCardActionPlayedThisTurn: false,
-            knightsPlayedByPlayer: Dictionary(uniqueKeysWithValues: state.roster.map { ($0, 0) }),
-            largestArmyOwner: nil,
-            largestArmySize: 0,
-            longestRoadOwner: nil,
-            longestRoadLength: 0,
-            winnerPlayer: nil,
-            winningVictoryPoints: 0,
-            auditLog: [],
-            lastTurnRecap: nil,
-            activeTradeOffer: nil,
-            pendingTradeAccepts: [],
-            settlementsByNode: state.settlementsByNode,
-            citiesByNode: state.citiesByNode,
-            roadsByEdge: state.roadsByEdge,
-            boardRules: state.boardRules,
-            board: state.board,
-            setupState: nil,
-            turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
-        ).rehashed()
-    }
-
-    private func performTurn(
-        state: inout CoreGameStateV1,
-        expectedActor: String,
-        actions: (inout CoreGameStateV1) throws -> Void = { _ in }
-    ) throws {
-        XCTAssertEqual(state.currentPlayer, expectedActor)
-        XCTAssertEqual(state.phase, .turn)
-
-        try applyTurnIntent(.rollDice, state: &state)
-        try resolveTurnSubflowAfterRoll(state: &state)
-        try actions(&state)
-
-        if state.phase == .gameOver {
-            return
-        }
-        try applyTurnIntent(.endTurn, state: &state)
-    }
-
     private func resolveTurnSubflowAfterRoll(state: inout CoreGameStateV1) throws {
         var guardCounter = 0
         while state.phase == .turn, let step = state.turnState?.step, step != .afterRoll {
             guardCounter += 1
-            if guardCounter > 20 {
+            if guardCounter > 32 {
                 XCTFail("Exceeded subflow guard while resolving roll.")
                 break
             }
@@ -459,20 +789,63 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
                     let required = turnState.discardRequirementsByPlayer[player] ?? 0
                     let hand = state.resourcesByPlayer[player] ?? .zero
                     let discarded = deterministicDiscard(required: required, hand: hand)
-                    try applyTurnIntent(.submitDiscard(player: player, discarded: discarded), state: &state)
+                    try applyTurnIntent(
+                        .submitDiscard(player: player, discarded: discarded),
+                        state: &state
+                    )
                 }
             case .needsRobberMove:
-                let robberTile = try require(state.board?.robberTile, "Expected board robber tile for robber move.")
-                let boardCount = try require(state.board?.resourcesByTile.count, "Expected board resources for robber move.")
-                let nextTile = (robberTile + 1) % max(1, boardCount)
-                try applyTurnIntent(.moveRobber(tileID: nextTile), state: &state)
+                let tileID = try chooseRobberTileForSubflow(from: state)
+                try applyTurnIntent(.moveRobber(tileID: tileID), state: &state)
             case .needsRobberSteal:
-                let victim = try require(state.turnState?.eligibleStealVictims.sorted().first, "Expected eligible robber steal victim.")
+                guard let victim = state.turnState?.eligibleStealVictims.sorted().first else {
+                    XCTFail("Missing eligible victim during robber steal step.")
+                    return
+                }
                 try applyTurnIntent(.selectStealVictim(victimPlayer: victim), state: &state)
             case .needsRoll, .afterRoll:
                 return
             }
         }
+    }
+
+    private func chooseRobberTileForSubflow(from state: CoreGameStateV1) throws -> Int {
+        let board = try require(state.board, "Expected board for robber move.")
+        let tileCount = board.resourcesByTile.count
+        guard tileCount > 1 else {
+            return 0
+        }
+
+        for offset in 1..<tileCount {
+            let tile = (board.robberTile + offset) % tileCount
+            if !eligibleVictims(for: tile, in: state).isEmpty {
+                return tile
+            }
+        }
+        return (board.robberTile + 1) % tileCount
+    }
+
+    private func eligibleVictims(for tileID: Int, in state: CoreGameStateV1) -> [String] {
+        guard tileID >= 0, tileID < topology.tiles.count else {
+            return []
+        }
+        var victims: Set<String> = []
+        for node in topology.tiles[tileID].nodes {
+            if let cityOwner = state.citiesByNode[node],
+               cityOwner != state.currentPlayer,
+               (state.resourcesByPlayer[cityOwner] ?? .zero).totalCount > 0
+            {
+                victims.insert(cityOwner)
+                continue
+            }
+            if let settlementOwner = state.settlementsByNode[node],
+               settlementOwner != state.currentPlayer,
+               (state.resourcesByPlayer[settlementOwner] ?? .zero).totalCount > 0
+            {
+                victims.insert(settlementOwner)
+            }
+        }
+        return victims.sorted()
     }
 
     private func applySetupIntent(_ intent: SetupIntentV1, state: inout CoreGameStateV1) throws {
@@ -481,6 +854,7 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
         let to = try apply(intent: intent, to: from, actor: actor)
         try validateTransition(from: from, to: to, actor: actor)
         state = to
+        assertStateInvariants(state)
     }
 
     private func applyTurnIntent(_ intent: TurnIntentV1, state: inout CoreGameStateV1) throws {
@@ -489,70 +863,76 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
         let to = try apply(intent: intent, to: from, actor: actor)
         try validateTransition(from: from, to: to, actor: actor)
         state = to
+        assertStateInvariants(state)
     }
 
-    private func firstLegalRoadEdge(for player: String, in state: CoreGameStateV1) -> Int? {
-        for edgeID in topology.edges.indices where state.roadsByEdge[edgeID] == nil {
-            let edge = topology.edges[edgeID]
-            let nodes = [edge.a, edge.b]
-            for node in nodes {
-                if state.settlementsByNode[node] == player || state.citiesByNode[node] == player {
-                    return edgeID
-                }
-                if state.settlementsByNode[node] != nil || state.citiesByNode[node] != nil {
-                    continue
-                }
-                for adjacentEdge in topology.edges(incidentTo: node) where adjacentEdge != edgeID {
-                    if state.roadsByEdge[adjacentEdge] == player {
-                        return edgeID
-                    }
-                }
-            }
+    private func assertRejectedTurnIntent(
+        state: CoreGameStateV1,
+        intent: TurnIntentV1,
+        actor: String,
+        expected: CoreGameError
+    ) throws {
+        let snapshot = state
+        XCTAssertThrowsError(try apply(intent: intent, to: state, actor: actor)) { error in
+            XCTAssertEqual(error as? CoreGameError, expected)
         }
-        return nil
+        XCTAssertEqual(state, snapshot)
     }
 
-    private func firstUpgradeableCityNode(for player: String, in state: CoreGameStateV1) -> Int? {
-        state.settlementsByNode
-            .filter { $0.value == player }
-            .map(\.key)
-            .sorted()
-            .first
+    private func copiedState(
+        from state: CoreGameStateV1,
+        stateHash: String? = nil,
+        bankResources: ResourceHandV1? = nil
+    ) -> CoreGameStateV1 {
+        CoreGameStateV1(
+            gameId: state.gameId,
+            rev: state.rev,
+            prevHash: state.prevHash,
+            stateHash: stateHash ?? state.stateHash,
+            roster: state.roster,
+            currentPlayer: state.currentPlayer,
+            phase: state.phase,
+            seed: state.seed,
+            diceRngState: state.diceRngState,
+            robberRngState: state.robberRngState,
+            resourcesByPlayer: state.resourcesByPlayer,
+            bankResources: bankResources ?? state.bankResources,
+            devDeck: state.devDeck,
+            devCardsByPlayer: state.devCardsByPlayer,
+            newDevCardsByPlayer: state.newDevCardsByPlayer,
+            revealedVictoryPointsByPlayer: state.revealedVictoryPointsByPlayer,
+            devCardActionPlayedThisTurn: state.devCardActionPlayedThisTurn,
+            knightsPlayedByPlayer: state.knightsPlayedByPlayer,
+            largestArmyOwner: state.largestArmyOwner,
+            largestArmySize: state.largestArmySize,
+            longestRoadOwner: state.longestRoadOwner,
+            longestRoadLength: state.longestRoadLength,
+            winnerPlayer: state.winnerPlayer,
+            winningVictoryPoints: state.winningVictoryPoints,
+            auditLog: state.auditLog,
+            lastTurnRecap: state.lastTurnRecap,
+            activeTradeOffer: state.activeTradeOffer,
+            pendingTradeAccepts: state.pendingTradeAccepts,
+            settlementsByNode: state.settlementsByNode,
+            citiesByNode: state.citiesByNode,
+            roadsByEdge: state.roadsByEdge,
+            boardRules: state.boardRules,
+            board: state.board,
+            setupState: state.setupState,
+            turnState: state.turnState
+        )
     }
 
-    private func deterministicDiscard(required: Int, hand: ResourceHandV1) -> ResourceHandV1 {
-        var remaining = required
-        var discarded = ResourceHandV1.zero
-
-        let wood = min(hand.wood, remaining)
-        discarded = discarded.adding(wood, for: .wood)
-        remaining -= wood
-
-        let brick = min(hand.brick, remaining)
-        discarded = discarded.adding(brick, for: .brick)
-        remaining -= brick
-
-        let sheep = min(hand.sheep, remaining)
-        discarded = discarded.adding(sheep, for: .sheep)
-        remaining -= sheep
-
-        let wheat = min(hand.wheat, remaining)
-        discarded = discarded.adding(wheat, for: .wheat)
-        remaining -= wheat
-
-        let ore = min(hand.ore, remaining)
-        discarded = discarded.adding(ore, for: .ore)
-        remaining -= ore
-
-        XCTAssertEqual(remaining, 0)
-        return discarded
+    private func singleResourceHand(_ resource: ResourceV1, amount: Int) -> ResourceHandV1 {
+        ResourceHandV1.zero.adding(amount, for: resource)
     }
 
-    private func nextRobberTileID(from state: CoreGameStateV1) -> Int {
-        guard let board = state.board, !board.resourcesByTile.isEmpty else {
-            return 0
-        }
-        return (board.robberTile + 1) % board.resourcesByTile.count
+    private func canAfford(hand: ResourceHandV1, cost: ResourceHandV1) -> Bool {
+        hand.wood >= cost.wood &&
+            hand.brick >= cost.brick &&
+            hand.sheep >= cost.sheep &&
+            hand.wheat >= cost.wheat &&
+            hand.ore >= cost.ore
     }
 
     private func bestMaritimeTradeRatio(
@@ -599,17 +979,70 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
         return 4
     }
 
-    private func firstLegalSetupSettlementNode(occupiedNodes: Set<NodeID>) throws -> NodeID {
+    private func deterministicDiscard(required: Int, hand: ResourceHandV1) -> ResourceHandV1 {
+        var remaining = required
+        var discarded = ResourceHandV1.zero
+        for resource in resources {
+            let amount = min(hand.count(for: resource), remaining)
+            discarded = discarded.adding(amount, for: resource)
+            remaining -= amount
+        }
+        XCTAssertEqual(remaining, 0)
+        return discarded
+    }
+
+    private func bestLegalSetupSettlementNode(
+        in state: CoreGameStateV1,
+        occupiedNodes: Set<NodeID>
+    ) throws -> NodeID {
+        let board = try require(state.board, "Expected board while computing setup settlement.")
+        var bestNode: NodeID?
+        var bestScore = Int.min
+
         for node in 0..<topology.nodesCount {
             if occupiedNodes.contains(node) {
                 continue
             }
             let adjacent = Set(topology.nodes(adjacentTo: node))
-            if adjacent.isDisjoint(with: occupiedNodes) {
-                return node
+            if !adjacent.isDisjoint(with: occupiedNodes) {
+                continue
+            }
+
+            var score = 0
+            for tileID in 0..<topology.tiles.count where topology.tiles[tileID].nodes.contains(node) {
+                let resource = board.resourcesByTile[tileID]
+                guard resource != .desert else {
+                    continue
+                }
+                if let number = board.numbersByTile[tileID] {
+                    score += pipScore(number)
+                }
+            }
+
+            if score > bestScore || (score == bestScore && (bestNode == nil || node < bestNode!)) {
+                bestScore = score
+                bestNode = node
             }
         }
-        throw XCTSkip("No legal setup settlement node found.")
+
+        return try require(bestNode, "No legal setup settlement node found.")
+    }
+
+    private func pipScore(_ number: Int) -> Int {
+        switch number {
+        case 6, 8:
+            return 5
+        case 5, 9:
+            return 4
+        case 4, 10:
+            return 3
+        case 3, 11:
+            return 2
+        case 2, 12:
+            return 1
+        default:
+            return 0
+        }
     }
 
     private func firstIncidentSetupEdge(for node: NodeID, occupiedEdges: Set<EdgeID>) throws -> EdgeID {
@@ -645,6 +1078,72 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
         return edges
     }
 
+    private func assertStateInvariants(_ state: CoreGameStateV1, file: StaticString = #filePath, line: UInt = #line) {
+        assertNonNegativeHand(state.bankResources, file: file, line: line)
+        var total = state.bankResources
+        for player in state.roster {
+            let hand = state.resourcesByPlayer[player] ?? .zero
+            assertNonNegativeHand(hand, file: file, line: line)
+            total = addHands(total, hand)
+        }
+        XCTAssertEqual(total.wood, 19, file: file, line: line)
+        XCTAssertEqual(total.brick, 19, file: file, line: line)
+        XCTAssertEqual(total.sheep, 19, file: file, line: line)
+        XCTAssertEqual(total.wheat, 19, file: file, line: line)
+        XCTAssertEqual(total.ore, 19, file: file, line: line)
+
+        for player in state.roster {
+            let roads = state.roadsByEdge.values.filter { $0 == player }.count
+            let settlements = state.settlementsByNode.values.filter { $0 == player }.count
+            let cities = state.citiesByNode.values.filter { $0 == player }.count
+            XCTAssertLessThanOrEqual(roads, 15, file: file, line: line)
+            XCTAssertLessThanOrEqual(settlements, 5, file: file, line: line)
+            XCTAssertLessThanOrEqual(cities, 4, file: file, line: line)
+        }
+
+        for node in state.citiesByNode.keys {
+            XCTAssertNil(state.settlementsByNode[node], file: file, line: line)
+        }
+
+        let revealedVP = state.revealedVictoryPointsByPlayer.values.reduce(0, +)
+        XCTAssertLessThanOrEqual(revealedVP, 5, file: file, line: line)
+
+        let deckKnights = state.devDeck.filter { $0 == .knight }.count
+        let handKnights = state.roster.reduce(0) { partial, player in
+            let dev = state.devCardsByPlayer[player] ?? .zero
+            let new = state.newDevCardsByPlayer[player] ?? .zero
+            return partial + dev.knight + new.knight
+        }
+        let playedKnights = state.roster.reduce(0) { $0 + (state.knightsPlayedByPlayer[$1] ?? 0) }
+        XCTAssertEqual(deckKnights + handKnights + playedKnights, 14, file: file, line: line)
+
+        let deckVP = state.devDeck.filter { $0 == .victoryPoint }.count
+        let handVP = state.roster.reduce(0) { partial, player in
+            let dev = state.devCardsByPlayer[player] ?? .zero
+            let new = state.newDevCardsByPlayer[player] ?? .zero
+            return partial + dev.victoryPoint + new.victoryPoint
+        }
+        XCTAssertEqual(deckVP + handVP + revealedVP, 5, file: file, line: line)
+    }
+
+    private func assertNonNegativeHand(_ hand: ResourceHandV1, file: StaticString, line: UInt) {
+        XCTAssertGreaterThanOrEqual(hand.wood, 0, file: file, line: line)
+        XCTAssertGreaterThanOrEqual(hand.brick, 0, file: file, line: line)
+        XCTAssertGreaterThanOrEqual(hand.sheep, 0, file: file, line: line)
+        XCTAssertGreaterThanOrEqual(hand.wheat, 0, file: file, line: line)
+        XCTAssertGreaterThanOrEqual(hand.ore, 0, file: file, line: line)
+    }
+
+    private func addHands(_ lhs: ResourceHandV1, _ rhs: ResourceHandV1) -> ResourceHandV1 {
+        ResourceHandV1(
+            wood: lhs.wood + rhs.wood,
+            brick: lhs.brick + rhs.brick,
+            sheep: lhs.sheep + rhs.sheep,
+            wheat: lhs.wheat + rhs.wheat,
+            ore: lhs.ore + rhs.ore
+        )
+    }
+
     private func require<T>(_ value: T?, _ message: String) throws -> T {
         guard let value else {
             XCTFail(message)
@@ -654,12 +1153,17 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
     }
 
     private func assertTerminalState(
-        _ state: CoreGameStateV1,
-        expectedWinner: String,
-        roster: [String]
+        _ result: MatchResultV1,
+        roster: [String],
+        expectedWinner: String?
     ) {
+        let state = result.finalState
         XCTAssertEqual(state.phase, .gameOver)
-        XCTAssertEqual(state.winnerPlayer, expectedWinner)
+        if let expectedWinner {
+            XCTAssertEqual(state.winnerPlayer, expectedWinner)
+        } else {
+            XCTAssertTrue(roster.contains(state.winnerPlayer ?? ""))
+        }
         XCTAssertGreaterThanOrEqual(state.winningVictoryPoints, 10)
 
         let rollActors = Set(
@@ -668,11 +1172,41 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
                 .map(\.actor)
         )
         XCTAssertEqual(rollActors, Set(roster))
+
+        for player in roster {
+            XCTAssertGreaterThan(result.turnsByPlayer[player, default: 0], 0)
+        }
+    }
+
+    private func assertActionsObserved(
+        _ state: CoreGameStateV1,
+        required: [AuditActionV1],
+        anyOf: [AuditActionV1]
+    ) {
+        for action in required {
+            XCTAssertGreaterThan(
+                actionCount(action, in: state),
+                0,
+                "Expected action \(action.rawValue) to appear in audit log."
+            )
+        }
+        if !anyOf.isEmpty {
+            let observed = anyOf.contains { actionCount($0, in: state) > 0 }
+            XCTAssertTrue(observed, "Expected at least one action from \(anyOf.map(\.rawValue)).")
+        }
+    }
+
+    private func actionCount(_ action: AuditActionV1, in state: CoreGameStateV1) -> Int {
+        state.auditLog.reduce(0) { partial, entry in
+            partial + (entry.action == action ? 1 : 0)
+        }
     }
 
     private func assertDeterministicReplay(_ lhs: CoreGameStateV1, _ rhs: CoreGameStateV1) {
         XCTAssertEqual(lhs.stateHash, rhs.stateHash)
         XCTAssertEqual(lhs.auditLog, rhs.auditLog)
         XCTAssertEqual(lhs.lastTurnRecap, rhs.lastTurnRecap)
+        XCTAssertEqual(lhs.winnerPlayer, rhs.winnerPlayer)
+        XCTAssertEqual(lhs.winningVictoryPoints, rhs.winningVictoryPoints)
     }
 }

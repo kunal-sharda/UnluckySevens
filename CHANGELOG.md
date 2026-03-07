@@ -124,3 +124,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Messages debug harness now uses sticky Active Context state with explicit `Reload Selected Bubble` and `Clear Context` controls, staleness warning, context-source metadata, and in-memory debug logs.
 - Messages debug harness now supports local `Acting As` simulation from active roster, reasoned button disabling, and debug apply-as-state actions for selected setup/turn intent bubbles.
 - Messages debug transcript/debug plumbing now includes optional single-session intent threading and short `summaryText` labels for STATE/INTENT bubbles without leaking secret hand composition.
+- Phase 1 regression coverage now uses fully legal setup-to-gameOver simulations (no synthetic VP injection) with five seeded multi-player policy-driven matches, including a deterministic non-`A` winner path.
+- Scripted full-match suite now performs live in-turn violation probes (actor mismatch, step gating, bad trade anchor) and asserts transition validation catches tampered post-reducer state.
+- Scripted full-match invariants now enforce resource-bank conservation, dev deck/card conservation, piece bounds, and deterministic replay for representative full-match seeds.
