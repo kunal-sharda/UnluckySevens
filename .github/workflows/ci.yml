@@ -39,7 +39,10 @@ jobs:
         run: bash ./scripts/gen.sh
 
       - name: Test ULS_CoreGame
-        run: swift test --package-path Packages/ULS_CoreGame
+        run: swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals
+
+      - name: Run ULS_CoreGame deterministic evals
+        run: swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals
 
       - name: Test ULS_Transport
         run: swift test --package-path Packages/ULS_Transport

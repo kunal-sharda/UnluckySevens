@@ -54,3 +54,9 @@ open UnluckySevens.xcworkspace
 - [Engine Readiness Audit](docs/EngineReadinessAudit.md)
 - [Game Engine Technical Specification](docs/GameEngineTechSpec.md)
 - [QA Guide](docs/QA.md)
+
+## Tests and Evals
+
+- `ULS_CoreGameTests` is the normal deterministic core test suite.
+- `ULS_CoreGameEvals` is the deterministic engine eval harness for long-running scripted full-match scenarios.
+- `ULS_TransportTests` covers transport roundtrips, decode failures, and payload budgets.

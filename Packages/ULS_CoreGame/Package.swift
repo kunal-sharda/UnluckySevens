@@ -21,5 +21,9 @@ let package = Package(
             name: "ULS_CoreGameTests",
             dependencies: ["ULS_CoreGame"]
         ),
+        .testTarget(
+            name: "ULS_CoreGameEvals",
+            dependencies: ["ULS_CoreGame"]
+        ),
     ]
 )

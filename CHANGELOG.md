@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Engine readiness audit docs: `docs/EngineReadinessAudit.md`, `docs/GameEngineTechSpec.md`, and `docs/QA.md`.
 - Transport regression coverage for a large canonical `STATE` envelope budget and roundtrip decode.
 - Minimal GitHub Actions `CI` workflow mirroring the practical gate on `pull_request` and `push` to `main`.
+- CoreGame test split: normal package tests remain in `ULS_CoreGameTests` and deterministic full-match evals now live in `ULS_CoreGameEvals`.
 - README documentation index entries for engine audit, tech spec, and QA docs.
 - Stage 0.A bootstrap scaffolding for `Tuist/`, `App/`, `MessagesExtension/`, `Packages/`, and `scripts/`.
 - Stage 0.A developer scripts: `scripts/gen.sh` and `scripts/clean.sh`.

@@ -6,12 +6,15 @@ These commands should stay green for the current MVP engine baseline:
 
 ```bash
 bash ./scripts/gen.sh
-swift test --package-path Packages/ULS_CoreGame
+swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals
+swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals
 swift test --package-path Packages/ULS_Transport
 xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build
 ```
 
 GitHub Actions mirrors this practical gate in `.github/workflows/ci.yml`.
+
+`ULS_CoreGameEvals` is the deterministic engine eval harness. `ULS_CoreGameTests` remains the normal core test suite.
 
 ## What Is Already Covered Well
 
