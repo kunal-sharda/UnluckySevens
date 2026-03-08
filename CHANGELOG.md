@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- Removed the repo-local `AGENTS.md`; repo guidance now lives in the tracked docs set without a separate agent-specific file.
+
 ### Added
 - Engine readiness audit docs: `docs/EngineReadinessAudit.md`, `docs/GameEngineTechSpec.md`, and `docs/QA.md`.
 - Transport regression coverage for a large canonical `STATE` envelope budget and roundtrip decode.
