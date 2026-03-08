@@ -30,11 +30,13 @@ GitHub Actions mirrors this practical gate in `.github/workflows/ci.yml`.
 ## What This Pass Added
 
 - realistic transport stress test for canonical STATE payload budget and roundtrip decode
+- shared `ULS_CoreGame` view/query helpers for legal default actions and viewer-scoped secrecy-safe projections
+- focused core tests covering the new query/projection surface against reducer legality and secrecy expectations
 
 ## Remaining High-Value Gaps
 
-- shared engine-level legal-action query coverage once those helpers exist
-- shared secrecy-safe projection coverage once those helpers exist
+- no automated transcript-level Messages UI checks yet
+- no board/UI snapshot coverage once the production board UI replaces the current debug harness
 
 ## Manual Simulator Runbook
 

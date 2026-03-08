@@ -1943,27 +1943,27 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func visibleHandsSummary(for state: CoreGameStateV1) -> String {
-        let localActor = localActorIdentifier()
-        return state.roster.map { player in
-            let hand = state.resourcesByPlayer[player] ?? .zero
-            if localActor == player {
-                return "\(player): \(resourceHandDescription(hand))"
+        state.visibleResourceHands(for: localActorIdentifier())
+            .map { playerView in
+                if let revealedHand = playerView.revealedHand {
+                    return "\(playerView.player): \(resourceHandDescription(revealedHand))"
+                }
+                return "\(playerView.player): \(playerView.totalCount)"
             }
-            return "\(player): \(hand.totalCount)"
-        }.joined(separator: " | ")
+            .joined(separator: " | ")
     }
 
     private func visibleDevCardsSummary(for state: CoreGameStateV1) -> String {
-        let localActor = localActorIdentifier()
-        return state.roster.map { player in
-            let playable = state.devCardsByPlayer[player] ?? .zero
-            let newCards = state.newDevCardsByPlayer[player] ?? .zero
-            let total = playable.totalCount + newCards.totalCount
-            if localActor == player {
-                return "\(player): \(devCardInventoryDescription(playable))/new:\(devCardInventoryDescription(newCards))"
+        state.visibleDevCards(for: localActorIdentifier())
+            .map { playerView in
+                if let playable = playerView.revealedPlayable,
+                   let newCards = playerView.revealedNew
+                {
+                    return "\(playerView.player): \(devCardInventoryDescription(playable))/new:\(devCardInventoryDescription(newCards))"
+                }
+                return "\(playerView.player): \(playerView.totalCount)"
             }
-            return "\(player): \(total)"
-        }.joined(separator: " | ")
+            .joined(separator: " | ")
     }
 
     private func resourceHandDescription(_ hand: ResourceHandV1) -> String {
@@ -2117,240 +2117,56 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func defaultKnightVictim(for tileID: Int, in state: CoreGameStateV1) -> String? {
-        let topology = StandardBoardTopologyV1.standard()
-        guard tileID >= 0, tileID < topology.tiles.count else {
-            return nil
-        }
-
-        let current = state.currentPlayer
-        var victims: Set<String> = []
-        for node in topology.tiles[tileID].nodes {
-            if let cityOwner = state.citiesByNode[node],
-               cityOwner != current,
-               (state.resourcesByPlayer[cityOwner] ?? .zero).totalCount > 0
-            {
-                victims.insert(cityOwner)
-                continue
-            }
-            if let settlementOwner = state.settlementsByNode[node],
-               settlementOwner != current,
-               (state.resourcesByPlayer[settlementOwner] ?? .zero).totalCount > 0
-            {
-                victims.insert(settlementOwner)
-            }
-        }
-        return victims.sorted().first
+        state.defaultKnightVictim(for: tileID, actor: state.currentPlayer)
     }
 
     private func defaultMonopolyResource(for actor: String, in state: CoreGameStateV1) -> ResourceV1? {
-        let resources: [ResourceV1] = [.wood, .brick, .sheep, .wheat, .ore]
-        var bestResource: ResourceV1?
-        var bestCount = 0
-        for resource in resources {
-            let count = state.roster
-                .filter { $0 != actor }
-                .reduce(0) { partial, player in
-                    partial + (state.resourcesByPlayer[player] ?? .zero).count(for: resource)
-                }
-            if count > bestCount {
-                bestCount = count
-                bestResource = resource
-            }
-        }
-        return bestResource ?? resources.first
+        state.defaultMonopolyResource(for: actor)
     }
 
     private func defaultYearOfPlentyResources(from state: CoreGameStateV1) -> (first: ResourceV1, second: ResourceV1)? {
-        let resources: [ResourceV1] = [.wood, .brick, .sheep, .wheat, .ore]
-        for resource in resources where state.bankResources.count(for: resource) >= 2 {
-            return (resource, resource)
-        }
-
-        let available = resources.filter { state.bankResources.count(for: $0) > 0 }
-        guard available.count >= 2 else {
+        guard let selection = state.defaultYearOfPlentyResources() else {
             return nil
         }
-        return (available[0], available[1])
+        return (selection.first, selection.second)
     }
 
     private func defaultRoadBuildingEdges(for player: String, in state: CoreGameStateV1) -> (first: Int, second: Int)? {
-        let topology = StandardBoardTopologyV1.standard()
-        let roadCount = state.roadsByEdge.values.filter { $0 == player }.count
-        guard roadCount <= 13 else {
+        guard let edges = state.defaultRoadBuildingEdges(for: player) else {
             return nil
         }
-
-        for firstEdge in topology.edges.indices where state.roadsByEdge[firstEdge] == nil {
-            if !isRoadConnected(firstEdge, player: player, roads: state.roadsByEdge, state: state) {
-                continue
-            }
-            var roadsAfterFirst = state.roadsByEdge
-            roadsAfterFirst[firstEdge] = player
-            for secondEdge in topology.edges.indices where secondEdge != firstEdge && roadsAfterFirst[secondEdge] == nil {
-                if isRoadConnected(secondEdge, player: player, roads: roadsAfterFirst, state: state) {
-                    return (firstEdge, secondEdge)
-                }
-            }
-        }
-        return nil
-    }
-
-    private func isRoadConnected(
-        _ edgeID: Int,
-        player: String,
-        roads: [EdgeID: String],
-        state: CoreGameStateV1
-    ) -> Bool {
-        let topology = StandardBoardTopologyV1.standard()
-        let edge = topology.edges[edgeID]
-        let nodes = [edge.a, edge.b]
-        for node in nodes {
-            if state.settlementsByNode[node] == player || state.citiesByNode[node] == player {
-                return true
-            }
-            if state.settlementsByNode[node] != nil || state.citiesByNode[node] != nil {
-                continue
-            }
-            for adjacentEdge in topology.edges(incidentTo: node) where adjacentEdge != edgeID {
-                if roads[adjacentEdge] == player {
-                    return true
-                }
-            }
-        }
-        return false
+        return (edges.firstEdgeID, edges.secondEdgeID)
     }
 
     private func firstLegalRoadEdge(for player: String, in state: CoreGameStateV1) -> Int? {
-        let topology = StandardBoardTopologyV1.standard()
-        for edgeID in topology.edges.indices {
-            if state.roadsByEdge[edgeID] != nil {
-                continue
-            }
-            let edge = topology.edges[edgeID]
-            let nodes = [edge.a, edge.b]
-            var connected = false
-            for node in nodes {
-                if state.settlementsByNode[node] == player || state.citiesByNode[node] == player {
-                    connected = true
-                    break
-                }
-                if state.settlementsByNode[node] != nil || state.citiesByNode[node] != nil {
-                    continue
-                }
-                for adjacentEdge in topology.edges(incidentTo: node) where adjacentEdge != edgeID {
-                    if state.roadsByEdge[adjacentEdge] == player {
-                        connected = true
-                        break
-                    }
-                }
-                if connected {
-                    break
-                }
-            }
-            if connected {
-                return edgeID
-            }
-        }
-        return nil
+        state.firstLegalRoadEdge(for: player)
     }
 
     private func firstLegalSettlementNode(for player: String, in state: CoreGameStateV1) -> Int? {
-        let topology = StandardBoardTopologyV1.standard()
-        let occupiedNodes = Set(state.settlementsByNode.keys).union(Set(state.citiesByNode.keys))
-        for nodeID in 0 ..< topology.nodesCount {
-            if occupiedNodes.contains(nodeID) {
-                continue
-            }
-            let adjacent = Set(topology.nodes(adjacentTo: nodeID))
-            if !adjacent.isDisjoint(with: occupiedNodes) {
-                continue
-            }
-            let hasRoad = topology.edges(incidentTo: nodeID).contains { state.roadsByEdge[$0] == player }
-            if hasRoad {
-                return nodeID
-            }
-        }
-        return nil
+        state.firstLegalSettlementNode(for: player)
     }
 
     private func firstUpgradeableCityNode(for player: String, in state: CoreGameStateV1) -> Int? {
-        state.settlementsByNode
-            .filter { $0.value == player }
-            .keys
-            .sorted()
-            .first
+        state.firstUpgradeableCityNode(for: player)
     }
 
     private func defaultDiscardForLocalActor(from state: CoreGameStateV1) -> TransportResourceHandV1? {
-        guard let actor = localActorIdentifier(), let turnState = state.turnState else {
+        guard let actor = localActorIdentifier() else {
             return nil
         }
-        guard let required = turnState.discardRequirementsByPlayer[actor], required > 0 else {
-            return nil
-        }
-
-        let hand = state.resourcesByPlayer[actor] ?? .zero
-        var remaining = required
-        var wood = 0
-        var brick = 0
-        var sheep = 0
-        var wheat = 0
-        var ore = 0
-
-        let woodTake = min(hand.wood, remaining)
-        wood += woodTake
-        remaining -= woodTake
-
-        let brickTake = min(hand.brick, remaining)
-        brick += brickTake
-        remaining -= brickTake
-
-        let sheepTake = min(hand.sheep, remaining)
-        sheep += sheepTake
-        remaining -= sheepTake
-
-        let wheatTake = min(hand.wheat, remaining)
-        wheat += wheatTake
-        remaining -= wheatTake
-
-        let oreTake = min(hand.ore, remaining)
-        ore += oreTake
-        remaining -= oreTake
-
-        guard remaining == 0 else {
-            return nil
-        }
-
-        return TransportResourceHandV1(
-            wood: wood,
-            brick: brick,
-            sheep: sheep,
-            wheat: wheat,
-            ore: ore
-        )
+        return state.defaultDiscard(for: actor).map(transportHand(from:))
     }
 
     private func defaultTradeProposal(
         for actor: String,
         from state: CoreGameStateV1
     ) -> (give: TransportResourceHandV1, receive: TransportResourceHandV1)? {
-        let hand = state.resourcesByPlayer[actor] ?? .zero
-        let ordered: [(ResourceV1, Int)] = [
-            (.wood, hand.wood),
-            (.brick, hand.brick),
-            (.sheep, hand.sheep),
-            (.wheat, hand.wheat),
-            (.ore, hand.ore),
-        ]
-        guard let giveResource = ordered.first(where: { $0.1 > 0 })?.0 else {
-            return nil
-        }
-        guard let receiveResource = ordered.first(where: { $0.0 != giveResource })?.0 else {
+        guard let proposal = state.defaultTradeProposal(for: actor) else {
             return nil
         }
         return (
-            give: transportHand(for: giveResource, count: 1),
-            receive: transportHand(for: receiveResource, count: 1)
+            give: transportHand(from: proposal.give),
+            receive: transportHand(from: proposal.receive)
         )
     }
 
@@ -2358,97 +2174,24 @@ final class LobbyDriverViewModel: ObservableObject {
         for actor: String,
         from state: CoreGameStateV1
     ) -> (give: TransportResourceHandV1, receive: TransportResourceHandV1, ratio: Int)? {
-        guard let board = state.board else {
+        guard let maritime = state.defaultMaritimeTrade(for: actor) else {
             return nil
         }
-
-        let resources: [ResourceV1] = [.wood, .brick, .sheep, .wheat, .ore]
-        let hand = state.resourcesByPlayer[actor] ?? .zero
-        for giveResource in resources {
-            let ratio = bestMaritimeTradeRatio(
-                for: actor,
-                giveResource: giveResource,
-                board: board,
-                state: state
-            )
-            guard hand.count(for: giveResource) >= ratio else {
-                continue
-            }
-
-            for receiveResource in resources where receiveResource != giveResource {
-                guard state.bankResources.count(for: receiveResource) >= 1 else {
-                    continue
-                }
-                return (
-                    give: transportHand(for: giveResource, count: ratio),
-                    receive: transportHand(for: receiveResource, count: 1),
-                    ratio: ratio
-                )
-            }
-        }
-
-        return nil
+        return (
+            give: transportHand(from: maritime.give),
+            receive: transportHand(from: maritime.receive),
+            ratio: maritime.ratio
+        )
     }
 
-    private func bestMaritimeTradeRatio(
-        for actor: String,
-        giveResource: ResourceV1,
-        board: BoardSetupV1,
-        state: CoreGameStateV1
-    ) -> Int {
-        let topology = StandardBoardTopologyV1.standard()
-        var hasThreeToOne = false
-        var hasMatchingTwoToOne = false
-
-        for portIndex in board.portsByIndex.indices {
-            guard portIndex < topology.ports.count else {
-                continue
-            }
-            let port = topology.ports[portIndex]
-            let edge = topology.edges[port.edge]
-            let ownsPort =
-                state.settlementsByNode[edge.a] == actor ||
-                state.settlementsByNode[edge.b] == actor ||
-                state.citiesByNode[edge.a] == actor ||
-                state.citiesByNode[edge.b] == actor
-            if !ownsPort {
-                continue
-            }
-
-            switch board.portsByIndex[portIndex] {
-            case .threeToOne:
-                hasThreeToOne = true
-            case let .twoToOne(resource):
-                if resource == giveResource {
-                    hasMatchingTwoToOne = true
-                }
-            }
-        }
-
-        if hasMatchingTwoToOne {
-            return 2
-        }
-        if hasThreeToOne {
-            return 3
-        }
-        return 4
-    }
-
-    private func transportHand(for resource: ResourceV1, count: Int) -> TransportResourceHandV1 {
-        switch resource {
-        case .wood:
-            return TransportResourceHandV1(wood: count)
-        case .brick:
-            return TransportResourceHandV1(brick: count)
-        case .sheep:
-            return TransportResourceHandV1(sheep: count)
-        case .wheat:
-            return TransportResourceHandV1(wheat: count)
-        case .ore:
-            return TransportResourceHandV1(ore: count)
-        case .desert:
-            return TransportResourceHandV1()
-        }
+    private func transportHand(from hand: ResourceHandV1) -> TransportResourceHandV1 {
+        TransportResourceHandV1(
+            wood: hand.wood,
+            brick: hand.brick,
+            sheep: hand.sheep,
+            wheat: hand.wheat,
+            ore: hand.ore
+        )
     }
 
     private func transportResource(from resource: ResourceV1) -> TransportResourceV1 {

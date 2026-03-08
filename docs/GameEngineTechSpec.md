@@ -17,7 +17,7 @@ Source-of-truth priority:
 - `ULS_Transport`
   - Pure transport envelope and intent/state payload encoding.
 - `MessagesExtension`
-  - iMessage orchestration, message selection/sending, local debug driver, and secrecy-safe presentation.
+  - iMessage orchestration, message selection/sending, local debug driver, and formatting/rendering of engine-derived projections.
 
 Design rule: UI code must not become a second rules engine.
 
@@ -100,20 +100,17 @@ The engine already provides enough canonical state for the UI to know:
 - pending discard requirements and submissions
 - eligible robber-steal victims
 - active trade offer and pending accepts
+- legal default/availability queries for build, trade, discard, and dev-card flows
 - bank state
 - ownership and board placement
+- viewer-scoped secrecy-safe resource and dev-card projections
 - audit history and last-turn recap
 - victory totals and game-over result
 
-Current caveat:
+Current default:
 
-- legal action derivation is not yet a shared engine-facing API
-- secrecy-safe projections are not yet a shared pure helper layer
-
-Next UI-stage default:
-
-- add pure `ULS_CoreGame` helpers for legal-action queries and secrecy-safe projections
-- keep `MessagesExtension` as orchestration and rendering only
+- `ULS_CoreGame` owns shared legal-action derivation and secrecy-safe projections in `CoreGameViewQueriesV1.swift`
+- `MessagesExtension` stays orchestration and rendering only
 
 ## Deferred PRD Items
 
