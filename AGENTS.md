@@ -21,6 +21,7 @@ Use [PLANS.md](PLANS.md) for work that is multi-step, risky, spans multiple file
 - `ULS_CoreGame` stays pure and owns rules, determinism, validation, and secrecy-safe query logic.
 - `ULS_Transport` stays pure and owns the message/protocol boundary.
 - `MessagesExtension` consumes engine/query outputs; it must not become a second rules engine.
+- Use the product docs in `docs/product/` for scope and flow intent; use `docs/decisions.md` for locked decisions.
 - Do not commit generated `.xcodeproj` or `.xcworkspace` files.
 - Keep tests and evals green.
 - Do not change protocol fields, validation semantics, or locked decisions without an explicit request.

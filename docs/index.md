@@ -16,7 +16,15 @@ This file is the map for the tracked docs set.
 - [Architecture Overview](architecture/overview.md)
   - conceptual system architecture and code ownership
 - [Messages Protocol](architecture/messages-protocol.md)
-  - STATE/INTENT, authority, sessions, validation, and payload rules
+  - `STATE`/`INTENT`, authority, sessions, validation, and payload rules
+- [MVP Contract](product/mvp-contract.md)
+  - current product promise, scope, and non-goals
+- [UI Flows](product/ui-flows.md)
+  - player-facing flow summaries for lobby, setup, turns, trade, and audit
+- [Deferred PRD Items](product/deferred-prd-items.md)
+  - product ideas intentionally outside the current MVP
+- [PRD Verbatim Markdown](product/prd-verbatim.md)
+  - markdown transcription of the current PRD wording
 - [Engine Readiness Audit](EngineReadinessAudit.md)
   - historical readiness verdict and follow-up closure notes
 - [QA](QA.md)
@@ -25,7 +33,3 @@ This file is the map for the tracked docs set.
   - format for active and completed ExecPlans
 - [Completed ExecPlans](plans/completed/)
   - historical phase backfills from phase 0 through UI hardening
-
-## Current docs debt
-
-The tracked docs still have overlap between architecture, QA, README, and the local historical AGENTS content. The follow-on docs migration will reduce that duplication by introducing architecture, product, and quality owner docs.
