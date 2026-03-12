@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Minimal GitHub Actions `CI` workflow mirroring the practical gate on `pull_request` and `push` to `master`/`main`.
 - CoreGame test split: normal package tests remain in `ULS_CoreGameTests` and deterministic full-match evals now live in `ULS_CoreGameEvals`.
 - Shared `ULS_CoreGame` view/query helpers now own legal default actions and viewer-scoped secrecy-safe projections, with `MessagesExtension` consuming those helpers.
-- README and `AGENTS.md` now align on conceptual repo structure, generated Xcode artifact policy, and the tests/evals split.
+- README is now slimmed to onboarding and stable commands, with owner-doc links for the detailed architecture, product, and quality guidance.
 - README documentation index entries for engine audit, architecture, and QA docs.
 - Stage 0.A bootstrap scaffolding for `Tuist/`, `App/`, `MessagesExtension/`, `Packages/`, and `scripts/`.
 - Stage 0.A developer scripts: `scripts/gen.sh` and `scripts/clean.sh`.
