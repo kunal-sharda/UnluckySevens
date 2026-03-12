@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Tracked docs entrypoint: `AGENTS.md` now acts as the repo map and docs entrypoint.
+- Human-facing docs entrypoint: `README.md` remains the tracked repo entrypoint; `AGENTS.md` is local-only for agents.
 - Root `PLANS.md` now defines the repo's ExecPlan format for active and completed work.
 - Backfilled completed ExecPlans for phases 0 through 9 and the post-phase-9 UI hardening pass under `docs/exec-plans/completed/`.
 - Product docs: `docs/product-specs/mvp-contract.md`, `docs/product-specs/ui-flows.md`, `docs/product-specs/deferred-prd-items.md`, and a verbatim markdown PRD copy.
@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Minimal GitHub Actions `CI` workflow mirroring the practical gate on `pull_request` and `push` to `master`/`main`.
 - CoreGame test split: normal package tests remain in `ULS_CoreGameTests` and deterministic full-match evals now live in `ULS_CoreGameEvals`.
 - Shared `ULS_CoreGame` view/query helpers now own legal default actions and viewer-scoped secrecy-safe projections, with `MessagesExtension` consuming those helpers.
-- README is now slimmed to onboarding and stable commands, with owner-doc links for the detailed architecture, product, and quality guidance.
+- README is now slimmed to onboarding and stable commands, and now carries the minimal tracked repo contract for humans.
 - README documentation index entries for engine audit, architecture, and QA docs.
 - Stage 0.A bootstrap scaffolding for `Tuist/`, `App/`, `MessagesExtension/`, `Packages/`, and `scripts/`.
 - Stage 0.A developer scripts: `scripts/gen.sh` and `scripts/clean.sh`.
