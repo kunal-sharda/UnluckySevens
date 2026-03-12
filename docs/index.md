@@ -25,10 +25,12 @@ This file is the map for the tracked docs set.
   - product ideas intentionally outside the current MVP
 - [PRD Verbatim Markdown](product/prd-verbatim.md)
   - markdown transcription of the current PRD wording
-- [Engine Readiness Audit](EngineReadinessAudit.md)
+- [Engine Readiness Audit](quality/audits/2026-03-engine-readiness.md)
   - historical readiness verdict and follow-up closure notes
-- [QA](QA.md)
+- [QA](quality/qa.md)
   - practical gate, evals, and manual QA
+- [Golden Principles](quality/golden-principles.md)
+  - highest-signal engineering rules for determinism, secrecy, and ownership
 - [ExecPlan Contract](/Users/kunalsharda/Documents/Code/UnluckySevens/PLANS.md)
   - format for active and completed ExecPlans
 - [Completed ExecPlans](plans/completed/)

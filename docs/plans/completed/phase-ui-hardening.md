@@ -9,9 +9,9 @@
 ## Canonical Owner Docs
 
 - [Locked Decisions](../../decisions.md)
-- [Engine Readiness Audit](../../EngineReadinessAudit.md)
+- [Engine Readiness Audit](../../quality/audits/2026-03-engine-readiness.md)
 - [Architecture Overview](../../architecture/overview.md)
-- [QA](../../QA.md)
+- [QA](../../quality/qa.md)
 
 ## Objective
 
@@ -65,14 +65,14 @@ The repo would have stronger deterministic full-match evals, an explicit readine
 - `Packages/ULS_CoreGame/Sources/ULS_CoreGame/CoreGameViewQueriesV1.swift`
 - `Packages/ULS_CoreGame/Tests/ULS_CoreGameTests/CoreGameViewQueriesV1Tests.swift`
 - `.github/workflows/ci.yml`
-- `docs/EngineReadinessAudit.md`
+- `docs/quality/audits/2026-03-engine-readiness.md`
 - `docs/architecture/overview.md`
-- `docs/QA.md`
+- `docs/quality/qa.md`
 - `MessagesExtension/Sources/LobbyDriverViewModel.swift`
 
 ## Validation Performed or Evidenced
 
-- The current practical gate in `docs/QA.md` and `.github/workflows/ci.yml` is the direct result of this phase.
+- The current practical gate in `docs/quality/qa.md` and `.github/workflows/ci.yml` is the direct result of this phase.
 - `ULS_CoreGameEvals` provides long-run deterministic scenario coverage.
 - The readiness audit documents the reasoning for the final `Ready for UI` verdict.
 

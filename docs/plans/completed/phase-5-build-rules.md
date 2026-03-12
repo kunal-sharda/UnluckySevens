@@ -10,7 +10,7 @@
 
 - [Locked Decisions](../../decisions.md)
 - [Architecture Overview](../../architecture/overview.md)
-- [QA](../../QA.md)
+- [QA](../../quality/qa.md)
 
 ## Objective
 

@@ -120,8 +120,8 @@ For this repo, the typical owner docs are:
 
 - `docs/decisions.md` for locked product and architecture rules
 - `docs/architecture/overview.md` for the current engine contract
-- `docs/EngineReadinessAudit.md` for readiness conclusions
-- `docs/QA.md` for the current gate and manual QA
+- `docs/quality/audits/2026-03-engine-readiness.md` for readiness conclusions
+- `docs/quality/qa.md` for the current gate and manual QA
 
 ## Style guidance
 

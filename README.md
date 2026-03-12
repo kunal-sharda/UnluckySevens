@@ -104,9 +104,9 @@ xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -desti
 
 - [Product Requirements Document](docs/UnluckySevensPRD.pdf): product intent and longer-term roadmap
 - [Architecture / Decisions](docs/decisions.md): locked product and engineering decisions
-- [Engine Readiness Audit](docs/EngineReadinessAudit.md): readiness verdict and follow-up closure notes
+- [Engine Readiness Audit](docs/quality/audits/2026-03-engine-readiness.md): readiness verdict and follow-up closure notes
 - [Architecture Overview](docs/architecture/overview.md): engine contract and architecture mapping
-- [QA Guide](docs/QA.md): practical gate, evals, and manual QA flow
+- [QA Guide](docs/quality/qa.md): practical gate, evals, and manual QA flow
 
 ## Contribution Rules
 

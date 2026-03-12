@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Root `PLANS.md` now defines the repo's ExecPlan format for active and completed work.
 - Backfilled completed ExecPlans for phases 0 through 9 and the post-phase-9 UI hardening pass under `docs/plans/completed/`.
 - Product docs: `docs/product/mvp-contract.md`, `docs/product/ui-flows.md`, `docs/product/deferred-prd-items.md`, and a verbatim markdown PRD copy.
-- Engine readiness audit docs: `docs/EngineReadinessAudit.md`, `docs/architecture/overview.md`, and `docs/QA.md`.
+- Engine readiness audit docs: `docs/quality/audits/2026-03-engine-readiness.md`, `docs/architecture/overview.md`, and `docs/quality/qa.md`.
 - Transport regression coverage for a large canonical `STATE` envelope budget and roundtrip decode.
 - Minimal GitHub Actions `CI` workflow mirroring the practical gate on `pull_request` and `push` to `master`/`main`.
 - CoreGame test split: normal package tests remain in `ULS_CoreGameTests` and deterministic full-match evals now live in `ULS_CoreGameEvals`.
