@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed the repo-local `AGENTS.md`; repo guidance now lives in the tracked docs set without a separate agent-specific file.
 
 ### Added
+- Root `PLANS.md` now defines the repo's ExecPlan format for active and completed work.
+- Backfilled completed ExecPlans for phases 0 through 9 and the post-phase-9 UI hardening pass under `docs/plans/completed/`.
 - Engine readiness audit docs: `docs/EngineReadinessAudit.md`, `docs/GameEngineTechSpec.md`, and `docs/QA.md`.
 - Transport regression coverage for a large canonical `STATE` envelope budget and roundtrip decode.
 - Minimal GitHub Actions `CI` workflow mirroring the practical gate on `pull_request` and `push` to `master`/`main`.
