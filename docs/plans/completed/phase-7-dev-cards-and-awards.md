@@ -9,7 +9,7 @@
 ## Canonical Owner Docs
 
 - [Locked Decisions](../../decisions.md)
-- [Game Engine Technical Specification](../../GameEngineTechSpec.md)
+- [Architecture Overview](../../architecture/overview.md)
 - [QA](../../QA.md)
 
 ## Objective

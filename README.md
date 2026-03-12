@@ -19,7 +19,7 @@ MessagesExtension/        # iMessage UI and transcript glue
 Packages/
   ULS_CoreGame/           # pure Catan rules engine
   ULS_Transport/          # protocol, envelope, hashing, and payload handling
-docs/                     # PRD, decisions, audit, tech spec, QA
+docs/                     # PRD, decisions, audit, architecture, QA
 scripts/                  # generate / clean helpers
 Project.swift             # Tuist project manifest
 Workspace.swift           # Tuist workspace manifest
@@ -105,7 +105,7 @@ xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -desti
 - [Product Requirements Document](docs/UnluckySevensPRD.pdf): product intent and longer-term roadmap
 - [Architecture / Decisions](docs/decisions.md): locked product and engineering decisions
 - [Engine Readiness Audit](docs/EngineReadinessAudit.md): readiness verdict and follow-up closure notes
-- [Game Engine Technical Specification](docs/GameEngineTechSpec.md): engine contract and architecture mapping
+- [Architecture Overview](docs/architecture/overview.md): engine contract and architecture mapping
 - [QA Guide](docs/QA.md): practical gate, evals, and manual QA flow
 
 ## Contribution Rules

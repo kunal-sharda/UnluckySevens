@@ -13,8 +13,10 @@ This file is the map for the tracked docs set.
 
 - [Locked Decisions](decisions.md)
   - locked product and architecture decisions
-- [Game Engine Technical Specification](GameEngineTechSpec.md)
-  - current engine contract and architecture summary
+- [Architecture Overview](architecture/overview.md)
+  - conceptual system architecture and code ownership
+- [Messages Protocol](architecture/messages-protocol.md)
+  - STATE/INTENT, authority, sessions, validation, and payload rules
 - [Engine Readiness Audit](EngineReadinessAudit.md)
   - historical readiness verdict and follow-up closure notes
 - [QA](QA.md)
