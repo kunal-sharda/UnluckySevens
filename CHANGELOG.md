@@ -8,11 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Tracked docs entrypoints: `AGENTS.md` as a minimal repo map and `docs/index.md` as the canonical docs index.
+- Tracked docs entrypoint: `AGENTS.md` now acts as the repo map and docs entrypoint.
 - Root `PLANS.md` now defines the repo's ExecPlan format for active and completed work.
-- Backfilled completed ExecPlans for phases 0 through 9 and the post-phase-9 UI hardening pass under `docs/plans/completed/`.
-- Product docs: `docs/product/mvp-contract.md`, `docs/product/ui-flows.md`, `docs/product/deferred-prd-items.md`, and a verbatim markdown PRD copy.
-- Engine readiness audit docs: `docs/quality/audits/2026-03-engine-readiness.md`, `docs/architecture/overview.md`, and `docs/quality/qa.md`.
+- Backfilled completed ExecPlans for phases 0 through 9 and the post-phase-9 UI hardening pass under `docs/exec-plans/completed/`.
+- Product docs: `docs/product-specs/mvp-contract.md`, `docs/product-specs/ui-flows.md`, `docs/product-specs/deferred-prd-items.md`, and a verbatim markdown PRD copy.
+- Engine readiness audit docs: `docs/quality/audits/2026-03-engine-readiness.md`, `ARCHITECTURE.md`, and `docs/quality/qa.md`.
+- Exec-plan support docs: `docs/exec-plans/active/README.md` and `docs/exec-plans/tech-debt-tracker.md`.
 - Transport regression coverage for a large canonical `STATE` envelope budget and roundtrip decode.
 - Minimal GitHub Actions `CI` workflow mirroring the practical gate on `pull_request` and `push` to `master`/`main`.
 - CoreGame test split: normal package tests remain in `ULS_CoreGameTests` and deterministic full-match evals now live in `ULS_CoreGameEvals`.
@@ -78,6 +79,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage 3.3 follow-up: `validateTransition` now enforces deterministic `resourcesByPlayer` transitions, including zeroed resources on Start and setup second-road payouts only.
 - Stage 3.3 follow-up: `CoreGameStateV1` now normalizes `resourcesByPlayer` to roster keys with zero defaults.
 - Stage 3.3 follow-up: setup/validation paths now reuse cached standard topology instances instead of rebuilding per action.
+
+### Removed
+- Separate `docs/index.md` and split `docs/architecture/*` entrypoints; the repo now uses `AGENTS.md` plus root `ARCHITECTURE.md`.
 - Stage 4.1 added turn sequencing state models (`TurnStepV1`, `DiceRollV1`, `TurnStateV1`) and persisted `turnState` in canonical core state hashing.
 - Stage 4.1 added turn reducer support for deterministic `rollDice` and `endTurn` intents with current-player actor gating.
 - Stage 4.1 added transport payload model `TurnIntentV1` and intent envelope roundtrip tests for `rollDice`/`endTurn`.

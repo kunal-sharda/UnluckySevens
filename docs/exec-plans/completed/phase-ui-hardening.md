@@ -10,7 +10,7 @@
 
 - [Locked Decisions](../../decisions.md)
 - [Engine Readiness Audit](../../quality/audits/2026-03-engine-readiness.md)
-- [Architecture Overview](../../architecture/overview.md)
+- [Architecture](../../../ARCHITECTURE.md)
 - [QA](../../quality/qa.md)
 
 ## Objective
@@ -66,7 +66,7 @@ The repo would have stronger deterministic full-match evals, an explicit readine
 - `Packages/ULS_CoreGame/Tests/ULS_CoreGameTests/CoreGameViewQueriesV1Tests.swift`
 - `.github/workflows/ci.yml`
 - `docs/quality/audits/2026-03-engine-readiness.md`
-- `docs/architecture/overview.md`
+- `ARCHITECTURE.md`
 - `docs/quality/qa.md`
 - `MessagesExtension/Sources/LobbyDriverViewModel.swift`
 

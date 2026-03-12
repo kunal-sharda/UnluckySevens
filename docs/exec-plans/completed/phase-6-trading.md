@@ -9,7 +9,7 @@
 ## Canonical Owner Docs
 
 - [Locked Decisions](../../decisions.md)
-- [Architecture Overview](../../architecture/overview.md)
+- [Architecture](../../../ARCHITECTURE.md)
 - [QA](../../quality/qa.md)
 
 ## Objective

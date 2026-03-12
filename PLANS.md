@@ -119,7 +119,7 @@ ExecPlans should not become a second source of truth for gameplay rules, archite
 For this repo, the typical owner docs are:
 
 - `docs/decisions.md` for locked product and architecture rules
-- `docs/architecture/overview.md` for the current engine contract
+- `ARCHITECTURE.md` for the current engine contract
 - `docs/quality/audits/2026-03-engine-readiness.md` for readiness conclusions
 - `docs/quality/qa.md` for the current gate and manual QA
 

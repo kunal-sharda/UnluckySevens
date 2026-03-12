@@ -37,5 +37,5 @@ The UI and engine should preserve these product qualities:
 ## Relationship to Other Docs
 
 - Use [`../decisions.md`](../decisions.md) for locked decisions.
-- Use [`../architecture/overview.md`](../architecture/overview.md) and [`../architecture/messages-protocol.md`](../architecture/messages-protocol.md) for system and protocol boundaries.
+- Use [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md) for system and protocol boundaries.
 - Use [`prd-verbatim.md`](prd-verbatim.md) for the original wording from the PRD.
