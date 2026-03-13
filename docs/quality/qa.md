@@ -1,5 +1,7 @@
 # QA
 
+This is a living document. Update it whenever UI scope, Messages behavior, validation lanes, or device expectations change. Do not rely on chat memory for what needs to be tested.
+
 ## Practical Gate
 
 These commands should stay green for the current MVP engine baseline:
@@ -15,6 +17,82 @@ xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -desti
 GitHub Actions mirrors this practical gate in `.github/workflows/ci.yml`.
 
 `ULS_CoreGameEvals` is the deterministic engine eval harness. `ULS_CoreGameTests` remains the normal core test suite.
+
+## When To Run What
+
+- Any `ULS_CoreGame` or `ULS_Transport` change:
+  - run the full Practical Gate
+- Any `MessagesExtension` shell, layout, presentation, or mode-system change:
+  - run the full Practical Gate
+  - run the Manual Simulator Runbook smoke pass
+  - run the Real Device Shell Smoke checklist
+- Any transcript-selection, bubble, session, or context-handling change:
+  - run the full Practical Gate
+  - run the Manual Simulator Runbook context check
+  - run the Real Device Messages Lifecycle checklist
+- Any new gameplay flow in the product UI:
+  - run the full Practical Gate
+  - run the relevant targeted simulator check
+  - run the relevant real-device gameplay checklist before calling the flow ready
+- Before a phase is declared UI-ready:
+  - run the full Practical Gate
+  - run at least one full two-device smoke pass end to end
+
+## Real Device Lane
+
+Use real devices as the source of truth for Messages-hosted behavior. Simulator remains the fast build and layout loop, but transcript state, bubble selection, context persistence, and general extension stability should be verified on hardware.
+
+Default matrix:
+
+- iPhone on your primary Apple account
+- iPad on a separate Apple account
+- one real Messages conversation between those two accounts
+
+Treat this matrix as the baseline for async gameplay validation.
+
+### Real Device Shell Smoke
+
+Run this after shell, layout, presentation, or mode-system changes.
+
+1. Install and launch the host app on both devices.
+2. Open Messages and confirm Unlucky Sevens appears in the app drawer on both devices.
+3. Open the same conversation between the two accounts.
+4. Open an existing canonical `STATE` bubble and confirm the shell renders:
+   - header
+   - board area
+   - hand tray
+   - action dock
+   - compact opponent summaries
+5. Confirm the iPhone layout remains readable in compact extension sizing.
+6. Confirm the iPad layout remains readable and does not over-expand low-priority UI.
+7. Verify opponent information is still count-only and does not leak composition.
+8. Toggle debug UI and confirm it is still accessible without taking over the product shell.
+
+### Real Device Messages Lifecycle
+
+Run this after any transcript, bubble, session, or context-selection change.
+
+1. Send a new `STATE` bubble from one device.
+2. Select that bubble on the other device and confirm it becomes active context.
+3. Switch away from Messages and return.
+4. Reopen the same bubble and confirm the shell still resolves the correct context.
+5. Select an older bubble after a newer one exists and confirm stale-context behavior is obvious and recoverable.
+6. Reload the latest bubble and confirm the warning clears.
+7. Force-close and relaunch Messages, then confirm context can still be recovered from the selected bubble.
+
+### Real Device Turn-Taking Smoke
+
+Run this after any action-flow change that affects turns, trades, robber, or dev cards.
+
+1. From device A, publish or reach a playable `STATE`.
+2. Perform one legal action from the acting player.
+3. On device B, confirm the new bubble appears and opens cleanly.
+4. Continue the turn or respond from the other account when appropriate.
+5. Verify status text is correct on both sides:
+   - `Your turn`
+   - `Waiting on <player>`
+   - `Trade pending`
+6. Confirm no bubble or context step silently drops during cross-device play.
 
 ## What Is Already Covered Well
 
@@ -37,6 +115,7 @@ GitHub Actions mirrors this practical gate in `.github/workflows/ci.yml`.
 
 - no automated transcript-level Messages UI checks yet
 - no board/UI snapshot coverage once the production board UI replaces the current debug harness
+- no automated real-device lane; hardware validation is still manual
 
 ## Manual Simulator Runbook
 
