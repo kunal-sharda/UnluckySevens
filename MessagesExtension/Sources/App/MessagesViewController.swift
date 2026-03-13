@@ -9,7 +9,7 @@ final class MessagesViewController: MSMessagesAppViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        let rootView = LobbyDriverView(viewModel: viewModel)
+        let rootView = MessagesRootView(viewModel: viewModel)
         let hostingController = UIHostingController(rootView: rootView)
 
         addChild(hostingController)

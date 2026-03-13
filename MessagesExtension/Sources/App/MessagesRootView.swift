@@ -1,0 +1,19 @@
+import SwiftUI
+
+struct MessagesRootView: View {
+    @ObservedObject var viewModel: LobbyDriverViewModel
+
+    var body: some View {
+        ZStack {
+            GameTheme.appBackground
+                .ignoresSafeArea()
+
+            switch viewModel.rootRoute {
+            case .lobby:
+                LobbyDriverView(viewModel: viewModel)
+            case .game:
+                GameShellView(viewModel: viewModel)
+            }
+        }
+    }
+}

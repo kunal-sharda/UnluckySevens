@@ -50,5 +50,22 @@ let project = Project(
                 .package(product: "ULS_Transport"),
             ]
         ),
+        .target(
+            name: "MessagesExtensionTests",
+            destinations: .iOS,
+            product: .unitTests,
+            bundleId: "com.unluckysevens.app.messagesextension.tests",
+            deploymentTargets: .iOS("17.0"),
+            infoPlist: .default,
+            sources: [
+                "MessagesExtension/Tests/**",
+                "MessagesExtension/Sources/Presentation/MessagesRootRoute.swift",
+                "MessagesExtension/Sources/Presentation/GameShellStatusLine.swift",
+                "MessagesExtension/Sources/Presentation/GameShellStatusLineResolver.swift",
+            ],
+            dependencies: [
+                .package(product: "ULS_CoreGame"),
+            ]
+        ),
     ]
 )
