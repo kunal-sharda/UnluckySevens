@@ -11,18 +11,30 @@ struct GameShellView: View {
             availability: screenModel.modeAvailability
         )
 
-        ScrollView {
-            VStack(alignment: .leading, spacing: GameTheme.sectionSpacing) {
-                GameHeaderView(model: screenModel.header)
+        ZStack {
+            GameTheme.appBackground
+                .ignoresSafeArea()
 
-                PlayerSummaryStripView(summaries: screenModel.opponents)
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: GameTheme.sectionSpacing) {
+                    GameHeaderView(model: screenModel.header)
 
-                BoardContainerView(model: selectedBoardModel(screenModel: screenModel, mode: resolvedMode))
+                    BoardContainerView(model: selectedBoardModel(screenModel: screenModel, mode: resolvedMode))
 
-                HandTrayView(model: screenModel.handTray)
+                    GameModalHostView(mode: resolvedMode)
 
-                ActionDockView(
-                    model: screenModel.actionDock,
+                    PlayerSummaryStripView(summaries: screenModel.opponents)
+                }
+                .padding(GameTheme.shellPadding)
+                .padding(.bottom, 196)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+                GameBottomTrayView(
+                    handTray: screenModel.handTray,
+                    actionDock: screenModel.actionDock,
                     selectedKind: resolvedMode.actionKind
                 ) { actionKind in
                     handleActionSelection(
@@ -32,10 +44,15 @@ struct GameShellView: View {
                     )
                 }
 
-                DebugHUDView(viewModel: viewModel)
+                HStack {
+                    Spacer()
+                    DebugHUDView(viewModel: viewModel)
+                }
             }
-            .padding(GameTheme.shellPadding)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, GameTheme.shellPadding)
+            .padding(.top, 8)
+            .padding(.bottom, 8)
+            .background(GameTheme.appBackground)
         }
         .onAppear {
             synchronizeMode(with: screenModel.modeAvailability)

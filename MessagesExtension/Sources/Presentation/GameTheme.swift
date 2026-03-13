@@ -16,6 +16,7 @@ enum GameTheme {
     static let accent = Color(red: 0.77, green: 0.40, blue: 0.18)
     static let ink = Color(red: 0.20, green: 0.13, blue: 0.08)
     static let mutedInk = Color(red: 0.39, green: 0.28, blue: 0.20)
+    static let water = Color(red: 0.31, green: 0.56, blue: 0.72)
 
     static let wood = Color(red: 0.53, green: 0.35, blue: 0.19)
     static let brick = Color(red: 0.69, green: 0.25, blue: 0.20)
@@ -35,6 +36,7 @@ enum GameTheme {
     static let smallRadius: CGFloat = 12
 
     static let sectionShadow = Color.black.opacity(0.10)
+    static let trayShadow = Color.black.opacity(0.16)
     static let pressedScale: CGFloat = 0.98
     static let quickAnimation = Animation.easeInOut(duration: 0.18)
 

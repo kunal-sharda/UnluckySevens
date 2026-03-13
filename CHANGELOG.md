@@ -139,6 +139,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Phase 10.1 and 10.2 shell scaffolding: `MessagesExtension` now has app, feature, presentation, component, board, and debug structure, a parallel `MessagesRootView`, warm tabletop theme tokens, compact shell placeholders, and a new `MessagesExtensionTests` target for root-route and shell-status logic.
 - Phase 10.3 presentation extraction: `GameShellView` now renders from a unified `GameScreenModel`, shell-derived state moved into pure `Presentation` builders and types, and `MessagesExtensionTests` now cover the screen-model builder.
 - Phase 10.4 mode system: `GameShellView` now uses explicit shell modes backed by `GameMode`, `GameModeAvailability`, and `GameModeResolver`, with new MessagesExtension tests covering forced-mode normalization, build cycling, and dock-mode toggling.
+- Phase 10.5 shell components: the game shell now uses a tactile board placeholder, a persistent bottom tray that unifies the hand and primary actions, and an inline mode-driven host for deferred trade/dev/discard messaging while keeping the debug HUD reachable but secondary.
 
 ### Changed
 - `README.md` is now the tracked human-facing repo entrypoint; `AGENTS.md` is local-only for agents.

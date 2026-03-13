@@ -344,7 +344,7 @@ Reason for deferral:
 - [x] Stage 10.2 — Internal Extension Decomposition
 - [x] Stage 10.3 — Presentation Layer and Screen Model
 - [x] Stage 10.4 — Mode System
-- [ ] Stage 10.5 — SwiftUI Shell Components
+- [x] Stage 10.5 — SwiftUI Shell Components
 - [ ] Stage 10.6 — Debug HUD Separation and Phase-End Hardening
 
 Update this section during execution with dates, brief milestone notes, how each milestone was reached, and any places where execution looped or got stuck.
@@ -353,6 +353,7 @@ Update this section during execution with dates, brief milestone notes, how each
 - 2026-03-13: Validation for the stage-10.1 slice finished green. `bash ./scripts/gen.sh`, `swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_Transport`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test` all passed. The eval lane remained the long pole at about 311 seconds, which matches its role as the deterministic full-match harness rather than the fast inner-loop test.
 - 2026-03-13: Stage 10.3 landed as a pure presentation extraction. Added `GameScreenContext`, `GameActionAvailability`, wrapper presentation models, and a pure `GameScreenModelBuilder`; `GameShellView` now renders from a single `GameScreenModel`, and `LobbyDriverViewModel` only assembles raw shell inputs plus grouped action availability. Validation stayed green through `bash ./scripts/gen.sh`, the workspace test action, the MessagesExtension build, transport tests, the fast CoreGame lane, and the deterministic eval lane. The main execution loop here was choosing whether to introduce a new screen view model; that was rejected in favor of pure builders so stage 10.4 can add modes without a second ownership layer.
 - 2026-03-13: Stage 10.4 landed with an explicit shell mode system. Added `GameMode`, `GameModeAvailability`, and `GameModeResolver`, rewired `GameShellView` to track a local `currentMode` instead of raw selected dock state, and fed mode availability through `GameScreenContext` from `LobbyDriverViewModel`. The implementation loop that took real time was the shell rewrite itself: the first broad diff failed against `GameShellView`, so the file was replaced directly and then revalidated through the full gate. Final validation passed with `bash ./scripts/gen.sh`, the workspace test action, the MessagesExtension build, transport tests, the fast CoreGame lane, and the deterministic eval lane, with the eval suite finishing in about 150 seconds.
+- 2026-03-13: Stage 10.5 landed as the first real board-first shell composition pass. The board container now renders tactile placeholder art instead of a flat card, the hand tray and action dock are unified into a bottom tray, the mode-driven host for deferred trade/dev/discard flows sits inline beneath the board, and the debug HUD stays easy to reach without replacing the product shell. The main execution loop was balancing hierarchy against iMessage space limits: moving the hand tray and dock into a shared `safeAreaInset` preserved board space, while keeping the modal host inline prevented deeper sheet choreography before the actual flows exist. Validation passed with `bash ./scripts/gen.sh`, the workspace test action, the generic `MessagesExtension` simulator build, transport tests, the fast CoreGame lane, and the deterministic eval lane, with the eval suite finishing in about 256 seconds.
 
 ## Decisions and Discoveries
 
@@ -380,6 +381,7 @@ Record here during execution:
 - The existing debug driver moved behind `DebugHUDView` as a sheet instead of staying inline. This keeps debug access easy pre-launch while making the product shell visually legible.
 - Stage 10.4 keeps mode ownership local to `GameShellView` rather than moving it into `LobbyDriverViewModel`; the view model only publishes raw availability. That keeps mode transitions UI-local while preserving the rule that legality still comes from engine/query outputs.
 - Forced shell modes now normalize in this order: `setup`, `discard`, `robberMove`, then `robberVictim`. Build mode cycles through the currently legal build variants and returns to `idle`; trade and dev-card modes toggle on and off.
+- Stage 10.5 locked the shell hierarchy around a board-first scroll body plus a persistent bottom tray. The shell now reserves vertical space for the board, keeps the hand and primary actions together, and uses an inline modal host only for deferred flow messaging rather than opening real sheets before the flow UX exists.
 
 ## Outcome
 
