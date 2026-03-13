@@ -2,7 +2,8 @@ import SwiftUI
 
 struct ActionDockView: View {
     let model: GameActionDockModel
-    @Binding var selectedKind: GameActionDockItem.Kind?
+    let selectedKind: GameActionDockItem.Kind?
+    let onSelect: (GameActionDockItem.Kind) -> Void
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -14,7 +15,7 @@ struct ActionDockView: View {
                     ) {
                         guard item.isEnabled else { return }
                         withAnimation(GameTheme.quickAnimation) {
-                            selectedKind = selectedKind == item.kind ? nil : item.kind
+                            onSelect(item.kind)
                         }
                     }
                 }

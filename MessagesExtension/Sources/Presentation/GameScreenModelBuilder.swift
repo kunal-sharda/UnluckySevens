@@ -20,7 +20,8 @@ enum GameScreenModelBuilder {
             ),
             actionDock: GameActionDockModel(
                 items: makeActionDockItems(context: context)
-            )
+            ),
+            modeAvailability: context.modeAvailability
         )
     }
 

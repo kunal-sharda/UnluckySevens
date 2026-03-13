@@ -6,4 +6,5 @@ struct GameScreenContext {
     let contextBanner: String
     let contextMeta: String
     let actionAvailability: GameActionAvailability
+    let modeAvailability: GameModeAvailability
 }

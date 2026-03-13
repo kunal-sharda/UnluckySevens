@@ -9,7 +9,8 @@ final class GameScreenModelBuilderTests: XCTestCase {
                 actingAs: nil,
                 contextBanner: "Active Context: none",
                 contextMeta: "Source: -",
-                actionAvailability: .none
+                actionAvailability: .none,
+                modeAvailability: .none
             )
         )
 
@@ -42,7 +43,8 @@ final class GameScreenModelBuilderTests: XCTestCase {
                 actingAs: "A",
                 contextBanner: "banner",
                 contextMeta: "meta",
-                actionAvailability: .none
+                actionAvailability: .none,
+                modeAvailability: .none
             )
         )
 
@@ -70,7 +72,8 @@ final class GameScreenModelBuilderTests: XCTestCase {
                 actingAs: "A",
                 contextBanner: "banner",
                 contextMeta: "meta",
-                actionAvailability: .none
+                actionAvailability: .none,
+                modeAvailability: .none
             )
         )
 
@@ -99,7 +102,8 @@ final class GameScreenModelBuilderTests: XCTestCase {
                     canTrade: true,
                     canUseDevCards: false,
                     canEndTurn: true
-                )
+                ),
+                modeAvailability: .none
             )
         )
 
@@ -122,7 +126,8 @@ final class GameScreenModelBuilderTests: XCTestCase {
                 actingAs: "A",
                 contextBanner: "banner",
                 contextMeta: "meta",
-                actionAvailability: .none
+                actionAvailability: .none,
+                modeAvailability: .none
             )
         )
         XCTAssertEqual(yourTurnModel.header.statusLine.title, "Your turn")
@@ -133,7 +138,8 @@ final class GameScreenModelBuilderTests: XCTestCase {
                 actingAs: "B",
                 contextBanner: "banner",
                 contextMeta: "meta",
-                actionAvailability: .none
+                actionAvailability: .none,
+                modeAvailability: .none
             )
         )
         XCTAssertEqual(waitingModel.header.statusLine.title, "Waiting on A")
@@ -154,7 +160,8 @@ final class GameScreenModelBuilderTests: XCTestCase {
                 actingAs: "B",
                 contextBanner: "banner",
                 contextMeta: "meta",
-                actionAvailability: .none
+                actionAvailability: .none,
+                modeAvailability: .none
             )
         )
         XCTAssertEqual(tradePendingModel.header.statusLine.title, "Trade pending")

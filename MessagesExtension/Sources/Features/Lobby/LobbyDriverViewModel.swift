@@ -93,7 +93,8 @@ final class LobbyDriverViewModel: ObservableObject {
                 actingAs: localActorIdentifier(),
                 contextBanner: activeContextBanner,
                 contextMeta: activeContextMeta,
-                actionAvailability: shellActionAvailability
+                actionAvailability: shellActionAvailability,
+                modeAvailability: shellModeAvailability
             )
         )
     }
@@ -110,6 +111,32 @@ final class LobbyDriverViewModel: ObservableObject {
                 || canSendPlayRoadBuildingIntentDebug
                 || canSendRevealVictoryPointIntentDebug,
             canEndTurn: canSendEndTurnIntentDebug
+        )
+    }
+
+    private var shellModeAvailability: GameModeAvailability {
+        guard let state = selectedState else {
+            return .none
+        }
+
+        let isCurrentActor = localActorIdentifier() == state.currentPlayer
+
+        return GameModeAvailability(
+            canSetup: state.phase == .setup && isCurrentActor,
+            canBuildRoad: canSendBuildRoadIntentDebug,
+            canBuildSettlement: canSendBuildSettlementIntentDebug,
+            canBuildCity: canSendBuildCityIntentDebug,
+            canRobberMove: canSendMoveRobberIntentDebug,
+            canRobberVictim: state.phase == .turn
+                && state.turnState?.step == .needsRobberSteal
+                && isCurrentActor
+                && !stealVictimOptions.isEmpty,
+            canTrade: canSendProposeTradeIntentDebug
+                || canSendAcceptTradeIntentDebug
+                || canSendExecuteTradeIntentDebug
+                || canSendMaritimeTradeIntentDebug,
+            canPlayDevCard: shellActionAvailability.canUseDevCards,
+            canDiscard: canSendSubmitDiscardIntentDebug
         )
     }
 

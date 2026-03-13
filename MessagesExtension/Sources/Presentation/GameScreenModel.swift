@@ -4,4 +4,5 @@ struct GameScreenModel: Equatable {
     let board: GameBoardPlaceholderModel
     let handTray: GameHandTrayModel
     let actionDock: GameActionDockModel
+    let modeAvailability: GameModeAvailability
 }

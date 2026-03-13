@@ -343,7 +343,7 @@ Reason for deferral:
 - [x] Stage 10.1 — Visual System and Shell Hierarchy
 - [x] Stage 10.2 — Internal Extension Decomposition
 - [x] Stage 10.3 — Presentation Layer and Screen Model
-- [ ] Stage 10.4 — Mode System
+- [x] Stage 10.4 — Mode System
 - [ ] Stage 10.5 — SwiftUI Shell Components
 - [ ] Stage 10.6 — Debug HUD Separation and Phase-End Hardening
 
@@ -352,6 +352,7 @@ Update this section during execution with dates, brief milestone notes, how each
 - 2026-03-13: Stages 10.1 and 10.2 landed together through a parallel-shell migration. Added theme tokens, a new `MessagesRootView`, a game-shell placeholder path, and the initial `MessagesExtension` folder decomposition while keeping `LobbyDriverView` accessible as the debug HUD. The main loop during execution was deciding whether to keep the lobby driver visible inline or move it into a separate debug surface; the separate debug sheet won because it preserved current tooling without cluttering the shell.
 - 2026-03-13: Validation for the stage-10.1 slice finished green. `bash ./scripts/gen.sh`, `swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_Transport`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test` all passed. The eval lane remained the long pole at about 311 seconds, which matches its role as the deterministic full-match harness rather than the fast inner-loop test.
 - 2026-03-13: Stage 10.3 landed as a pure presentation extraction. Added `GameScreenContext`, `GameActionAvailability`, wrapper presentation models, and a pure `GameScreenModelBuilder`; `GameShellView` now renders from a single `GameScreenModel`, and `LobbyDriverViewModel` only assembles raw shell inputs plus grouped action availability. Validation stayed green through `bash ./scripts/gen.sh`, the workspace test action, the MessagesExtension build, transport tests, the fast CoreGame lane, and the deterministic eval lane. The main execution loop here was choosing whether to introduce a new screen view model; that was rejected in favor of pure builders so stage 10.4 can add modes without a second ownership layer.
+- 2026-03-13: Stage 10.4 landed with an explicit shell mode system. Added `GameMode`, `GameModeAvailability`, and `GameModeResolver`, rewired `GameShellView` to track a local `currentMode` instead of raw selected dock state, and fed mode availability through `GameScreenContext` from `LobbyDriverViewModel`. The implementation loop that took real time was the shell rewrite itself: the first broad diff failed against `GameShellView`, so the file was replaced directly and then revalidated through the full gate. Final validation passed with `bash ./scripts/gen.sh`, the workspace test action, the MessagesExtension build, transport tests, the fast CoreGame lane, and the deterministic eval lane, with the eval suite finishing in about 150 seconds.
 
 ## Decisions and Discoveries
 
@@ -377,6 +378,8 @@ Record here during execution:
 - Stage 10.1/10.2 implementation chose a parallel-shell migration instead of an immediate root swap. `MessagesRootView` now routes lobby contexts to the existing driver and non-lobby contexts to a new `GameShellView`.
 - The shell uses a compact always-visible hand tray and icon+label dock now, but keeps action handling intentionally shallow until the mode system lands in stage 10.4.
 - The existing debug driver moved behind `DebugHUDView` as a sheet instead of staying inline. This keeps debug access easy pre-launch while making the product shell visually legible.
+- Stage 10.4 keeps mode ownership local to `GameShellView` rather than moving it into `LobbyDriverViewModel`; the view model only publishes raw availability. That keeps mode transitions UI-local while preserving the rule that legality still comes from engine/query outputs.
+- Forced shell modes now normalize in this order: `setup`, `discard`, `robberMove`, then `robberVictim`. Build mode cycles through the currently legal build variants and returns to `idle`; trade and dev-card modes toggle on and off.
 
 ## Outcome
 
