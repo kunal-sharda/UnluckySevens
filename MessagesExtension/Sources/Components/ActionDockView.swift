@@ -1,13 +1,13 @@
 import SwiftUI
 
 struct ActionDockView: View {
-    let items: [GameActionDockItem]
+    let model: GameActionDockModel
     @Binding var selectedKind: GameActionDockItem.Kind?
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: GameTheme.inlineSpacing) {
-                ForEach(items) { item in
+                ForEach(model.items) { item in
                     ActionDockButton(
                         item: item,
                         isSelected: selectedKind == item.kind

@@ -1,8 +1,7 @@
 import SwiftUI
 
 struct BoardContainerView: View {
-    let title: String
-    let subtitle: String
+    let model: GameBoardPlaceholderModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
@@ -13,12 +12,12 @@ struct BoardContainerView: View {
             Spacer(minLength: 0)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
+                Text(model.title)
                     .font(GameTheme.titleFont)
                     .foregroundStyle(GameTheme.ink)
                     .lineLimit(2)
 
-                Text(subtitle)
+                Text(model.subtitle)
                     .font(GameTheme.metaFont)
                     .foregroundStyle(GameTheme.mutedInk)
                     .lineLimit(3)

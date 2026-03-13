@@ -59,9 +59,7 @@ let project = Project(
             infoPlist: .default,
             sources: [
                 "MessagesExtension/Tests/**",
-                "MessagesExtension/Sources/Presentation/MessagesRootRoute.swift",
-                "MessagesExtension/Sources/Presentation/GameShellStatusLine.swift",
-                "MessagesExtension/Sources/Presentation/GameShellStatusLineResolver.swift",
+                "MessagesExtension/Sources/Presentation/**",
             ],
             dependencies: [
                 .package(product: "ULS_CoreGame"),

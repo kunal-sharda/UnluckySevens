@@ -5,24 +5,20 @@ struct GameShellView: View {
     @State private var selectedActionKind: GameActionDockItem.Kind?
 
     var body: some View {
+        let screenModel = viewModel.gameScreenModel
+
         ScrollView {
             VStack(alignment: .leading, spacing: GameTheme.sectionSpacing) {
-                GameHeaderView(
-                    statusLine: viewModel.shellStatusLine,
-                    metaText: viewModel.activeContextMeta
-                )
+                GameHeaderView(model: screenModel.header)
 
-                PlayerSummaryStripView(summaries: viewModel.shellOpponentSummaries)
+                PlayerSummaryStripView(summaries: screenModel.opponents)
 
-                BoardContainerView(
-                    title: selectedBoardTitle,
-                    subtitle: selectedBoardSubtitle
-                )
+                BoardContainerView(model: selectedBoardModel(screenModel: screenModel))
 
-                HandTrayView(chips: viewModel.shellHandChips)
+                HandTrayView(model: screenModel.handTray)
 
                 ActionDockView(
-                    items: viewModel.shellActionItems,
+                    model: screenModel.actionDock,
                     selectedKind: $selectedActionKind
                 )
 
@@ -33,18 +29,16 @@ struct GameShellView: View {
         }
     }
 
-    private var selectedBoardTitle: String {
-        if let selectedActionKind {
-            return actionTitle(for: selectedActionKind)
+    private func selectedBoardModel(screenModel: GameScreenModel) -> GameBoardPlaceholderModel {
+        guard let selectedActionKind else {
+            return screenModel.board
         }
-        return viewModel.shellStatusLine.title
-    }
 
-    private var selectedBoardSubtitle: String {
-        if let selectedActionKind {
-            return "Stage 10.1 shell preview for \(actionTitle(for: selectedActionKind))."
-        }
-        return viewModel.activeContextBanner
+        let actionTitle = actionTitle(for: selectedActionKind)
+        return GameBoardPlaceholderModel(
+            title: actionTitle,
+            subtitle: "Stage 10.1 shell preview for \(actionTitle)."
+        )
     }
 
     private func actionTitle(for kind: GameActionDockItem.Kind) -> String {

@@ -2,21 +2,21 @@ import SwiftUI
 import ULS_CoreGame
 
 struct HandTrayView: View {
-    let chips: [GameHandChip]
+    let model: GameHandTrayModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-            Text("Your Hand")
+            Text(model.title)
                 .font(GameTheme.headingFont)
                 .foregroundStyle(GameTheme.ink)
 
-            if chips.isEmpty {
+            if model.chips.isEmpty {
                 ContentUnavailableView("No visible hand", systemImage: "shippingbox")
                     .frame(maxWidth: .infinity)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: GameTheme.chipSpacing) {
-                        ForEach(chips) { chip in
+                        ForEach(model.chips) { chip in
                             HandChipView(chip: chip)
                         }
                     }

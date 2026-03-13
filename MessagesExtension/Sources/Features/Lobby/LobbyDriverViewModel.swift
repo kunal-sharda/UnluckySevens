@@ -86,103 +86,31 @@ final class LobbyDriverViewModel: ObservableObject {
         MessagesRootRoute.resolve(phase: selectedState?.phase)
     }
 
-    var shellStatusLine: GameShellStatusLine {
-        let current = selectedState?.currentPlayer
-        let display = current.map(shortIdentifier) ?? "player"
-        return GameShellStatusLineResolver.resolve(
-            hasTradePending: selectedState?.activeTradeOffer != nil,
-            actingAs: localActorIdentifier(),
-            currentPlayer: current,
-            currentPlayerDisplay: display,
-            subtitle: activeContextBanner
-        )
-    }
-
-    var shellOpponentSummaries: [GameOpponentSummary] {
-        guard let state = selectedState else {
-            return []
-        }
-
-        let localActor = localActorIdentifier()
-        let handCounts = Dictionary(
-            uniqueKeysWithValues: state.visibleResourceHands(for: localActor).map { ($0.player, $0.totalCount) }
-        )
-        let victoryPoints = victoryPointsByPlayer(in: state)
-
-        return state.roster.compactMap { player in
-            if player == localActor {
-                return nil
-            }
-
-            return GameOpponentSummary(
-                id: player,
-                displayName: shortIdentifier(player),
-                victoryPoints: victoryPoints[player] ?? 0,
-                handCount: handCounts[player] ?? 0,
-                isCurrentPlayer: player == state.currentPlayer
+    var gameScreenModel: GameScreenModel {
+        GameScreenModelBuilder.build(
+            context: GameScreenContext(
+                selectedState: selectedState,
+                actingAs: localActorIdentifier(),
+                contextBanner: activeContextBanner,
+                contextMeta: activeContextMeta,
+                actionAvailability: shellActionAvailability
             )
-        }
+        )
     }
 
-    var shellHandChips: [GameHandChip] {
-        guard
-            let state = selectedState,
-            let localActor = localActorIdentifier(),
-            let revealedHand = state
-                .visibleResourceHands(for: localActor)
-                .first(where: { $0.player == localActor })?
-                .revealedHand
-        else {
-            return []
-        }
-
-        return [
-            GameHandChip(resource: .wood, count: revealedHand.wood),
-            GameHandChip(resource: .brick, count: revealedHand.brick),
-            GameHandChip(resource: .sheep, count: revealedHand.sheep),
-            GameHandChip(resource: .wheat, count: revealedHand.wheat),
-            GameHandChip(resource: .ore, count: revealedHand.ore),
-        ]
-    }
-
-    var shellActionItems: [GameActionDockItem] {
-        [
-            GameActionDockItem(
-                kind: .roll,
-                title: "Roll",
-                systemImage: "die.face.5",
-                isEnabled: canSendRollDiceIntentDebug
-            ),
-            GameActionDockItem(
-                kind: .build,
-                title: "Build",
-                systemImage: "hammer.fill",
-                isEnabled: canSendBuildRoadIntentDebug || canSendBuildSettlementIntentDebug || canSendBuildCityIntentDebug
-            ),
-            GameActionDockItem(
-                kind: .trade,
-                title: "Trade",
-                systemImage: "arrow.left.arrow.right",
-                isEnabled: canSendProposeTradeIntentDebug || canSendAcceptTradeIntentDebug || canSendExecuteTradeIntentDebug || canSendMaritimeTradeIntentDebug
-            ),
-            GameActionDockItem(
-                kind: .devCards,
-                title: "Dev Cards",
-                systemImage: "sparkles.rectangle.stack.fill",
-                isEnabled: canSendBuyDevCardIntentDebug
-                    || canSendPlayKnightIntentDebug
-                    || canSendPlayMonopolyIntentDebug
-                    || canSendPlayYearOfPlentyIntentDebug
-                    || canSendPlayRoadBuildingIntentDebug
-                    || canSendRevealVictoryPointIntentDebug
-            ),
-            GameActionDockItem(
-                kind: .endTurn,
-                title: "End Turn",
-                systemImage: "flag.pattern.checkered",
-                isEnabled: canSendEndTurnIntentDebug
-            ),
-        ]
+    private var shellActionAvailability: GameActionAvailability {
+        GameActionAvailability(
+            canRoll: canSendRollDiceIntentDebug,
+            canBuild: canSendBuildRoadIntentDebug || canSendBuildSettlementIntentDebug || canSendBuildCityIntentDebug,
+            canTrade: canSendProposeTradeIntentDebug || canSendAcceptTradeIntentDebug || canSendExecuteTradeIntentDebug || canSendMaritimeTradeIntentDebug,
+            canUseDevCards: canSendBuyDevCardIntentDebug
+                || canSendPlayKnightIntentDebug
+                || canSendPlayMonopolyIntentDebug
+                || canSendPlayYearOfPlentyIntentDebug
+                || canSendPlayRoadBuildingIntentDebug
+                || canSendRevealVictoryPointIntentDebug,
+            canEndTurn: canSendEndTurnIntentDebug
+        )
     }
 
     var actingAsOptions: [String] {

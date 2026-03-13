@@ -1,24 +1,23 @@
 import SwiftUI
 
 struct GameHeaderView: View {
-    let statusLine: GameShellStatusLine
-    let metaText: String
+    let model: GameHeaderModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: GameTheme.chipSpacing) {
-            Text(statusLine.title)
+            Text(model.statusLine.title)
                 .font(GameTheme.titleFont)
                 .foregroundStyle(GameTheme.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.9)
 
-            Text(statusLine.subtitle)
+            Text(model.statusLine.subtitle)
                 .font(GameTheme.bodyFont)
                 .foregroundStyle(GameTheme.mutedInk)
                 .lineLimit(2)
 
-            if !metaText.isEmpty {
-                Label(metaText, systemImage: "ellipsis.message")
+            if !model.metaText.isEmpty {
+                Label(model.metaText, systemImage: "ellipsis.message")
                     .font(GameTheme.metaFont)
                     .foregroundStyle(GameTheme.mutedInk)
                     .lineLimit(1)
