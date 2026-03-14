@@ -62,8 +62,12 @@ let project = Project(
                 "MessagesExtension/Sources/Presentation/**",
                 "MessagesExtension/Sources/Board/GameBoardCameraController.swift",
                 "MessagesExtension/Sources/Board/GameBoardLayout.swift",
+                "MessagesExtension/Sources/Board/GameBoardPalette.swift",
                 "MessagesExtension/Sources/Board/GameBoardRenderModel.swift",
                 "MessagesExtension/Sources/Board/GameBoardRenderModelBuilder.swift",
+                "MessagesExtension/Sources/Board/GameBoardScene.swift",
+                "MessagesExtension/Sources/Board/GameBoardSnapshotRenderer.swift",
+                "MessagesExtension/Sources/Board/GameBoardSnapshotVariant.swift",
                 "MessagesExtension/Sources/Board/GameBoardTarget.swift",
             ],
             dependencies: [

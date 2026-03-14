@@ -329,7 +329,7 @@ Reason for deferral:
 - [x] Stage 11.2 — Board Rendering and Piece Layers
 - [x] Stage 11.3 — Camera, Pan/Zoom, and Hit-Testing
 - [x] Stage 11.4 — Mode-Driven Highlights and Selection Plumbing
-- [ ] Stage 11.5 — Snapshot Rendering and Bubble Preparation
+- [x] Stage 11.5 — Snapshot Rendering and Bubble Preparation
 
 Update this section during execution with dates, brief milestone notes, how each milestone was reached, and where execution looped or got stuck.
 
@@ -341,6 +341,8 @@ Update this section during execution with dates, brief milestone notes, how each
 - 2026-03-14 — Stage 11.3 looped once on hit-testing semantics: absolute endpoint exclusion for edges broke short road segments, so edge selection now uses projection-based endpoint handling plus normalized candidate scoring instead of a node-first short circuit.
 - 2026-03-14 — Stage 11.4 landed. Added additive legal-target-set queries in `ULS_CoreGame`, a pure board-overlay builder in `MessagesExtension`, SpriteKit node/edge/tile highlight rendering, and shell-side selection normalization so mode-driven board taps only persist when they match the active legal target set.
 - 2026-03-14 — Stage 11.4 looped once on generated project state rather than code semantics: after adding new overlay-model files, `xcodebuild` could not see them until `bash ./scripts/gen.sh` regenerated the Tuist workspace.
+- 2026-03-14 — Stage 11.5 landed. Added `GameBoardSnapshotVariant` and a main-actor `GameBoardSnapshotRenderer` that renders deterministic off-screen board images from the current render model, plus snapshot tests for bubble-sized and transcript-preview outputs.
+- 2026-03-14 — Stage 11.5 looped once on image semantics rather than scene rendering: `SKTexture.cgImage()` returned pixel-sized captures, so the renderer now normalizes the resulting `UIImage` scale to preserve the requested logical canvas size for each snapshot variant.
 
 ## Decisions and Discoveries
 
@@ -364,13 +366,25 @@ Record here during execution:
 - 2026-03-14 — Ownership rendering needed deterministic player ordering. `GameBoardRenderModel` now carries `state.roster` so the board can assign stable player colors without deriving them from ad hoc string hashing or shell-local state.
 - 2026-03-14 — Short edge segments make distance-only endpoint exclusion too blunt for edge hit testing. The stable approach here is to evaluate segment projection first, exclude only the endpoint portions of the segment parametrically, and then choose among node/edge/tile candidates by normalized score.
 - 2026-03-14 — Phase 11.4 needed additive core query surface as expected. Board-mode highlights are now driven by engine-owned legal target arrays for setup, build, robber move, and robber-victim emphasis, rather than UI-local heuristics or a single debug default target.
+- 2026-03-14 — Snapshot rendering needed explicit logical-size normalization. Off-screen SpriteKit capture returns pixel-sized `CGImage` output, so the renderer sets `UIImage.scale` from the captured pixel dimensions relative to the requested canvas size to keep bubble/transcript variants predictable.
 
 ## Outcome
 
-Not started.
+Phase 11 landed a real SpriteKit board substrate under the existing phase-10 shell:
 
-When phase 11 is complete, replace this section with:
+- deterministic render geometry and a pure `GameBoardRenderModel` bridge from canonical state
+- tactile board rendering for tiles, tokens, ports, roads, settlements, cities, and robber state
+- clamped camera pan/zoom plus typed `tile/node/edge` hit-target callbacks
+- mode-driven legal-target overlays backed by additive `ULS_CoreGame` query helpers
+- deterministic snapshot rendering for compact bubble and transcript-preview board images
 
-- what landed
-- what remains for phase 12
-- which technical debt or follow-on cleanup should be tracked explicitly
+What remains for phase 12:
+
+- turn the current mode/selection substrate into full player-facing setup, turn, robber, trade, and dev-card flows
+- replace inline deferred shell messaging with flow-specific interaction surfaces
+- wire snapshot-backed board imagery into the eventual hybrid bubble composition
+
+Follow-on debt to track explicitly if needed:
+
+- revisit board art direction after interaction flows prove out; phase 11 intentionally locked geometry and APIs, not final assets
+- consider whether snapshot rendering should add status-line composition hooks or remain board-only with status layered elsewhere
