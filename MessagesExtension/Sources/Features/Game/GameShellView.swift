@@ -17,7 +17,14 @@ struct GameShellView: View {
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: GameTheme.sectionSpacing) {
-                    GameHeaderView(model: screenModel.header)
+                    VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+                        HStack {
+                            Spacer()
+                            DebugHUDView(viewModel: viewModel)
+                        }
+
+                        GameHeaderView(model: screenModel.header)
+                    }
 
                     BoardContainerView(model: selectedBoardModel(screenModel: screenModel, mode: resolvedMode))
 
@@ -31,23 +38,16 @@ struct GameShellView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-                GameBottomTrayView(
-                    handTray: screenModel.handTray,
-                    actionDock: screenModel.actionDock,
-                    selectedKind: resolvedMode.actionKind
-                ) { actionKind in
-                    handleActionSelection(
-                        actionKind,
-                        currentMode: resolvedMode,
-                        availability: screenModel.modeAvailability
-                    )
-                }
-
-                HStack {
-                    Spacer()
-                    DebugHUDView(viewModel: viewModel)
-                }
+            GameBottomTrayView(
+                handTray: screenModel.handTray,
+                actionDock: screenModel.actionDock,
+                selectedKind: resolvedMode.actionKind
+            ) { actionKind in
+                handleActionSelection(
+                    actionKind,
+                    currentMode: resolvedMode,
+                    availability: screenModel.modeAvailability
+                )
             }
             .padding(.horizontal, GameTheme.shellPadding)
             .padding(.top, 8)

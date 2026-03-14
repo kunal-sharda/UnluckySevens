@@ -5,17 +5,27 @@ struct DebugHUDView: View {
     @State private var isPresented = false
 
     var body: some View {
-        Button("Open Debug HUD", systemImage: "ladybug.fill") {
+        Button {
             isPresented = true
+        } label: {
+            Label("Debug", systemImage: "ladybug.fill")
+                .font(GameTheme.metaFont.weight(.semibold))
+                .foregroundStyle(GameTheme.ink)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(GameTheme.surface.opacity(0.94))
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(GameTheme.outline.opacity(0.16), lineWidth: 1)
+                )
         }
-        .buttonStyle(.bordered)
-        .controlSize(.large)
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens the development-only debug tools")
         .sheet(isPresented: $isPresented) {
-            NavigationStack {
-                LobbyDriverView(viewModel: viewModel)
-                    .navigationTitle("Debug HUD")
-                    .navigationBarTitleDisplayMode(.inline)
-            }
+            DebugPanelView(viewModel: viewModel)
         }
     }
 }
