@@ -14,6 +14,7 @@ enum GameScreenModelBuilder {
                 title: statusLine.title,
                 subtitle: context.contextBanner
             ),
+            boardRenderModel: GameBoardRenderModelBuilder.build(state: context.selectedState),
             handTray: GameHandTrayModel(
                 title: "Your Hand",
                 chips: makeHandChips(context: context)

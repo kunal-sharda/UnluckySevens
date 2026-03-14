@@ -29,6 +29,30 @@ public enum StandardBoardTopologyV1 {
         )
     }
 
+    public static func renderGeometry() -> BoardRenderGeometryV1 {
+        let geometry = buildGeometry()
+
+        let nodePositions = geometry.nodeCoordinates.map {
+            BoardRenderPointV1(
+                x: Double($0.u),
+                y: Double($0.w) * 0.5
+            )
+        }
+
+        let tileCenters = geometry.tiles.map { tile -> BoardRenderPointV1 in
+            let points = tile.nodes.map { nodePositions[$0] }
+            let count = Double(points.count)
+            let x = points.reduce(0.0) { $0 + $1.x } / count
+            let y = points.reduce(0.0) { $0 + $1.y } / count
+            return BoardRenderPointV1(x: x, y: y)
+        }
+
+        return BoardRenderGeometryV1(
+            tileCenters: tileCenters,
+            nodePositions: nodePositions
+        )
+    }
+
     internal static func canonicalFramePortEdgesForStandard() -> [EdgeID] {
         canonicalFramePortEdges(from: buildGeometry())
     }

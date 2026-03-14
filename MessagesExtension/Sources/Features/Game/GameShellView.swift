@@ -26,7 +26,10 @@ struct GameShellView: View {
                         GameHeaderView(model: screenModel.header)
                     }
 
-                    BoardContainerView(model: selectedBoardModel(screenModel: screenModel, mode: resolvedMode))
+                    BoardContainerView(
+                        model: selectedBoardModel(screenModel: screenModel, mode: resolvedMode),
+                        renderModel: screenModel.boardRenderModel
+                    )
 
                     GameModalHostView(mode: resolvedMode)
 

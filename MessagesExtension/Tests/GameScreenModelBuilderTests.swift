@@ -19,6 +19,7 @@ final class GameScreenModelBuilderTests: XCTestCase {
         XCTAssertEqual(model.header.metaText, "Source: -")
         XCTAssertEqual(model.board.title, "Open game")
         XCTAssertEqual(model.board.subtitle, "Active Context: none")
+        XCTAssertNil(model.boardRenderModel)
         XCTAssertTrue(model.opponents.isEmpty)
         XCTAssertTrue(model.handTray.chips.isEmpty)
         XCTAssertEqual(model.actionDock.items.map(\.isEnabled), [false, false, false, false, false])

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct BoardContainerView: View {
     let model: GameBoardPlaceholderModel
+    let renderModel: GameBoardRenderModel?
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -15,9 +16,15 @@ struct BoardContainerView: View {
                 endPoint: .bottomTrailing
             )
 
-            BoardPlaceholderArtView()
-                .padding(.horizontal, 12)
-                .padding(.vertical, 16)
+            if let renderModel {
+                BoardSceneView(renderModel: renderModel)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 12)
+            } else {
+                BoardPlaceholderArtView()
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 16)
+            }
 
             VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
                 Label("Board", systemImage: "hexagon")
