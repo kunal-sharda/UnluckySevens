@@ -1,0 +1,121 @@
+import CoreGraphics
+import ULS_CoreGame
+import XCTest
+
+final class GameBoardCameraControllerTests: XCTestCase {
+    func testClampedZoomLimitsRange() {
+        XCTAssertEqual(GameBoardCameraController.clampedZoom(0.2), 1.0)
+        XCTAssertEqual(GameBoardCameraController.clampedZoom(1.4), 1.4)
+        XCTAssertEqual(GameBoardCameraController.clampedZoom(8.0), 2.4)
+    }
+
+    func testClampedOffsetKeepsViewportInsideContentBounds() {
+        let offset = GameBoardCameraController.clampedOffset(
+            CGSize(width: 900, height: -900),
+            zoom: 2.0,
+            viewportSize: CGSize(width: 320, height: 240),
+            contentFrame: CGRect(x: 20, y: 20, width: 220, height: 180)
+        )
+
+        XCTAssertEqual(offset.width, 60, accuracy: 0.001)
+        XCTAssertEqual(offset.height, -60, accuracy: 0.001)
+    }
+
+    func testHitTargetResolvesNodeTileAndEdgeAcrossCameraTransforms() {
+        let model = makeRenderModel()
+        let viewportSize = CGSize(width: 320, height: 240)
+        let layout = GameBoardLayout(size: viewportSize, geometry: model.geometry)
+
+        XCTAssertEqual(
+            GameBoardCameraController.hitTarget(
+                at: layout.nodePoint(for: 0),
+                state: GameBoardCameraState(),
+                renderModel: model,
+                viewportSize: viewportSize
+            ),
+            .node(0)
+        )
+
+        XCTAssertEqual(
+            GameBoardCameraController.hitTarget(
+                at: layout.tileCenter(for: 0),
+                state: GameBoardCameraState(),
+                renderModel: model,
+                viewportSize: viewportSize
+            ),
+            .tile(0)
+        )
+
+        let transformedState = GameBoardCameraState(zoom: 1.8, offset: CGSize(width: 28, height: -18))
+        let edgeMidpoint = layout.edgeMidpoint(for: 3, topology: model.topology)
+        let transformedMidpoint = transform(edgeMidpoint, state: transformedState, viewportSize: viewportSize)
+
+        XCTAssertEqual(
+            GameBoardCameraController.hitTarget(
+                at: transformedMidpoint,
+                state: transformedState,
+                renderModel: model,
+                viewportSize: viewportSize
+            ),
+            .edge(3)
+        )
+    }
+
+    private func makeRenderModel() -> GameBoardRenderModel {
+        let board = BoardSetupV1(
+            resourcesByTile: [
+                .wood, .brick, .desert, .sheep, .wheat,
+                .ore, .wood, .brick, .sheep, .wheat,
+                .ore, .wood, .brick, .sheep, .wheat,
+                .ore, .wood, .brick, .sheep,
+            ],
+            numbersByTile: [
+                5, 2, nil, 6, 3,
+                8, 10, 9, 12, 11,
+                4, 8, 10, 9, 4,
+                5, 6, 3, 11,
+            ],
+            portsByIndex: StandardBoardTopologyV1.standard().ports.map(\.kind),
+            robberTile: 2,
+            generator: .noRedAdjacentV1,
+            boardHash: ""
+        ).rehashed()
+
+        let state = CoreGameStateV1(
+            gameId: "camera-controller",
+            rev: 2,
+            prevHash: "hash-1",
+            stateHash: "",
+            roster: ["A", "B", "C"],
+            currentPlayer: "A",
+            phase: .turn,
+            seed: 1,
+            diceRngState: 2,
+            robberRngState: 3,
+            resourcesByPlayer: ["A": .zero, "B": .zero, "C": .zero],
+            settlementsByNode: [0: "A"],
+            citiesByNode: [9: "B"],
+            roadsByEdge: [3: "A"],
+            boardRules: BoardRulesV1(strategy: .noRedAdjacentV1),
+            board: board,
+            turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 4, d2: 2))
+        ).rehashed()
+
+        guard let model = GameBoardRenderModelBuilder.build(state: state) else {
+            fatalError("Expected render model")
+        }
+        return model
+    }
+
+    private func transform(
+        _ point: CGPoint,
+        state: GameBoardCameraState,
+        viewportSize: CGSize
+    ) -> CGPoint {
+        let center = CGPoint(x: viewportSize.width * 0.5, y: viewportSize.height * 0.5)
+        return CGPoint(
+            x: center.x + ((point.x - center.x) * state.zoom) + state.offset.width,
+            y: center.y + ((point.y - center.y) * state.zoom) + state.offset.height
+        )
+    }
+}

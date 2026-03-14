@@ -143,6 +143,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Phase 10.6 phase-end hardening: the debug tools now live behind a compact dedicated trigger and `DebugPanelView`, keeping development access easy without competing with the product shell’s primary action area.
 - Phase 11.1 board layout contract and scene bridge: `ULS_CoreGame` now exports additive deterministic render geometry, `MessagesExtension` builds a pure `GameBoardRenderModel` from canonical state, and the shell board container can render the first SpriteKit board scene instead of placeholder art when state-backed board data is available.
 - Phase 11.2 board rendering and piece layers: the SpriteKit board now renders tactile ports, roads, settlements, cities, stronger number tokens, and a clearer robber marker, with deterministic player-color styling keyed to canonical roster order.
+- Phase 11.3 camera, pan/zoom, and hit-testing: the board now supports clamped pan and magnification gestures, typed `tile/node/edge` hit-target callbacks, and shell-visible selected-target feedback, with hit-testing stabilized for short edges through projection-based endpoint handling.
 
 ### Changed
 - `README.md` is now the tracked human-facing repo entrypoint; `AGENTS.md` is local-only for agents.

@@ -60,8 +60,11 @@ let project = Project(
             sources: [
                 "MessagesExtension/Tests/**",
                 "MessagesExtension/Sources/Presentation/**",
+                "MessagesExtension/Sources/Board/GameBoardCameraController.swift",
+                "MessagesExtension/Sources/Board/GameBoardLayout.swift",
                 "MessagesExtension/Sources/Board/GameBoardRenderModel.swift",
                 "MessagesExtension/Sources/Board/GameBoardRenderModelBuilder.swift",
+                "MessagesExtension/Sources/Board/GameBoardTarget.swift",
             ],
             dependencies: [
                 .package(product: "ULS_CoreGame"),

@@ -32,6 +32,21 @@ struct GameBoardLayout {
         CGPoint(x: size.width * 0.5, y: size.height * 0.5)
     }
 
+    var contentFrame: CGRect {
+        let minX = geometry.nodePositions.indices.map { nodePoint(for: $0).x }.min() ?? 0
+        let maxX = geometry.nodePositions.indices.map { nodePoint(for: $0).x }.max() ?? size.width
+        let minY = geometry.nodePositions.indices.map { nodePoint(for: $0).y }.min() ?? 0
+        let maxY = geometry.nodePositions.indices.map { nodePoint(for: $0).y }.max() ?? size.height
+
+        let inset = tileRadius * 0.9
+        return CGRect(
+            x: minX - inset,
+            y: minY - inset,
+            width: max((maxX - minX) + (inset * 2), 1),
+            height: max((maxY - minY) + (inset * 2), 1)
+        )
+    }
+
     func tileCenter(for tileID: TileID) -> CGPoint {
         point(for: geometry.tileCenters[tileID])
     }

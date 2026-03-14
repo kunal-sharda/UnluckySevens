@@ -327,7 +327,7 @@ Reason for deferral:
 
 - [x] Stage 11.1 — Board Layout Contract and Scene Bridge
 - [x] Stage 11.2 — Board Rendering and Piece Layers
-- [ ] Stage 11.3 — Camera, Pan/Zoom, and Hit-Testing
+- [x] Stage 11.3 — Camera, Pan/Zoom, and Hit-Testing
 - [ ] Stage 11.4 — Mode-Driven Highlights and Selection Plumbing
 - [ ] Stage 11.5 — Snapshot Rendering and Bubble Preparation
 
@@ -337,6 +337,8 @@ Update this section during execution with dates, brief milestone notes, how each
 - 2026-03-14 — Validation looped once on tooling rather than code: concurrent `xcodebuild` use previously caused a build-database lock, and `ULS_Transport` needed a clean dependency rebuild before SwiftPM picked up the new `BoardRenderGeometryV1.swift` source file.
 - 2026-03-14 — Stage 11.2 landed. The board scene now renders roads, settlements, cities, ports, number tokens, and a stronger robber marker with a board-local palette and ownership styling keyed to canonical roster order.
 - 2026-03-14 — Stage 11.2 looped once on project generation: adding `GameBoardPalette.swift` required regenerating the Tuist workspace before `xcodebuild` would see the new file.
+- 2026-03-14 — Stage 11.3 landed. Added a board-camera controller, SwiftUI pan and magnification gestures over the SpriteKit surface, typed `tile/node/edge` hit-target callbacks, and shell-level selected-target feedback in the board container.
+- 2026-03-14 — Stage 11.3 looped once on hit-testing semantics: absolute endpoint exclusion for edges broke short road segments, so edge selection now uses projection-based endpoint handling plus normalized candidate scoring instead of a node-first short circuit.
 
 ## Decisions and Discoveries
 
@@ -358,6 +360,7 @@ Record here during execution:
 - 2026-03-14 — Deterministic board-layout geometry needed additive support from `ULS_CoreGame`. `StandardBoardTopologyV1.renderGeometry()` now exports stable tile-center and node-position data so the UI does not invent a parallel ID-to-position mapping.
 - 2026-03-14 — `MessagesExtensionTests` is source-based rather than target-based, so stage 11.1 also required adding the pure board render-model files to the test target source list in `Project.swift`.
 - 2026-03-14 — Ownership rendering needed deterministic player ordering. `GameBoardRenderModel` now carries `state.roster` so the board can assign stable player colors without deriving them from ad hoc string hashing or shell-local state.
+- 2026-03-14 — Short edge segments make distance-only endpoint exclusion too blunt for edge hit testing. The stable approach here is to evaluate segment projection first, exclude only the endpoint portions of the segment parametrically, and then choose among node/edge/tile candidates by normalized score.
 
 ## Outcome
 

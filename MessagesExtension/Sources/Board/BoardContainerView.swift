@@ -3,6 +3,8 @@ import SwiftUI
 struct BoardContainerView: View {
     let model: GameBoardPlaceholderModel
     let renderModel: GameBoardRenderModel?
+    let selectionText: String?
+    let onTargetTap: ((GameBoardTarget) -> Void)?
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -17,7 +19,7 @@ struct BoardContainerView: View {
             )
 
             if let renderModel {
-                BoardSceneView(renderModel: renderModel)
+                BoardSceneView(renderModel: renderModel, onTargetTap: onTargetTap)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 12)
             } else {
@@ -43,6 +45,13 @@ struct BoardContainerView: View {
                         .font(GameTheme.metaFont)
                         .foregroundStyle(GameTheme.mutedInk)
                         .lineLimit(3)
+
+                    if let selectionText {
+                        Label(selectionText, systemImage: "scope")
+                            .font(.system(.footnote, design: .rounded).bold())
+                            .foregroundStyle(GameTheme.accent)
+                            .lineLimit(1)
+                    }
                 }
                 .padding(GameTheme.compactPadding)
                 .background(GameTheme.surface.opacity(0.90))

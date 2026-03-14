@@ -3,6 +3,7 @@ import SwiftUI
 struct GameShellView: View {
     @ObservedObject var viewModel: LobbyDriverViewModel
     @State private var currentMode: GameMode = .idle
+    @State private var selectedBoardTarget: GameBoardTarget?
 
     var body: some View {
         let screenModel = viewModel.gameScreenModel
@@ -28,7 +29,11 @@ struct GameShellView: View {
 
                     BoardContainerView(
                         model: selectedBoardModel(screenModel: screenModel, mode: resolvedMode),
-                        renderModel: screenModel.boardRenderModel
+                        renderModel: screenModel.boardRenderModel,
+                        selectionText: selectedBoardTarget?.debugLabel,
+                        onTargetTap: { target in
+                            selectedBoardTarget = target
+                        }
                     )
 
                     GameModalHostView(mode: resolvedMode)
