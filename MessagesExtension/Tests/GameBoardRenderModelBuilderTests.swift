@@ -21,6 +21,7 @@ final class GameBoardRenderModelBuilderTests: XCTestCase {
         XCTAssertNotNil(model)
         XCTAssertEqual(model?.tiles.count, 19)
         XCTAssertEqual(model?.ports.count, 9)
+        XCTAssertEqual(model?.playerOrder, ["A", "B", "C"])
         XCTAssertEqual(model?.structures.count, 2)
         XCTAssertEqual(model?.roads.count, 1)
         XCTAssertEqual(model?.tiles.first?.resource, .wood)

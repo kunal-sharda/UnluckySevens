@@ -20,6 +20,18 @@ struct GameBoardLayout {
         return min(availableWidth / width, availableHeight / height) * 0.44
     }
 
+    var roadWidth: CGFloat {
+        max(tileRadius * 0.18, 6)
+    }
+
+    var structureRadius: CGFloat {
+        max(tileRadius * 0.22, 8)
+    }
+
+    var boardCenter: CGPoint {
+        CGPoint(x: size.width * 0.5, y: size.height * 0.5)
+    }
+
     func tileCenter(for tileID: TileID) -> CGPoint {
         point(for: geometry.tileCenters[tileID])
     }
@@ -31,6 +43,29 @@ struct GameBoardLayout {
     func edgeLine(for edgeID: EdgeID, topology: BoardGraphV1) -> (start: CGPoint, end: CGPoint) {
         let edge = topology.edges[edgeID]
         return (nodePoint(for: edge.a), nodePoint(for: edge.b))
+    }
+
+    func edgeMidpoint(for edgeID: EdgeID, topology: BoardGraphV1) -> CGPoint {
+        let edgeLine = edgeLine(for: edgeID, topology: topology)
+        return CGPoint(
+            x: (edgeLine.start.x + edgeLine.end.x) * 0.5,
+            y: (edgeLine.start.y + edgeLine.end.y) * 0.5
+        )
+    }
+
+    func portAnchor(for edgeID: EdgeID, topology: BoardGraphV1) -> CGPoint {
+        let midpoint = edgeMidpoint(for: edgeID, topology: topology)
+        let direction = normalizedVector(from: boardCenter, to: midpoint)
+        let offset = max(tileRadius * 0.9, 24)
+        return CGPoint(
+            x: midpoint.x + (direction.dx * offset),
+            y: midpoint.y + (direction.dy * offset)
+        )
+    }
+
+    func edgeAngle(for edgeID: EdgeID, topology: BoardGraphV1) -> CGFloat {
+        let edgeLine = edgeLine(for: edgeID, topology: topology)
+        return atan2(edgeLine.end.y - edgeLine.start.y, edgeLine.end.x - edgeLine.start.x)
     }
 
     private var bounds: CGRect {
@@ -62,5 +97,12 @@ struct GameBoardLayout {
             x: originX + (renderPoint.x * scale),
             y: originY + (renderPoint.y * scale)
         )
+    }
+
+    private func normalizedVector(from start: CGPoint, to end: CGPoint) -> CGVector {
+        let dx = end.x - start.x
+        let dy = end.y - start.y
+        let magnitude = max(sqrt((dx * dx) + (dy * dy)), 0.001)
+        return CGVector(dx: dx / magnitude, dy: dy / magnitude)
     }
 }

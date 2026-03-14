@@ -1,5 +1,6 @@
 import CoreGraphics
 import SpriteKit
+import ULS_CoreGame
 
 final class GameBoardScene: SKScene {
     override init(size: CGSize) {
@@ -24,68 +25,249 @@ final class GameBoardScene: SKScene {
         for tile in renderModel.tiles {
             addChild(makeTileNode(tile: tile, layout: layout))
         }
+
+        for port in renderModel.ports {
+            addChild(makePortNode(port: port, layout: layout, topology: renderModel.topology))
+        }
+
+        for road in renderModel.roads {
+            addChild(makeRoadNode(road: road, layout: layout, topology: renderModel.topology, playerOrder: renderModel.playerOrder))
+        }
+
+        for structure in renderModel.structures {
+            addChild(makeStructureNode(structure: structure, layout: layout, playerOrder: renderModel.playerOrder))
+        }
     }
 
-    private func makeBoardBackdrop(size: CGSize) -> SKShapeNode {
-        let rect = CGRect(origin: .zero, size: size)
-        let shape = SKShapeNode(rect: rect, cornerRadius: 22)
-        shape.fillColor = SKColor(red: 0.77, green: 0.86, blue: 0.89, alpha: 0.28)
-        shape.strokeColor = SKColor(red: 0.33, green: 0.24, blue: 0.16, alpha: 0.12)
-        shape.lineWidth = 1
-        shape.position = .zero
-        shape.zPosition = 0
-        return shape
+    private func makeBoardBackdrop(size: CGSize) -> SKNode {
+        let root = SKNode()
+
+        let outerRect = CGRect(origin: .zero, size: size)
+        let water = SKShapeNode(rect: outerRect, cornerRadius: 24)
+        water.fillColor = GameBoardPalette.water
+        water.strokeColor = GameBoardPalette.waterEdge
+        water.lineWidth = 2
+        water.zPosition = 0
+        root.addChild(water)
+
+        let inset = outerRect.insetBy(dx: 14, dy: 12)
+        let boardBase = SKShapeNode(rect: inset, cornerRadius: 28)
+        boardBase.fillColor = GameBoardPalette.boardBase
+        boardBase.strokeColor = GameBoardPalette.boardBaseEdge
+        boardBase.lineWidth = 2
+        boardBase.zPosition = 1
+        root.addChild(boardBase)
+
+        return root
     }
 
     private func makeTileNode(tile: GameBoardTileRenderModel, layout: GameBoardLayout) -> SKNode {
         let tileNode = SKNode()
         tileNode.position = layout.tileCenter(for: tile.tileID)
-        tileNode.zPosition = 10
+        tileNode.zPosition = 20
+
+        let shadow = SKShapeNode(path: hexagonPath(radius: layout.tileRadius))
+        shadow.fillColor = .black.withAlphaComponent(0.10)
+        shadow.strokeColor = .clear
+        shadow.position = CGPoint(x: 0, y: -max(layout.tileRadius * 0.08, 4))
+        shadow.zPosition = 0
+        tileNode.addChild(shadow)
 
         let hex = SKShapeNode(path: hexagonPath(radius: layout.tileRadius))
-        hex.fillColor = fillColor(for: tile)
-        hex.strokeColor = SKColor(red: 0.30, green: 0.20, blue: 0.12, alpha: 0.18)
-        hex.lineWidth = 1
+        hex.fillColor = GameBoardPalette.resourceFill(for: tile.resource)
+        hex.strokeColor = GameBoardPalette.outline
+        hex.lineWidth = 1.4
+        hex.zPosition = 10
         tileNode.addChild(hex)
 
+        let innerRing = SKShapeNode(path: hexagonPath(radius: layout.tileRadius * 0.84))
+        innerRing.fillColor = .clear
+        innerRing.strokeColor = .white.withAlphaComponent(0.12)
+        innerRing.lineWidth = 1
+        innerRing.zPosition = 11
+        tileNode.addChild(innerRing)
+
         if let number = tile.number {
-            let label = SKLabelNode(text: "\(number)")
-            label.fontName = "Georgia-Bold"
-            label.fontSize = max(layout.tileRadius * 0.42, 11)
-            label.fontColor = SKColor(red: 0.23, green: 0.15, blue: 0.09, alpha: 0.88)
-            label.verticalAlignmentMode = .center
-            label.horizontalAlignmentMode = .center
-            label.zPosition = 20
-            tileNode.addChild(label)
+            tileNode.addChild(makeTokenNode(number: number, radius: layout.tileRadius))
         }
 
         if tile.hasRobber {
-            let robber = SKShapeNode(circleOfRadius: max(layout.tileRadius * 0.18, 7))
-            robber.fillColor = SKColor(red: 0.16, green: 0.13, blue: 0.12, alpha: 0.86)
-            robber.strokeColor = .clear
-            robber.position = CGPoint(x: 0, y: -layout.tileRadius * 0.34)
-            robber.zPosition = 30
-            tileNode.addChild(robber)
+            tileNode.addChild(makeRobberNode(radius: layout.tileRadius))
         }
 
         return tileNode
     }
 
-    private func fillColor(for tile: GameBoardTileRenderModel) -> SKColor {
-        switch tile.resource {
-        case .wood:
-            return SKColor(red: 0.41, green: 0.56, blue: 0.27, alpha: 0.92)
-        case .brick:
-            return SKColor(red: 0.67, green: 0.31, blue: 0.24, alpha: 0.92)
-        case .sheep:
-            return SKColor(red: 0.56, green: 0.72, blue: 0.39, alpha: 0.92)
-        case .wheat:
-            return SKColor(red: 0.86, green: 0.72, blue: 0.30, alpha: 0.94)
-        case .ore:
-            return SKColor(red: 0.47, green: 0.51, blue: 0.54, alpha: 0.92)
-        case .desert:
-            return SKColor(red: 0.80, green: 0.69, blue: 0.50, alpha: 0.92)
-        }
+    private func makeTokenNode(number: Int, radius: CGFloat) -> SKNode {
+        let node = SKNode()
+        node.zPosition = 30
+
+        let token = SKShapeNode(circleOfRadius: max(radius * 0.24, 10))
+        token.fillColor = GameBoardPalette.tokenFill
+        token.strokeColor = GameBoardPalette.tokenStroke
+        token.lineWidth = 1.2
+        node.addChild(token)
+
+        let label = SKLabelNode(text: "\(number)")
+        label.fontName = "Georgia-Bold"
+        label.fontSize = max(radius * 0.34, 12)
+        label.fontColor = (number == 6 || number == 8)
+            ? SKColor(red: 0.65, green: 0.18, blue: 0.14, alpha: 0.92)
+            : GameBoardPalette.ink
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        label.zPosition = 1
+        node.addChild(label)
+
+        return node
+    }
+
+    private func makeRobberNode(radius: CGFloat) -> SKNode {
+        let node = SKNode()
+        node.position = CGPoint(x: 0, y: -radius * 0.38)
+        node.zPosition = 40
+
+        let base = SKShapeNode(circleOfRadius: max(radius * 0.18, 8))
+        base.fillColor = GameBoardPalette.robber
+        base.strokeColor = .clear
+        node.addChild(base)
+
+        let cap = SKShapeNode(circleOfRadius: max(radius * 0.11, 5))
+        cap.fillColor = GameBoardPalette.robberAccent
+        cap.strokeColor = .clear
+        cap.position = CGPoint(x: 0, y: max(radius * 0.12, 6))
+        node.addChild(cap)
+
+        return node
+    }
+
+    private func makePortNode(
+        port: GameBoardPortRenderModel,
+        layout: GameBoardLayout,
+        topology: BoardGraphV1
+    ) -> SKNode {
+        let node = SKNode()
+        node.zPosition = 35
+
+        let midpoint = layout.edgeMidpoint(for: port.edgeID, topology: topology)
+        let anchor = layout.portAnchor(for: port.edgeID, topology: topology)
+
+        let tetherPath = CGMutablePath()
+        tetherPath.move(to: midpoint)
+        tetherPath.addLine(to: anchor)
+
+        let tether = SKShapeNode(path: tetherPath)
+        tether.strokeColor = GameBoardPalette.portStroke.withAlphaComponent(0.75)
+        tether.lineWidth = max(layout.tileRadius * 0.08, 2)
+        tether.lineCap = .round
+        node.addChild(tether)
+
+        let badgeSize = CGSize(width: max(layout.tileRadius * 0.82, 28), height: max(layout.tileRadius * 0.42, 18))
+        let badge = SKShapeNode(
+            rect: CGRect(
+                x: anchor.x - (badgeSize.width * 0.5),
+                y: anchor.y - (badgeSize.height * 0.5),
+                width: badgeSize.width,
+                height: badgeSize.height
+            ),
+            cornerRadius: badgeSize.height * 0.45
+        )
+        badge.fillColor = GameBoardPalette.portFill
+        badge.strokeColor = GameBoardPalette.portStroke
+        badge.lineWidth = 1
+        node.addChild(badge)
+
+        let label = SKLabelNode(text: GameBoardPalette.portLabel(for: port.kind))
+        label.fontName = "AvenirNext-Bold"
+        label.fontSize = max(layout.tileRadius * 0.18, 9)
+        label.fontColor = GameBoardPalette.ink
+        label.position = anchor
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        label.zPosition = 1
+        node.addChild(label)
+
+        return node
+    }
+
+    private func makeRoadNode(
+        road: GameBoardRoadRenderModel,
+        layout: GameBoardLayout,
+        topology: BoardGraphV1,
+        playerOrder: [String]
+    ) -> SKNode {
+        let node = SKNode()
+        node.zPosition = 50
+
+        let edgeLine = layout.edgeLine(for: road.edgeID, topology: topology)
+        let color = GameBoardPalette.playerColor(owner: road.owner, playerOrder: playerOrder)
+        let stroke = GameBoardPalette.playerStroke(owner: road.owner, playerOrder: playerOrder)
+
+        let shadowPath = CGMutablePath()
+        shadowPath.move(to: edgeLine.start)
+        shadowPath.addLine(to: edgeLine.end)
+
+        let shadow = SKShapeNode(path: shadowPath)
+        shadow.strokeColor = GameBoardPalette.roadShadow
+        shadow.lineWidth = layout.roadWidth + 4
+        shadow.lineCap = .round
+        shadow.position = CGPoint(x: 0, y: -1)
+        node.addChild(shadow)
+
+        let roadPath = CGMutablePath()
+        roadPath.move(to: edgeLine.start)
+        roadPath.addLine(to: edgeLine.end)
+
+        let roadLine = SKShapeNode(path: roadPath)
+        roadLine.strokeColor = color
+        roadLine.lineWidth = layout.roadWidth
+        roadLine.lineCap = .round
+        node.addChild(roadLine)
+
+        let highlight = SKShapeNode(path: roadPath)
+        highlight.strokeColor = .white.withAlphaComponent(0.16)
+        highlight.lineWidth = max(layout.roadWidth * 0.34, 2)
+        highlight.lineCap = .round
+        node.addChild(highlight)
+
+        let outline = SKShapeNode(path: roadPath)
+        outline.strokeColor = stroke
+        outline.lineWidth = max(layout.roadWidth + 1.5, 1)
+        outline.lineCap = .round
+        outline.zPosition = -1
+        node.addChild(outline)
+
+        return node
+    }
+
+    private func makeStructureNode(
+        structure: GameBoardStructureRenderModel,
+        layout: GameBoardLayout,
+        playerOrder: [String]
+    ) -> SKNode {
+        let node = SKNode()
+        node.position = layout.nodePoint(for: structure.nodeID)
+        node.zPosition = 60
+
+        let shadow = SKShapeNode(path: structurePath(kind: structure.kind, radius: layout.structureRadius))
+        shadow.fillColor = .black.withAlphaComponent(0.16)
+        shadow.strokeColor = .clear
+        shadow.position = CGPoint(x: 0, y: -2)
+        node.addChild(shadow)
+
+        let fill = SKShapeNode(path: structurePath(kind: structure.kind, radius: layout.structureRadius))
+        fill.fillColor = GameBoardPalette.playerColor(owner: structure.owner, playerOrder: playerOrder)
+        fill.strokeColor = GameBoardPalette.playerStroke(owner: structure.owner, playerOrder: playerOrder)
+        fill.lineWidth = 1.3
+        node.addChild(fill)
+
+        let cap = SKShapeNode(path: structureCapPath(kind: structure.kind, radius: layout.structureRadius))
+        cap.fillColor = GameBoardPalette.structureFill.withAlphaComponent(0.30)
+        cap.strokeColor = .clear
+        cap.position = CGPoint(x: 0, y: max(layout.structureRadius * 0.08, 1))
+        node.addChild(cap)
+
+        return node
     }
 
     private func hexagonPath(radius: CGFloat) -> CGPath {
@@ -107,6 +289,53 @@ final class GameBoardScene: SKScene {
         }
 
         path.closeSubpath()
+        return path
+    }
+
+    private func structurePath(kind: GameBoardStructureRenderModel.Kind, radius: CGFloat) -> CGPath {
+        let adjustedRadius = max(radius, 8)
+        let path = CGMutablePath()
+
+        switch kind {
+        case .settlement:
+            path.move(to: CGPoint(x: -adjustedRadius * 0.70, y: -adjustedRadius * 0.58))
+            path.addLine(to: CGPoint(x: -adjustedRadius * 0.70, y: adjustedRadius * 0.10))
+            path.addLine(to: CGPoint(x: 0, y: adjustedRadius * 0.78))
+            path.addLine(to: CGPoint(x: adjustedRadius * 0.70, y: adjustedRadius * 0.10))
+            path.addLine(to: CGPoint(x: adjustedRadius * 0.70, y: -adjustedRadius * 0.58))
+            path.closeSubpath()
+        case .city:
+            path.move(to: CGPoint(x: -adjustedRadius * 0.84, y: -adjustedRadius * 0.60))
+            path.addLine(to: CGPoint(x: -adjustedRadius * 0.84, y: adjustedRadius * 0.18))
+            path.addLine(to: CGPoint(x: -adjustedRadius * 0.28, y: adjustedRadius * 0.64))
+            path.addLine(to: CGPoint(x: adjustedRadius * 0.18, y: adjustedRadius * 0.64))
+            path.addLine(to: CGPoint(x: adjustedRadius * 0.18, y: adjustedRadius * 0.18))
+            path.addLine(to: CGPoint(x: adjustedRadius * 0.84, y: adjustedRadius * 0.18))
+            path.addLine(to: CGPoint(x: adjustedRadius * 0.84, y: -adjustedRadius * 0.60))
+            path.closeSubpath()
+        }
+
+        return path
+    }
+
+    private func structureCapPath(kind: GameBoardStructureRenderModel.Kind, radius: CGFloat) -> CGPath {
+        let adjustedRadius = max(radius, 8)
+        let path = CGMutablePath()
+
+        switch kind {
+        case .settlement:
+            path.move(to: CGPoint(x: -adjustedRadius * 0.52, y: adjustedRadius * 0.04))
+            path.addLine(to: CGPoint(x: 0, y: adjustedRadius * 0.54))
+            path.addLine(to: CGPoint(x: adjustedRadius * 0.52, y: adjustedRadius * 0.04))
+            path.closeSubpath()
+        case .city:
+            path.move(to: CGPoint(x: -adjustedRadius * 0.66, y: adjustedRadius * 0.08))
+            path.addLine(to: CGPoint(x: -adjustedRadius * 0.18, y: adjustedRadius * 0.44))
+            path.addLine(to: CGPoint(x: adjustedRadius * 0.52, y: adjustedRadius * 0.44))
+            path.addLine(to: CGPoint(x: adjustedRadius * 0.52, y: adjustedRadius * 0.08))
+            path.closeSubpath()
+        }
+
         return path
     }
 }

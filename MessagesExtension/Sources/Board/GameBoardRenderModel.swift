@@ -31,6 +31,7 @@ struct GameBoardPortRenderModel: Equatable {
 struct GameBoardRenderModel: Equatable {
     let topology: BoardGraphV1
     let geometry: BoardRenderGeometryV1
+    let playerOrder: [String]
     let tiles: [GameBoardTileRenderModel]
     let ports: [GameBoardPortRenderModel]
     let structures: [GameBoardStructureRenderModel]

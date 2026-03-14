@@ -46,6 +46,7 @@ enum GameBoardRenderModelBuilder {
         return GameBoardRenderModel(
             topology: topology,
             geometry: geometry,
+            playerOrder: state.roster,
             tiles: tiles,
             ports: ports,
             structures: structures,

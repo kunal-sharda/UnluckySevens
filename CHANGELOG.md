@@ -142,6 +142,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Phase 10.5 shell components: the game shell now uses a tactile board placeholder, a persistent bottom tray that unifies the hand and primary actions, and an inline mode-driven host for deferred trade/dev/discard messaging while keeping the debug HUD reachable but secondary.
 - Phase 10.6 phase-end hardening: the debug tools now live behind a compact dedicated trigger and `DebugPanelView`, keeping development access easy without competing with the product shell’s primary action area.
 - Phase 11.1 board layout contract and scene bridge: `ULS_CoreGame` now exports additive deterministic render geometry, `MessagesExtension` builds a pure `GameBoardRenderModel` from canonical state, and the shell board container can render the first SpriteKit board scene instead of placeholder art when state-backed board data is available.
+- Phase 11.2 board rendering and piece layers: the SpriteKit board now renders tactile ports, roads, settlements, cities, stronger number tokens, and a clearer robber marker, with deterministic player-color styling keyed to canonical roster order.
 
 ### Changed
 - `README.md` is now the tracked human-facing repo entrypoint; `AGENTS.md` is local-only for agents.
