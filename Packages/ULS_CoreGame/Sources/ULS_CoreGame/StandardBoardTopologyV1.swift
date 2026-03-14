@@ -31,10 +31,11 @@ public enum StandardBoardTopologyV1 {
 
     public static func renderGeometry() -> BoardRenderGeometryV1 {
         let geometry = buildGeometry()
+        let horizontalScale = sqrt(3.0) * 0.5
 
         let nodePositions = geometry.nodeCoordinates.map {
             BoardRenderPointV1(
-                x: Double($0.u),
+                x: Double($0.u) * horizontalScale,
                 y: Double($0.w) * 0.5
             )
         }

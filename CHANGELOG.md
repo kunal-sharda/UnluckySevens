@@ -151,6 +151,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `README.md` is now the tracked human-facing repo entrypoint; `AGENTS.md` is local-only for agents.
 - `README.md` is slimmed to onboarding and stable commands, carries the minimal tracked repo contract for humans, and now links directly to the architecture, QA, and product-spec owner docs.
 - CoreGame test organization now separates fast package tests (`ULS_CoreGameTests`) from deterministic full-match evals (`ULS_CoreGameEvals`).
+- Phase 11 board geometry follow-up: render geometry now uses a regular hex basis and the board layout derives tile radius from the actual center-to-corner distance, keeping visible tiles aligned with the node and edge lattice.
 
 ### Removed
 - Separate `docs/index.md` and split `docs/architecture/*` tracked entrypoints; the repo now uses `README.md` as the tracked entrypoint and root `ARCHITECTURE.md` as the single architecture document.

@@ -13,11 +13,7 @@ struct GameBoardLayout {
     }
 
     var tileRadius: CGFloat {
-        let width = max(bounds.width, 1)
-        let height = max(bounds.height, 1)
-        let availableWidth = max(size.width - (padding * 2), 1)
-        let availableHeight = max(size.height - (padding * 2), 1)
-        return min(availableWidth / width, availableHeight / height) * 0.44
+        max(normalizedTileRadius * layoutScale, 8)
     }
 
     var roadWidth: CGFloat {
@@ -100,9 +96,7 @@ struct GameBoardLayout {
 
     private func point(for renderPoint: BoardRenderPointV1) -> CGPoint {
         let bounds = bounds
-        let availableWidth = max(size.width - (padding * 2), 1)
-        let availableHeight = max(size.height - (padding * 2), 1)
-        let scale = min(availableWidth / bounds.width, availableHeight / bounds.height)
+        let scale = layoutScale
         let scaledWidth = bounds.width * scale
         let scaledHeight = bounds.height * scale
         let originX = ((size.width - scaledWidth) * 0.5) - (bounds.minX * scale)
@@ -119,5 +113,31 @@ struct GameBoardLayout {
         let dy = end.y - start.y
         let magnitude = max(sqrt((dx * dx) + (dy * dy)), 0.001)
         return CGVector(dx: dx / magnitude, dy: dy / magnitude)
+    }
+
+    private var layoutScale: CGFloat {
+        let availableWidth = max(size.width - (padding * 2), 1)
+        let availableHeight = max(size.height - (padding * 2), 1)
+        return min(availableWidth / max(bounds.width, 1), availableHeight / max(bounds.height, 1))
+    }
+
+    private var normalizedTileRadius: CGFloat {
+        let radii = geometry.tileCenters.compactMap { tileCenter in
+            geometry.nodePositions
+                .map { nodePoint in
+                    hypot(
+                        CGFloat(nodePoint.x - tileCenter.x),
+                        CGFloat(nodePoint.y - tileCenter.y)
+                    )
+                }
+                .filter { $0 > 0.0001 }
+                .min()
+        }
+
+        guard !radii.isEmpty else {
+            return 1
+        }
+
+        return radii.reduce(0, +) / CGFloat(radii.count)
     }
 }
