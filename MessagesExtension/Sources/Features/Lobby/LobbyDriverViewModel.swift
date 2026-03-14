@@ -99,6 +99,18 @@ final class LobbyDriverViewModel: ObservableObject {
         )
     }
 
+    func makeBoardOverlayModel(
+        mode: GameMode,
+        selectedTarget: GameBoardTarget?
+    ) -> GameBoardOverlayModel {
+        GameBoardOverlayModelBuilder.build(
+            state: selectedState,
+            actingAs: localActorIdentifier(),
+            mode: mode,
+            selectedTarget: selectedTarget
+        )
+    }
+
     private var shellActionAvailability: GameActionAvailability {
         GameActionAvailability(
             canRoll: canSendRollDiceIntentDebug,

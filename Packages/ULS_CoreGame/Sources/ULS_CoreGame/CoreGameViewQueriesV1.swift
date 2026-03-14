@@ -181,59 +181,170 @@ public extension CoreGameStateV1 {
     }
 
     func firstLegalRoadEdge(for player: String) -> EdgeID? {
+        legalBuildRoadEdges(for: player).first
+    }
+
+    func legalBuildRoadEdges(for player: String) -> [EdgeID] {
         let topology = StandardBoardTopologyV1.standard()
+        guard phase == .turn, turnState?.step == .afterRoll, currentPlayer == player else {
+            return []
+        }
+
+        let hand = resourcesByPlayer[player] ?? .zero
+        let cost = ResourceHandV1(wood: 1, brick: 1)
+        guard canAfford(hand: hand, cost: cost) else {
+            return []
+        }
+
         let roadCount = roadsByEdge.values.filter { $0 == player }.count
         guard roadCount < 15 else {
-            return nil
+            return []
         }
 
-        for edgeID in topology.edges.indices where roadsByEdge[edgeID] == nil {
-            if isRoadConnected(edgeID, player: player, roads: roadsByEdge) {
-                return edgeID
-            }
+        return topology.edges.indices.filter { edgeID in
+            roadsByEdge[edgeID] == nil && isRoadConnected(edgeID, player: player, roads: roadsByEdge)
         }
-
-        return nil
     }
 
     func firstLegalSettlementNode(for player: String) -> NodeID? {
+        legalBuildSettlementNodes(for: player).first
+    }
+
+    func legalBuildSettlementNodes(for player: String) -> [NodeID] {
         let topology = StandardBoardTopologyV1.standard()
+        guard phase == .turn, turnState?.step == .afterRoll, currentPlayer == player else {
+            return []
+        }
+
+        let hand = resourcesByPlayer[player] ?? .zero
+        let cost = ResourceHandV1(wood: 1, brick: 1, sheep: 1, wheat: 1)
+        guard canAfford(hand: hand, cost: cost) else {
+            return []
+        }
+
         let settlementCount = settlementsByNode.values.filter { $0 == player }.count
         guard settlementCount < 5 else {
-            return nil
+            return []
         }
 
         let occupiedNodes = Set(settlementsByNode.keys).union(Set(citiesByNode.keys))
-        for nodeID in 0 ..< topology.nodesCount {
+        return (0 ..< topology.nodesCount).filter { nodeID in
             if occupiedNodes.contains(nodeID) {
-                continue
+                return false
             }
 
             let adjacent = Set(topology.nodes(adjacentTo: nodeID))
             if !adjacent.isDisjoint(with: occupiedNodes) {
-                continue
+                return false
             }
 
-            let hasRoad = topology.edges(incidentTo: nodeID).contains { roadsByEdge[$0] == player }
-            if hasRoad {
-                return nodeID
-            }
+            return topology.edges(incidentTo: nodeID).contains { roadsByEdge[$0] == player }
         }
-
-        return nil
     }
 
     func firstUpgradeableCityNode(for player: String) -> NodeID? {
+        legalBuildCityNodes(for: player).first
+    }
+
+    func legalBuildCityNodes(for player: String) -> [NodeID] {
+        guard phase == .turn, turnState?.step == .afterRoll, currentPlayer == player else {
+            return []
+        }
+
+        let hand = resourcesByPlayer[player] ?? .zero
+        let cost = ResourceHandV1(wheat: 2, ore: 3)
+        guard canAfford(hand: hand, cost: cost) else {
+            return []
+        }
+
         let cityCount = citiesByNode.values.filter { $0 == player }.count
         guard cityCount < 4 else {
-            return nil
+            return []
         }
 
         return settlementsByNode
             .filter { $0.value == player }
             .keys
             .sorted()
-            .first
+    }
+
+    func legalSetupSettlementNodes(for player: String) -> [NodeID] {
+        let topology = StandardBoardTopologyV1.standard()
+        guard phase == .setup,
+              currentPlayer == player,
+              let setupState,
+              setupState.step == .placeSettlement
+        else {
+            return []
+        }
+
+        let occupiedNodes = occupiedSetupSettlementNodes(from: setupState.placements)
+        return (0 ..< topology.nodesCount).filter { nodeID in
+            guard !occupiedNodes.contains(nodeID) else {
+                return false
+            }
+
+            let adjacentNodes = Set(topology.nodes(adjacentTo: nodeID))
+            return adjacentNodes.isDisjoint(with: occupiedNodes)
+        }
+    }
+
+    func legalSetupRoadEdges(for player: String) -> [EdgeID] {
+        let topology = StandardBoardTopologyV1.standard()
+        guard phase == .setup,
+              currentPlayer == player,
+              let setupState,
+              setupState.step == .placeRoad,
+              let anchorNode = setupState.lastPlacedSettlementNode
+        else {
+            return []
+        }
+
+        let occupiedEdges = occupiedSetupRoadEdges(from: setupState.placements)
+        return topology.edges(incidentTo: anchorNode)
+            .filter { !occupiedEdges.contains($0) }
+            .sorted()
+    }
+
+    func legalRobberMoveTiles(for player: String) -> [TileID] {
+        guard phase == .turn,
+              turnState?.step == .needsRobberMove,
+              currentPlayer == player,
+              let board
+        else {
+            return []
+        }
+
+        return board.resourcesByTile.indices.filter { $0 != board.robberTile }
+    }
+
+    func robberVictimCandidateNodes(for player: String) -> [NodeID] {
+        let topology = StandardBoardTopologyV1.standard()
+        guard phase == .turn,
+              turnState?.step == .needsRobberSteal,
+              currentPlayer == player,
+              let board,
+              board.robberTile >= 0,
+              board.robberTile < topology.tiles.count
+        else {
+            return []
+        }
+
+        let eligibleVictims = Set(turnState?.eligibleStealVictims ?? [])
+        return Array(
+            Set(
+                topology.tiles[board.robberTile].nodes.filter { nodeID in
+                    if let owner = citiesByNode[nodeID] {
+                        return eligibleVictims.contains(owner)
+                    }
+                    if let owner = settlementsByNode[nodeID] {
+                        return eligibleVictims.contains(owner)
+                    }
+                    return false
+                }
+            )
+        )
+        .sorted()
     }
 
     func defaultDiscard(for player: String) -> ResourceHandV1? {
@@ -302,6 +413,14 @@ public extension CoreGameStateV1 {
         [.wood, .brick, .sheep, .wheat, .ore]
     }
 
+    private func canAfford(hand: ResourceHandV1, cost: ResourceHandV1) -> Bool {
+        hand.wood >= cost.wood &&
+            hand.brick >= cost.brick &&
+            hand.sheep >= cost.sheep &&
+            hand.wheat >= cost.wheat &&
+            hand.ore >= cost.ore
+    }
+
     private func isRoadConnected(_ edgeID: EdgeID, player: String, roads: [EdgeID: String]) -> Bool {
         let topology = StandardBoardTopologyV1.standard()
         let edge = topology.edges[edgeID]
@@ -322,6 +441,18 @@ public extension CoreGameStateV1 {
         }
 
         return false
+    }
+
+    private func occupiedSetupSettlementNodes(from placements: [String: PlayerSetupPlacementsV1]) -> Set<NodeID> {
+        Set(placements.values.flatMap { placement in
+            [placement.settlement1, placement.settlement2].compactMap { $0 }
+        })
+    }
+
+    private func occupiedSetupRoadEdges(from placements: [String: PlayerSetupPlacementsV1]) -> Set<EdgeID> {
+        Set(placements.values.flatMap { placement in
+            [placement.road1, placement.road2].compactMap { $0 }
+        })
     }
 
     private func bestMaritimeTradeRatio(

@@ -11,6 +11,10 @@ struct GameShellView: View {
             currentMode: currentMode,
             availability: screenModel.modeAvailability
         )
+        let overlayModel = viewModel.makeBoardOverlayModel(
+            mode: resolvedMode,
+            selectedTarget: selectedBoardTarget
+        )
 
         ZStack {
             GameTheme.appBackground
@@ -30,9 +34,13 @@ struct GameShellView: View {
                     BoardContainerView(
                         model: selectedBoardModel(screenModel: screenModel, mode: resolvedMode),
                         renderModel: screenModel.boardRenderModel,
-                        selectionText: selectedBoardTarget?.debugLabel,
+                        overlayModel: overlayModel,
+                        selectionText: overlayModel.selectedTarget?.debugLabel,
                         onTargetTap: { target in
-                            selectedBoardTarget = target
+                            selectedBoardTarget = normalizedBoardTarget(
+                                for: target,
+                                mode: resolvedMode
+                            )
                         }
                     )
 
@@ -64,9 +72,16 @@ struct GameShellView: View {
         }
         .onAppear {
             synchronizeMode(with: screenModel.modeAvailability)
+            synchronizeBoardSelection(mode: resolvedMode)
         }
         .onChange(of: screenModel.modeAvailability) { _, availability in
             synchronizeMode(with: availability)
+        }
+        .onChange(of: resolvedMode) { _, newMode in
+            synchronizeBoardSelection(mode: newMode)
+        }
+        .onChange(of: screenModel.boardRenderModel) { _, _ in
+            synchronizeBoardSelection(mode: resolvedMode)
         }
     }
 
@@ -108,5 +123,28 @@ struct GameShellView: View {
         }
 
         currentMode = normalizedMode
+    }
+
+    private func normalizedBoardTarget(
+        for target: GameBoardTarget,
+        mode: GameMode
+    ) -> GameBoardTarget? {
+        viewModel.makeBoardOverlayModel(
+            mode: mode,
+            selectedTarget: target
+        ).selectedTarget
+    }
+
+    private func synchronizeBoardSelection(mode: GameMode) {
+        let normalizedTarget = viewModel.makeBoardOverlayModel(
+            mode: mode,
+            selectedTarget: selectedBoardTarget
+        ).selectedTarget
+
+        guard normalizedTarget != selectedBoardTarget else {
+            return
+        }
+
+        selectedBoardTarget = normalizedTarget
     }
 }

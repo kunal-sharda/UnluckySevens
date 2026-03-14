@@ -3,6 +3,7 @@ import SwiftUI
 
 struct BoardSceneView: View {
     let renderModel: GameBoardRenderModel
+    let overlayModel: GameBoardOverlayModel
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
     @State private var scene = GameBoardScene(size: CGSize(width: 320, height: 240))
@@ -31,10 +32,10 @@ struct BoardSceneView: View {
             }
             .clipped()
             .onAppear {
-                scene.update(renderModel: renderModel, size: geometry.size)
+                scene.update(renderModel: renderModel, size: geometry.size, overlayModel: overlayModel)
             }
             .onChange(of: renderModel) { _, newValue in
-                scene.update(renderModel: newValue, size: geometry.size)
+                scene.update(renderModel: newValue, size: geometry.size, overlayModel: overlayModel)
                 cameraState = GameBoardCameraState(
                     zoom: cameraState.zoom,
                     offset: GameBoardCameraController.clampedOffset(
@@ -45,8 +46,11 @@ struct BoardSceneView: View {
                     )
                 )
             }
+            .onChange(of: overlayModel) { _, newValue in
+                scene.update(renderModel: renderModel, size: geometry.size, overlayModel: newValue)
+            }
             .onChange(of: geometry.size) { _, newValue in
-                scene.update(renderModel: renderModel, size: newValue)
+                scene.update(renderModel: renderModel, size: newValue, overlayModel: overlayModel)
                 let resizedLayout = GameBoardLayout(size: newValue, geometry: renderModel.geometry)
                 cameraState = GameBoardCameraState(
                     zoom: cameraState.zoom,

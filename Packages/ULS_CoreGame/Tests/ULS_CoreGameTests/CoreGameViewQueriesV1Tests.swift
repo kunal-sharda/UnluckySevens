@@ -97,6 +97,69 @@ final class CoreGameViewQueriesV1Tests: XCTestCase {
         XCTAssertEqual(roadBuildingPlayed.roadsByEdge[roadBuilding.secondEdgeID], "A")
     }
 
+    func testBuildQueriesRespectTurnContextAndAffordability() throws {
+        let homeNode = topology.tiles[0].nodes[0]
+        let firstRoad = topology.edges(incidentTo: homeNode)[0]
+        let state = makeState(
+            resourcesByPlayer: [
+                "A": ResourceHandV1(wood: 1),
+                "B": .zero,
+            ],
+            settlementsByNode: [homeNode: "A"],
+            roadsByEdge: [firstRoad: "A"]
+        )
+
+        XCTAssertTrue(state.legalBuildRoadEdges(for: "A").isEmpty)
+        XCTAssertTrue(state.legalBuildSettlementNodes(for: "A").isEmpty)
+        XCTAssertTrue(state.legalBuildCityNodes(for: "A").isEmpty)
+        XCTAssertNil(state.firstLegalRoadEdge(for: "A"))
+        XCTAssertNil(state.firstLegalSettlementNode(for: "A"))
+        XCTAssertNil(state.firstUpgradeableCityNode(for: "A"))
+    }
+
+    func testSetupAndRobberQueriesExposeLegalTargetSets() throws {
+        let setupSettlementState = makeSetupState()
+        let settlementTargets = setupSettlementState.legalSetupSettlementNodes(for: "A")
+        XCTAssertFalse(settlementTargets.isEmpty)
+
+        let chosenSettlement = try XCTUnwrap(settlementTargets.first)
+        let setupRoadState = makeSetupState(
+            step: .placeRoad,
+            placements: [
+                "A": PlayerSetupPlacementsV1(settlement1: chosenSettlement),
+            ],
+            lastPlacedSettlementNode: chosenSettlement
+        )
+        let roadTargets = setupRoadState.legalSetupRoadEdges(for: "A")
+        XCTAssertEqual(
+            roadTargets,
+            topology.edges(incidentTo: chosenSettlement).sorted()
+        )
+
+        let victimNode = try XCTUnwrap(topology.tiles[1].nodes.first)
+        let robberMoveState = makeState(
+            resourcesByPlayer: ["A": .zero, "B": .zero],
+            turnState: TurnStateV1(step: .needsRobberMove, lastRoll: DiceRollV1(d1: 4, d2: 3))
+        )
+        let robberTargets = robberMoveState.legalRobberMoveTiles(for: "A")
+        XCTAssertEqual(robberTargets.count, 18)
+        XCTAssertFalse(robberTargets.contains(1))
+
+        let robberVictimState = makeState(
+            resourcesByPlayer: [
+                "A": .zero,
+                "B": ResourceHandV1(wood: 1),
+            ],
+            settlementsByNode: [victimNode: "B"],
+            turnState: TurnStateV1(
+                step: .needsRobberSteal,
+                lastRoll: DiceRollV1(d1: 3, d2: 4),
+                eligibleStealVictims: ["B"]
+            )
+        )
+        XCTAssertEqual(robberVictimState.robberVictimCandidateNodes(for: "A"), [victimNode])
+    }
+
     func testDefaultActionQueriesReturnDeterministicSelections() throws {
         let woodPortNode = try XCTUnwrap(portNode {
             if case .twoToOne(.wood) = $0 {
@@ -199,6 +262,48 @@ final class CoreGameViewQueriesV1Tests: XCTestCase {
             board: board,
             setupState: nil,
             turnState: turnState
+        ).rehashed()
+    }
+
+    private func makeSetupState(
+        step: SetupStepV1 = .placeSettlement,
+        placements: [String: PlayerSetupPlacementsV1] = [:],
+        lastPlacedSettlementNode: NodeID? = nil
+    ) -> CoreGameStateV1 {
+        let board = BoardSetupV1(
+            resourcesByTile: [.wood] + Array(repeating: .desert, count: 18),
+            numbersByTile: [5] + Array(repeating: nil, count: 18),
+            portsByIndex: topology.ports.map(\.kind),
+            robberTile: 1,
+            generator: .randomV1,
+            boardHash: ""
+        ).rehashed()
+
+        return CoreGameStateV1(
+            gameId: "setup-query-view-queries",
+            rev: 12,
+            prevHash: "hash-11",
+            stateHash: "",
+            roster: ["A", "B"],
+            currentPlayer: "A",
+            phase: .setup,
+            seed: 7,
+            diceRngState: 8,
+            robberRngState: 9,
+            resourcesByPlayer: ["A": .zero, "B": .zero],
+            settlementsByNode: [:],
+            citiesByNode: [:],
+            roadsByEdge: [:],
+            boardRules: BoardRulesV1(strategy: .randomV1),
+            board: board,
+            setupState: SetupStateV1(
+                order: makeSetupOrder(roster: ["A", "B"]),
+                turnIndex: 0,
+                step: step,
+                placements: placements,
+                lastPlacedSettlementNode: lastPlacedSettlementNode
+            ),
+            turnState: nil
         ).rehashed()
     }
 

@@ -15,7 +15,7 @@ final class GameBoardScene: SKScene {
         backgroundColor = .clear
     }
 
-    func update(renderModel: GameBoardRenderModel, size: CGSize) {
+    func update(renderModel: GameBoardRenderModel, size: CGSize, overlayModel: GameBoardOverlayModel) {
         self.size = size
         removeAllChildren()
 
@@ -37,6 +37,14 @@ final class GameBoardScene: SKScene {
         for structure in renderModel.structures {
             addChild(makeStructureNode(structure: structure, layout: layout, playerOrder: renderModel.playerOrder))
         }
+
+        addChild(
+            makeOverlayNode(
+                overlayModel: overlayModel,
+                layout: layout,
+                topology: renderModel.topology
+            )
+        )
     }
 
     private func makeBoardBackdrop(size: CGSize) -> SKNode {
@@ -266,6 +274,137 @@ final class GameBoardScene: SKScene {
         cap.strokeColor = .clear
         cap.position = CGPoint(x: 0, y: max(layout.structureRadius * 0.08, 1))
         node.addChild(cap)
+
+        return node
+    }
+
+    private func makeOverlayNode(
+        overlayModel: GameBoardOverlayModel,
+        layout: GameBoardLayout,
+        topology: BoardGraphV1
+    ) -> SKNode {
+        let node = SKNode()
+        node.zPosition = 90
+
+        for tileID in overlayModel.legalTileIDs {
+            node.addChild(
+                makeTileHighlightNode(
+                    at: layout.tileCenter(for: tileID),
+                    radius: layout.tileRadius,
+                    isSelected: overlayModel.selectedTarget == .tile(tileID)
+                )
+            )
+        }
+
+        for edgeID in overlayModel.legalEdgeIDs {
+            node.addChild(
+                makeEdgeHighlightNode(
+                    edgeID: edgeID,
+                    layout: layout,
+                    topology: topology,
+                    isSelected: overlayModel.selectedTarget == .edge(edgeID)
+                )
+            )
+        }
+
+        for nodeID in overlayModel.legalNodeIDs {
+            node.addChild(
+                makeNodeHighlightNode(
+                    at: layout.nodePoint(for: nodeID),
+                    radius: layout.structureRadius,
+                    isSelected: overlayModel.selectedTarget == .node(nodeID)
+                )
+            )
+        }
+
+        if let selectedTarget = overlayModel.selectedTarget {
+            switch selectedTarget {
+            case let .tile(tileID) where !overlayModel.legalTileIDs.contains(tileID):
+                node.addChild(
+                    makeTileHighlightNode(
+                        at: layout.tileCenter(for: tileID),
+                        radius: layout.tileRadius,
+                        isSelected: true
+                    )
+                )
+            case let .node(nodeID) where !overlayModel.legalNodeIDs.contains(nodeID):
+                node.addChild(
+                    makeNodeHighlightNode(
+                        at: layout.nodePoint(for: nodeID),
+                        radius: layout.structureRadius,
+                        isSelected: true
+                    )
+                )
+            case let .edge(edgeID) where !overlayModel.legalEdgeIDs.contains(edgeID):
+                node.addChild(
+                    makeEdgeHighlightNode(
+                        edgeID: edgeID,
+                        layout: layout,
+                        topology: topology,
+                        isSelected: true
+                    )
+                )
+            default:
+                break
+            }
+        }
+
+        return node
+    }
+
+    private func makeTileHighlightNode(
+        at center: CGPoint,
+        radius: CGFloat,
+        isSelected: Bool
+    ) -> SKNode {
+        let node = SKNode()
+        node.position = center
+
+        let halo = SKShapeNode(path: hexagonPath(radius: radius * 1.02))
+        halo.fillColor = isSelected ? GameBoardPalette.selectedHighlightFill : GameBoardPalette.legalHighlightFill
+        halo.strokeColor = isSelected ? GameBoardPalette.selectedHighlight : GameBoardPalette.legalHighlight
+        halo.lineWidth = isSelected ? 4 : 2.4
+        node.addChild(halo)
+
+        return node
+    }
+
+    private func makeEdgeHighlightNode(
+        edgeID: EdgeID,
+        layout: GameBoardLayout,
+        topology: BoardGraphV1,
+        isSelected: Bool
+    ) -> SKNode {
+        let node = SKNode()
+        let edgeLine = layout.edgeLine(for: edgeID, topology: topology)
+
+        let path = CGMutablePath()
+        path.move(to: edgeLine.start)
+        path.addLine(to: edgeLine.end)
+
+        let halo = SKShapeNode(path: path)
+        halo.strokeColor = isSelected ? GameBoardPalette.selectedHighlight : GameBoardPalette.legalHighlight
+        halo.lineWidth = layout.roadWidth + (isSelected ? 7 : 4)
+        halo.lineCap = .round
+        halo.alpha = isSelected ? 0.96 : 0.62
+        node.addChild(halo)
+
+        return node
+    }
+
+    private func makeNodeHighlightNode(
+        at center: CGPoint,
+        radius: CGFloat,
+        isSelected: Bool
+    ) -> SKNode {
+        let node = SKNode()
+        node.position = center
+
+        let ring = SKShapeNode(circleOfRadius: radius + (isSelected ? 7 : 5))
+        ring.fillColor = isSelected ? GameBoardPalette.selectedHighlightFill : GameBoardPalette.legalHighlightFill
+        ring.strokeColor = isSelected ? GameBoardPalette.selectedHighlight : GameBoardPalette.legalHighlight
+        ring.lineWidth = isSelected ? 4 : 2.4
+        node.addChild(ring)
 
         return node
     }

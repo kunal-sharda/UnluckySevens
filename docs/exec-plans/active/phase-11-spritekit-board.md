@@ -328,7 +328,7 @@ Reason for deferral:
 - [x] Stage 11.1 — Board Layout Contract and Scene Bridge
 - [x] Stage 11.2 — Board Rendering and Piece Layers
 - [x] Stage 11.3 — Camera, Pan/Zoom, and Hit-Testing
-- [ ] Stage 11.4 — Mode-Driven Highlights and Selection Plumbing
+- [x] Stage 11.4 — Mode-Driven Highlights and Selection Plumbing
 - [ ] Stage 11.5 — Snapshot Rendering and Bubble Preparation
 
 Update this section during execution with dates, brief milestone notes, how each milestone was reached, and where execution looped or got stuck.
@@ -339,6 +339,8 @@ Update this section during execution with dates, brief milestone notes, how each
 - 2026-03-14 — Stage 11.2 looped once on project generation: adding `GameBoardPalette.swift` required regenerating the Tuist workspace before `xcodebuild` would see the new file.
 - 2026-03-14 — Stage 11.3 landed. Added a board-camera controller, SwiftUI pan and magnification gestures over the SpriteKit surface, typed `tile/node/edge` hit-target callbacks, and shell-level selected-target feedback in the board container.
 - 2026-03-14 — Stage 11.3 looped once on hit-testing semantics: absolute endpoint exclusion for edges broke short road segments, so edge selection now uses projection-based endpoint handling plus normalized candidate scoring instead of a node-first short circuit.
+- 2026-03-14 — Stage 11.4 landed. Added additive legal-target-set queries in `ULS_CoreGame`, a pure board-overlay builder in `MessagesExtension`, SpriteKit node/edge/tile highlight rendering, and shell-side selection normalization so mode-driven board taps only persist when they match the active legal target set.
+- 2026-03-14 — Stage 11.4 looped once on generated project state rather than code semantics: after adding new overlay-model files, `xcodebuild` could not see them until `bash ./scripts/gen.sh` regenerated the Tuist workspace.
 
 ## Decisions and Discoveries
 
@@ -361,6 +363,7 @@ Record here during execution:
 - 2026-03-14 — `MessagesExtensionTests` is source-based rather than target-based, so stage 11.1 also required adding the pure board render-model files to the test target source list in `Project.swift`.
 - 2026-03-14 — Ownership rendering needed deterministic player ordering. `GameBoardRenderModel` now carries `state.roster` so the board can assign stable player colors without deriving them from ad hoc string hashing or shell-local state.
 - 2026-03-14 — Short edge segments make distance-only endpoint exclusion too blunt for edge hit testing. The stable approach here is to evaluate segment projection first, exclude only the endpoint portions of the segment parametrically, and then choose among node/edge/tile candidates by normalized score.
+- 2026-03-14 — Phase 11.4 needed additive core query surface as expected. Board-mode highlights are now driven by engine-owned legal target arrays for setup, build, robber move, and robber-victim emphasis, rather than UI-local heuristics or a single debug default target.
 
 ## Outcome
 

@@ -16,6 +16,10 @@ enum GameBoardPalette {
     static let portStroke = SKColor(red: 0.45, green: 0.33, blue: 0.21, alpha: 0.34)
     static let roadShadow = SKColor.black.withAlphaComponent(0.18)
     static let structureFill = SKColor(red: 0.98, green: 0.96, blue: 0.90, alpha: 0.94)
+    static let legalHighlight = SKColor(red: 0.94, green: 0.80, blue: 0.33, alpha: 0.92)
+    static let legalHighlightFill = SKColor(red: 0.98, green: 0.90, blue: 0.54, alpha: 0.18)
+    static let selectedHighlight = SKColor(red: 0.99, green: 0.96, blue: 0.86, alpha: 0.98)
+    static let selectedHighlightFill = SKColor(red: 0.99, green: 0.96, blue: 0.86, alpha: 0.26)
 
     static func resourceFill(for resource: ResourceV1) -> SKColor {
         switch resource {
