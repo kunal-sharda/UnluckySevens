@@ -66,15 +66,13 @@ enum GameBoardOverlayModelBuilder {
         }
 
         switch mode {
-        case .setup:
-            return state.legalSetupSettlementNodes(for: actor)
         case .buildSettlement:
             return state.legalBuildSettlementNodes(for: actor)
         case .buildCity:
             return state.legalBuildCityNodes(for: actor)
         case .robberVictim:
             return state.robberVictimCandidateNodes(for: actor)
-        case .idle, .buildRoad, .robberMove, .trade, .playDevCard, .discard:
+        case .idle, .setup, .buildRoad, .robberMove, .trade, .playDevCard, .discard:
             return []
         }
     }
@@ -89,11 +87,9 @@ enum GameBoardOverlayModelBuilder {
         }
 
         switch mode {
-        case .setup:
-            return state.legalSetupRoadEdges(for: actor)
         case .buildRoad:
             return state.legalBuildRoadEdges(for: actor)
-        case .idle, .buildSettlement, .buildCity, .robberMove, .robberVictim, .trade, .playDevCard, .discard:
+        case .idle, .setup, .buildSettlement, .buildCity, .robberMove, .robberVictim, .trade, .playDevCard, .discard:
             return []
         }
     }
