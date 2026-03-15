@@ -170,7 +170,7 @@ final class GameBoardScene: SKScene {
         tether.lineCap = .round
         node.addChild(tether)
 
-        let badgeSize = CGSize(width: max(layout.tileRadius * 0.82, 28), height: max(layout.tileRadius * 0.42, 18))
+        let badgeSize = CGSize(width: max(layout.tileRadius * 0.68, 24), height: max(layout.tileRadius * 0.34, 16))
         let badge = SKShapeNode(
             rect: CGRect(
                 x: anchor.x - (badgeSize.width * 0.5),
@@ -187,7 +187,7 @@ final class GameBoardScene: SKScene {
 
         let label = SKLabelNode(text: GameBoardPalette.portLabel(for: port.kind))
         label.fontName = "AvenirNext-Bold"
-        label.fontSize = max(layout.tileRadius * 0.18, 9)
+        label.fontSize = max(layout.tileRadius * 0.15, 8)
         label.fontColor = GameBoardPalette.ink
         label.position = anchor
         label.verticalAlignmentMode = .center
@@ -285,6 +285,7 @@ final class GameBoardScene: SKScene {
     ) -> SKNode {
         let node = SKNode()
         node.zPosition = 90
+        let denseNodeHighlights = overlayModel.legalNodeIDs.count > 10
 
         for tileID in overlayModel.legalTileIDs {
             node.addChild(
@@ -312,7 +313,8 @@ final class GameBoardScene: SKScene {
                 makeNodeHighlightNode(
                     at: layout.nodePoint(for: nodeID),
                     radius: layout.structureRadius,
-                    isSelected: overlayModel.selectedTarget == .node(nodeID)
+                    isSelected: overlayModel.selectedTarget == .node(nodeID),
+                    denseCluster: denseNodeHighlights
                 )
             )
         }
@@ -332,7 +334,8 @@ final class GameBoardScene: SKScene {
                     makeNodeHighlightNode(
                         at: layout.nodePoint(for: nodeID),
                         radius: layout.structureRadius,
-                        isSelected: true
+                        isSelected: true,
+                        denseCluster: false
                     )
                 )
             case let .edge(edgeID) where !overlayModel.legalEdgeIDs.contains(edgeID):
@@ -361,9 +364,11 @@ final class GameBoardScene: SKScene {
         node.position = center
 
         let halo = SKShapeNode(path: hexagonPath(radius: radius * 1.02))
-        halo.fillColor = isSelected ? GameBoardPalette.selectedHighlightFill : GameBoardPalette.legalHighlightFill
+        halo.fillColor = isSelected
+            ? GameBoardPalette.selectedHighlightFill
+            : GameBoardPalette.legalHighlightFill.withAlphaComponent(0.18)
         halo.strokeColor = isSelected ? GameBoardPalette.selectedHighlight : GameBoardPalette.legalHighlight
-        halo.lineWidth = isSelected ? 4 : 2.4
+        halo.lineWidth = isSelected ? 4 : 1.6
         node.addChild(halo)
 
         return node
@@ -384,9 +389,9 @@ final class GameBoardScene: SKScene {
 
         let halo = SKShapeNode(path: path)
         halo.strokeColor = isSelected ? GameBoardPalette.selectedHighlight : GameBoardPalette.legalHighlight
-        halo.lineWidth = layout.roadWidth + (isSelected ? 7 : 4)
+        halo.lineWidth = layout.roadWidth + (isSelected ? 5.5 : 2.5)
         halo.lineCap = .round
-        halo.alpha = isSelected ? 0.96 : 0.62
+        halo.alpha = isSelected ? 0.92 : 0.40
         node.addChild(halo)
 
         return node
@@ -395,15 +400,25 @@ final class GameBoardScene: SKScene {
     private func makeNodeHighlightNode(
         at center: CGPoint,
         radius: CGFloat,
-        isSelected: Bool
+        isSelected: Bool,
+        denseCluster: Bool
     ) -> SKNode {
         let node = SKNode()
         node.position = center
 
-        let ring = SKShapeNode(circleOfRadius: radius + (isSelected ? 7 : 5))
-        ring.fillColor = isSelected ? GameBoardPalette.selectedHighlightFill : GameBoardPalette.legalHighlightFill
+        let circleRadius: CGFloat
+        if denseCluster {
+            circleRadius = isSelected ? max(radius * 0.70, 8) : max(radius * 0.46, 5)
+        } else {
+            circleRadius = radius + (isSelected ? 5 : 3)
+        }
+
+        let ring = SKShapeNode(circleOfRadius: circleRadius)
+        ring.fillColor = isSelected
+            ? GameBoardPalette.selectedHighlightFill
+            : GameBoardPalette.legalHighlightFill.withAlphaComponent(denseCluster ? 0.18 : 0.28)
         ring.strokeColor = isSelected ? GameBoardPalette.selectedHighlight : GameBoardPalette.legalHighlight
-        ring.lineWidth = isSelected ? 4 : 2.4
+        ring.lineWidth = denseCluster ? (isSelected ? 3 : 1.5) : (isSelected ? 4 : 2.2)
         node.addChild(ring)
 
         return node

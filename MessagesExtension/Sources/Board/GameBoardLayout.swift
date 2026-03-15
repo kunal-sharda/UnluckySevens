@@ -6,6 +6,7 @@ struct GameBoardLayout {
     let geometry: BoardRenderGeometryV1
 
     private let padding: CGFloat = 28
+    private let portMarginMultiplier: CGFloat = 1.7
 
     init(size: CGSize, geometry: BoardRenderGeometryV1) {
         self.size = size
@@ -34,7 +35,7 @@ struct GameBoardLayout {
         let minY = geometry.nodePositions.indices.map { nodePoint(for: $0).y }.min() ?? 0
         let maxY = geometry.nodePositions.indices.map { nodePoint(for: $0).y }.max() ?? size.height
 
-        let inset = tileRadius * 0.9
+        let inset = tileRadius * 1.5
         return CGRect(
             x: minX - inset,
             y: minY - inset,
@@ -95,7 +96,7 @@ struct GameBoardLayout {
     }
 
     private func point(for renderPoint: BoardRenderPointV1) -> CGPoint {
-        let bounds = bounds
+        let bounds = expandedBounds
         let scale = layoutScale
         let scaledWidth = bounds.width * scale
         let scaledHeight = bounds.height * scale
@@ -118,7 +119,11 @@ struct GameBoardLayout {
     private var layoutScale: CGFloat {
         let availableWidth = max(size.width - (padding * 2), 1)
         let availableHeight = max(size.height - (padding * 2), 1)
-        return min(availableWidth / max(bounds.width, 1), availableHeight / max(bounds.height, 1))
+        let expandedBounds = expandedBounds
+        return min(
+            availableWidth / max(expandedBounds.width, 1),
+            availableHeight / max(expandedBounds.height, 1)
+        )
     }
 
     private var normalizedTileRadius: CGFloat {
@@ -139,5 +144,12 @@ struct GameBoardLayout {
         }
 
         return radii.reduce(0, +) / CGFloat(radii.count)
+    }
+
+    private var expandedBounds: CGRect {
+        bounds.insetBy(
+            dx: -(normalizedTileRadius * portMarginMultiplier),
+            dy: -(normalizedTileRadius * portMarginMultiplier * 0.92)
+        )
     }
 }
