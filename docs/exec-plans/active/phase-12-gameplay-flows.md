@@ -319,8 +319,8 @@ Deferred by design in phase 12:
 
 ## Progress
 
-- [ ] Stage 12.1 — Lobby Join and Host Start UX
-- [ ] Stage 12.2 — Setup Placement UX
+- [x] Stage 12.1 — Lobby Join and Host Start UX
+- [x] Stage 12.2 — Setup Placement UX
 - [ ] Stage 12.3 — Core Turn Loop and Build/Buy Actions
 - [ ] Stage 12.4 — Robber and Discard UX
 - [ ] Stage 12.5 — Trade UX
@@ -329,7 +329,10 @@ Deferred by design in phase 12:
 
 ## Decisions and Discoveries
 
-- No phase-12 execution decisions have landed yet.
+- Stage 12.1 landed as a product lobby shell rather than another expansion of the debug view. The lobby now auto-sends join actions, derives pending participants from observed join intents plus the local pending-join cache, and keeps host start as the single canonical transition into setup.
+- Stage 12.2 uses board taps to draft and immediately publish canonical setup `STATE`s for the current player. That keeps setup aligned with the repo rule that only the current player publishes canonical state while still leaving legality in `ULS_CoreGame`.
+- Setup highlights are back only because setup placement is now actionable. They are no longer passive debug clutter; they reflect the legal node or edge targets for the current setup step.
+- Stage 12.1 and 12.2 validation ran through the MessagesExtension-focused lane: `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build` and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test -only-testing:MessagesExtensionTests`, with `35` MessagesExtension tests green after the setup slice landed.
 - Real-device validation is expected to drive at least some late-stage UX adjustments; do not treat Simulator-only behavior as sufficient signoff for Messages-hosted gameplay.
 - If setup, trade, or dev-card orchestration starts overwhelming `GameShellView` or `LobbyDriverViewModel`, split it into feature-local helpers rather than growing more shared conditionals.
 - Lobby join/start should preserve the current authority model unless there is an explicit product request to change it: one invite `STATE`, join `INTENT`s, one host-published start `STATE`.

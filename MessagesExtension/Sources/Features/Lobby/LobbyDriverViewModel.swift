@@ -116,6 +116,13 @@ final class LobbyDriverViewModel: ObservableObject {
         )
     }
 
+    var setupGuidanceText: String? {
+        SetupInteractionResolver.guidanceText(
+            state: selectedState,
+            actingAs: localActorIdentifier()
+        )
+    }
+
     func makeBoardOverlayModel(
         mode: GameMode,
         selectedTarget: GameBoardTarget?
@@ -1867,6 +1874,7 @@ final class LobbyDriverViewModel: ObservableObject {
         devDeckRemaining = "-"
         visibleDevCards = "-"
         resetBoardDebugFields()
+        rememberPendingJoiner(joinIntent.actor, for: joinIntent.gameId)
         selectionStatus = "Decoded JOIN intent via \(source.label)"
         refreshPendingJoiners(for: joinIntent.gameId)
         appendLog("Decoded INTENT kind=join actor=\(shortIdentifier(joinIntent.actor))")

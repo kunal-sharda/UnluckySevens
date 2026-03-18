@@ -52,7 +52,7 @@ final class GameBoardOverlayModelBuilderTests: XCTestCase {
         XCTAssertEqual(selectedOverlay.selectedTarget, .edge(legalEdge))
     }
 
-    func testSetupModeDoesNotRenderPassiveHighlightsYet() throws {
+    func testSetupModeUsesLegalHighlightsForCurrentSetupStep() throws {
         let settlementState = makeSetupState()
         let settlementTarget = try XCTUnwrap(settlementState.legalSetupSettlementNodes(for: "A").first)
         let settlementOverlay = GameBoardOverlayModelBuilder.build(
@@ -61,9 +61,9 @@ final class GameBoardOverlayModelBuilderTests: XCTestCase {
             mode: .setup,
             selectedTarget: .node(settlementTarget)
         )
-        XCTAssertTrue(settlementOverlay.legalNodeIDs.isEmpty)
+        XCTAssertFalse(settlementOverlay.legalNodeIDs.isEmpty)
         XCTAssertTrue(settlementOverlay.legalEdgeIDs.isEmpty)
-        XCTAssertNil(settlementOverlay.selectedTarget)
+        XCTAssertEqual(settlementOverlay.selectedTarget, .node(settlementTarget))
 
         let roadState = makeSetupState(
             step: .placeRoad,
@@ -80,8 +80,8 @@ final class GameBoardOverlayModelBuilderTests: XCTestCase {
             selectedTarget: .edge(roadTarget)
         )
         XCTAssertTrue(roadOverlay.legalNodeIDs.isEmpty)
-        XCTAssertTrue(roadOverlay.legalEdgeIDs.isEmpty)
-        XCTAssertNil(roadOverlay.selectedTarget)
+        XCTAssertFalse(roadOverlay.legalEdgeIDs.isEmpty)
+        XCTAssertEqual(roadOverlay.selectedTarget, .edge(roadTarget))
     }
 
     func testRobberModesExposeTileAndVictimNodeHighlights() throws {

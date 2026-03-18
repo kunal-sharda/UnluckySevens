@@ -147,6 +147,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Phase 11.4 mode-driven highlights and selection plumbing: the board now renders legal node/edge/tile emphasis from additive core query sets for setup, build, robber-move, and robber-victim modes, while the shell normalizes board selection to the active legal target set instead of keeping stale or mode-invalid taps alive.
 - Phase 11.5 snapshot rendering and bubble preparation: the board stack now produces deterministic off-screen bubble and transcript preview images through `GameBoardSnapshotRenderer`, with variant sizing normalized so captured SpriteKit output preserves the intended logical image dimensions.
 - Phase 12 planning: added an active ExecPlan for gameplay flows, including lobby join/start UX hardening, setup placement UX, turn loop UX, robber UX, trade UX, dev-card UX, and a real-device signoff pass.
+- Phase 12.1 lobby join and host start UX: the lobby now renders through a product shell, join actions auto-send instead of requiring a second manual send step, and host start derives the visible joined roster without relying on debug-only bookkeeping as the primary flow.
+- Phase 12.2 setup placement UX: setup guidance, legal setup highlights, and board-tap setup publication now let the current player place settlements and roads from the product UI instead of the debug apply path.
 
 ### Changed
 - `README.md` is now the tracked human-facing repo entrypoint; `AGENTS.md` is local-only for agents.

@@ -37,14 +37,14 @@ struct GameShellView: View {
                         overlayModel: overlayModel,
                         selectionText: overlayModel.selectedTarget?.debugLabel,
                         onTargetTap: { target in
-                            selectedBoardTarget = normalizedBoardTarget(
-                                for: target,
-                                mode: resolvedMode
-                            )
+                            handleBoardTap(target, mode: resolvedMode)
                         }
                     )
 
-                    GameModalHostView(mode: resolvedMode)
+                    GameModalHostView(
+                        mode: resolvedMode,
+                        setupInstruction: viewModel.setupGuidanceText
+                    )
 
                     PlayerSummaryStripView(summaries: screenModel.opponents)
                 }
@@ -133,6 +133,24 @@ struct GameShellView: View {
             mode: mode,
             selectedTarget: target
         ).selectedTarget
+    }
+
+    private func handleBoardTap(_ target: GameBoardTarget, mode: GameMode) {
+        let normalizedTarget = normalizedBoardTarget(for: target, mode: mode)
+
+        switch mode {
+        case .setup:
+            guard let normalizedTarget else {
+                return
+            }
+            if viewModel.publishSetupState(for: normalizedTarget) {
+                selectedBoardTarget = nil
+            } else {
+                selectedBoardTarget = normalizedTarget
+            }
+        default:
+            selectedBoardTarget = normalizedTarget
+        }
     }
 
     private func synchronizeBoardSelection(mode: GameMode) {

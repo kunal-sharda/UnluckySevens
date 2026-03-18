@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GameModalHostView: View {
     let mode: GameMode
+    let setupInstruction: String?
 
     var body: some View {
         if let copy = copy(for: mode) {
@@ -29,6 +30,9 @@ struct GameModalHostView: View {
 
     private func copy(for mode: GameMode) -> (title: String, message: String, systemImage: String)? {
         switch mode {
+        case .setup:
+            let message = setupInstruction ?? "Tap the highlighted placement to continue setup."
+            return ("Setup Placement", message, "house.lodge.fill")
         case .trade:
             return ("Trade Mode", "Trade composition stays lightweight in this phase. Full offer and accept UI lands in stage 12.", "arrow.left.arrow.right.circle.fill")
         case .playDevCard:

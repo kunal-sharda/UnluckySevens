@@ -53,7 +53,7 @@ enum GameMode: Equatable {
         case .idle:
             return ""
         case .setup:
-            return "Setup is active. Placement selection will plug into board interaction in a later stage."
+            return "Tap the highlighted placement to continue setup."
         case .buildRoad:
             return "Road-building mode is active. Edge selection will plug in during the board stage."
         case .buildSettlement:
