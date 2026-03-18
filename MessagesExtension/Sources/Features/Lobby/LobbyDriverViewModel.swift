@@ -1539,22 +1539,73 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         do {
-            let coreIntent = try setupIntentForTransport(setupIntent)
-            let toState = try ULS_CoreGame.apply(intent: coreIntent, to: fromState, actor: actor)
-            try validateTransition(from: fromState, to: toState, actor: actor)
-            let payload = try jsonString(from: toState)
-            let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
-            try sendEnvelope(
-                envelope,
-                caption: "ULS STATE rev\(toState.rev)",
-                sessionPolicy: .state(gameId: toState.gameId)
+            try applyAndPublishSetupIntent(
+                setupIntent,
+                from: fromState,
+                actor: actor,
+                successStatus: "Applied setup intent into STATE"
             )
-            setActiveContext(toState, source: .lastSentState)
-            selectionStatus = "Applied setup intent into STATE rev\(toState.rev)"
-            setLastError(nil)
         } catch {
             setLastError("Apply setup intent failed: \(error.localizedDescription)")
         }
+    }
+
+    @discardableResult
+    func publishSetupState(for target: GameBoardTarget) -> Bool {
+        guard let fromState = selectedState else {
+            setLastError("No Active Context — tap a STATE bubble or press Reload.")
+            return false
+        }
+
+        guard let actor = localActorIdentifier(), actor == fromState.currentPlayer else {
+            setLastError("Only current player can publish canonical STATE.")
+            return false
+        }
+
+        guard let setupIntent = SetupInteractionResolver.draftIntent(
+            state: fromState,
+            actingAs: actor,
+            target: target
+        ) else {
+            setLastError("Selected setup target is not legal.")
+            return false
+        }
+
+        do {
+            try applyAndPublishSetupIntent(
+                setupIntent,
+                from: fromState,
+                actor: actor,
+                successStatus: "Published setup placement"
+            )
+            return true
+        } catch {
+            setLastError("Setup placement failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    private func applyAndPublishSetupIntent(
+        _ setupIntent: SetupPlacementIntentV1,
+        from fromState: CoreGameStateV1,
+        actor: String,
+        successStatus: String
+    ) throws {
+        let coreIntent = try setupIntentForTransport(setupIntent)
+        let toState = try ULS_CoreGame.apply(intent: coreIntent, to: fromState, actor: actor)
+        try validateTransition(from: fromState, to: toState, actor: actor)
+
+        let payload = try jsonString(from: toState)
+        let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
+        try sendEnvelope(
+            envelope,
+            caption: "ULS STATE rev\(toState.rev)",
+            sessionPolicy: .state(gameId: toState.gameId)
+        )
+        selectedSetupIntent = nil
+        setActiveContext(toState, source: .lastSentState)
+        selectionStatus = "\(successStatus) rev\(toState.rev)"
+        setLastError(nil)
     }
 
     func applySelectedTurnIntentAsState() {
