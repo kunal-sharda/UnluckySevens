@@ -45,13 +45,26 @@ struct GameShellView: View {
                         mode: resolvedMode,
                         setupInstruction: viewModel.setupGuidanceText,
                         discardPanel: viewModel.discardPanelModel,
+                        tradePanel: viewModel.tradePanelModel,
                         robberVictimOptions: viewModel.robberVictimOptions,
                         onDiscardAction: {
                             guard viewModel.handleDiscardFlowAction() else { return }
                             selectedBoardTarget = nil
                         },
+                        onTradeAction: { action in
+                            guard viewModel.handleTradeAction(action) else { return }
+                            if action != .applySelectedAccept {
+                                currentMode = .idle
+                            }
+                            selectedBoardTarget = nil
+                        },
                         onApplySelectedTurnIntent: {
                             guard viewModel.publishSelectedTurnIntentState() else { return }
+                            selectedBoardTarget = nil
+                        },
+                        onExecuteTrade: { playerID in
+                            guard viewModel.publishTradeExecution(acceptingPlayer: playerID) else { return }
+                            currentMode = .idle
                             selectedBoardTarget = nil
                         },
                         onSelectStealVictim: { victimPlayer in

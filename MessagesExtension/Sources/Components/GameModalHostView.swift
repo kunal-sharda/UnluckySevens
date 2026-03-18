@@ -5,9 +5,12 @@ struct GameModalHostView: View {
     let mode: GameMode
     let setupInstruction: String?
     let discardPanel: GameDiscardPanelModel?
+    let tradePanel: GameTradePanelModel?
     let robberVictimOptions: [GameRobberVictimOption]
     let onDiscardAction: () -> Void
+    let onTradeAction: (GameTradeActionKind) -> Void
     let onApplySelectedTurnIntent: () -> Void
+    let onExecuteTrade: (String) -> Void
     let onSelectStealVictim: (String) -> Void
 
     var body: some View {
@@ -36,6 +39,8 @@ struct GameModalHostView: View {
         switch mode {
         case .discard:
             discardContent(fallbackMessage: fallbackMessage)
+        case .trade:
+            tradeContent(fallbackMessage: fallbackMessage)
         case .robberVictim:
             robberVictimContent(fallbackMessage: fallbackMessage)
         default:
@@ -103,6 +108,81 @@ struct GameModalHostView: View {
     }
 
     @ViewBuilder
+    private func tradeContent(fallbackMessage: String) -> some View {
+        if let tradePanel {
+            Text(tradePanel.message)
+                .font(GameTheme.metaFont)
+                .foregroundStyle(GameTheme.mutedInk)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let activeOffer = tradePanel.activeOffer {
+                tradeOfferSection(activeOffer)
+            }
+
+            if !tradePanel.acceptedPlayers.isEmpty {
+                Text("Accepted: \(tradePanel.acceptedPlayers.joined(separator: ", "))")
+                    .font(GameTheme.metaFont)
+                    .foregroundStyle(GameTheme.mutedInk)
+            }
+
+            ForEach(tradePanel.actions) { action in
+                VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+                    Text(action.detail)
+                        .font(GameTheme.metaFont)
+                        .foregroundStyle(GameTheme.mutedInk)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    tradeResourceSection(
+                        label: action.giveLabel,
+                        chips: action.give
+                    )
+                    tradeResourceSection(
+                        label: action.receiveLabel,
+                        chips: action.receive
+                    )
+
+                    Button {
+                        onTradeAction(action.kind)
+                    } label: {
+                        Text(action.title)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .padding(.top, 4)
+            }
+
+            if !tradePanel.executeOptions.isEmpty {
+                VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+                    Text("Execute With")
+                        .font(GameTheme.metaFont.weight(.semibold))
+                        .foregroundStyle(GameTheme.ink)
+
+                    ForEach(tradePanel.executeOptions) { option in
+                        Button {
+                            onExecuteTrade(option.playerID)
+                        } label: {
+                            HStack {
+                                Text(option.displayName)
+                                Spacer()
+                                Text("Execute")
+                                    .font(GameTheme.metaFont)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+            }
+        } else {
+            Text(fallbackMessage)
+                .font(GameTheme.metaFont)
+                .foregroundStyle(GameTheme.mutedInk)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder
     private func discardChipRow(for action: GameDiscardPanelModel.Action) -> some View {
         let chips = discardChips(for: action)
         if chips.isEmpty {
@@ -111,26 +191,61 @@ struct GameModalHostView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: GameTheme.chipSpacing) {
                     ForEach(chips) { chip in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(chip.shortLabel)
-                                .font(GameTheme.chipFont)
-                                .foregroundStyle(GameTheme.ink)
-                            Text("\(chip.count)")
-                                .font(GameTheme.metaFont)
-                                .foregroundStyle(GameTheme.mutedInk)
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                        .background(chipBackground(for: chip))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: GameTheme.smallRadius)
-                                .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: GameTheme.smallRadius))
+                        chipView(chip)
                     }
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func tradeOfferSection(_ offer: GameTradeOfferSummary) -> some View {
+        VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+            Text("Offer")
+                .font(GameTheme.metaFont.weight(.semibold))
+                .foregroundStyle(GameTheme.ink)
+
+            tradeResourceSection(label: offer.giveLabel, chips: offer.give)
+            tradeResourceSection(label: offer.receiveLabel, chips: offer.receive)
+        }
+    }
+
+    @ViewBuilder
+    private func tradeResourceSection(label: String, chips: [GameHandChip]) -> some View {
+        if !chips.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(label)
+                    .font(GameTheme.metaFont.weight(.semibold))
+                    .foregroundStyle(GameTheme.ink)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: GameTheme.chipSpacing) {
+                        ForEach(chips) { chip in
+                            chipView(chip)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func chipView(_ chip: GameHandChip) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(chip.shortLabel)
+                .font(GameTheme.chipFont)
+                .foregroundStyle(GameTheme.ink)
+            Text("\(chip.count)")
+                .font(GameTheme.metaFont)
+                .foregroundStyle(GameTheme.mutedInk)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(chipBackground(for: chip))
+        .overlay(
+            RoundedRectangle(cornerRadius: GameTheme.smallRadius)
+                .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: GameTheme.smallRadius))
     }
 
     private func discardMessage(for panel: GameDiscardPanelModel) -> String {
@@ -205,7 +320,7 @@ struct GameModalHostView: View {
         case .robberVictim:
             return ("Steal A Card", "Choose one eligible victim. Only players adjacent to the robber's new tile and holding cards are shown.", "person.crop.circle.badge.questionmark")
         case .trade:
-            return ("Trade Mode", "Trade composition stays lightweight in this phase. Full offer and accept UI lands in stage 12.", "arrow.left.arrow.right.circle.fill")
+            return ("Trade", "Player and maritime trade actions now flow through compact suggested actions instead of the debug controls.", "arrow.left.arrow.right.circle.fill")
         case .playDevCard:
             return ("Dev Card Mode", "Card-specific flows stay deferred for now. This host is where the phase-12 dev-card sheet will land.", "sparkles.rectangle.stack.fill")
         case .discard:

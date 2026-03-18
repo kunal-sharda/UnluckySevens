@@ -138,6 +138,14 @@ final class LobbyDriverViewModel: ObservableObject {
         )
     }
 
+    var tradePanelModel: GameTradePanelModel? {
+        GameTradePanelModelBuilder.build(
+            state: selectedState,
+            actingAs: localActorIdentifier(),
+            selectedTurnIntent: selectedTurnIntent
+        )
+    }
+
     func makeBoardOverlayModel(
         mode: GameMode,
         selectedTarget: GameBoardTarget?
@@ -1715,14 +1723,91 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         do {
-            let payload = try jsonString(from: intent)
-            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
-            try sendEnvelope(envelope, caption: "ULS INTENT submitDiscard", sessionPolicy: .new)
-            selectionStatus = "Discard intent sent"
-            setLastError(nil)
+            try sendTurnIntentEnvelope(
+                intent,
+                caption: "ULS INTENT submitDiscard",
+                successStatus: "Discard intent sent"
+            )
             return true
         } catch {
             setLastError("Discard intent failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    @discardableResult
+    func handleTradeAction(_ action: GameTradeActionKind) -> Bool {
+        switch action {
+        case .publishSuggestedOffer:
+            guard let intent = TradeInteractionResolver.draftSuggestedTradeOfferIntent(
+                state: selectedState,
+                actingAs: localActorIdentifier()
+            ) else {
+                setLastError("No legal suggested player trade is available.")
+                return false
+            }
+            do {
+                try applyAndPublishTurnIntent(intent, successStatus: "Published trade offer")
+                return true
+            } catch {
+                setLastError("Trade offer failed: \(error.localizedDescription)")
+                return false
+            }
+        case .publishSuggestedMaritime:
+            guard let intent = TradeInteractionResolver.draftSuggestedMaritimeTradeIntent(
+                state: selectedState,
+                actingAs: localActorIdentifier()
+            ) else {
+                setLastError("No legal maritime trade is available.")
+                return false
+            }
+            do {
+                try applyAndPublishTurnIntent(intent, successStatus: "Published maritime trade")
+                return true
+            } catch {
+                setLastError("Maritime trade failed: \(error.localizedDescription)")
+                return false
+            }
+        case .sendAcceptOffer:
+            guard let intent = TradeInteractionResolver.draftAcceptTradeIntent(
+                state: selectedState,
+                actingAs: localActorIdentifier()
+            ) else {
+                setLastError("No legal trade accept is available.")
+                return false
+            }
+            do {
+                try sendTurnIntentEnvelope(
+                    intent,
+                    caption: "ULS INTENT acceptTrade",
+                    successStatus: "Accept trade intent sent"
+                )
+                return true
+            } catch {
+                setLastError("Accept trade failed: \(error.localizedDescription)")
+                return false
+            }
+        case .applySelectedAccept:
+            return publishSelectedTurnIntentState()
+        }
+    }
+
+    @discardableResult
+    func publishTradeExecution(acceptingPlayer: String) -> Bool {
+        guard let intent = TradeInteractionResolver.draftExecuteTradeIntent(
+            state: selectedState,
+            actingAs: localActorIdentifier(),
+            acceptingPlayer: acceptingPlayer
+        ) else {
+            setLastError("Selected trade execution is not legal.")
+            return false
+        }
+
+        do {
+            try applyAndPublishTurnIntent(intent, successStatus: "Published trade execution")
+            return true
+        } catch {
+            setLastError("Trade execution failed: \(error.localizedDescription)")
             return false
         }
     }
@@ -2891,6 +2976,18 @@ final class LobbyDriverViewModel: ObservableObject {
         setLastError(nil)
     }
 
+    private func sendTurnIntentEnvelope(
+        _ turnIntent: ULS_Transport.TurnIntentV1,
+        caption: String,
+        successStatus: String
+    ) throws {
+        let payload = try jsonString(from: turnIntent)
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+        try sendEnvelope(envelope, caption: caption, sessionPolicy: .new)
+        selectionStatus = successStatus
+        setLastError(nil)
+    }
+
     private func immediateTurnIntent(for actionKind: GameActionDockItem.Kind) -> ULS_Transport.TurnIntentV1? {
         guard
             let state = selectedState,
@@ -2956,6 +3053,14 @@ final class LobbyDriverViewModel: ObservableObject {
             return "Published settlement build"
         case .buildCity:
             return "Published city upgrade"
+        case .proposeTrade:
+            return "Published trade offer"
+        case .acceptTrade:
+            return "Applied trade accept"
+        case .executeTrade:
+            return "Published trade execution"
+        case .maritimeTrade:
+            return "Published maritime trade"
         case .buyDevCard:
             return "Published dev-card purchase"
         case .endTurn:

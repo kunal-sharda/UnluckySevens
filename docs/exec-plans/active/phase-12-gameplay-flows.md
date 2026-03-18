@@ -33,13 +33,12 @@ What exists today:
 
 - phase 10 established a board-first shell, compact opponent summaries, a hand tray, an action dock, and easy-but-secondary debug surfaces
 - phase 11 replaced placeholder board art with a real SpriteKit board, pan/zoom, typed board hit targets, mode-driven highlights, and snapshot rendering
-- stages 12.1 through 12.3 are now landed: lobby join/start is productized, setup placement is playable from the board, and the common turn loop can roll, build, buy, and end turn from the product UI
+- stages 12.1 through 12.5 are now landed: lobby join/start is productized, setup placement is playable from the board, the common turn loop can roll, build, buy, and end turn from the product UI, robber/discard flow is wired through the product shell, and trade UX is live in the compact modal/shell surfaces
 - `ULS_CoreGame` already owns legality, viewer-safe projections, and default action selection through [CoreGameViewQueriesV1.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/Packages/ULS_CoreGame/Sources/ULS_CoreGame/CoreGameViewQueriesV1.swift)
 - the main integration point is still [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift), which owns transcript context, debug actions, and shell inputs
 
 What is still missing:
 
-- trade flows remain debug-heavy or incomplete in the shell
 - dev-card flows are not surfaced as first-class UI paths
 - the main gameplay loop is still not ready for a full two-device signoff without leaning on debug controls
 
@@ -59,7 +58,8 @@ User-visible result:
 - setup feels guided and blocking rather than debug-like
 - the common turn loop is compact and legible inside the current shell
 - robber flow is obvious and cannot be bypassed accidentally
-- trade and dev-card actions are available through focused product UI rather than raw debug buttons
+- trade feels compact and legible through the product modal and shell rather than raw debug buttons
+- dev-card actions are available through focused product UI rather than raw debug buttons
 - the real UI can carry a live two-device game segment without depending on the debug HUD
 
 Code and docs result:
@@ -195,9 +195,10 @@ Goal:
 
 Implement:
 
-- a trade composer that uses compact resource chips rather than dense text input
-- a clear distinction between player-to-player trade and bank/port trade
-- pending-trade status in the shell and selection affordances for accept and execute
+- a compact trade modal that suggests player-trade and maritime-trade actions for the current player
+- accept-intent entry points for non-current players
+- selected accept-intent application and execute flow for the current player
+- trade status that stays visible in the shell while the offer is pending
 - expiry behavior that feels explicit rather than silently disappearing
 
 Key files and likely additions:
@@ -212,6 +213,7 @@ Expected observations:
 - a player trade can be proposed, responded to, executed, or expired from the real UI
 - maritime trade feels distinct from player trade rather than like the same form with different wording
 - shell status remains readable while a trade is pending
+- current-player trade suggestions stay compact inside the modal and shell rather than expanding into a dense form
 
 ### Stage 12.6 — Dev Card UX
 
@@ -316,7 +318,7 @@ Deferred by design in phase 12:
 - [x] Stage 12.2 — Setup Placement UX
 - [x] Stage 12.3 — Core Turn Loop and Build/Buy Actions
 - [x] Stage 12.4 — Robber and Discard UX
-- [ ] Stage 12.5 — Trade UX
+- [x] Stage 12.5 — Trade UX
 - [ ] Stage 12.6 — Dev Card UX
 - [ ] Stage 12.7 — Flow Hardening and Real-Device Pass
 
@@ -329,7 +331,8 @@ Deferred by design in phase 12:
 - Dev-card dock presentation now distinguishes a pure buy action from later play-dev-card work. When purchase is legal but play is not, the dock presents `Buy Dev` instead of suggesting the full dev-card surface already exists.
 - Stage 12.4 keeps the robber/discard flow within the locked authority model instead of relaxing it: the current player still publishes canonical turn state, while non-current players use a product discard panel that auto-sends a discard `INTENT` the current player can apply from the selected transcript bubble.
 - Stage 12.4 also tightens shell guidance so forced steps show `Discard required`, `Move the robber`, or `Steal a card` in the header rather than falling back to generic turn ownership copy.
-- Stage 12.1 through 12.4 validation ran through the MessagesExtension-focused lane: `bash ./scripts/gen.sh`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test -only-testing:MessagesExtensionTests`, with `49` MessagesExtension tests green after the robber/discard slice landed.
+- Stage 12.5 moves trade into a compact modal and shell-visible status path: current players see suggested player-trade and maritime-trade actions, non-current players can send accept intents, and the current player can apply a selected accept bubble and execute with accepted players without losing the pending-trade context in the shell.
+- Stage 12.1 through 12.5 validation ran through the MessagesExtension-focused lane: `bash ./scripts/gen.sh`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test -only-testing:MessagesExtensionTests`, with `49` MessagesExtension tests green after the robber/discard slice landed and trade UX stayed within the product shell.
 - Real-device validation is expected to drive at least some late-stage UX adjustments; do not treat Simulator-only behavior as sufficient signoff for Messages-hosted gameplay.
 - If setup, trade, or dev-card orchestration starts overwhelming `GameShellView` or `LobbyDriverViewModel`, split it into feature-local helpers rather than growing more shared conditionals.
 - Lobby join/start should preserve the current authority model unless there is an explicit product request to change it: one invite `STATE`, join `INTENT`s, one host-published start `STATE`.
@@ -339,11 +342,13 @@ Deferred by design in phase 12:
 Planned result:
 
 - the lobby and core gameplay loop are playable from the product UI
+- trade is compact and readable in the product UI, with accept and execute flows staying visible in the shell
 - board taps, shell modes, and modal choices map cleanly into canonical intents
 - the repo is ready for a narrower phase 13 focused on recap, history, dispute mode, and final trust surfaces rather than basic playability gaps
 
 What remains after this phase by design:
 
+- dev-card UX
 - recap/history/dispute UX
 - final bubble composition polish
 - any visual restyling that does not change the gameplay-flow substrate

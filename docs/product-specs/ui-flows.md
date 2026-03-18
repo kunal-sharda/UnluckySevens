@@ -32,11 +32,12 @@ This document summarizes the player-facing flows the UI must support in the curr
 
 ## Trade Flow
 
-- The current player proposes trades.
+- The current player sees a compact trade modal with suggested player-trade and maritime-trade actions.
 - Other players can respond through accept-style intent bubbles.
-- The current player decides whether to execute a trade before end turn.
+- The current player can apply a selected accept-intent bubble and execute with the accepted players before end turn.
 - Bank and port trades should feel distinct from player-to-player trade offers.
 - Pending trade state should stay legible from the shell and later bubble copy rather than disappearing into a deep modal.
+- The shell should keep trade status visible while the offer is pending.
 
 ## Audit and Game-Over Flow
 

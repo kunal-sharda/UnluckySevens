@@ -115,6 +115,7 @@ Run this after any action-flow change that affects turns, trades, robber, or dev
 - setup placement UX in the product shell
 - the common turn loop and build/buy actions in the product shell
 - robber/discard forced-flow handling in the product shell
+- trade UX in the product shell, including compact player and maritime trade entry, accept intents, and execute flow
 - setup sequencing and starting resources
 - deterministic dice, board generation, dev deck, and robber steal behavior
 - production, bank depletion, discard flow, robber flow
@@ -170,11 +171,12 @@ Use the current Messages debug harness for one smoke pass and three targeted che
 
 ### Targeted Check: Trade Lifecycle
 
-1. From an `afterRoll` state, propose a trade as current player.
-2. Switch acting actor and send one or more accept intents.
-3. Switch back to the current player and apply one selected accept into canonical state.
-4. Verify resource transfer is atomic and the offer clears.
-5. Repeat a turn where the offer is not executed and confirm `End Turn` expires it.
+1. From an `afterRoll` state, open the compact trade modal as the current player.
+2. Verify suggested player-trade and maritime-trade actions are visible.
+3. Switch acting actor and send one or more accept intents.
+4. Switch back to the current player and apply one selected accept into canonical state, then execute with the accepted players.
+5. Verify resource transfer is atomic and the offer clears.
+6. Repeat a turn where the offer is not executed and confirm `End Turn` expires it.
 
 ### Targeted Check: Context / Secrecy Safety
 
