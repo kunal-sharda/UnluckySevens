@@ -6,7 +6,7 @@ Unlucky Sevens is an iMessage-first implementation of standard Catan for 3-4 pla
 
 - the engine is audited, deterministic, and covered by package tests plus deterministic evals
 - the repo is in `phase 12` (gameplay flows + lobby join/start UX)
-- stages `12.1` through `12.6` are landed, and the active step is `stage 12.7` (flow hardening + real-device pass)
+- stages `12.1` through `12.6` are landed, the full automated gate is green, and the remaining active step is `stage 12.7` (flow hardening + real-device pass on hardware)
 
 ## Project Structure
 
@@ -79,6 +79,7 @@ Hard rules:
 - use the product docs in `docs/product-specs/` for scope and flow intent; use `docs/decisions.md` for locked decisions
 - do not change protocol fields, validation semantics, or locked decisions without an explicit request
 - use [PLANS.md](PLANS.md) for work that is multi-step, risky, spans multiple files, or needs to be resumable without chat memory
+- when a meaningful stage or step lands, update the active ExecPlan and any affected owner docs in the same slice so the tracked docs stay legible without chat memory
 
 ## Contribution Rules
 

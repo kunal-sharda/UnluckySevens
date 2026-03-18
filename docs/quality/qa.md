@@ -135,12 +135,12 @@ Run this after any action-flow change that affects turns, trades, robber, or dev
 ## Remaining High-Value Gaps
 
 - no automated transcript-level Messages UI checks yet
-- no board/UI snapshot coverage once the production board UI replaces the current debug harness
+- no snapshot regression coverage around the current production board UI yet
 - no automated real-device lane; hardware validation is still manual
 
 ## Manual Simulator Runbook
 
-Use the current Messages debug harness for one smoke pass and three targeted checks.
+Use the current product shell for one smoke pass and three targeted checks. Keep the debug HUD available only as fallback if a branch has not finished a flow yet.
 
 ### Smoke Pass
 
