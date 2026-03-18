@@ -67,7 +67,7 @@ enum GameMode: Equatable {
         case .trade:
             return "Trade mode is active. Offer and accept flows will plug in during the gameplay UX stage."
         case .playDevCard:
-            return "Dev-card mode is active. Card-specific flows will plug in during the gameplay UX stage."
+            return "Buy or play development cards from a compact action panel."
         case .discard:
             return "Discard resolution is required before robber handling can continue."
         }

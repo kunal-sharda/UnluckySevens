@@ -116,6 +116,7 @@ Run this after any action-flow change that affects turns, trades, robber, or dev
 - the common turn loop and build/buy actions in the product shell
 - robber/discard forced-flow handling in the product shell
 - trade UX in the product shell, including compact player and maritime trade entry, accept intents, and execute flow
+- dev-card UX in the product shell, including compact buy/play actions and default-driven card effects
 - setup sequencing and starting resources
 - deterministic dice, board generation, dev deck, and robber steal behavior
 - production, bank depletion, discard flow, robber flow
@@ -155,11 +156,13 @@ Use the current Messages debug harness for one smoke pass and three targeted che
    - phase is `turn`
    - step becomes `afterRoll` or the correct robber/discard subflow
 8. Perform one post-roll action such as build, trade, maritime trade, or dev-card purchase.
-9. End the turn and verify:
+9. Open the dev-card panel when legal and verify only legal buy/play actions are shown.
+10. Play one legal dev card and verify the resulting state change appears without leaking hidden card composition to opponents.
+11. End the turn and verify:
    - current player advances
    - step resets to `needsRoll`
    - trade offers clear
-10. Verify opponent hand and dev-card views show counts only, not composition.
+12. Verify opponent hand and dev-card views show counts only, not composition.
 
 ### Targeted Check: Robber / Seven Flow
 

@@ -146,6 +146,13 @@ final class LobbyDriverViewModel: ObservableObject {
         )
     }
 
+    var devCardPanelModel: GameDevCardPanelModel? {
+        GameDevCardPanelModelBuilder.build(
+            state: selectedState,
+            actingAs: localActorIdentifier()
+        )
+    }
+
     func makeBoardOverlayModel(
         mode: GameMode,
         selectedTarget: GameBoardTarget?
@@ -1813,6 +1820,64 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     @discardableResult
+    func handleDevCardAction(_ action: GameDevCardActionKind) -> Bool {
+        let intent: ULS_Transport.TurnIntentV1?
+        let successStatus: String
+
+        switch action {
+        case .buyDevCard:
+            intent = DevCardInteractionResolver.draftBuyDevCardIntent(
+                state: selectedState,
+                actingAs: localActorIdentifier()
+            )
+            successStatus = "Published dev-card purchase"
+        case .playKnight:
+            intent = DevCardInteractionResolver.draftPlayKnightIntent(
+                state: selectedState,
+                actingAs: localActorIdentifier()
+            )
+            successStatus = "Published knight play"
+        case .playMonopoly:
+            intent = DevCardInteractionResolver.draftPlayMonopolyIntent(
+                state: selectedState,
+                actingAs: localActorIdentifier()
+            )
+            successStatus = "Published monopoly play"
+        case .playYearOfPlenty:
+            intent = DevCardInteractionResolver.draftPlayYearOfPlentyIntent(
+                state: selectedState,
+                actingAs: localActorIdentifier()
+            )
+            successStatus = "Published year-of-plenty play"
+        case .playRoadBuilding:
+            intent = DevCardInteractionResolver.draftPlayRoadBuildingIntent(
+                state: selectedState,
+                actingAs: localActorIdentifier()
+            )
+            successStatus = "Published road-building play"
+        case .revealVictoryPoint:
+            intent = DevCardInteractionResolver.draftRevealVictoryPointIntent(
+                state: selectedState,
+                actingAs: localActorIdentifier()
+            )
+            successStatus = "Published victory-point reveal"
+        }
+
+        guard let intent else {
+            setLastError("Selected dev-card action is not legal.")
+            return false
+        }
+
+        do {
+            try applyAndPublishTurnIntent(intent, successStatus: successStatus)
+            return true
+        } catch {
+            setLastError("Dev-card action failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    @discardableResult
     func publishRobberVictimState(victimPlayer: String) -> Bool {
         guard let intent = TurnInteractionResolver.draftStealVictimIntent(
             state: selectedState,
@@ -3010,17 +3075,6 @@ final class LobbyDriverViewModel: ObservableObject {
                 anchorHash: state.stateHash,
                 actor: actor
             )
-        case .devCards:
-            guard canSendBuyDevCardIntentDebug else {
-                return nil
-            }
-            return ULS_Transport.TurnIntentV1(
-                kind: .buyDevCard,
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: actor
-            )
         case .endTurn:
             guard canSendEndTurnIntentDebug else {
                 return nil
@@ -3032,7 +3086,7 @@ final class LobbyDriverViewModel: ObservableObject {
                 anchorHash: state.stateHash,
                 actor: actor
             )
-        case .build, .trade:
+        case .build, .trade, .devCards:
             return nil
         }
     }

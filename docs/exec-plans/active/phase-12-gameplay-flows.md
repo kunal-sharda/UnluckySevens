@@ -39,7 +39,6 @@ What exists today:
 
 What is still missing:
 
-- dev-card flows are not surfaced as first-class UI paths
 - the main gameplay loop is still not ready for a full two-device signoff without leaning on debug controls
 
 Important constraints already locked in the repo:
@@ -319,7 +318,7 @@ Deferred by design in phase 12:
 - [x] Stage 12.3 — Core Turn Loop and Build/Buy Actions
 - [x] Stage 12.4 — Robber and Discard UX
 - [x] Stage 12.5 — Trade UX
-- [ ] Stage 12.6 — Dev Card UX
+- [x] Stage 12.6 — Dev Card UX
 - [ ] Stage 12.7 — Flow Hardening and Real-Device Pass
 
 ## Decisions and Discoveries
@@ -333,6 +332,9 @@ Deferred by design in phase 12:
 - Stage 12.4 also tightens shell guidance so forced steps show `Discard required`, `Move the robber`, or `Steal a card` in the header rather than falling back to generic turn ownership copy.
 - Stage 12.5 moves trade into a compact modal and shell-visible status path: current players see suggested player-trade and maritime-trade actions, non-current players can send accept intents, and the current player can apply a selected accept bubble and execute with accepted players without losing the pending-trade context in the shell.
 - Stage 12.1 through 12.5 validation ran through the MessagesExtension-focused lane: `bash ./scripts/gen.sh`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test -only-testing:MessagesExtensionTests`, with `49` MessagesExtension tests green after the robber/discard slice landed and trade UX stayed within the product shell.
+- Stage 12.6 keeps dev-card UX compact instead of introducing a new full-screen flow: the shell opens a focused dev-card panel, buy/play actions stay default-driven through pure `GameDevCardPanelModelBuilder` and `DevCardInteractionResolver` seams, and the current player publishes the resulting canonical state transitions directly from the product UI.
+- Knight default selection cannot reuse the robber-move legality query because knight play happens from normal turn state rather than `needsRobberMove`; the resolver now prefers a non-current robber tile with a default steal target, then falls back to the first legal non-current robber tile.
+- Stage 12.6 validation stayed inside the MessagesExtension-focused lane: `bash ./scripts/gen.sh`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, the focused dev-card tests, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test -only-testing:MessagesExtensionTests`, with `68` MessagesExtension tests green after the dev-card slice landed.
 - Real-device validation is expected to drive at least some late-stage UX adjustments; do not treat Simulator-only behavior as sufficient signoff for Messages-hosted gameplay.
 - If setup, trade, or dev-card orchestration starts overwhelming `GameShellView` or `LobbyDriverViewModel`, split it into feature-local helpers rather than growing more shared conditionals.
 - Lobby join/start should preserve the current authority model unless there is an explicit product request to change it: one invite `STATE`, join `INTENT`s, one host-published start `STATE`.
@@ -348,7 +350,7 @@ Planned result:
 
 What remains after this phase by design:
 
-- dev-card UX
+- flow hardening and real-device signoff
 - recap/history/dispute UX
 - final bubble composition polish
 - any visual restyling that does not change the gameplay-flow substrate

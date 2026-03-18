@@ -27,6 +27,7 @@ This document summarizes the player-facing flows the UI must support in the curr
 - Roll.
 - Resolve either production or the full seven/robber subflow.
 - Optionally trade, build, buy or play allowed dev cards, and then end turn.
+- Dev-card actions should stay compact and default-driven rather than expanding into a deep form flow.
 - If the active player reaches the win threshold on their turn, the game ends immediately.
 - Forced subflows such as discard and robber movement should feel blocking rather than like optional side actions.
 

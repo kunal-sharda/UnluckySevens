@@ -6,11 +6,13 @@ struct GameModalHostView: View {
     let setupInstruction: String?
     let discardPanel: GameDiscardPanelModel?
     let tradePanel: GameTradePanelModel?
+    let devCardPanel: GameDevCardPanelModel?
     let robberVictimOptions: [GameRobberVictimOption]
     let onDiscardAction: () -> Void
     let onTradeAction: (GameTradeActionKind) -> Void
     let onApplySelectedTurnIntent: () -> Void
     let onExecuteTrade: (String) -> Void
+    let onDevCardAction: (GameDevCardActionKind) -> Void
     let onSelectStealVictim: (String) -> Void
 
     var body: some View {
@@ -41,6 +43,8 @@ struct GameModalHostView: View {
             discardContent(fallbackMessage: fallbackMessage)
         case .trade:
             tradeContent(fallbackMessage: fallbackMessage)
+        case .playDevCard:
+            devCardContent(fallbackMessage: fallbackMessage)
         case .robberVictim:
             robberVictimContent(fallbackMessage: fallbackMessage)
         default:
@@ -183,6 +187,51 @@ struct GameModalHostView: View {
     }
 
     @ViewBuilder
+    private func devCardContent(fallbackMessage: String) -> some View {
+        if let devCardPanel {
+            Text(devCardPanel.message)
+                .font(GameTheme.metaFont)
+                .foregroundStyle(GameTheme.mutedInk)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !devCardPanel.playableCounts.isEmpty {
+                devCardCountSection(title: "Playable", counts: devCardPanel.playableCounts)
+            }
+
+            if !devCardPanel.newCounts.isEmpty {
+                devCardCountSection(title: "New This Turn", counts: devCardPanel.newCounts)
+            }
+
+            ForEach(devCardPanel.actions) { action in
+                VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+                    Label(action.title, systemImage: action.systemImage)
+                        .font(GameTheme.metaFont.weight(.semibold))
+                        .foregroundStyle(GameTheme.ink)
+
+                    Text(action.detail)
+                        .font(GameTheme.metaFont)
+                        .foregroundStyle(GameTheme.mutedInk)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Button {
+                        onDevCardAction(action.kind)
+                    } label: {
+                        Text(action.title)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .padding(.top, 4)
+            }
+        } else {
+            Text(fallbackMessage)
+                .font(GameTheme.metaFont)
+                .foregroundStyle(GameTheme.mutedInk)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder
     private func discardChipRow(for action: GameDiscardPanelModel.Action) -> some View {
         let chips = discardChips(for: action)
         if chips.isEmpty {
@@ -224,6 +273,26 @@ struct GameModalHostView: View {
                             chipView(chip)
                         }
                     }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func devCardCountSection(title: String, counts: [GameDevCardCount]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(GameTheme.metaFont.weight(.semibold))
+                .foregroundStyle(GameTheme.ink)
+
+            ForEach(counts) { count in
+                HStack {
+                    Text(count.title)
+                        .foregroundStyle(GameTheme.ink)
+                    Spacer()
+                    Text("\(count.count)")
+                        .font(GameTheme.metaFont)
+                        .foregroundStyle(GameTheme.mutedInk)
                 }
             }
         }
@@ -322,7 +391,7 @@ struct GameModalHostView: View {
         case .trade:
             return ("Trade", "Player and maritime trade actions now flow through compact suggested actions instead of the debug controls.", "arrow.left.arrow.right.circle.fill")
         case .playDevCard:
-            return ("Dev Card Mode", "Card-specific flows stay deferred for now. This host is where the phase-12 dev-card sheet will land.", "sparkles.rectangle.stack.fill")
+            return ("Dev Cards", "Buy and play development cards from a compact, default-driven panel instead of the debug controls.", "sparkles.rectangle.stack.fill")
         case .discard:
             return ("Discard Required", "Discard resolution is blocking turn progress.", "exclamationmark.triangle.fill")
         default:

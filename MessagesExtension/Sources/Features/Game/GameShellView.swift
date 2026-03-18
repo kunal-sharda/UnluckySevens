@@ -46,6 +46,7 @@ struct GameShellView: View {
                         setupInstruction: viewModel.setupGuidanceText,
                         discardPanel: viewModel.discardPanelModel,
                         tradePanel: viewModel.tradePanelModel,
+                        devCardPanel: viewModel.devCardPanelModel,
                         robberVictimOptions: viewModel.robberVictimOptions,
                         onDiscardAction: {
                             guard viewModel.handleDiscardFlowAction() else { return }
@@ -64,6 +65,11 @@ struct GameShellView: View {
                         },
                         onExecuteTrade: { playerID in
                             guard viewModel.publishTradeExecution(acceptingPlayer: playerID) else { return }
+                            currentMode = .idle
+                            selectedBoardTarget = nil
+                        },
+                        onDevCardAction: { action in
+                            guard viewModel.handleDevCardAction(action) else { return }
                             currentMode = .idle
                             selectedBoardTarget = nil
                         },

@@ -6,7 +6,7 @@ Unlucky Sevens is an iMessage-first implementation of standard Catan for 3-4 pla
 
 - the engine is audited, deterministic, and covered by package tests plus deterministic evals
 - the repo is in `phase 12` (gameplay flows + lobby join/start UX)
-- stages `12.1` through `12.5` are landed, and the active step is `stage 12.6` (dev-card UX)
+- stages `12.1` through `12.6` are landed, and the active step is `stage 12.7` (flow hardening + real-device pass)
 
 ## Project Structure
 
