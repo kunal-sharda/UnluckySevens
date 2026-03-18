@@ -8,6 +8,7 @@ This phase exists now because the repo already has the shell, the board surface,
 
 Success means:
 
+- lobby invite, join, and host-start flow are usable without debug-style transcript bookkeeping
 - a new game can progress through setup from the real UI
 - a normal turn can be completed from the real UI
 - robber and discard flows are playable from the real UI
@@ -38,6 +39,10 @@ What exists today:
 
 What is still missing:
 
+- lobby join/start UX is still debug-shaped:
+  - join currently relies on visible intent bubbles plus a manual send affordance
+  - host-side pending joins still depend on explicit local recording
+  - start is functionally host-owned, but not yet productized as a clean lobby flow
 - setup placement is not playable through board taps
 - roll, build, buy, end-turn, and related turn actions are not fully productized
 - seven/discard/robber flow is not wired through real UI panels and board actions
@@ -57,6 +62,7 @@ Important constraints already locked in the repo:
 
 User-visible result:
 
+- invite, join, and start feel like a real game lobby rather than a transcript-debug workflow
 - setup feels guided and blocking rather than debug-like
 - the common turn loop is compact and legible inside the current shell
 - robber flow is obvious and cannot be bypassed accidentally
@@ -66,19 +72,47 @@ User-visible result:
 Code and docs result:
 
 - gameplay-specific UI orchestration is split into focused feature areas under `MessagesExtension/Sources/Features/`
+- lobby participation and host-start handling no longer depend on manual local recording as the primary UX
 - board target selection, modal choices, and action-dock taps converge into a small number of intent-drafting paths
 - any additive presentation types stay presentation-only and keep legality in `ULS_CoreGame`
 - [QA](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/qa.md) is updated with any new permanent simulator or real-device checks discovered during implementation
 
 Acceptance boundary:
 
-- phase 12 ends when setup, the common turn loop, robber flow, trade flow, and dev-card flow are playable from the product UI
+- phase 12 ends when lobby join/start, setup, the common turn loop, robber flow, trade flow, and dev-card flow are playable from the product UI
 - phase 12 does not need final recap/history/dispute UX polish; that remains phase 13
 - phase 12 does not lock final board art or final bubble-card composition as long as the flow substrate is stable
 
 ## Implementation Plan
 
-### Stage 12.1 — Setup Placement UX
+### Stage 12.1 — Lobby Join and Host Start UX
+
+Goal:
+
+- make invite, join, and start work as a real lobby flow rather than a debug transcript routine
+
+Implement:
+
+- immediate send for lobby join actions rather than requiring an extra manual send step
+- a lobby participant surface that shows the host, known joiners, and whether the local actor may start
+- host-owned start flow that builds the final roster from observed join intents without requiring explicit "Record Join" as the primary product path
+- a clear host/non-host distinction in the lobby without introducing a new locked protocol concept unless the implicit inviter-host model proves insufficient
+
+Key files and likely additions:
+
+- [LobbyDriverView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverView.swift)
+- [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift)
+- [MessagesViewController.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/App/MessagesViewController.swift)
+- new lobby-focused presentation or feature files under `MessagesExtension/Sources/Features/Lobby/` if needed
+
+Expected observations:
+
+- join no longer feels like "tap action, then manually press Send"
+- the host can see who has joined from the product UI
+- the host can start from the invite state without local debug bookkeeping being the normal path
+- canonical protocol shape stays the same: one invite `STATE`, join `INTENT`s, one start `STATE`
+
+### Stage 12.2 — Setup Placement UX
 
 Goal:
 
@@ -105,7 +139,7 @@ Expected observations:
 - the board only invites the next legal setup action instead of rendering passive clutter
 - starting-resource grants appear through the resulting canonical state rather than local UI bookkeeping
 
-### Stage 12.2 — Core Turn Loop and Build/Buy Actions
+### Stage 12.3 — Core Turn Loop and Build/Buy Actions
 
 Goal:
 
@@ -132,7 +166,7 @@ Expected observations:
 - the common turn actions stay shallow and fit the current board-first shell
 - build mode feels mode-driven rather than ad hoc
 
-### Stage 12.3 — Robber and Discard UX
+### Stage 12.4 — Robber and Discard UX
 
 Goal:
 
@@ -160,7 +194,7 @@ Expected observations:
 - robber movement and victim selection are legible without debug text
 - state transitions remain engine-driven and deterministic
 
-### Stage 12.4 — Trade UX
+### Stage 12.5 — Trade UX
 
 Goal:
 
@@ -186,7 +220,7 @@ Expected observations:
 - maritime trade feels distinct from player trade rather than like the same form with different wording
 - shell status remains readable while a trade is pending
 
-### Stage 12.5 — Dev Card UX
+### Stage 12.6 — Dev Card UX
 
 Goal:
 
@@ -216,7 +250,7 @@ Expected observations:
 - board-based dev-card flows reuse existing mode and selection machinery instead of duplicating interaction logic
 - local hidden dev-card detail remains local-only
 
-### Stage 12.6 — Flow Hardening and Real-Device Pass
+### Stage 12.7 — Flow Hardening and Real-Device Pass
 
 Goal:
 
@@ -260,19 +294,20 @@ Add phase-12-specific tests where practical:
 
 Simulator checks:
 
-1. Start a game from lobby and complete setup through the product UI.
-2. Play one normal non-robber turn through roll, build or buy, and end turn.
-3. Trigger or reach a seven flow and complete discard, robber move, and victim selection.
-4. Propose one player trade and one maritime trade.
-5. Buy and play at least one dev card through the real UI.
-6. Confirm stale-context behavior remains visible and recoverable after gameplay actions.
+1. Send an invite, join from another participant path, and start the game from the product UI.
+2. Complete setup through the product UI.
+3. Play one normal non-robber turn through roll, build or buy, and end turn.
+4. Trigger or reach a seven flow and complete discard, robber move, and victim selection.
+5. Propose one player trade and one maritime trade.
+6. Buy and play at least one dev card through the real UI.
+7. Confirm stale-context behavior remains visible and recoverable after gameplay actions.
 
 Real-device checks:
 
 1. Run `Real Device Shell Smoke` from [QA](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/qa.md) after the first substantial gameplay UI stage lands.
-2. Run `Real Device Messages Lifecycle` after any stage that changes transcript, bubble, or context behavior.
+2. Run `Real Device Messages Lifecycle` after the lobby join/start stage and after any later stage that changes transcript, bubble, or context behavior.
 3. Run `Real Device Turn-Taking Smoke` after each gameplay-flow stage.
-4. Before calling phase 12 complete, run at least one real two-device gameplay segment covering setup completion, one standard turn, and one cross-device response.
+4. Before calling phase 12 complete, run at least one real two-device gameplay segment covering join, host start, setup completion, one standard turn, and one cross-device response.
 
 ### Deferred Validation
 
@@ -284,24 +319,26 @@ Deferred by design in phase 12:
 
 ## Progress
 
-- [ ] Stage 12.1 — Setup Placement UX
-- [ ] Stage 12.2 — Core Turn Loop and Build/Buy Actions
-- [ ] Stage 12.3 — Robber and Discard UX
-- [ ] Stage 12.4 — Trade UX
-- [ ] Stage 12.5 — Dev Card UX
-- [ ] Stage 12.6 — Flow Hardening and Real-Device Pass
+- [ ] Stage 12.1 — Lobby Join and Host Start UX
+- [ ] Stage 12.2 — Setup Placement UX
+- [ ] Stage 12.3 — Core Turn Loop and Build/Buy Actions
+- [ ] Stage 12.4 — Robber and Discard UX
+- [ ] Stage 12.5 — Trade UX
+- [ ] Stage 12.6 — Dev Card UX
+- [ ] Stage 12.7 — Flow Hardening and Real-Device Pass
 
 ## Decisions and Discoveries
 
 - No phase-12 execution decisions have landed yet.
 - Real-device validation is expected to drive at least some late-stage UX adjustments; do not treat Simulator-only behavior as sufficient signoff for Messages-hosted gameplay.
 - If setup, trade, or dev-card orchestration starts overwhelming `GameShellView` or `LobbyDriverViewModel`, split it into feature-local helpers rather than growing more shared conditionals.
+- Lobby join/start should preserve the current authority model unless there is an explicit product request to change it: one invite `STATE`, join `INTENT`s, one host-published start `STATE`.
 
 ## Outcome
 
 Planned result:
 
-- the core gameplay loop is playable from the product UI
+- the lobby and core gameplay loop are playable from the product UI
 - board taps, shell modes, and modal choices map cleanly into canonical intents
 - the repo is ready for a narrower phase 13 focused on recap, history, dispute mode, and final trust surfaces rather than basic playability gaps
 

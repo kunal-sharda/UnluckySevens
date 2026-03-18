@@ -26,6 +26,10 @@ GitHub Actions mirrors this practical gate in `.github/workflows/ci.yml`.
   - run the full Practical Gate
   - run the Manual Simulator Runbook smoke pass
   - run the Real Device Shell Smoke checklist
+- Any lobby join/start UX change:
+  - run the full Practical Gate
+  - run the Manual Simulator Runbook smoke pass
+  - run the Real Device Lobby Smoke checklist
 - Any transcript-selection, bubble, session, or context-handling change:
   - run the full Practical Gate
   - run the Manual Simulator Runbook context check
@@ -67,6 +71,17 @@ Run this after shell, layout, presentation, or mode-system changes.
 6. Confirm the iPad layout remains readable and does not over-expand low-priority UI.
 7. Verify opponent information is still count-only and does not leak composition.
 8. Toggle debug UI and confirm it is still accessible without taking over the product shell.
+
+### Real Device Lobby Smoke
+
+Run this after any lobby join/start UX change.
+
+1. From device A, send an invite `STATE` into the thread.
+2. From device B, open the invite and join.
+3. Confirm joining does not require an extra manual send step after tapping `Join`.
+4. From device A (host), confirm the lobby UI reflects the joined roster.
+5. From device A (host), start the game.
+6. From device B, open the start `STATE` and confirm the extension resolves the new setup context cleanly.
 
 ### Real Device Messages Lifecycle
 
@@ -127,7 +142,8 @@ Use the current Messages debug harness for one smoke pass and three targeted che
 2. Launch the host app and Messages in the simulator.
 3. In Messages, create or open a thread and launch Unlucky Sevens.
 4. Tap `Invite New Game`, then verify a lobby `STATE` bubble appears and the extension decodes it as active context.
-5. Tap `Join` from another simulated actor path if available, record the join, then `Start Game`.
+5. Tap `Join` from another simulated actor path if available, then `Start Game`.
+   - If join/start UX is still in transition, debug-only steps such as `Record Join` may exist temporarily. Prefer the product flow when available.
 6. Apply setup intents until the game reaches turn phase.
 7. Roll once, apply the resulting intent into `STATE`, and verify:
    - rev increments

@@ -72,6 +72,7 @@ let project = Project(
             ],
             dependencies: [
                 .package(product: "ULS_CoreGame"),
+                .package(product: "ULS_Transport"),
             ]
         ),
     ]

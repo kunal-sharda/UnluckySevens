@@ -86,6 +86,23 @@ final class LobbyDriverViewModel: ObservableObject {
         MessagesRootRoute.resolve(phase: selectedState?.phase)
     }
 
+    var lobbyScreenModel: LobbyScreenModel {
+        LobbyScreenModelBuilder.build(
+            context: LobbyScreenContext(
+                selectedState: selectedState,
+                selectedJoinIntent: selectedJoinIntent,
+                localActor: localActorIdentifier(),
+                pendingJoiners: currentPendingJoiners(),
+                contextMeta: activeContextMeta,
+                staleWarning: staleContextWarning,
+                lastError: lastError,
+                canInvite: canInvite,
+                canJoin: canJoin,
+                canStartGame: canStartGame
+            )
+        )
+    }
+
     var gameScreenModel: GameScreenModel {
         GameScreenModelBuilder.build(
             context: GameScreenContext(
@@ -178,7 +195,16 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     var canJoin: Bool {
-        selectedState?.phase == .lobby
+        guard
+            let state = selectedState,
+            state.phase == .lobby,
+            let actor = localActorIdentifier()
+        else {
+            return false
+        }
+
+        let pending = loadPendingJoiners(for: state.gameId)
+        return !state.roster.contains(actor) && !pending.contains(actor)
     }
 
     var canRecordJoin: Bool {
@@ -583,6 +609,8 @@ final class LobbyDriverViewModel: ObservableObject {
             let payload = try jsonString(from: intent)
             let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
             try sendEnvelope(envelope, caption: "ULS INTENT join", sessionPolicy: .new)
+            rememberPendingJoiner(actor, for: state.gameId)
+            refreshPendingJoiners(for: state.gameId)
             selectionStatus = "Join intent sent"
             appendLog("Sent INTENT kind=join actor=\(shortIdentifier(actor)) anchorRev=\(state.rev)")
             setLastError(nil)
@@ -678,6 +706,8 @@ final class LobbyDriverViewModel: ObservableObject {
                 caption: "ULS STATE rev1",
                 sessionPolicy: .state(gameId: toState.gameId)
             )
+            userDefaults.removeObject(forKey: pendingJoinersKey(for: toState.gameId))
+            refreshPendingJoiners(for: toState.gameId)
             setActiveContext(toState, source: .lastSentState)
             selectionStatus = "Start sent: setup rev1"
             setLastError(nil)
@@ -2332,7 +2362,7 @@ final class LobbyDriverViewModel: ObservableObject {
         message.summaryText = summaryLabel(for: envelope)
         appendLog("Sending \(message.summaryText ?? "message")")
 
-        conversation.insert(message) { [weak self] error in
+        conversation.send(message) { [weak self] error in
             Task { @MainActor in
                 guard let self else { return }
                 if let error {
@@ -2576,6 +2606,22 @@ final class LobbyDriverViewModel: ObservableObject {
 
     private func loadPendingJoiners(for gameId: String) -> [String] {
         userDefaults.stringArray(forKey: pendingJoinersKey(for: gameId)) ?? []
+    }
+
+    private func currentPendingJoiners() -> [String] {
+        guard let gameId = currentGameId() else {
+            return []
+        }
+        return loadPendingJoiners(for: gameId)
+    }
+
+    private func rememberPendingJoiner(_ joiner: String, for gameId: String) {
+        var joiners = loadPendingJoiners(for: gameId)
+        guard !joiners.contains(joiner) else {
+            return
+        }
+        joiners.append(joiner)
+        savePendingJoiners(joiners, for: gameId)
     }
 
     private func savePendingJoiners(_ joiners: [String], for gameId: String) {

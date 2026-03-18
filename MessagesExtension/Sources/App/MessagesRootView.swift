@@ -10,7 +10,7 @@ struct MessagesRootView: View {
 
             switch viewModel.rootRoute {
             case .lobby:
-                LobbyDriverView(viewModel: viewModel)
+                LobbyShellView(viewModel: viewModel)
             case .game:
                 GameShellView(viewModel: viewModel)
             }

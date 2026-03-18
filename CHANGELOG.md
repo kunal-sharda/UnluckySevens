@@ -146,6 +146,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Phase 11.3 camera, pan/zoom, and hit-testing: the board now supports clamped pan and magnification gestures, typed `tile/node/edge` hit-target callbacks, and shell-visible selected-target feedback, with hit-testing stabilized for short edges through projection-based endpoint handling.
 - Phase 11.4 mode-driven highlights and selection plumbing: the board now renders legal node/edge/tile emphasis from additive core query sets for setup, build, robber-move, and robber-victim modes, while the shell normalizes board selection to the active legal target set instead of keeping stale or mode-invalid taps alive.
 - Phase 11.5 snapshot rendering and bubble preparation: the board stack now produces deterministic off-screen bubble and transcript preview images through `GameBoardSnapshotRenderer`, with variant sizing normalized so captured SpriteKit output preserves the intended logical image dimensions.
+- Phase 12 planning: added an active ExecPlan for gameplay flows, including lobby join/start UX hardening, setup placement UX, turn loop UX, robber UX, trade UX, dev-card UX, and a real-device signoff pass.
 
 ### Changed
 - `README.md` is now the tracked human-facing repo entrypoint; `AGENTS.md` is local-only for agents.
