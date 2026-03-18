@@ -123,6 +123,21 @@ final class LobbyDriverViewModel: ObservableObject {
         )
     }
 
+    var discardPanelModel: GameDiscardPanelModel? {
+        GameDiscardPanelModelBuilder.build(
+            state: selectedState,
+            actingAs: localActorIdentifier(),
+            selectedTurnIntent: selectedTurnIntent
+        )
+    }
+
+    var robberVictimOptions: [GameRobberVictimOption] {
+        GameRobberVictimOptionBuilder.build(
+            state: selectedState,
+            actingAs: localActorIdentifier()
+        )
+    }
+
     func makeBoardOverlayModel(
         mode: GameMode,
         selectedTarget: GameBoardTarget?
@@ -172,7 +187,7 @@ final class LobbyDriverViewModel: ObservableObject {
                 || canSendExecuteTradeIntentDebug
                 || canSendMaritimeTradeIntentDebug,
             canPlayDevCard: shellActionAvailability.canPlayDevCards,
-            canDiscard: canSendSubmitDiscardIntentDebug
+            canDiscard: state.phase == .turn && state.turnState?.step == .pendingDiscards
         )
     }
 
@@ -273,10 +288,15 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     var canSendMoveRobberIntentDebug: Bool {
-        guard let state = selectedState, state.phase == .turn else {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            let actor = localActorIdentifier(),
+            actor == state.currentPlayer
+        else {
             return false
         }
-        return state.turnState?.step == .needsRobberMove && state.board != nil && localActorIdentifier() != nil
+        return state.turnState?.step == .needsRobberMove && state.board != nil
     }
 
     var stealVictimOptions: [String] {
@@ -1619,13 +1639,39 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func publishTurnState(for target: GameBoardTarget, mode: GameMode) -> Bool {
-        guard let intent = TurnInteractionResolver.draftBuildIntent(
-            state: selectedState,
-            actingAs: localActorIdentifier(),
-            mode: mode,
-            target: target
-        ) else {
-            setLastError("Selected build target is not legal.")
+        let intent: ULS_Transport.TurnIntentV1?
+        let failureMessage: String
+
+        switch mode {
+        case .buildRoad, .buildSettlement, .buildCity:
+            intent = TurnInteractionResolver.draftBuildIntent(
+                state: selectedState,
+                actingAs: localActorIdentifier(),
+                mode: mode,
+                target: target
+            )
+            failureMessage = "Selected build target is not legal."
+        case .robberMove:
+            intent = TurnInteractionResolver.draftRobberMoveIntent(
+                state: selectedState,
+                actingAs: localActorIdentifier(),
+                target: target
+            )
+            failureMessage = "Selected robber tile is not legal."
+        case .robberVictim:
+            intent = TurnInteractionResolver.draftStealVictimIntent(
+                state: selectedState,
+                actingAs: localActorIdentifier(),
+                target: target
+            )
+            failureMessage = "Selected robber victim is not legal."
+        default:
+            intent = nil
+            failureMessage = "Selected turn target is not legal."
+        }
+
+        guard let intent else {
+            setLastError(failureMessage)
             return false
         }
 
@@ -1633,7 +1679,70 @@ final class LobbyDriverViewModel: ObservableObject {
             try applyAndPublishTurnIntent(intent, successStatus: successStatus(for: intent.kind))
             return true
         } catch {
-            setLastError("Build action failed: \(error.localizedDescription)")
+            setLastError("Turn action failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    @discardableResult
+    func handleDiscardFlowAction() -> Bool {
+        guard let state = selectedState else {
+            setLastError("No Active Context — tap a STATE bubble or press Reload.")
+            return false
+        }
+
+        guard let actor = localActorIdentifier() else {
+            setLastError("Missing local participant identifier.")
+            return false
+        }
+
+        guard let intent = TurnInteractionResolver.draftDiscardIntent(
+            state: state,
+            actingAs: actor
+        ) else {
+            setLastError("No valid discard action is currently available.")
+            return false
+        }
+
+        if actor == state.currentPlayer {
+            do {
+                try applyAndPublishTurnIntent(intent, successStatus: successStatus(for: intent.kind))
+                return true
+            } catch {
+                setLastError("Discard publication failed: \(error.localizedDescription)")
+                return false
+            }
+        }
+
+        do {
+            let payload = try jsonString(from: intent)
+            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+            try sendEnvelope(envelope, caption: "ULS INTENT submitDiscard", sessionPolicy: .new)
+            selectionStatus = "Discard intent sent"
+            setLastError(nil)
+            return true
+        } catch {
+            setLastError("Discard intent failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    @discardableResult
+    func publishRobberVictimState(victimPlayer: String) -> Bool {
+        guard let intent = TurnInteractionResolver.draftStealVictimIntent(
+            state: selectedState,
+            actingAs: localActorIdentifier(),
+            victimPlayer: victimPlayer
+        ) else {
+            setLastError("Selected robber victim is not legal.")
+            return false
+        }
+
+        do {
+            try applyAndPublishTurnIntent(intent, successStatus: successStatus(for: intent.kind))
+            return true
+        } catch {
+            setLastError("Steal selection failed: \(error.localizedDescription)")
             return false
         }
     }
@@ -1685,6 +1794,36 @@ final class LobbyDriverViewModel: ObservableObject {
             try applyAndPublishTurnIntent(turnIntent, successStatus: "Applied turn intent into STATE")
         } catch {
             setLastError("Apply turn intent failed: \(error.localizedDescription)")
+        }
+    }
+
+    @discardableResult
+    func publishSelectedTurnIntentState() -> Bool {
+        guard let turnIntent = selectedTurnIntent else {
+            setLastError("Select a turn intent bubble first.")
+            return false
+        }
+
+        guard let fromState = selectedState else {
+            setLastError("No Active Context — tap a STATE bubble or press Reload.")
+            return false
+        }
+
+        guard
+            turnIntent.gameId == fromState.gameId,
+            turnIntent.anchorRev == fromState.rev,
+            turnIntent.anchorHash == fromState.stateHash
+        else {
+            setLastError("Selected turn intent anchor does not match Active Context.")
+            return false
+        }
+
+        do {
+            try applyAndPublishTurnIntent(turnIntent, successStatus: successStatus(for: turnIntent.kind))
+            return true
+        } catch {
+            setLastError("Apply turn intent failed: \(error.localizedDescription)")
+            return false
         }
     }
 
@@ -2805,6 +2944,12 @@ final class LobbyDriverViewModel: ObservableObject {
         switch kind {
         case .rollDice:
             return "Published roll"
+        case .submitDiscard:
+            return "Published discard"
+        case .moveRobber:
+            return "Published robber move"
+        case .selectStealVictim:
+            return "Published steal selection"
         case .buildRoad:
             return "Published road build"
         case .buildSettlement:

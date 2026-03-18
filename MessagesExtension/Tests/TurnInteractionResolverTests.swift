@@ -107,6 +107,96 @@ final class TurnInteractionResolverTests: XCTestCase {
         )
     }
 
+    func testDraftDiscardIntentForRequiredActor() throws {
+        let state = makeTurnState(
+            resourcesByPlayer: [
+                "A": ResourceHandV1(wood: 1, brick: 1),
+                "B": .zero,
+            ],
+            turnState: TurnStateV1(
+                step: .pendingDiscards,
+                lastRoll: DiceRollV1(d1: 3, d2: 4),
+                discardRequirementsByPlayer: ["A": 2]
+            )
+        )
+
+        let intent = TurnInteractionResolver.draftDiscardIntent(
+            state: state,
+            actingAs: "A"
+        )
+
+        XCTAssertEqual(
+            intent,
+            TurnIntentV1(
+                submitDiscardFor: "A",
+                discarded: TransportResourceHandV1(wood: 1, brick: 1),
+                gameId: state.gameId,
+                anchorRev: state.rev,
+                anchorHash: state.stateHash,
+                actor: "A"
+            )
+        )
+    }
+
+    func testDraftRobberMoveIntentForLegalTile() throws {
+        let state = makeTurnState(
+            resourcesByPlayer: ["A": .zero, "B": .zero],
+            turnState: TurnStateV1(step: .needsRobberMove, lastRoll: DiceRollV1(d1: 4, d2: 3))
+        )
+        let tile = try XCTUnwrap(state.legalRobberMoveTiles(for: "A").first)
+
+        let intent = TurnInteractionResolver.draftRobberMoveIntent(
+            state: state,
+            actingAs: "A",
+            target: .tile(tile)
+        )
+
+        XCTAssertEqual(
+            intent,
+            TurnIntentV1(
+                moveRobberTileID: tile,
+                gameId: state.gameId,
+                anchorRev: state.rev,
+                anchorHash: state.stateHash,
+                actor: "A"
+            )
+        )
+    }
+
+    func testDraftStealVictimIntentFromVictimNode() {
+        let robberTile = topology.tiles(adjacentToNode: 0).first ?? 0
+        let state = makeTurnState(
+            resourcesByPlayer: [
+                "A": .zero,
+                "B": ResourceHandV1(wood: 2),
+            ],
+            settlementsByNode: [0: "B"],
+            turnState: TurnStateV1(
+                step: .needsRobberSteal,
+                lastRoll: DiceRollV1(d1: 4, d2: 3),
+                eligibleStealVictims: ["B"]
+            ),
+            robberTile: robberTile
+        )
+
+        let intent = TurnInteractionResolver.draftStealVictimIntent(
+            state: state,
+            actingAs: "A",
+            target: .node(0)
+        )
+
+        XCTAssertEqual(
+            intent,
+            TurnIntentV1(
+                selectStealVictimPlayer: "B",
+                gameId: state.gameId,
+                anchorRev: state.rev,
+                anchorHash: state.stateHash,
+                actor: "A"
+            )
+        )
+    }
+
     func testDraftBuildIntentRejectsIllegalTargetAndWrongActor() {
         let state = makeTurnState(resourcesByPlayer: ["A": .zero, "B": .zero])
 
@@ -134,13 +224,14 @@ final class TurnInteractionResolverTests: XCTestCase {
         settlementsByNode: [NodeID: String] = [:],
         citiesByNode: [NodeID: String] = [:],
         roadsByEdge: [EdgeID: String] = [:],
-        turnState: TurnStateV1 = TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 4, d2: 3))
+        turnState: TurnStateV1 = TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 4, d2: 3)),
+        robberTile: TileID = 1
     ) -> CoreGameStateV1 {
         let board = BoardSetupV1(
             resourcesByTile: [.wood] + Array(repeating: .desert, count: 18),
             numbersByTile: [5] + Array(repeating: nil, count: 18),
             portsByIndex: topology.ports.map(\.kind),
-            robberTile: 1,
+            robberTile: robberTile,
             generator: .randomV1,
             boardHash: ""
         ).rehashed()

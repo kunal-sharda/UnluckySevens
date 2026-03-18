@@ -33,22 +33,15 @@ What exists today:
 
 - phase 10 established a board-first shell, compact opponent summaries, a hand tray, an action dock, and easy-but-secondary debug surfaces
 - phase 11 replaced placeholder board art with a real SpriteKit board, pan/zoom, typed board hit targets, mode-driven highlights, and snapshot rendering
+- stages 12.1 through 12.3 are now landed: lobby join/start is productized, setup placement is playable from the board, and the common turn loop can roll, build, buy, and end turn from the product UI
 - `ULS_CoreGame` already owns legality, viewer-safe projections, and default action selection through [CoreGameViewQueriesV1.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/Packages/ULS_CoreGame/Sources/ULS_CoreGame/CoreGameViewQueriesV1.swift)
 - the main integration point is still [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift), which owns transcript context, debug actions, and shell inputs
-- the real board can render setup and turn states, but the product UI still does not carry the full gameplay loop
 
 What is still missing:
 
-- lobby join/start UX is still debug-shaped:
-  - join currently relies on visible intent bubbles plus a manual send affordance
-  - host-side pending joins still depend on explicit local recording
-  - start is functionally host-owned, but not yet productized as a clean lobby flow
-- setup placement is not playable through board taps
-- roll, build, buy, end-turn, and related turn actions are not fully productized
-- seven/discard/robber flow is not wired through real UI panels and board actions
 - trade flows remain debug-heavy or incomplete in the shell
 - dev-card flows are not surfaced as first-class UI paths
-- the main gameplay loop is not yet ready for real two-device use without leaning on debug controls
+- the main gameplay loop is still not ready for a full two-device signoff without leaning on debug controls
 
 Important constraints already locked in the repo:
 
@@ -322,7 +315,7 @@ Deferred by design in phase 12:
 - [x] Stage 12.1 — Lobby Join and Host Start UX
 - [x] Stage 12.2 — Setup Placement UX
 - [x] Stage 12.3 — Core Turn Loop and Build/Buy Actions
-- [ ] Stage 12.4 — Robber and Discard UX
+- [x] Stage 12.4 — Robber and Discard UX
 - [ ] Stage 12.5 — Trade UX
 - [ ] Stage 12.6 — Dev Card UX
 - [ ] Stage 12.7 — Flow Hardening and Real-Device Pass
@@ -334,7 +327,9 @@ Deferred by design in phase 12:
 - Setup highlights are back only because setup placement is now actionable. They are no longer passive debug clutter; they reflect the legal node or edge targets for the current setup step.
 - Stage 12.3 keeps the common turn loop shallow by treating roll, buy-dev-card, and end-turn as direct canonical state publications while build actions stay board-driven. That avoids introducing a second turn view model while still moving the real UI ahead of the debug path.
 - Dev-card dock presentation now distinguishes a pure buy action from later play-dev-card work. When purchase is legal but play is not, the dock presents `Buy Dev` instead of suggesting the full dev-card surface already exists.
-- Stage 12.1 through 12.3 validation ran through the MessagesExtension-focused lane: `bash ./scripts/gen.sh`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test -only-testing:MessagesExtensionTests`, with `40` MessagesExtension tests green after the turn-loop slice landed.
+- Stage 12.4 keeps the robber/discard flow within the locked authority model instead of relaxing it: the current player still publishes canonical turn state, while non-current players use a product discard panel that auto-sends a discard `INTENT` the current player can apply from the selected transcript bubble.
+- Stage 12.4 also tightens shell guidance so forced steps show `Discard required`, `Move the robber`, or `Steal a card` in the header rather than falling back to generic turn ownership copy.
+- Stage 12.1 through 12.4 validation ran through the MessagesExtension-focused lane: `bash ./scripts/gen.sh`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test -only-testing:MessagesExtensionTests`, with `49` MessagesExtension tests green after the robber/discard slice landed.
 - Real-device validation is expected to drive at least some late-stage UX adjustments; do not treat Simulator-only behavior as sufficient signoff for Messages-hosted gameplay.
 - If setup, trade, or dev-card orchestration starts overwhelming `GameShellView` or `LobbyDriverViewModel`, split it into feature-local helpers rather than growing more shared conditionals.
 - Lobby join/start should preserve the current authority model unless there is an explicit product request to change it: one invite `STATE`, join `INTENT`s, one host-published start `STATE`.

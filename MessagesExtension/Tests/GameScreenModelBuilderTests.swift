@@ -197,6 +197,42 @@ final class GameScreenModelBuilderTests: XCTestCase {
             )
         )
         XCTAssertEqual(tradePendingModel.header.statusLine.title, "Trade pending")
+
+        let discardModel = GameScreenModelBuilder.build(
+            context: GameScreenContext(
+                selectedState: makeState(
+                    currentPlayer: "B",
+                    resourcesByPlayer: ["A": ResourceHandV1(wood: 1, brick: 1), "B": .zero],
+                    turnState: TurnStateV1(
+                        step: .pendingDiscards,
+                        lastRoll: DiceRollV1(d1: 4, d2: 3),
+                        discardRequirementsByPlayer: ["A": 2]
+                    )
+                ),
+                actingAs: "A",
+                contextBanner: "banner",
+                contextMeta: "meta",
+                actionAvailability: .none,
+                modeAvailability: .none
+            )
+        )
+        XCTAssertEqual(discardModel.header.statusLine.title, "Discard required")
+
+        let robberModel = GameScreenModelBuilder.build(
+            context: GameScreenContext(
+                selectedState: makeState(
+                    currentPlayer: "A",
+                    resourcesByPlayer: ["A": .zero, "B": .zero],
+                    turnState: TurnStateV1(step: .needsRobberMove, lastRoll: DiceRollV1(d1: 4, d2: 3))
+                ),
+                actingAs: "A",
+                contextBanner: "banner",
+                contextMeta: "meta",
+                actionAvailability: .none,
+                modeAvailability: .none
+            )
+        )
+        XCTAssertEqual(robberModel.header.statusLine.title, "Move the robber")
     }
 
     private func makeState(
@@ -205,7 +241,8 @@ final class GameScreenModelBuilderTests: XCTestCase {
         settlementsByNode: [NodeID: String] = [:],
         citiesByNode: [NodeID: String] = [:],
         revealedVictoryPointsByPlayer: [String: Int] = [:],
-        activeTradeOffer: TradeOfferV1? = nil
+        activeTradeOffer: TradeOfferV1? = nil,
+        turnState: TurnStateV1 = TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 4))
     ) -> CoreGameStateV1 {
         let roster = Array(resourcesByPlayer.keys).sorted()
 
@@ -225,7 +262,7 @@ final class GameScreenModelBuilderTests: XCTestCase {
             activeTradeOffer: activeTradeOffer,
             settlementsByNode: settlementsByNode,
             citiesByNode: citiesByNode,
-            turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 4))
+            turnState: turnState
         ).rehashed()
     }
 }

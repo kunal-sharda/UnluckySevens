@@ -150,12 +150,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Phase 12.1 lobby join and host start UX: the lobby now renders through a product shell, join actions auto-send instead of requiring a second manual send step, and host start derives the visible joined roster without relying on debug-only bookkeeping as the primary flow.
 - Phase 12.2 setup placement UX: setup guidance, legal setup highlights, and board-tap setup publication now let the current player place settlements and roads from the product UI instead of the debug apply path.
 - Phase 12.3 core turn loop and build/buy actions: the action dock now publishes roll, buy-dev-card, and end-turn state transitions directly, build modes draft canonical road/settlement/city intents from legal board taps, and MessagesExtension tests cover the new turn interaction resolver.
+- Phase 12.4 robber and discard UX: pending discards now surface through a product discard panel that either publishes canonical state or sends a discard intent depending on whose turn it is, robber movement and victim selection are driven from board taps and compact victim actions, and the shell header now calls out forced discard/robber steps explicitly.
 
 ### Changed
 - `README.md` is now the tracked human-facing repo entrypoint; `AGENTS.md` is local-only for agents.
 - `README.md` is slimmed to onboarding and stable commands, carries the minimal tracked repo contract for humans, and now links directly to the architecture, QA, and product-spec owner docs.
 - CoreGame test organization now separates fast package tests (`ULS_CoreGameTests`) from deterministic full-match evals (`ULS_CoreGameEvals`).
 - Phase 11 board geometry follow-up: render geometry now uses a regular hex basis and the board layout derives tile radius from the actual center-to-corner distance, keeping visible tiles aligned with the node and edge lattice.
+- Phase 12 docs follow-up: the tracked docs now reflect that stages 12.1 through 12.4 are landed, with trade as the next active gameplay-flow slice.
 
 ### Removed
 - Separate `docs/index.md` and split `docs/architecture/*` tracked entrypoints; the repo now uses `README.md` as the tracked entrypoint and root `ARCHITECTURE.md` as the single architecture document.

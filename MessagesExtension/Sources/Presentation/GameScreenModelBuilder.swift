@@ -27,15 +27,19 @@ enum GameScreenModelBuilder {
     }
 
     private static func makeStatusLine(context: GameScreenContext) -> GameShellStatusLine {
-        let currentPlayer = context.selectedState?.currentPlayer
+        let state = context.selectedState
+        let currentPlayer = state?.currentPlayer
         let currentPlayerDisplay = currentPlayer.map(shortIdentifier) ?? "player"
+        let discardRequiredForActingPlayer = state?.turnState?.discardRequirementsByPlayer[context.actingAs ?? ""] != nil
 
         return GameShellStatusLineResolver.resolve(
-            hasTradePending: context.selectedState?.activeTradeOffer != nil,
+            hasTradePending: state?.activeTradeOffer != nil,
             actingAs: context.actingAs,
             currentPlayer: currentPlayer,
             currentPlayerDisplay: currentPlayerDisplay,
-            subtitle: context.contextBanner
+            subtitle: context.contextBanner,
+            turnStep: state?.turnState?.step,
+            discardRequiredForActingPlayer: discardRequiredForActingPlayer
         )
     }
 

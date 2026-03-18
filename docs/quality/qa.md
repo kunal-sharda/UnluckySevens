@@ -111,6 +111,10 @@ Run this after any action-flow change that affects turns, trades, robber, or dev
 
 ## What Is Already Covered Well
 
+- lobby join/start UX, including one-step join and host-owned start
+- setup placement UX in the product shell
+- the common turn loop and build/buy actions in the product shell
+- robber/discard forced-flow handling in the product shell
 - setup sequencing and starting resources
 - deterministic dice, board generation, dev deck, and robber steal behavior
 - production, bank depletion, discard flow, robber flow
@@ -143,7 +147,7 @@ Use the current Messages debug harness for one smoke pass and three targeted che
 3. In Messages, create or open a thread and launch Unlucky Sevens.
 4. Tap `Invite New Game`, then verify a lobby `STATE` bubble appears and the extension decodes it as active context.
 5. Tap `Join` from another simulated actor path if available, then `Start Game`.
-   - If join/start UX is still in transition, debug-only steps such as `Record Join` may exist temporarily. Prefer the product flow when available.
+   - Prefer the product flow. Debug-only steps such as `Record Join` should only be used on older branches or if a stage is still incomplete.
 6. Apply setup intents until the game reaches turn phase.
 7. Roll once, apply the resulting intent into `STATE`, and verify:
    - rev increments

@@ -43,7 +43,22 @@ struct GameShellView: View {
 
                     GameModalHostView(
                         mode: resolvedMode,
-                        setupInstruction: viewModel.setupGuidanceText
+                        setupInstruction: viewModel.setupGuidanceText,
+                        discardPanel: viewModel.discardPanelModel,
+                        robberVictimOptions: viewModel.robberVictimOptions,
+                        onDiscardAction: {
+                            guard viewModel.handleDiscardFlowAction() else { return }
+                            selectedBoardTarget = nil
+                        },
+                        onApplySelectedTurnIntent: {
+                            guard viewModel.publishSelectedTurnIntentState() else { return }
+                            selectedBoardTarget = nil
+                        },
+                        onSelectStealVictim: { victimPlayer in
+                            guard viewModel.publishRobberVictimState(victimPlayer: victimPlayer) else { return }
+                            currentMode = .idle
+                            selectedBoardTarget = nil
+                        }
                     )
 
                     PlayerSummaryStripView(summaries: screenModel.opponents)
@@ -156,7 +171,7 @@ struct GameShellView: View {
             } else {
                 selectedBoardTarget = normalizedTarget
             }
-        case .buildRoad, .buildSettlement, .buildCity:
+        case .buildRoad, .buildSettlement, .buildCity, .robberMove, .robberVictim:
             guard let normalizedTarget else {
                 return
             }
