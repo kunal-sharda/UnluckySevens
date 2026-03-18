@@ -107,8 +107,10 @@ enum GameScreenModelBuilder {
             ),
             GameActionDockItem(
                 kind: .devCards,
-                title: "Dev Cards",
-                systemImage: "sparkles.rectangle.stack.fill",
+                title: devCardDockTitle(for: context.actionAvailability),
+                systemImage: context.actionAvailability.canBuyDevCard
+                    ? "plus.rectangle.on.folder.fill"
+                    : "sparkles.rectangle.stack.fill",
                 isEnabled: context.actionAvailability.canUseDevCards
             ),
             GameActionDockItem(
@@ -122,5 +124,12 @@ enum GameScreenModelBuilder {
 
     private static func shortIdentifier(_ value: String) -> String {
         String(value.prefix(8))
+    }
+
+    private static func devCardDockTitle(for availability: GameActionAvailability) -> String {
+        if availability.canBuyDevCard && !availability.canPlayDevCards {
+            return "Buy Dev"
+        }
+        return "Dev Cards"
     }
 }

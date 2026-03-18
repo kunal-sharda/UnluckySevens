@@ -101,7 +101,8 @@ final class GameScreenModelBuilderTests: XCTestCase {
                     canRoll: true,
                     canBuild: false,
                     canTrade: true,
-                    canUseDevCards: false,
+                    canBuyDevCard: false,
+                    canPlayDevCards: false,
                     canEndTurn: true
                 ),
                 modeAvailability: .none
@@ -117,6 +118,36 @@ final class GameScreenModelBuilderTests: XCTestCase {
                 GameActionDockItem(kind: .devCards, title: "Dev Cards", systemImage: "sparkles.rectangle.stack.fill", isEnabled: false),
                 GameActionDockItem(kind: .endTurn, title: "End Turn", systemImage: "flag.pattern.checkered", isEnabled: true),
             ]
+        )
+    }
+
+    func testBuildUsesBuyDevDockPresentationWhenPurchaseIsLegal() {
+        let model = GameScreenModelBuilder.build(
+            context: GameScreenContext(
+                selectedState: makeState(resourcesByPlayer: ["A": .zero, "B": .zero]),
+                actingAs: "A",
+                contextBanner: "banner",
+                contextMeta: "meta",
+                actionAvailability: GameActionAvailability(
+                    canRoll: false,
+                    canBuild: false,
+                    canTrade: false,
+                    canBuyDevCard: true,
+                    canPlayDevCards: false,
+                    canEndTurn: false
+                ),
+                modeAvailability: .none
+            )
+        )
+
+        XCTAssertEqual(
+            model.actionDock.items[3],
+            GameActionDockItem(
+                kind: .devCards,
+                title: "Buy Dev",
+                systemImage: "plus.rectangle.on.folder.fill",
+                isEnabled: true
+            )
         )
     }
 

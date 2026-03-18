@@ -140,8 +140,8 @@ final class LobbyDriverViewModel: ObservableObject {
             canRoll: canSendRollDiceIntentDebug,
             canBuild: canSendBuildRoadIntentDebug || canSendBuildSettlementIntentDebug || canSendBuildCityIntentDebug,
             canTrade: canSendProposeTradeIntentDebug || canSendAcceptTradeIntentDebug || canSendExecuteTradeIntentDebug || canSendMaritimeTradeIntentDebug,
-            canUseDevCards: canSendBuyDevCardIntentDebug
-                || canSendPlayKnightIntentDebug
+            canBuyDevCard: canSendBuyDevCardIntentDebug,
+            canPlayDevCards: canSendPlayKnightIntentDebug
                 || canSendPlayMonopolyIntentDebug
                 || canSendPlayYearOfPlentyIntentDebug
                 || canSendPlayRoadBuildingIntentDebug
@@ -171,7 +171,7 @@ final class LobbyDriverViewModel: ObservableObject {
                 || canSendAcceptTradeIntentDebug
                 || canSendExecuteTradeIntentDebug
                 || canSendMaritimeTradeIntentDebug,
-            canPlayDevCard: shellActionAvailability.canUseDevCards,
+            canPlayDevCard: shellActionAvailability.canPlayDevCards,
             canDiscard: canSendSubmitDiscardIntentDebug
         )
     }
@@ -247,10 +247,15 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     var canSendRollDiceIntentDebug: Bool {
-        guard let state = selectedState, state.phase == .turn else {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            let actor = localActorIdentifier(),
+            actor == state.currentPlayer
+        else {
             return false
         }
-        return state.turnState?.step == .needsRoll && localActorIdentifier() != nil
+        return state.turnState?.step == .needsRoll
     }
 
     var canSendSubmitDiscardIntentDebug: Bool {
@@ -440,10 +445,15 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     var canSendEndTurnIntentDebug: Bool {
-        guard let state = selectedState, state.phase == .turn else {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            let actor = localActorIdentifier(),
+            actor == state.currentPlayer
+        else {
             return false
         }
-        return state.turnState?.step == .afterRoll && localActorIdentifier() != nil
+        return state.turnState?.step == .afterRoll
     }
 
     var canStartGame: Bool {
@@ -1592,6 +1602,42 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
+    @discardableResult
+    func publishTurnState(for actionKind: GameActionDockItem.Kind) -> Bool {
+        guard let intent = immediateTurnIntent(for: actionKind) else {
+            return false
+        }
+
+        do {
+            try applyAndPublishTurnIntent(intent, successStatus: successStatus(for: intent.kind))
+            return true
+        } catch {
+            setLastError("Turn action failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    @discardableResult
+    func publishTurnState(for target: GameBoardTarget, mode: GameMode) -> Bool {
+        guard let intent = TurnInteractionResolver.draftBuildIntent(
+            state: selectedState,
+            actingAs: localActorIdentifier(),
+            mode: mode,
+            target: target
+        ) else {
+            setLastError("Selected build target is not legal.")
+            return false
+        }
+
+        do {
+            try applyAndPublishTurnIntent(intent, successStatus: successStatus(for: intent.kind))
+            return true
+        } catch {
+            setLastError("Build action failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
     private func applyAndPublishSetupIntent(
         _ setupIntent: SetupPlacementIntentV1,
         from fromState: CoreGameStateV1,
@@ -1636,19 +1682,7 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         do {
-            let coreIntent = try turnIntentForTransport(turnIntent)
-            let toState = try ULS_CoreGame.apply(intent: coreIntent, to: fromState, actor: actor)
-            try validateTransition(from: fromState, to: toState, actor: actor)
-            let payload = try jsonString(from: toState)
-            let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
-            try sendEnvelope(
-                envelope,
-                caption: "ULS STATE rev\(toState.rev)",
-                sessionPolicy: .state(gameId: toState.gameId)
-            )
-            setActiveContext(toState, source: .lastSentState)
-            selectionStatus = "Applied turn intent into STATE rev\(toState.rev)"
-            setLastError(nil)
+            try applyAndPublishTurnIntent(turnIntent, successStatus: "Applied turn intent into STATE")
         } catch {
             setLastError("Apply turn intent failed: \(error.localizedDescription)")
         }
@@ -2681,6 +2715,109 @@ final class LobbyDriverViewModel: ObservableObject {
         }
         joiners.append(joiner)
         savePendingJoiners(joiners, for: gameId)
+    }
+
+    private func applyAndPublishTurnIntent(
+        _ turnIntent: ULS_Transport.TurnIntentV1,
+        successStatus: String
+    ) throws {
+        guard let fromState = selectedState else {
+            throw NSError(domain: "LobbyDriverViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "No active context."])
+        }
+        guard let actor = localActorIdentifier(), actor == fromState.currentPlayer else {
+            throw NSError(domain: "LobbyDriverViewModel", code: 2, userInfo: [NSLocalizedDescriptionKey: "Only current player can publish canonical STATE."])
+        }
+        guard
+            turnIntent.gameId == fromState.gameId,
+            turnIntent.anchorRev == fromState.rev,
+            turnIntent.anchorHash == fromState.stateHash
+        else {
+            throw NSError(domain: "LobbyDriverViewModel", code: 3, userInfo: [NSLocalizedDescriptionKey: "Turn intent anchor does not match Active Context."])
+        }
+
+        let coreIntent = try turnIntentForTransport(turnIntent)
+        let toState = try ULS_CoreGame.apply(intent: coreIntent, to: fromState, actor: actor)
+        try validateTransition(from: fromState, to: toState, actor: actor)
+
+        let payload = try jsonString(from: toState)
+        let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
+        try sendEnvelope(
+            envelope,
+            caption: "ULS STATE rev\(toState.rev)",
+            sessionPolicy: .state(gameId: toState.gameId)
+        )
+        selectedTurnIntent = nil
+        setActiveContext(toState, source: .lastSentState)
+        selectionStatus = "\(successStatus) rev\(toState.rev)"
+        setLastError(nil)
+    }
+
+    private func immediateTurnIntent(for actionKind: GameActionDockItem.Kind) -> ULS_Transport.TurnIntentV1? {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            let actor = localActorIdentifier(),
+            actor == state.currentPlayer
+        else {
+            return nil
+        }
+
+        switch actionKind {
+        case .roll:
+            guard canSendRollDiceIntentDebug else {
+                return nil
+            }
+            return ULS_Transport.TurnIntentV1(
+                kind: .rollDice,
+                gameId: state.gameId,
+                anchorRev: state.rev,
+                anchorHash: state.stateHash,
+                actor: actor
+            )
+        case .devCards:
+            guard canSendBuyDevCardIntentDebug else {
+                return nil
+            }
+            return ULS_Transport.TurnIntentV1(
+                kind: .buyDevCard,
+                gameId: state.gameId,
+                anchorRev: state.rev,
+                anchorHash: state.stateHash,
+                actor: actor
+            )
+        case .endTurn:
+            guard canSendEndTurnIntentDebug else {
+                return nil
+            }
+            return ULS_Transport.TurnIntentV1(
+                kind: .endTurn,
+                gameId: state.gameId,
+                anchorRev: state.rev,
+                anchorHash: state.stateHash,
+                actor: actor
+            )
+        case .build, .trade:
+            return nil
+        }
+    }
+
+    private func successStatus(for kind: ULS_Transport.TurnIntentV1.Kind) -> String {
+        switch kind {
+        case .rollDice:
+            return "Published roll"
+        case .buildRoad:
+            return "Published road build"
+        case .buildSettlement:
+            return "Published settlement build"
+        case .buildCity:
+            return "Published city upgrade"
+        case .buyDevCard:
+            return "Published dev-card purchase"
+        case .endTurn:
+            return "Published end turn"
+        default:
+            return "Published turn action"
+        }
     }
 
     private func savePendingJoiners(_ joiners: [String], for gameId: String) {

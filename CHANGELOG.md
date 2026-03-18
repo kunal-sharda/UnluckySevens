@@ -149,6 +149,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Phase 12 planning: added an active ExecPlan for gameplay flows, including lobby join/start UX hardening, setup placement UX, turn loop UX, robber UX, trade UX, dev-card UX, and a real-device signoff pass.
 - Phase 12.1 lobby join and host start UX: the lobby now renders through a product shell, join actions auto-send instead of requiring a second manual send step, and host start derives the visible joined roster without relying on debug-only bookkeeping as the primary flow.
 - Phase 12.2 setup placement UX: setup guidance, legal setup highlights, and board-tap setup publication now let the current player place settlements and roads from the product UI instead of the debug apply path.
+- Phase 12.3 core turn loop and build/buy actions: the action dock now publishes roll, buy-dev-card, and end-turn state transitions directly, build modes draft canonical road/settlement/city intents from legal board taps, and MessagesExtension tests cover the new turn interaction resolver.
 
 ### Changed
 - `README.md` is now the tracked human-facing repo entrypoint; `AGENTS.md` is local-only for agents.

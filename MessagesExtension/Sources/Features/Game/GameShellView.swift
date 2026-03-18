@@ -104,6 +104,14 @@ struct GameShellView: View {
         currentMode: GameMode,
         availability: GameModeAvailability
     ) {
+        if viewModel.publishTurnState(for: actionKind) {
+            withAnimation(GameTheme.quickAnimation) {
+                self.currentMode = .idle
+                self.selectedBoardTarget = nil
+            }
+            return
+        }
+
         withAnimation(GameTheme.quickAnimation) {
             self.currentMode = GameModeResolver.nextMode(
                 for: actionKind,
@@ -144,6 +152,16 @@ struct GameShellView: View {
                 return
             }
             if viewModel.publishSetupState(for: normalizedTarget) {
+                selectedBoardTarget = nil
+            } else {
+                selectedBoardTarget = normalizedTarget
+            }
+        case .buildRoad, .buildSettlement, .buildCity:
+            guard let normalizedTarget else {
+                return
+            }
+            if viewModel.publishTurnState(for: normalizedTarget, mode: mode) {
+                currentMode = .idle
                 selectedBoardTarget = nil
             } else {
                 selectedBoardTarget = normalizedTarget

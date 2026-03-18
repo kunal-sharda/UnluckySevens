@@ -55,11 +55,11 @@ enum GameMode: Equatable {
         case .setup:
             return "Tap the highlighted placement to continue setup."
         case .buildRoad:
-            return "Road-building mode is active. Edge selection will plug in during the board stage."
+            return "Tap a highlighted edge to build a road."
         case .buildSettlement:
-            return "Settlement-building mode is active. Node selection will plug in during the board stage."
+            return "Tap a highlighted node to build a settlement."
         case .buildCity:
-            return "City-upgrade mode is active. Eligible city selection will plug in during the board stage."
+            return "Tap a highlighted settlement to upgrade it into a city."
         case .robberMove:
             return "Robber movement is required before turn play can continue."
         case .robberVictim:
