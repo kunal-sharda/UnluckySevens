@@ -1,4 +1,5 @@
 import ULS_CoreGame
+import ULS_Transport
 
 enum LobbyMembershipResolver {
     static func canJoin(
@@ -52,5 +53,25 @@ enum LobbyMembershipResolver {
             finalRoster.append(joiner)
         }
         return finalRoster
+    }
+
+    static func makeJoinIntent(
+        state: CoreGameStateV1?,
+        localParticipant: String?
+    ) -> JoinIntentV1? {
+        guard
+            let state,
+            state.phase == .lobby,
+            let localParticipant
+        else {
+            return nil
+        }
+
+        return JoinIntentV1(
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: localParticipant
+        )
     }
 }

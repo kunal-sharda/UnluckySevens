@@ -73,6 +73,20 @@ final class LobbyDriverViewModelIdentityTests: XCTestCase {
         )
     }
 
+    func testMakeJoinIntentUsesActualLocalParticipant() {
+        let state = makeLobbyState(host: "host-player")
+
+        let intent = LobbyMembershipResolver.makeJoinIntent(
+            state: state,
+            localParticipant: "guest-player"
+        )
+
+        XCTAssertEqual(intent?.actor, "guest-player")
+        XCTAssertEqual(intent?.gameId, state.gameId)
+        XCTAssertEqual(intent?.anchorRev, 0)
+        XCTAssertEqual(intent?.anchorHash, state.stateHash)
+    }
+
     private func makeLobbyState(host: String) -> CoreGameStateV1 {
         CoreGameStateV1(
             gameId: "game-1",

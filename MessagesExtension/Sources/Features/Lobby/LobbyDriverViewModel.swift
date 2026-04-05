@@ -678,17 +678,18 @@ final class LobbyDriverViewModel: ObservableObject {
             return
         }
 
-        guard let actor = localActorIdentifier() else {
+        guard let actor = localParticipantIdentifier() else {
             setLastError("Missing local participant identifier.")
             return
         }
 
-        let intent = JoinIntentV1(
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actor
-        )
+        guard let intent = LobbyMembershipResolver.makeJoinIntent(
+            state: state,
+            localParticipant: actor
+        ) else {
+            setLastError("Join is only available from lobby STATE messages.")
+            return
+        }
 
         do {
             let payload = try jsonString(from: intent)
@@ -697,7 +698,9 @@ final class LobbyDriverViewModel: ObservableObject {
             rememberPendingJoiner(actor, for: state.gameId)
             refreshPendingJoiners(for: state.gameId)
             selectionStatus = "Join intent sent"
-            appendLog("Sent INTENT kind=join actor=\(shortIdentifier(actor)) anchorRev=\(state.rev)")
+            appendLog(
+                "Sent INTENT kind=join actor=\(shortIdentifier(actor)) local=\(shortIdentifier(actor)) actingAs=\(shortIdentifier(actingAs)) anchorRev=\(state.rev)"
+            )
             setLastError(nil)
         } catch {
             setLastError("Join failed: \(error.localizedDescription)")
