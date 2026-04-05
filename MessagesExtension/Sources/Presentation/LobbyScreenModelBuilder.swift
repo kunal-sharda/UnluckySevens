@@ -42,6 +42,7 @@ enum LobbyScreenModelBuilder {
         let participants = participantSummaries(for: state, context: context)
         let joinedCount = participants.count
         let localActor = context.localActor
+        let isLocalHost = localActor == host
         let localHasJoined = localActor.map { actor in
             state.roster.contains(actor) || context.pendingJoiners.contains(actor)
         } ?? false
@@ -51,11 +52,13 @@ enum LobbyScreenModelBuilder {
         let helperText: String
 
         if context.canStartGame {
-            title = joinedCount > 1 ? "Ready to Start" : "Invite Friends"
-            subtitle = joinedCount > 1
-                ? "\(joinedCount) players are ready. Start when you want to lock the roster."
-                : "Share the invite and start when enough players have joined."
+            title = "Ready to Start"
+            subtitle = "\(joinedCount) players are ready. Start when you want to lock the roster."
             helperText = "Starting publishes the setup state and locks the roster."
+        } else if isLocalHost {
+            title = "Invite Friends"
+            subtitle = "Share the invite and wait for at least one guest to join."
+            helperText = "Starting stays disabled until at least two players appear in the lobby."
         } else if localHasJoined {
             title = "Joined Lobby"
             subtitle = "Waiting for \(displayName(host)) to start the game."

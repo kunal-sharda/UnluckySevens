@@ -44,6 +44,12 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var selectedSessionPresence: String = "missing"
     @Published var selectedDecodeSource: String = "-"
     @Published var selectedDecodeResult: String = "No message selected"
+    @Published var localParticipantDebug: String = "-"
+    @Published var resolvedActorDebug: String = "-"
+    @Published var localInRosterDebug: String = "-"
+    @Published var localPendingJoinDebug: String = "-"
+    @Published var canJoinDebug: String = "false"
+    @Published var isInviterDebug: String = "-"
     @Published var lastError: String = "-"
     @Published var actingAs: String = "-"
     @Published var useSingleSessionDebug: Bool = false
@@ -112,7 +118,7 @@ final class LobbyDriverViewModel: ObservableObject {
             context: LobbyScreenContext(
                 selectedState: selectedState,
                 selectedJoinIntent: selectedJoinIntent,
-                localActor: localActorIdentifier(),
+                localActor: localParticipantIdentifier(),
                 pendingJoiners: currentPendingJoiners(),
                 contextMeta: activeContextMeta,
                 staleWarning: staleContextWarning,
@@ -253,16 +259,11 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     var canJoin: Bool {
-        guard
-            let state = selectedState,
-            state.phase == .lobby,
-            let actor = localActorIdentifier()
-        else {
-            return false
-        }
-
-        let pending = loadPendingJoiners(for: state.gameId)
-        return !state.roster.contains(actor) && !pending.contains(actor)
+        LobbyMembershipResolver.canJoin(
+            state: selectedState,
+            localParticipant: localParticipantIdentifier(),
+            pendingJoiners: currentPendingJoiners()
+        )
     }
 
     var canRecordJoin: Bool {
@@ -513,17 +514,11 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     var canStartGame: Bool {
-        guard
-            let state = selectedState,
-            state.phase == .lobby,
-            state.rev == 0,
-            let inviter = state.roster.first,
-            inviter == localActorIdentifier()
-        else {
-            return false
-        }
-
-        return true
+        LobbyMembershipResolver.canStart(
+            state: selectedState,
+            localParticipant: localParticipantIdentifier(),
+            pendingJoiners: currentPendingJoiners()
+        )
     }
 
     var canClearPendingJoins: Bool {
@@ -588,6 +583,7 @@ final class LobbyDriverViewModel: ObservableObject {
 
     func setActingAs(_ actor: String) {
         actingAs = actor
+        refreshParticipantIdentityDebug()
     }
 
     func setUseSingleSessionDebug(_ enabled: Bool) {
@@ -601,6 +597,7 @@ final class LobbyDriverViewModel: ObservableObject {
     ) {
         activeConversation = conversation
         refreshActiveContextMetadata()
+        refreshParticipantIdentityDebug()
         decodeSelectedMessage(
             selectedMessage,
             activationMode: .activateIfMissing,
@@ -629,6 +626,7 @@ final class LobbyDriverViewModel: ObservableObject {
         }
         selectionStatus = "Active context cleared"
         selectedDecodeResult = selectionStatus
+        refreshParticipantIdentityDebug()
         appendLog("Cleared Active Context")
     }
 
@@ -739,17 +737,19 @@ final class LobbyDriverViewModel: ObservableObject {
             return
         }
 
-        guard inviter == localActorIdentifier() else {
+        guard inviter == localParticipantIdentifier() else {
             setLastError("Only the inviter can start the game.")
             return
         }
 
-        let pending = loadPendingJoiners(for: fromState.gameId)
-        var finalRoster: [String] = [inviter]
-        for joiner in pending where joiner != inviter {
-            if !finalRoster.contains(joiner) {
-                finalRoster.append(joiner)
-            }
+        let finalRoster = LobbyMembershipResolver.finalRoster(
+            state: fromState,
+            pendingJoiners: loadPendingJoiners(for: fromState.gameId)
+        )
+
+        guard finalRoster.count >= 2 else {
+            setLastError("At least two players must be in the lobby before starting.")
+            return
         }
 
         let masterSeed = UInt64.random(in: .min ... .max)
@@ -2090,7 +2090,10 @@ final class LobbyDriverViewModel: ObservableObject {
             selectedTurnIntent = nil
             let shouldActivate =
                 activationMode == .force ||
-                (activationMode == .activateIfMissing && selectedState == nil)
+                (
+                    activationMode == .activateIfMissing &&
+                    (selectedState == nil || activeSource == .lastSentState || activeSource == .cachedPublishedState)
+                )
             if shouldActivate {
                 setActiveContext(state, source: .selectedBubble)
             } else {
@@ -2163,6 +2166,7 @@ final class LobbyDriverViewModel: ObservableObject {
         } else {
             activeContextUpdatedAgo = "-"
         }
+        refreshParticipantIdentityDebug()
     }
 
     private func refreshStaleContextWarning() {
@@ -2197,6 +2201,26 @@ final class LobbyDriverViewModel: ObservableObject {
         selectedLayoutCaption = snapshot.layoutCaption
         selectedSessionPresence = snapshot.sessionPresence
         selectedDecodeSource = snapshot.decodeSource
+    }
+
+    private func refreshParticipantIdentityDebug() {
+        let localParticipant = localParticipantIdentifier()
+        let pending = currentPendingJoiners()
+
+        localParticipantDebug = localParticipant ?? "-"
+        resolvedActorDebug = localActorIdentifier() ?? "-"
+        canJoinDebug = canJoin ? "true" : "false"
+
+        guard let state = selectedState, let localParticipant else {
+            localInRosterDebug = "-"
+            localPendingJoinDebug = "-"
+            isInviterDebug = "-"
+            return
+        }
+
+        localInRosterDebug = state.roster.contains(localParticipant) ? "true" : "false"
+        localPendingJoinDebug = pending.contains(localParticipant) ? "true" : "false"
+        isInviterDebug = state.roster.first == localParticipant ? "true" : "false"
     }
 
     private func appendLog(_ message: String) {
@@ -3128,11 +3152,13 @@ final class LobbyDriverViewModel: ObservableObject {
     private func refreshPendingJoiners(for gameId: String?) {
         guard let gameId else {
             pendingJoiners = "[]"
+            refreshParticipantIdentityDebug()
             return
         }
 
         let joiners = loadPendingJoiners(for: gameId)
         pendingJoiners = joiners.isEmpty ? "[]" : joiners.joined(separator: ", ")
+        refreshParticipantIdentityDebug()
     }
 
     private func loadPendingJoiners(for gameId: String) -> [String] {

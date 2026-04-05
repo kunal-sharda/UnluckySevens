@@ -81,8 +81,8 @@ Run this after any lobby join/start UX change.
 3. On device B, select the same invite bubble and confirm the extension resolves the same invite before joining.
 4. From device B, open the invite and join.
 5. Confirm joining does not require an extra manual send step after tapping `Join`.
-6. From device A (host), confirm the lobby UI reflects the joined roster.
-7. From device A (host), start the game.
+6. From device A (host), confirm the lobby UI reflects both the host and the joined guest before trying to start.
+7. Confirm `Start Game` stays unavailable until at least two players appear in the host lobby, then start from device A.
 8. From device B, open the start `STATE` and confirm the extension resolves the new setup context cleanly.
 
 ### Real Device Messages Lifecycle
@@ -123,7 +123,14 @@ Use this only when a selected transcript bubble does not open context on hardwar
    - `decodeSource: URL` or `summary fallback`
 4. Prefer `url: present` plus `payloadQuery: present`. If they are missing, treat it as a transport publication or host-selection failure rather than a lobby-state bug.
 5. If the selected bubble decodes from `summary fallback` in a debug build, capture it as a host-fidelity defect and continue the operator run with that repro attached. Do not treat summary fallback as canonical product transport.
-6. Capture the debug HUD state as the primary repro artifact before retrying with reload or a new bubble.
+6. If lobby `STATE` decodes but `Join Game` is still missing on the receiving device, inspect:
+   - `localParticipant`
+   - `resolvedActor`
+   - `localInRoster`
+   - `localPendingJoin`
+   - `canJoin`
+   - `isInviter`
+7. Capture the debug HUD state as the primary repro artifact before retrying with reload or a new bubble.
 
 ## What Is Already Covered Well
 

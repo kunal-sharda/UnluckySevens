@@ -43,6 +43,43 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
         XCTAssertNil(model.joinButton)
     }
 
+    func testBuildForHostLobbyWithoutGuestShowsInviteFriendsAndNoStart() {
+        let host = "host-player"
+        let state = CoreGameStateV1(
+            gameId: "game-1",
+            rev: 0,
+            prevHash: nil,
+            stateHash: "",
+            roster: [host],
+            currentPlayer: host,
+            phase: .lobby,
+            seed: nil,
+            diceRngState: nil,
+            resourcesByPlayer: [host: .zero],
+            boardRules: nil,
+            board: nil
+        ).rehashed()
+
+        let model = LobbyScreenModelBuilder.build(
+            context: LobbyScreenContext(
+                selectedState: state,
+                selectedJoinIntent: nil,
+                localActor: host,
+                pendingJoiners: [],
+                contextMeta: "Source: test",
+                staleWarning: "-",
+                lastError: "-",
+                canInvite: true,
+                canJoin: false,
+                canStartGame: false
+            )
+        )
+
+        XCTAssertEqual(model.title, "Invite Friends")
+        XCTAssertNil(model.startButton)
+        XCTAssertNil(model.joinButton)
+    }
+
     func testBuildForJoinableLobbyShowsJoinAction() {
         let host = "host-player"
         let guest = "guest-player"

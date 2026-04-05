@@ -97,6 +97,12 @@ struct LobbyDriverView: View {
                         field("session", viewModel.selectedSessionPresence)
                         field("decodeSource", viewModel.selectedDecodeSource)
                         field("decodeResult", viewModel.selectedDecodeResult)
+                        field("localParticipant", viewModel.localParticipantDebug)
+                        field("resolvedActor", viewModel.resolvedActorDebug)
+                        field("localInRoster", viewModel.localInRosterDebug)
+                        field("localPendingJoin", viewModel.localPendingJoinDebug)
+                        field("canJoin", viewModel.canJoinDebug)
+                        field("isInviter", viewModel.isInviterDebug)
                     }
                     .font(.system(.caption, design: .monospaced))
                 }
