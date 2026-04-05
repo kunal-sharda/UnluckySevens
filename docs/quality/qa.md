@@ -77,8 +77,8 @@ Run this after shell, layout, presentation, or mode-system changes.
 Run this after any lobby join/start UX change.
 
 1. From device A, send an invite `STATE` into the thread.
-2. On device A, select the invite bubble and confirm the extension resolves the lobby from URL-backed transport rather than falling back to `No Lobby Selected`.
-3. On device B, select the same invite bubble and confirm the extension resolves the lobby from URL-backed transport before joining.
+2. On device A, select the invite bubble and confirm the extension resolves the lobby from transcript transport rather than falling back to `No Lobby Selected`.
+3. On device B, select the same invite bubble and confirm the extension resolves the same invite before joining.
 4. From device B, open the invite and join.
 5. Confirm joining does not require an extra manual send step after tapping `Join`.
 6. From device A (host), confirm the lobby UI reflects the joined roster.
@@ -119,12 +119,10 @@ Use this only when a selected transcript bubble does not open context on hardwar
 2. Check `Selection` and `Transport Debug` before trying fallback actions.
 3. Confirm the selected bubble reports:
    - `message: present`
-   - `url: present`
-   - `payloadQuery: present`
    - `payloadLength: > 0`
-   - `decodeSource: URL`
-4. If `url` is missing or `payloadQuery` is missing, treat it as a transport publication or host-selection failure rather than a lobby-state bug.
-5. If the selected bubble decodes from summary fallback, treat that as simulator-only behavior and continue debugging the real-device URL path.
+   - `decodeSource: URL` or `summary fallback`
+4. Prefer `url: present` plus `payloadQuery: present`. If they are missing, treat it as a transport publication or host-selection failure rather than a lobby-state bug.
+5. If the selected bubble decodes from `summary fallback` in a debug build, capture it as a host-fidelity defect and continue the operator run with that repro attached. Do not treat summary fallback as canonical product transport.
 6. Capture the debug HUD state as the primary repro artifact before retrying with reload or a new bubble.
 
 ## What Is Already Covered Well
@@ -150,6 +148,7 @@ Use this only when a selected transcript bubble does not open context on hardwar
 - shared `ULS_CoreGame` view/query helpers for legal default actions and viewer-scoped secrecy-safe projections
 - focused core tests covering the new query/projection surface against reducer legality and secrecy expectations
 - transport diagnostics in the debug HUD so selected-message failures show URL, payload, summary, session, and decode-source facts instead of only the empty-state shell
+- debug-build payload mirroring plus sender-side cached-state recovery so device triage can continue when the Messages host drops `message.url` or transiently clears selection on reopen
 
 ## Remaining High-Value Gaps
 
