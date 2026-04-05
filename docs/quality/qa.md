@@ -77,11 +77,13 @@ Run this after shell, layout, presentation, or mode-system changes.
 Run this after any lobby join/start UX change.
 
 1. From device A, send an invite `STATE` into the thread.
-2. From device B, open the invite and join.
-3. Confirm joining does not require an extra manual send step after tapping `Join`.
-4. From device A (host), confirm the lobby UI reflects the joined roster.
-5. From device A (host), start the game.
-6. From device B, open the start `STATE` and confirm the extension resolves the new setup context cleanly.
+2. On device A, select the invite bubble and confirm the extension resolves the lobby from URL-backed transport rather than falling back to `No Lobby Selected`.
+3. On device B, select the same invite bubble and confirm the extension resolves the lobby from URL-backed transport before joining.
+4. From device B, open the invite and join.
+5. Confirm joining does not require an extra manual send step after tapping `Join`.
+6. From device A (host), confirm the lobby UI reflects the joined roster.
+7. From device A (host), start the game.
+8. From device B, open the start `STATE` and confirm the extension resolves the new setup context cleanly.
 
 ### Real Device Messages Lifecycle
 
@@ -109,6 +111,22 @@ Run this after any action-flow change that affects turns, trades, robber, or dev
    - `Trade pending`
 6. Confirm no bubble or context step silently drops during cross-device play.
 
+### Debug-Only Transport Triage
+
+Use this only when a selected transcript bubble does not open context on hardware.
+
+1. Open the debug HUD on the affected device after selecting the bubble.
+2. Check `Selection` and `Transport Debug` before trying fallback actions.
+3. Confirm the selected bubble reports:
+   - `message: present`
+   - `url: present`
+   - `payloadQuery: present`
+   - `payloadLength: > 0`
+   - `decodeSource: URL`
+4. If `url` is missing or `payloadQuery` is missing, treat it as a transport publication or host-selection failure rather than a lobby-state bug.
+5. If the selected bubble decodes from summary fallback, treat that as simulator-only behavior and continue debugging the real-device URL path.
+6. Capture the debug HUD state as the primary repro artifact before retrying with reload or a new bubble.
+
 ## What Is Already Covered Well
 
 - lobby join/start UX, including one-step join and host-owned start
@@ -131,6 +149,7 @@ Run this after any action-flow change that affects turns, trades, robber, or dev
 - realistic transport stress test for canonical STATE payload budget and roundtrip decode
 - shared `ULS_CoreGame` view/query helpers for legal default actions and viewer-scoped secrecy-safe projections
 - focused core tests covering the new query/projection surface against reducer legality and secrecy expectations
+- transport diagnostics in the debug HUD so selected-message failures show URL, payload, summary, session, and decode-source facts instead of only the empty-state shell
 
 ## Remaining High-Value Gaps
 

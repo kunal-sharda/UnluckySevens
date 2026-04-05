@@ -254,6 +254,7 @@ Implement:
 
 - remove or demote remaining debug-first dependencies for the covered flows
 - tighten stale-context, empty-state, and interrupted-flow behavior
+- add a transport sanity check before lobby join/start so selected invite bubbles must decode via URL on both sender and receiver before gameplay validation continues
 - update [qa.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/qa.md) with any permanent new checks discovered during the phase
 - run the real-device lane against the actual covered flows
 
@@ -299,9 +300,10 @@ Simulator checks:
 Real-device checks:
 
 1. Run `Real Device Shell Smoke` from [QA](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/qa.md) after the first substantial gameplay UI stage lands.
-2. Run `Real Device Messages Lifecycle` after the lobby join/start stage and after any later stage that changes transcript, bubble, or context behavior.
-3. Run `Real Device Turn-Taking Smoke` after each gameplay-flow stage.
-4. Before calling phase 12 complete, run at least one real two-device gameplay segment covering join, host start, setup completion, one standard turn, and one cross-device response.
+2. Before lobby join/start validation, send an invite `STATE`, select it on both devices, and confirm the debug HUD reports a selected bubble with a URL `payload` query that decodes active context from URL.
+3. Run `Real Device Messages Lifecycle` after the lobby join/start stage and after any later stage that changes transcript, bubble, or context behavior.
+4. Run `Real Device Turn-Taking Smoke` after each gameplay-flow stage.
+5. Before calling phase 12 complete, run at least one real two-device gameplay segment covering join, host start, setup completion, one standard turn, and one cross-device response.
 
 ### Deferred Validation
 
@@ -336,6 +338,11 @@ Deferred by design in phase 12:
 - Knight default selection cannot reuse the robber-move legality query because knight play happens from normal turn state rather than `needsRobberMove`; the resolver now prefers a non-current robber tile with a default steal target, then falls back to the first legal non-current robber tile.
 - Stage 12.6 validation stayed inside the MessagesExtension-focused lane: `bash ./scripts/gen.sh`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, the focused dev-card tests, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test -only-testing:MessagesExtensionTests`, with `68` MessagesExtension tests green after the dev-card slice landed.
 - Stage 12.7 automated validation is green across the full repo gate: `bash ./scripts/gen.sh`, `swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_Transport`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test`, with the eval lane passing `10` tests in about `140s`.
+- 2026-04-05: real-device transport triage exposed a hardware-only failure signature during invite validation. Selecting a just-sent invite bubble on iPad and iPhone could leave the shell in `No Lobby Selected`, and the debug HUD reported `Selected message has no transport payload` even though the transcript bubble existed.
+- 2026-04-05: Stage 12.7 keeps URL transport canonical instead of changing protocol shape. The fix direction is to instrument selected-message transport facts in the debug HUD, repair the documented simulator-only `summaryText` fallback, and route transcript publication through a dedicated publish helper so real-device send behavior can be adjusted without spreading transport logic across the view model.
+- 2026-04-05: transport hardening now routes message building through a pure helper, records outbound publish diagnostics, records per-trigger selection diagnostics for `didSelect`, `didReceive`, reload, and selection polling, and shows transport metadata inline in the debug HUD so device failures produce a concrete repro snapshot instead of only the empty-state shell.
+- 2026-04-05: follow-up hardware feedback showed insertion-style publish broke the expected auto-send invite flow and still did not make cross-device invite decode reliable. The current fix keeps the publish helper but uses `conversation.send(...)` again, then continues selection polling after `didSelect` and `didReceive` so Messages-hosted bubbles that arrive with delayed URL/session metadata still get re-read before the shell gives up.
+- 2026-04-05: post-fix automated validation reran the full repo gate cleanly: `bash ./scripts/gen.sh`, `swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_Transport`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test`, with `110` non-eval core tests, `10` eval tests, `44` transport tests, and `71` MessagesExtension tests all green after the transport helper and diagnostics landed.
 - The remaining unclosed part of Stage 12.7 is hardware signoff. Simulator and automated lanes are now strong enough to support the phase, but they do not replace the required iPhone+iPad Messages pass described in [QA](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/qa.md).
 - `MessagesExtensionTests` still emits an Xcode dependency-scan warning because Tuist does not support a direct unit-test dependency on an iMessage extension target in this project shape. The current workaround remains compiling selected extension source files into the test target; capture any future cleanup under the tech-debt tracker rather than forcing a larger restructure into this phase.
 - Real-device validation is expected to drive at least some late-stage UX adjustments; do not treat Simulator-only behavior as sufficient signoff for Messages-hosted gameplay.

@@ -33,6 +33,17 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var lastTurnRecapSummary: String = "-"
     @Published var pendingJoiners: String = "[]"
     @Published var selectionStatus: String = "No message selected"
+    @Published var selectedTrigger: String = "-"
+    @Published var selectedMessagePresence: String = "missing"
+    @Published var selectedURLPresence: String = "missing"
+    @Published var selectedURLString: String = "-"
+    @Published var selectedPayloadQueryPresence: String = "missing"
+    @Published var selectedPayloadLength: String = "-"
+    @Published var selectedSummaryText: String = "-"
+    @Published var selectedLayoutCaption: String = "-"
+    @Published var selectedSessionPresence: String = "missing"
+    @Published var selectedDecodeSource: String = "-"
+    @Published var selectedDecodeResult: String = "No message selected"
     @Published var lastError: String = "-"
     @Published var actingAs: String = "-"
     @Published var useSingleSessionDebug: Bool = false
@@ -76,6 +87,14 @@ final class LobbyDriverViewModel: ObservableObject {
         } else {
             boardStrategy = .randomV1
         }
+    }
+
+    private var allowSummaryPayloadFallback: Bool {
+        #if DEBUG && targetEnvironment(simulator)
+        true
+        #else
+        false
+        #endif
     }
 
     var canInvite: Bool {
@@ -573,14 +592,26 @@ final class LobbyDriverViewModel: ObservableObject {
         useSingleSessionDebug = enabled
     }
 
-    func updateContext(conversation: MSConversation?, selectedMessage: MSMessage?) {
+    func updateContext(
+        conversation: MSConversation?,
+        selectedMessage: MSMessage?,
+        trigger: TranscriptSelectionTrigger
+    ) {
         activeConversation = conversation
         refreshActiveContextMetadata()
-        decodeSelectedMessage(selectedMessage, activationMode: .activateIfMissing)
+        decodeSelectedMessage(
+            selectedMessage,
+            activationMode: .activateIfMissing,
+            trigger: trigger
+        )
     }
 
     func reloadSelectedBubble() {
-        decodeSelectedMessage(activeConversation?.selectedMessage, activationMode: .force)
+        decodeSelectedMessage(
+            activeConversation?.selectedMessage,
+            activationMode: .force,
+            trigger: .reload
+        )
     }
 
     func clearActiveContext() {
@@ -594,6 +625,7 @@ final class LobbyDriverViewModel: ObservableObject {
             resetDisplayedFields()
         }
         selectionStatus = "Active context cleared"
+        selectedDecodeResult = selectionStatus
         appendLog("Cleared Active Context")
     }
 
@@ -1977,22 +2009,34 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
-    private func decodeSelectedMessage(_ message: MSMessage?, activationMode: SelectionActivationMode) {
+    private func decodeSelectedMessage(
+        _ message: MSMessage?,
+        activationMode: SelectionActivationMode,
+        trigger: TranscriptSelectionTrigger
+    ) {
+        updateSelectedTransportSnapshot(message, trigger: trigger)
+
         guard let message else {
             selectionStatus = "No message selected"
+            selectedDecodeResult = selectionStatus
             if selectedState == nil {
                 resetDisplayedFields()
                 refreshPendingJoiners(for: nil)
             }
+            appendLog("Selection \(trigger.label): no message selected")
             return
         }
 
         guard let encodedEnvelope = payloadValue(from: message) else {
             selectionStatus = "Selected message has no transport payload"
+            selectedDecodeResult = selectionStatus
             if selectedState == nil {
                 resetDisplayedFields()
                 refreshPendingJoiners(for: nil)
             }
+            appendLog(
+                "Selection \(trigger.label): no transport payload url=\(selectedURLPresence) payload=\(selectedPayloadQueryPresence)"
+            )
             return
         }
 
@@ -2004,22 +2048,27 @@ final class LobbyDriverViewModel: ObservableObject {
                 source: encodedEnvelope.source,
                 activationMode: activationMode
             )
+            selectedDecodeSource = encodedEnvelope.source.label
+            selectedDecodeResult = selectionStatus
+            appendLog("Selection \(trigger.label): decoded \(envelope.kind.rawValue) via \(encodedEnvelope.source.label)")
             setLastError(nil)
         } catch {
             selectionStatus = "Failed to decode selected message"
+            selectedDecodeSource = encodedEnvelope.source.label
+            selectedDecodeResult = selectionStatus
             if selectedState == nil {
                 resetDisplayedFields()
                 refreshPendingJoiners(for: nil)
             }
             setLastError("Decode failed: \(error.localizedDescription)")
-            appendLog("Error: Decode failed")
+            appendLog("Selection \(trigger.label): decode failed via \(encodedEnvelope.source.label)")
         }
     }
 
     private func apply(
         envelope: EnvelopeV1,
         message: MSMessage,
-        source: PayloadSource,
+        source: TranscriptPayloadSource,
         activationMode: SelectionActivationMode
     ) throws {
         switch envelope.body {
@@ -2073,7 +2122,7 @@ final class LobbyDriverViewModel: ObservableObject {
         refreshActiveContextMetadata()
         refreshStaleContextWarning()
 
-        let payloadSource: PayloadSource = source == .lastSentState ? .local : .url
+        let payloadSource: TranscriptPayloadSource = source == .lastSentState ? .local : .url
         render(state: state, source: payloadSource)
         appendLog("Set Active Context rev=\(state.rev) source=\(source.label)")
     }
@@ -2112,6 +2161,27 @@ final class LobbyDriverViewModel: ObservableObject {
         staleContextWarning = "Active Context is stale. Tap latest STATE bubble and Reload."
     }
 
+    private func updateSelectedTransportSnapshot(
+        _ message: MSMessage?,
+        trigger: TranscriptSelectionTrigger
+    ) {
+        let snapshot = TranscriptTransportSupport.selectionSnapshot(
+            for: message,
+            summaryPayloadPrefix: summaryPayloadPrefix,
+            allowSummaryFallback: allowSummaryPayloadFallback
+        )
+        selectedTrigger = trigger.label
+        selectedMessagePresence = snapshot.messagePresence
+        selectedURLPresence = snapshot.urlPresence
+        selectedURLString = snapshot.urlString
+        selectedPayloadQueryPresence = snapshot.payloadQueryPresence
+        selectedPayloadLength = snapshot.payloadLength
+        selectedSummaryText = snapshot.summaryText
+        selectedLayoutCaption = snapshot.layoutCaption
+        selectedSessionPresence = snapshot.sessionPresence
+        selectedDecodeSource = snapshot.decodeSource
+    }
+
     private func appendLog(_ message: String) {
         uiLog.append(message)
         if uiLog.count > 20 {
@@ -2123,7 +2193,7 @@ final class LobbyDriverViewModel: ObservableObject {
         String(value.prefix(8))
     }
 
-    private func render(state: CoreGameStateV1, source: PayloadSource) {
+    private func render(state: CoreGameStateV1, source: TranscriptPayloadSource) {
         kind = "STATE"
         gameId = state.gameId
         rev = String(state.rev)
@@ -2161,10 +2231,11 @@ final class LobbyDriverViewModel: ObservableObject {
         visibleDevCards = visibleDevCardsSummary(for: state)
         render(board: state.board)
         selectionStatus = "Decoded STATE rev\(state.rev) via \(source.label)"
+        selectedDecodeResult = selectionStatus
         refreshPendingJoiners(for: state.gameId)
     }
 
-    private func render(joinIntent: JoinIntentV1, source: PayloadSource) {
+    private func render(joinIntent: JoinIntentV1, source: TranscriptPayloadSource) {
         kind = "INTENT(join)"
         gameId = joinIntent.gameId
         rev = String(joinIntent.anchorRev)
@@ -2199,11 +2270,12 @@ final class LobbyDriverViewModel: ObservableObject {
         resetBoardDebugFields()
         rememberPendingJoiner(joinIntent.actor, for: joinIntent.gameId)
         selectionStatus = "Decoded JOIN intent via \(source.label)"
+        selectedDecodeResult = selectionStatus
         refreshPendingJoiners(for: joinIntent.gameId)
         appendLog("Decoded INTENT kind=join actor=\(shortIdentifier(joinIntent.actor))")
     }
 
-    private func render(setupIntent: SetupPlacementIntentV1, source: PayloadSource) {
+    private func render(setupIntent: SetupPlacementIntentV1, source: TranscriptPayloadSource) {
         kind = "INTENT(\(setupIntent.kind.rawValue))"
         gameId = setupIntent.gameId
         rev = String(setupIntent.anchorRev)
@@ -2246,11 +2318,12 @@ final class LobbyDriverViewModel: ObservableObject {
         }
         resetBoardDebugFields()
         selectionStatus = "Decoded \(setupIntent.kind.rawValue) intent via \(source.label)"
+        selectedDecodeResult = selectionStatus
         refreshPendingJoiners(for: setupIntent.gameId)
         appendLog("Decoded INTENT kind=\(setupIntent.kind.rawValue) actor=\(shortIdentifier(setupIntent.actor))")
     }
 
-    private func render(turnIntent decodedTurnIntent: ULS_Transport.TurnIntentV1, source: PayloadSource) {
+    private func render(turnIntent decodedTurnIntent: ULS_Transport.TurnIntentV1, source: TranscriptPayloadSource) {
         kind = "INTENT(\(decodedTurnIntent.kind.rawValue))"
         gameId = decodedTurnIntent.gameId
         rev = String(decodedTurnIntent.anchorRev)
@@ -2347,6 +2420,7 @@ final class LobbyDriverViewModel: ObservableObject {
         visibleDevCards = "-"
         resetBoardDebugFields()
         selectionStatus = "Decoded \(decodedTurnIntent.kind.rawValue) intent via \(source.label)"
+        selectedDecodeResult = selectionStatus
         refreshPendingJoiners(for: decodedTurnIntent.gameId)
         appendLog("Decoded INTENT kind=\(decodedTurnIntent.kind.rawValue) actor=\(shortIdentifier(decodedTurnIntent.actor))")
     }
@@ -2693,78 +2767,77 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
-    private func payloadValue(from message: MSMessage) -> DecodedPayloadSource? {
-        guard
-            let url = message.url,
-            let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-            let payload = components.queryItems?.first(where: { $0.name == "payload" })?.value,
-            !payload.isEmpty
-        else {
-            #if DEBUG && targetEnvironment(simulator)
-            if
-                let summaryText = message.summaryText,
-                summaryText.hasPrefix(summaryPayloadPrefix)
-            {
-                let start = summaryText.index(summaryText.startIndex, offsetBy: summaryPayloadPrefix.count)
-                let payload = String(summaryText[start...])
-                if !payload.isEmpty {
-                    return DecodedPayloadSource(payload: payload, source: .summaryFallback)
-                }
-            }
-            #endif
-            return nil
-        }
-
-        return DecodedPayloadSource(payload: payload, source: .url)
+    private func payloadValue(from message: MSMessage) -> TranscriptDecodedPayload? {
+        TranscriptTransportSupport.decodePayload(
+            from: message.url,
+            summaryText: message.summaryText,
+            summaryPayloadPrefix: summaryPayloadPrefix,
+            allowSummaryFallback: allowSummaryPayloadFallback
+        )
     }
 
-    private func sendEnvelope(_ envelope: EnvelopeV1, caption: String, sessionPolicy: SessionPolicy) throws {
+    private func sendEnvelope(
+        _ envelope: EnvelopeV1,
+        caption: String,
+        sessionPolicy: TranscriptSessionPolicy
+    ) throws {
         guard let conversation = activeConversation else {
             throw SendError.noActiveConversation
         }
 
         let encodedEnvelope = try encode(envelope)
-        let resolvedPolicy = resolveSessionPolicy(policy: sessionPolicy, for: envelope)
+        let resolvedPolicy = TranscriptTransportSupport.resolveSessionPolicy(
+            requestedPolicy: sessionPolicy,
+            envelopeKind: envelope.kind,
+            useSingleSessionDebug: useSingleSessionDebug,
+            currentGameId: currentGameId()
+        )
+        let builtMessage = try TranscriptTransportSupport.buildMessage(
+            encodedEnvelope: encodedEnvelope,
+            caption: caption,
+            summaryLabel: summaryLabel(for: envelope),
+            session: session(for: resolvedPolicy),
+            sessionPolicy: resolvedPolicy,
+            summaryPayloadPrefix: summaryPayloadPrefix,
+            includeSummaryPayloadMirror: allowSummaryPayloadFallback
+        )
 
-        var components = URLComponents()
-        components.scheme = "unluckysevens"
-        components.host = "msg"
-        components.queryItems = [URLQueryItem(name: "payload", value: encodedEnvelope)]
+        appendLog(
+            "Publish \(envelope.kind.rawValue) session=\(builtMessage.sessionPolicy.label) payload=\(builtMessage.payloadLength) url=\(builtMessage.urlString)"
+        )
+        appendLog("Publish summary: \(builtMessage.summaryText)")
 
-        guard let url = components.url else {
-            throw SendError.invalidURL
-        }
+        publish(
+            builtMessage.message,
+            into: conversation,
+            envelopeKind: envelope.kind,
+            sessionPolicy: builtMessage.sessionPolicy
+        )
+    }
 
-        let message = MSMessage(session: session(for: resolvedPolicy))
-        message.url = url
-
-        let layout = MSMessageTemplateLayout()
-        layout.caption = caption
-        message.layout = layout
-        message.summaryText = summaryLabel(for: envelope)
-        appendLog("Sending \(message.summaryText ?? "message")")
-
+    private func publish(
+        _ message: MSMessage,
+        into conversation: MSConversation,
+        envelopeKind: EnvelopeV1.Kind,
+        sessionPolicy: TranscriptSessionPolicy
+    ) {
+        let envelopeKindLabel = envelopeKind.rawValue
+        let sessionPolicyLabel = sessionPolicy.label
         conversation.send(message) { [weak self] error in
             Task { @MainActor in
                 guard let self else { return }
                 if let error {
-                    self.setLastError("Send failed: \(error.localizedDescription)")
-                    self.appendLog("Error: send failed")
+                    self.setLastError("Publish failed: \(error.localizedDescription)")
+                    self.appendLog(
+                        "Error: publish failed kind=\(envelopeKindLabel) session=\(sessionPolicyLabel)"
+                    )
+                } else {
+                    self.appendLog(
+                        "Published kind=\(envelopeKindLabel) session=\(sessionPolicyLabel)"
+                    )
                 }
             }
         }
-    }
-
-    private func resolveSessionPolicy(policy: SessionPolicy, for envelope: EnvelopeV1) -> SessionPolicy {
-        guard
-            useSingleSessionDebug,
-            envelope.kind == .intent,
-            case .new = policy,
-            let gameId = currentGameId()
-        else {
-            return policy
-        }
-        return .state(gameId: gameId)
     }
 
     private func summaryLabel(for envelope: EnvelopeV1) -> String {
@@ -3139,7 +3212,7 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
-    private func session(for policy: SessionPolicy) -> MSSession {
+    private func session(for policy: TranscriptSessionPolicy) -> MSSession {
         switch policy {
         case .new:
             return MSSession()
@@ -3152,11 +3225,6 @@ final class LobbyDriverViewModel: ObservableObject {
             stateSessionsByGameId[gameId] = newSession
             return newSession
         }
-    }
-
-    private enum SessionPolicy {
-        case new
-        case state(gameId: String)
     }
 
     private enum SelectionActivationMode {
@@ -3178,31 +3246,8 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
-    private struct DecodedPayloadSource {
-        let payload: String
-        let source: PayloadSource
-    }
-
-    private enum PayloadSource {
-        case url
-        case summaryFallback
-        case local
-
-        var label: String {
-            switch self {
-            case .url:
-                return "URL"
-            case .summaryFallback:
-                return "summary fallback"
-            case .local:
-                return "local"
-            }
-        }
-    }
-
     private enum SendError: LocalizedError {
         case noActiveConversation
-        case invalidURL
         case invalidJSONPayload
         case invalidIntentPayload
 
@@ -3210,8 +3255,6 @@ final class LobbyDriverViewModel: ObservableObject {
             switch self {
             case .noActiveConversation:
                 return "No active conversation."
-            case .invalidURL:
-                return "Could not build iMessage payload URL."
             case .invalidJSONPayload:
                 return "Could not create JSON payload string."
             case .invalidIntentPayload:

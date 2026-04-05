@@ -82,6 +82,25 @@ struct LobbyDriverView: View {
                 Text("Selection: \(viewModel.selectionStatus)")
                     .font(.subheadline)
 
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Transport Debug")
+                        .font(.subheadline)
+                    Group {
+                        field("selectedTrigger", viewModel.selectedTrigger)
+                        field("message", viewModel.selectedMessagePresence)
+                        field("url", viewModel.selectedURLPresence)
+                        field("urlString", viewModel.selectedURLString)
+                        field("payloadQuery", viewModel.selectedPayloadQueryPresence)
+                        field("payloadLength", viewModel.selectedPayloadLength)
+                        field("summaryText", viewModel.selectedSummaryText)
+                        field("layoutCaption", viewModel.selectedLayoutCaption)
+                        field("session", viewModel.selectedSessionPresence)
+                        field("decodeSource", viewModel.selectedDecodeSource)
+                        field("decodeResult", viewModel.selectedDecodeResult)
+                    }
+                    .font(.system(.caption, design: .monospaced))
+                }
+
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Board Strategy")
                         .font(.subheadline)

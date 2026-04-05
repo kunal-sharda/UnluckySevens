@@ -26,7 +26,8 @@ final class MessagesViewController: MSMessagesAppViewController {
 
         viewModel.updateContext(
             conversation: activeConversation,
-            selectedMessage: activeConversation?.selectedMessage
+            selectedMessage: activeConversation?.selectedMessage,
+            trigger: .viewDidLoad
         )
     }
 
@@ -42,20 +43,28 @@ final class MessagesViewController: MSMessagesAppViewController {
 
     override func didSelect(_ message: MSMessage, conversation: MSConversation) {
         super.didSelect(message, conversation: conversation)
-        cancelSelectionPolling()
-        viewModel.updateContext(conversation: conversation, selectedMessage: message)
+        viewModel.updateContext(
+            conversation: conversation,
+            selectedMessage: message,
+            trigger: .didSelect
+        )
+        startSelectionPolling(conversation: conversation)
     }
 
     override func didReceive(_ message: MSMessage, conversation: MSConversation) {
         super.didReceive(message, conversation: conversation)
-        cancelSelectionPolling()
-        viewModel.updateContext(conversation: conversation, selectedMessage: message)
+        viewModel.updateContext(
+            conversation: conversation,
+            selectedMessage: message,
+            trigger: .didReceive
+        )
+        startSelectionPolling(conversation: conversation)
     }
 
     private func startSelectionPolling(conversation: MSConversation) {
         cancelSelectionPolling()
         let token = selectionPollingToken
-        let delays: [TimeInterval] = [0.0, 0.2, 0.6, 1.2]
+        let delays: [TimeInterval] = [0.0, 0.2, 0.6, 1.2, 2.4, 4.0, 6.0]
 
         for delay in delays {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
@@ -63,7 +72,8 @@ final class MessagesViewController: MSMessagesAppViewController {
 
                 self.viewModel.updateContext(
                     conversation: conversation,
-                    selectedMessage: conversation.selectedMessage
+                    selectedMessage: conversation.selectedMessage,
+                    trigger: .selectionPoll
                 )
             }
         }
