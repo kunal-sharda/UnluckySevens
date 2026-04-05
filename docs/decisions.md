@@ -80,10 +80,11 @@ Recommended canonical state cadence per turn:
 - **One `MSSession` per game** for canonical STATE messages (updates collapse / thread clean).
 - **Separate `MSSession` per trade offer** so offers appear as distinct bubbles/cards.
 
-Simulator debug decode fallback:
+Debug-build decode fallback:
 - Canonical transport source is always message URL query `payload`.
 - `summaryText` is not canonical protocol data.
-- For local simulator reliability only, `summaryText` may mirror payload in `DEBUG + simulator` builds and be used as explicit fallback.
+- For debug-build reliability, `summaryText` may mirror payload in `DEBUG` builds and be used as explicit fallback when the Messages host does not surface `message.url` back through transcript selection.
+- Sender-side cached last-published state may smooth local reopen/debug UX when transcript selection drops to `nil`, but it is never cross-device authority and must not replace transcript transport.
 - UI must label payload source (`URL` vs `summary fallback`) during decode so fallback use is visible.
 
 ---

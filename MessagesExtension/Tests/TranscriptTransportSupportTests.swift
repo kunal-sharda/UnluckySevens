@@ -34,6 +34,7 @@ final class TranscriptTransportSupportTests: XCTestCase {
         )
         XCTAssertEqual(payloadQuery, encodedEnvelope)
         XCTAssertEqual(builtMessage.payloadLength, encodedEnvelope.count)
+        XCTAssertEqual(builtMessage.mirroredPayloadLength, 0)
         XCTAssertEqual(builtMessage.sessionPolicy, .state(gameId: "game-1"))
         XCTAssertEqual(builtMessage.summaryText, "INTENT actor=actor-1 kind=join a=r0")
     }
@@ -59,11 +60,15 @@ final class TranscriptTransportSupportTests: XCTestCase {
             includeSummaryPayloadMirror: true
         )
 
-        XCTAssertEqual(builtMessage.summaryText, "ulsenv:\(encodedEnvelope)")
+        XCTAssertEqual(
+            builtMessage.summaryText,
+            "INTENT actor=actor-1 kind=join a=r0\nulsenv:\(encodedEnvelope)"
+        )
+        XCTAssertEqual(builtMessage.mirroredPayloadLength, encodedEnvelope.count)
     }
 
     func testDecodePayloadOnlyUsesSummaryFallbackWhenExplicitlyAllowed() {
-        let summaryText = "ulsenv:{\"kind\":\"STATE\"}"
+        let summaryText = "STATE r0 p=lobby\nulsenv:{\"kind\":\"STATE\"}"
 
         let disabledFallback = TranscriptTransportSupport.decodePayload(
             from: nil,
@@ -81,6 +86,20 @@ final class TranscriptTransportSupportTests: XCTestCase {
         XCTAssertNil(disabledFallback)
         XCTAssertEqual(enabledFallback?.payload, "{\"kind\":\"STATE\"}")
         XCTAssertEqual(enabledFallback?.source, .summaryFallback)
+    }
+
+    func testDecodePayloadPrefersURLWhenSummaryMirrorAlsoExists() {
+        let url = URL(string: "unluckysevens://msg?payload=url-payload")
+
+        let decoded = TranscriptTransportSupport.decodePayload(
+            from: url,
+            summaryText: "STATE r0 p=lobby\nulsenv:summary-payload",
+            summaryPayloadPrefix: "ulsenv:",
+            allowSummaryFallback: true
+        )
+
+        XCTAssertEqual(decoded?.payload, "url-payload")
+        XCTAssertEqual(decoded?.source, .url)
     }
 
     private func jsonString<T: Encodable>(_ value: T) throws -> String {

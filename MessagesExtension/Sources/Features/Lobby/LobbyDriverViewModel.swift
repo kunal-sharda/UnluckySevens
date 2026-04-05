@@ -67,6 +67,8 @@ final class LobbyDriverViewModel: ObservableObject {
 
     private let summaryPayloadPrefix = "ulsenv:"
     private let boardStrategyKey = "uls.boardStrategy"
+    private let lastPublishedStateKey = "uls.lastPublishedState"
+    private let lastPublishedStateMaxAge: TimeInterval = 600
     private let userDefaults: UserDefaults
 
     private weak var activeConversation: MSConversation?
@@ -90,7 +92,7 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private var allowSummaryPayloadFallback: Bool {
-        #if DEBUG && targetEnvironment(simulator)
+        #if DEBUG
         true
         #else
         false
@@ -621,6 +623,7 @@ final class LobbyDriverViewModel: ObservableObject {
         activeContextSource = "-"
         activeContextUpdatedAgo = "-"
         staleContextWarning = "-"
+        userDefaults.removeObject(forKey: lastPublishedStateKey)
         if selectedTurnIntent == nil, selectedSetupIntent == nil, selectedJoinIntent == nil {
             resetDisplayedFields()
         }
@@ -2017,6 +2020,9 @@ final class LobbyDriverViewModel: ObservableObject {
         updateSelectedTransportSnapshot(message, trigger: trigger)
 
         guard let message else {
+            if selectedState == nil, restoreCachedPublishedStateIfAvailable(trigger: trigger) {
+                return
+            }
             selectionStatus = "No message selected"
             selectedDecodeResult = selectionStatus
             if selectedState == nil {
@@ -2028,6 +2034,9 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         guard let encodedEnvelope = payloadValue(from: message) else {
+            if selectedState == nil, restoreCachedPublishedStateIfAvailable(trigger: trigger) {
+                return
+            }
             selectionStatus = "Selected message has no transport payload"
             selectedDecodeResult = selectionStatus
             if selectedState == nil {
@@ -2122,7 +2131,15 @@ final class LobbyDriverViewModel: ObservableObject {
         refreshActiveContextMetadata()
         refreshStaleContextWarning()
 
-        let payloadSource: TranscriptPayloadSource = source == .lastSentState ? .local : .url
+        let payloadSource: TranscriptPayloadSource
+        switch source {
+        case .selectedBubble:
+            payloadSource = .url
+        case .lastSentState:
+            payloadSource = .local
+        case .cachedPublishedState:
+            payloadSource = .localCache
+        }
         render(state: state, source: payloadSource)
         appendLog("Set Active Context rev=\(state.rev) source=\(source.label)")
     }
@@ -2187,6 +2204,48 @@ final class LobbyDriverViewModel: ObservableObject {
         if uiLog.count > 20 {
             uiLog.removeFirst(uiLog.count - 20)
         }
+    }
+
+    private func restoreCachedPublishedStateIfAvailable(
+        trigger: TranscriptSelectionTrigger
+    ) -> Bool {
+        guard let cachedState = cachedPublishedState() else {
+            return false
+        }
+
+        latestSelectedState = cachedState
+        setActiveContext(cachedState, source: .cachedPublishedState)
+        selectionStatus = "Restored cached STATE rev\(cachedState.rev)"
+        selectedDecodeSource = TranscriptPayloadSource.localCache.label
+        selectedDecodeResult = selectionStatus
+        appendLog("Selection \(trigger.label): restored cached state rev=\(cachedState.rev)")
+        setLastError(nil)
+        return true
+    }
+
+    private func cachePublishedStateRecord(_ data: Data) {
+        userDefaults.set(data, forKey: lastPublishedStateKey)
+    }
+
+    private func cachedPublishedState() -> CoreGameStateV1? {
+        guard
+            let data = userDefaults.data(forKey: lastPublishedStateKey),
+            let cached = try? JSONDecoder().decode(CachedPublishedState.self, from: data)
+        else {
+            return nil
+        }
+
+        guard Date().timeIntervalSince1970 - cached.savedAt <= lastPublishedStateMaxAge else {
+            userDefaults.removeObject(forKey: lastPublishedStateKey)
+            return nil
+        }
+
+        guard let state = try? decodePayload(CoreGameStateV1.self, from: cached.payload) else {
+            userDefaults.removeObject(forKey: lastPublishedStateKey)
+            return nil
+        }
+
+        return state
     }
 
     private func shortIdentifier(_ value: String) -> String {
@@ -2799,11 +2858,12 @@ final class LobbyDriverViewModel: ObservableObject {
             session: session(for: resolvedPolicy),
             sessionPolicy: resolvedPolicy,
             summaryPayloadPrefix: summaryPayloadPrefix,
-            includeSummaryPayloadMirror: allowSummaryPayloadFallback
+            includeSummaryPayloadMirror: true
         )
+        let cachedPublishedStateRecord = cachedPublishedStateRecord(from: envelope)
 
         appendLog(
-            "Publish \(envelope.kind.rawValue) session=\(builtMessage.sessionPolicy.label) payload=\(builtMessage.payloadLength) url=\(builtMessage.urlString)"
+            "Publish \(envelope.kind.rawValue) session=\(builtMessage.sessionPolicy.label) payload=\(builtMessage.payloadLength) summaryPayload=\(builtMessage.mirroredPayloadLength) url=\(builtMessage.urlString)"
         )
         appendLog("Publish summary: \(builtMessage.summaryText)")
 
@@ -2811,7 +2871,8 @@ final class LobbyDriverViewModel: ObservableObject {
             builtMessage.message,
             into: conversation,
             envelopeKind: envelope.kind,
-            sessionPolicy: builtMessage.sessionPolicy
+            sessionPolicy: builtMessage.sessionPolicy,
+            cachedPublishedStateRecord: cachedPublishedStateRecord
         )
     }
 
@@ -2819,7 +2880,8 @@ final class LobbyDriverViewModel: ObservableObject {
         _ message: MSMessage,
         into conversation: MSConversation,
         envelopeKind: EnvelopeV1.Kind,
-        sessionPolicy: TranscriptSessionPolicy
+        sessionPolicy: TranscriptSessionPolicy,
+        cachedPublishedStateRecord: Data?
     ) {
         let envelopeKindLabel = envelopeKind.rawValue
         let sessionPolicyLabel = sessionPolicy.label
@@ -2832,12 +2894,26 @@ final class LobbyDriverViewModel: ObservableObject {
                         "Error: publish failed kind=\(envelopeKindLabel) session=\(sessionPolicyLabel)"
                     )
                 } else {
+                    if let cachedPublishedStateRecord {
+                        self.cachePublishedStateRecord(cachedPublishedStateRecord)
+                        self.appendLog("Cached published STATE record")
+                    }
                     self.appendLog(
                         "Published kind=\(envelopeKindLabel) session=\(sessionPolicyLabel)"
                     )
                 }
             }
         }
+    }
+
+    private func cachedPublishedStateRecord(from envelope: EnvelopeV1) -> Data? {
+        guard case let .state(payload) = envelope.body else {
+            return nil
+        }
+
+        return try? JSONEncoder().encode(
+            CachedPublishedState(payload: payload, savedAt: Date().timeIntervalSince1970)
+        )
     }
 
     private func summaryLabel(for envelope: EnvelopeV1) -> String {
@@ -3235,6 +3311,7 @@ final class LobbyDriverViewModel: ObservableObject {
     private enum ActiveContextSource {
         case selectedBubble
         case lastSentState
+        case cachedPublishedState
 
         var label: String {
             switch self {
@@ -3242,8 +3319,15 @@ final class LobbyDriverViewModel: ObservableObject {
                 return "selectedBubble"
             case .lastSentState:
                 return "lastSentState"
+            case .cachedPublishedState:
+                return "cachedPublishedState"
             }
         }
+    }
+
+    private struct CachedPublishedState: Codable {
+        let payload: String
+        let savedAt: TimeInterval
     }
 
     private enum SendError: LocalizedError {

@@ -20,6 +20,7 @@ enum TranscriptPayloadSource: Equatable {
     case url
     case summaryFallback
     case local
+    case localCache
 
     var label: String {
         switch self {
@@ -29,6 +30,8 @@ enum TranscriptPayloadSource: Equatable {
             return "summary fallback"
         case .local:
             return "local"
+        case .localCache:
+            return "local cache"
         }
     }
 }
@@ -54,6 +57,7 @@ struct TranscriptBuiltMessage {
     let message: MSMessage
     let urlString: String
     let payloadLength: Int
+    let mirroredPayloadLength: Int
     let summaryText: String
     let layoutCaption: String
     let sessionPolicy: TranscriptSessionPolicy
@@ -127,15 +131,28 @@ enum TranscriptTransportSupport {
         message.layout = layout
 
         if includeSummaryPayloadMirror {
-            message.summaryText = "\(summaryPayloadPrefix)\(encodedEnvelope)"
+            message.summaryText = "\(summaryLabel)\n\(summaryPayloadPrefix)\(encodedEnvelope)"
         } else {
             message.summaryText = summaryLabel
+        }
+
+        let mirroredPayloadLength: Int
+        if
+            let mirroredPayload = mirroredPayloadValue(
+                from: message.summaryText,
+                summaryPayloadPrefix: summaryPayloadPrefix
+            )
+        {
+            mirroredPayloadLength = mirroredPayload.count
+        } else {
+            mirroredPayloadLength = 0
         }
 
         return TranscriptBuiltMessage(
             message: message,
             urlString: url.absoluteString,
             payloadLength: encodedEnvelope.count,
+            mirroredPayloadLength: mirroredPayloadLength,
             summaryText: message.summaryText ?? "-",
             layoutCaption: caption,
             sessionPolicy: sessionPolicy
@@ -156,16 +173,10 @@ enum TranscriptTransportSupport {
             return nil
         }
 
-        guard
-            let summaryText,
-            summaryText.hasPrefix(summaryPayloadPrefix)
-        else {
-            return nil
-        }
-
-        let start = summaryText.index(summaryText.startIndex, offsetBy: summaryPayloadPrefix.count)
-        let payload = String(summaryText[start...])
-        guard !payload.isEmpty else {
+        guard let payload = mirroredPayloadValue(
+            from: summaryText,
+            summaryPayloadPrefix: summaryPayloadPrefix
+        ) else {
             return nil
         }
 
@@ -226,5 +237,25 @@ enum TranscriptTransportSupport {
         return components.queryItems?
             .first(where: { $0.name == "payload" })?
             .value
+    }
+
+    private static func mirroredPayloadValue(
+        from summaryText: String?,
+        summaryPayloadPrefix: String
+    ) -> String? {
+        guard
+            let summaryText,
+            let prefixRange = summaryText.range(of: summaryPayloadPrefix)
+        else {
+            return nil
+        }
+
+        let payloadStart = prefixRange.upperBound
+        let payload = String(summaryText[payloadStart...])
+        guard !payload.isEmpty else {
+            return nil
+        }
+
+        return payload
     }
 }
