@@ -34,6 +34,12 @@ GitHub Actions mirrors this practical gate in `.github/workflows/ci.yml`.
   - run the full Practical Gate
   - run the Manual Simulator Runbook context check
   - run the Real Device Messages Lifecycle checklist
+- Any same-bubble recovery, board responsiveness, or setup-road interaction change:
+  - run the full Practical Gate
+  - run the Manual Simulator Runbook smoke pass
+  - run the Real Device Messages Lifecycle checklist
+  - run the Real Device Turn-Taking Smoke checklist
+  - run the Real Device UX Hardening checklist
 - Any new gameplay flow in the product UI:
   - run the full Practical Gate
   - run the relevant targeted simulator check
@@ -111,6 +117,15 @@ Run this after any action-flow change that affects turns, trades, robber, or dev
    - `Trade pending`
 6. Confirm no bubble or context step silently drops during cross-device play.
 
+### Real Device UX Hardening
+
+Run this during phase-12 hardening or after any change to same-bubble recovery, board responsiveness, or setup-road interaction.
+
+1. Stay on the same selected bubble while the other device publishes a newer state, then confirm the current device either refreshes automatically or exposes a visible reload or refresh path outside the debug HUD.
+2. During setup road placement, tap near the just-placed settlement endpoint and confirm the intended legal road can still be selected without hunting for a tiny mid-edge target.
+3. Toggle setup, build, and turn overlays several times on both devices and confirm board updates remain responsive rather than visibly rebuilding or hitching.
+4. Pan and zoom after those updates and confirm responsiveness does not degrade noticeably on either device.
+
 ### Debug-Only Transport Triage
 
 Use this only when a selected transcript bubble does not open context on hardware.
@@ -160,7 +175,7 @@ Use this only when a selected transcript bubble does not open context on hardwar
 ## Remaining High-Value Gaps
 
 - no automated transcript-level Messages UI checks yet
-- no snapshot regression coverage around the current production board UI yet
+- snapshot regression substrate exists, but production board and bubble visual assertions are still shallow
 - no automated real-device lane; hardware validation is still manual
 
 ## Manual Simulator Runbook

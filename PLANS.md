@@ -22,6 +22,8 @@ An ExecPlan must be:
 - **self-contained**: do not rely on chat memory or unstated context
 - **concrete**: name the commands, files, checks, and expected outcomes
 - **living**: update it when the plan changes or new facts are discovered
+- **active plans are mandatory context**: if a relevant ExecPlan already exists under `docs/exec-plans/active/`, read it before planning or implementation begins and use it as the working spec
+- **active plans must stay current**: update the relevant ExecPlan whenever milestones land, scope changes, validation status changes, or new decisions and discoveries materially affect the work
 - **outcome-oriented**: explain what the work should enable, not just which files change
 - **readable**: define repo-specific terms and avoid unexplained jargon
 
@@ -55,6 +57,7 @@ Every active ExecPlan should contain these sections in order unless a section is
 6. `Progress`
    - Use checkboxes for major milestones.
    - Record the date when a milestone is completed.
+   - Record how each milestone was reached and what issues were faced. i.e. where did the agent struggle/need to loop.
 7. `Decisions and Discoveries`
    - Important decisions taken during execution.
    - Surprises, constraints, or deviations from the original plan.
@@ -122,6 +125,31 @@ For this repo, the typical owner docs are:
 - `ARCHITECTURE.md` for the current engine contract
 - `docs/quality/audits/2026-03-engine-readiness.md` for readiness conclusions
 - `docs/quality/qa.md` for the current gate and manual QA
+
+## Planning surfaces
+
+Keep the tracked planning surfaces narrow and non-overlapping:
+
+- `docs/exec-plans/active/*.md`: live execution truth for in-flight multi-step work
+- `docs/exec-plans/completed/*.md`: historical reconstruction only
+- `docs/exec-plans/roadmap.md`: coarse sequencing after the current active phase
+- `docs/exec-plans/tech-debt-tracker.md`: durable follow-up debt that should survive the current phase
+- `CHANGELOG.md`: retrospective evidence and human-readable phase history, not live execution state
+
+If a fact changes, update the surface that owns that fact instead of copying it into every doc.
+
+## Update discipline
+
+Keep planning docs current in the same slice as the code or behavior change:
+
+- active phase scope, blockers, validation status, or execution findings change:
+  - update the relevant active ExecPlan
+- future sequencing changes:
+  - update `docs/exec-plans/roadmap.md`
+- durable cross-phase debt is discovered, re-scoped, or resolved:
+  - update `docs/exec-plans/tech-debt-tracker.md`
+- a phase or major slice fully lands:
+  - update `CHANGELOG.md` and move or complete the active ExecPlan as appropriate
 
 ## Style guidance
 

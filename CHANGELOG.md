@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/roadmap.md` for future sequencing. This file is retrospective evidence, not the source of current implementation status.
+
 ## [Unreleased]
 
 ### Added
@@ -160,7 +162,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CoreGame test organization now separates fast package tests (`ULS_CoreGameTests`) from deterministic full-match evals (`ULS_CoreGameEvals`).
 - Phase 11 board geometry follow-up: render geometry now uses a regular hex basis and the board layout derives tile radius from the actual center-to-corner distance, keeping visible tiles aligned with the node and edge lattice.
 - Phase 12 docs follow-up: the tracked docs now reflect that stages 12.1 through 12.6 are landed, with flow hardening and real-device signoff as the remaining active gameplay-flow slice.
-- Docs upkeep follow-up: the tracked docs now explicitly require stage-end owner-doc updates, and README/QA wording reflects that the product shell is primary while phase 12 waits only on hardware signoff.
+- Docs upkeep follow-up: the tracked docs now explicitly require stage-end owner-doc updates, and README/QA wording reflects that the product shell is primary while phase 12 remains in late hardening plus the required hardware pass.
 
 ### Removed
 - Separate `docs/index.md` and split `docs/architecture/*` tracked entrypoints; the repo now uses `README.md` as the tracked entrypoint and root `ARCHITECTURE.md` as the single architecture document.

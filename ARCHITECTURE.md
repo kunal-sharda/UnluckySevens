@@ -114,7 +114,7 @@ The Messages UX uses two session patterns:
 - one `MSSession` per game for canonical `STATE` updates so the main game bubble stays grouped
 - a fresh `MSSession` per trade offer so offers appear as distinct bubbles
 
-The protocol source of truth is the message URL payload. Any simulator-only fallback behavior is debug support, not canonical protocol behavior.
+The protocol source of truth is the message URL payload. Any debug-build fallback behavior is debug support, not canonical protocol behavior.
 
 ## Invariants That Shape the Codebase
 
