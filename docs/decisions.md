@@ -3,15 +3,17 @@
 This file records **locked product + architecture decisions** for the MVP.  
 If a change is desired, update this file **first**, then update code/tests.
 
-**Last updated:** 2026-03-01
+**Last updated:** 2026-04-08
 
 ---
 
-## 1) Product scope
+## 1) Product scope and packaging
 
 - MVP is **full standard Catan** (base game) inside iMessage: setup → normal turns → win at 10 VP.
 - No custom “twists” or house rules in MVP (twists come later).
 - Platform: iOS + iPadOS (Messages).
+- Product distribution target: **standalone iMessage app**.
+- The current repo may still carry a minimal containing-app shell for development or transitional project-shape reasons, but the intended shipped product is **only accessible within Messages**.
 
 ---
 

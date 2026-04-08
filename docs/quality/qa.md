@@ -64,7 +64,7 @@ Treat this matrix as the baseline for async gameplay validation.
 
 Run this after shell, layout, presentation, or mode-system changes.
 
-1. Install and launch the host app on both devices.
+1. Install the current development build on both devices. In the current repo shape this may still happen through the minimal containing-app shell, but the intended product surface is the Messages app drawer.
 2. Open Messages and confirm Unlucky Sevens appears in the app drawer on both devices.
 3. Open the same conversation between the two accounts.
 4. Open an existing canonical `STATE` bubble and confirm the extension requests expanded presentation and the shell renders:
@@ -184,7 +184,7 @@ Use the current product shell for one smoke pass and three targeted checks. Keep
 ### Smoke Pass
 
 1. Run the Practical Gate commands.
-2. Launch the host app and Messages in the simulator.
+2. Launch the current development build if needed to install the extension, then open Messages in the simulator.
 3. In Messages, create or open a thread and launch Unlucky Sevens.
 4. Tap `Invite New Game`, then verify a lobby `STATE` bubble appears and the extension decodes it as active context.
 5. Tap `Join` from another simulated actor path if available, then `Start Game`.

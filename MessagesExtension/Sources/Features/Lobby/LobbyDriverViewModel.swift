@@ -107,7 +107,11 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private var allowSummaryPayloadFallback: Bool {
+        #if DEBUG
+        true
+        #else
         false
+        #endif
     }
 
     var canInvite: Bool {
@@ -3056,7 +3060,7 @@ final class LobbyDriverViewModel: ObservableObject {
             session: session(for: resolvedPolicy),
             sessionPolicy: resolvedPolicy,
             summaryPayloadPrefix: summaryPayloadPrefix,
-            includeSummaryPayloadMirror: false
+            includeSummaryPayloadMirror: allowSummaryPayloadFallback
         )
         let cachedPublishedStateRecord = cachedPublishedStateRecord(from: envelope)
 

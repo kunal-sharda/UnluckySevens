@@ -37,6 +37,7 @@ Why this phase exists:
 
 Scope:
 
+- migrate from the current containing-app development shell to the intended standalone iMessage app packaging/distribution model
 - reliable reload / active-game sync and same-bubble recovery
 - transcript readability / collapse behavior and latest-bubble UX
 - transcript-authoritative multiplayer ledger instead of device-local pending joins
@@ -69,6 +70,7 @@ Scope:
 - deliberate dispute mode for full audit inspection
 - clearer win-state and final game summary presentation
 - transcript bubble readability and trust-surface polish for lobby and in-game states
+- explicit multi-game lifecycle UX: identify which game a bubble belongs to, browse active games in the thread, and support leave/archive/forfeit flows instead of assuming one forever-active match
 
 Primary debt links:
 

@@ -20,7 +20,7 @@ There are three runtime layers:
 3. `MessagesExtension`
    - iMessage lifecycle, transcript selection, message send/receive orchestration, and UI rendering
 
-The minimal host app exists only to run the Messages extension in development and on device.
+The current repo still carries a minimal containing-app shell to run the Messages extension during development and device testing. That shell is not the intended shipped product surface; the locked distribution target is a standalone iMessage app that is only accessible from Messages.
 
 ## Dependency Direction
 
