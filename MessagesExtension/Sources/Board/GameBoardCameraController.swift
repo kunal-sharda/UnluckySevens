@@ -9,7 +9,7 @@ struct GameBoardCameraState: Equatable {
 enum GameBoardCameraController {
     static let minZoom: CGFloat = 1.0
     static let maxZoom: CGFloat = 2.4
-    private static let edgeEndpointExclusionFraction: CGFloat = 0.2
+    fileprivate static let edgeEndpointExclusionFraction: CGFloat = 0.2
 
     static func clampedZoom(_ proposed: CGFloat) -> CGFloat {
         min(max(proposed, minZoom), maxZoom)
@@ -67,13 +67,29 @@ enum GameBoardCameraController {
         at location: CGPoint,
         state: GameBoardCameraState,
         renderModel: GameBoardRenderModel,
+        overlayModel: GameBoardOverlayModel,
+        interactionMode: GameMode,
         viewportSize: CGSize
     ) -> GameBoardTarget? {
         let layout = GameBoardLayout(size: viewportSize, geometry: renderModel.geometry)
         let boardPoint = inverseTransformedPoint(location, state: state, viewportSize: viewportSize)
+        let selectionContext = SelectionContext(
+            interactionMode: interactionMode,
+            overlayModel: overlayModel
+        )
         let candidates = [
-            nearestNode(to: boardPoint, layout: layout, count: renderModel.geometry.nodePositions.count),
-            nearestEdge(to: boardPoint, layout: layout, topology: renderModel.topology),
+            nearestNode(
+                to: boardPoint,
+                layout: layout,
+                count: renderModel.geometry.nodePositions.count,
+                selectionContext: selectionContext
+            ),
+            nearestEdge(
+                to: boardPoint,
+                layout: layout,
+                topology: renderModel.topology,
+                selectionContext: selectionContext
+            ),
             nearestTile(to: boardPoint, layout: layout, count: renderModel.tiles.count),
         ]
         .compactMap { $0 }
@@ -103,8 +119,13 @@ enum GameBoardCameraController {
     private static func nearestNode(
         to point: CGPoint,
         layout: GameBoardLayout,
-        count: Int
+        count: Int,
+        selectionContext: SelectionContext
     ) -> HitCandidate? {
+        guard !selectionContext.prefersSetupRoadEdges else {
+            return nil
+        }
+
         let threshold = max(layout.structureRadius * 1.2, 14)
         var best: (id: Int, distance: CGFloat)?
 
@@ -130,14 +151,19 @@ enum GameBoardCameraController {
     private static func nearestEdge(
         to point: CGPoint,
         layout: GameBoardLayout,
-        topology: BoardGraphV1
+        topology: BoardGraphV1,
+        selectionContext: SelectionContext
     ) -> HitCandidate? {
-        let threshold = max(layout.roadWidth * 1.35, 12)
+        let threshold = selectionContext.edgeThreshold(layout: layout)
         var best: (id: Int, distance: CGFloat)?
 
         for edgeID in topology.edges.indices {
             let edgeLine = layout.edgeLine(for: edgeID, topology: topology)
             let projection = projectedPoint(point, onSegmentFrom: edgeLine.start, to: edgeLine.end)
+            let edgeEndpointExclusionFraction = selectionContext.edgeEndpointExclusionFraction(
+                for: edgeID,
+                topology: topology
+            )
             guard projection.t >= edgeEndpointExclusionFraction,
                   projection.t <= (1 - edgeEndpointExclusionFraction) else {
                 continue
@@ -157,7 +183,7 @@ enum GameBoardCameraController {
         return HitCandidate(
             target: .edge(best.id),
             score: best.distance / threshold,
-            priority: 1
+            priority: selectionContext.prefersSetupRoadEdges ? 0 : 1
         )
     }
 
@@ -212,8 +238,45 @@ enum GameBoardCameraController {
     }
 }
 
+private struct SelectionContext {
+    let interactionMode: GameMode
+    let overlayModel: GameBoardOverlayModel
+
+    var prefersSetupRoadEdges: Bool {
+        interactionMode == .setup
+            && overlayModel.anchorNodeID != nil
+            && !overlayModel.legalEdgeIDs.isEmpty
+            && overlayModel.legalNodeIDs.isEmpty
+    }
+
+    func edgeThreshold(layout: GameBoardLayout) -> CGFloat {
+        if prefersSetupRoadEdges {
+            return max(layout.roadWidth * 1.7, 16)
+        }
+        return max(layout.roadWidth * 1.35, 12)
+    }
+
+    func edgeEndpointExclusionFraction(
+        for edgeID: EdgeID,
+        topology: BoardGraphV1
+    ) -> CGFloat {
+        guard prefersSetupRoadEdges else {
+            return GameBoardCameraController.edgeEndpointExclusionFraction
+        }
+
+        guard
+            overlayModel.legalEdgeIDs.contains(edgeID),
+            let anchorNodeID = overlayModel.anchorNodeID
+        else {
+            return GameBoardCameraController.edgeEndpointExclusionFraction
+        }
+
+        return topology.edges(incidentTo: anchorNodeID).contains(edgeID) ? 0.02 : 0.12
+    }
+}
+
 private struct HitCandidate {
     let target: GameBoardTarget
     let score: CGFloat
     let priority: Int
-    }
+}

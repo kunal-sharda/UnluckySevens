@@ -3,48 +3,89 @@ import SpriteKit
 import ULS_CoreGame
 
 final class GameBoardScene: SKScene {
+    private let baseContentNode = SKNode()
+    private let overlayContentNode = SKNode()
+
     override init(size: CGSize) {
         super.init(size: size)
         scaleMode = .resizeFill
         backgroundColor = .clear
+        configureSceneRoots()
     }
 
     required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         scaleMode = .resizeFill
         backgroundColor = .clear
+        configureSceneRoots()
     }
 
     func update(renderModel: GameBoardRenderModel, size: CGSize, overlayModel: GameBoardOverlayModel) {
+        updateBase(renderModel: renderModel, size: size)
+        updateOverlay(renderModel: renderModel, size: size, overlayModel: overlayModel)
+    }
+
+    func updateBase(renderModel: GameBoardRenderModel, size: CGSize) {
         self.size = size
-        removeAllChildren()
+        baseContentNode.removeAllChildren()
 
         let layout = GameBoardLayout(size: size, geometry: renderModel.geometry)
-        addChild(makeBoardBackdrop(size: size))
+        baseContentNode.addChild(makeBoardBackdrop(size: size))
 
         for tile in renderModel.tiles {
-            addChild(makeTileNode(tile: tile, layout: layout))
+            baseContentNode.addChild(makeTileNode(tile: tile, layout: layout))
         }
 
         for port in renderModel.ports {
-            addChild(makePortNode(port: port, layout: layout, topology: renderModel.topology))
+            baseContentNode.addChild(makePortNode(port: port, layout: layout, topology: renderModel.topology))
         }
 
         for road in renderModel.roads {
-            addChild(makeRoadNode(road: road, layout: layout, topology: renderModel.topology, playerOrder: renderModel.playerOrder))
+            baseContentNode.addChild(
+                makeRoadNode(
+                    road: road,
+                    layout: layout,
+                    topology: renderModel.topology,
+                    playerOrder: renderModel.playerOrder
+                )
+            )
         }
 
         for structure in renderModel.structures {
-            addChild(makeStructureNode(structure: structure, layout: layout, playerOrder: renderModel.playerOrder))
+            baseContentNode.addChild(
+                makeStructureNode(
+                    structure: structure,
+                    layout: layout,
+                    playerOrder: renderModel.playerOrder
+                )
+            )
         }
+    }
 
-        addChild(
+    func updateOverlay(renderModel: GameBoardRenderModel, size: CGSize, overlayModel: GameBoardOverlayModel) {
+        self.size = size
+        overlayContentNode.removeAllChildren()
+
+        let layout = GameBoardLayout(size: size, geometry: renderModel.geometry)
+        overlayContentNode.addChild(
             makeOverlayNode(
                 overlayModel: overlayModel,
                 layout: layout,
                 topology: renderModel.topology
             )
         )
+    }
+
+    var debugBaseNodeIdentifier: ObjectIdentifier {
+        ObjectIdentifier(baseContentNode)
+    }
+
+    var debugBaseChildCount: Int {
+        baseContentNode.children.count
+    }
+
+    var debugOverlayChildCount: Int {
+        overlayContentNode.children.count
     }
 
     private func makeBoardBackdrop(size: CGSize) -> SKNode {
@@ -287,6 +328,15 @@ final class GameBoardScene: SKScene {
         node.zPosition = 90
         let denseNodeHighlights = overlayModel.legalNodeIDs.count > 10
 
+        if let anchorNodeID = overlayModel.anchorNodeID {
+            node.addChild(
+                makeAnchorHighlightNode(
+                    at: layout.nodePoint(for: anchorNodeID),
+                    radius: layout.structureRadius
+                )
+            )
+        }
+
         for tileID in overlayModel.legalTileIDs {
             node.addChild(
                 makeTileHighlightNode(
@@ -351,6 +401,29 @@ final class GameBoardScene: SKScene {
                 break
             }
         }
+
+        return node
+    }
+
+    private func makeAnchorHighlightNode(
+        at center: CGPoint,
+        radius: CGFloat
+    ) -> SKNode {
+        let node = SKNode()
+        node.position = center
+        node.zPosition = 1
+
+        let halo = SKShapeNode(circleOfRadius: radius + 7)
+        halo.fillColor = GameBoardPalette.legalHighlightFill.withAlphaComponent(0.18)
+        halo.strokeColor = GameBoardPalette.selectedHighlight.withAlphaComponent(0.88)
+        halo.lineWidth = 3
+        node.addChild(halo)
+
+        let ring = SKShapeNode(circleOfRadius: radius + 13)
+        ring.fillColor = .clear
+        ring.strokeColor = GameBoardPalette.selectedHighlight.withAlphaComponent(0.34)
+        ring.lineWidth = 1.6
+        node.addChild(ring)
 
         return node
     }
@@ -491,5 +564,18 @@ final class GameBoardScene: SKScene {
         }
 
         return path
+    }
+
+    private func configureSceneRoots() {
+        baseContentNode.zPosition = 0
+        overlayContentNode.zPosition = 90
+
+        if baseContentNode.parent == nil {
+            addChild(baseContentNode)
+        }
+
+        if overlayContentNode.parent == nil {
+            addChild(overlayContentNode)
+        }
     }
 }

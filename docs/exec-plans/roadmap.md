@@ -20,18 +20,45 @@ Do not put day-to-day execution notes here. If a future phase becomes active, cr
 - Status: active
 - Why it is still the gate:
   - real two-device Messages play is not signed off yet
-  - same-bubble recovery, board responsiveness, and setup-road ergonomics still need hardening on hardware
-  - host start and turn rotation must continue to prove out from real participant identity instead of debug fallback behavior
+  - product authority still needs final hardware confirmation from real joined participant identity
+  - board responsiveness still needs final hardware confirmation after the lag cleanup pass
 
 Do not start the next phase until the remaining 12.7 issues are either closed or explicitly promoted out of 12.7 as follow-on work.
 
 ## Sequenced Next Phases
 
-### Phase 13 — Recap, History, Dispute, and Bubble Trust Surfaces
+### Phase 13 — Messages Host Stability and Recovery
 
 Why this phase exists:
 
-- phase 12 already treats recap/history/dispute UX as the next product slice
+- phase 12 intentionally leaves reload / active-game sync and transcript collapse behavior unresolved on the clean branch
+- the current repo still carries real Messages host-boundary risk around transcript carriers, reopen behavior, and multiplayer durability
+- the active debt already clusters around join authority, transport durability, and host-boundary regression coverage
+
+Scope:
+
+- reliable reload / active-game sync and same-bubble recovery
+- transcript readability / collapse behavior and latest-bubble UX
+- transcript-authoritative multiplayer ledger instead of device-local pending joins
+- compact-token plus durable rehydration direction if full-state carrier fidelity remains unstable
+- operator-assisted Messages host-boundary regression harness
+
+Not this phase:
+
+- recap/history/dispute UX
+- deep test-architecture cleanup
+- broad visual restyling unrelated to host stability
+
+Entry criteria:
+
+- phase 12 gameplay flows are usable on real devices without relying on debug-first flow advancement
+- the clean branch is product-safe enough that host-stability work can proceed without debug leakage muddying outcomes
+
+### Phase 14 — Recap, History, Dispute, and Trust Surfaces
+
+Why this phase exists:
+
+- once host stability is in place, the next product slice is recap/history/dispute and clearer trust surfaces
 - [docs/decisions.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/decisions.md) already locks the intended audit-log behavior
 - [docs/product-specs/ui-flows.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/product-specs/ui-flows.md) already defines the player-facing recap/history/dispute expectations
 
@@ -43,35 +70,9 @@ Scope:
 - clearer win-state and final game summary presentation
 - transcript bubble readability and trust-surface polish for lobby and in-game states
 
-Not this phase:
-
-- protocol redesign
-- Messages host-boundary transport rework
-- deep test-architecture cleanup
-
-Entry criteria:
-
-- phase 12 gameplay flows are usable on real devices without relying on debug-first flow advancement
-
-### Phase 14 — Multiplayer Authority and Messages Host Hardening
-
-Why this phase exists:
-
-- the current repo still carries real Messages host-boundary risk around transcript carriers, reopen behavior, and multiplayer authority
-- the current debt already clusters around join authority, transport durability, and host-boundary regression coverage
-
-Scope:
-
-- replace device-local pending joins as the primary roster source with transcript-authoritative multiplayer authority
-- move away from relying on full-state transcript carriers alone if Messages host fidelity continues to be unstable
-- harden same-bubble recovery and product-visible reload behavior if 12.7 does not fully close them
-- add an operator-assisted regression harness for the Messages host boundary
-
 Primary debt links:
 
 - [TD-001](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
-- [TD-005](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
-- [TD-006](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
 
 ### Phase 15 — Extension Decomposition, Test Architecture, and Performance Stabilization
 
@@ -79,7 +80,7 @@ Why this phase exists:
 
 - `MessagesExtension` is still too centralized around a few orchestration surfaces
 - duplicated-source test architecture is still a structural maintenance tax
-- board redraw/update responsiveness is still tightly coupled to feature orchestration
+- host-stability and product-safety work will leave behind cleanup that should not stay mixed into feature code
 
 Scope:
 
@@ -93,6 +94,8 @@ Primary debt links:
 - [TD-002](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
 - [TD-003](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
 - [TD-004](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
+- [TD-005](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
+- [TD-006](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
 
 ## Not Yet Phased
 

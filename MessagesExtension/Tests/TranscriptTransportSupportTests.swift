@@ -102,6 +102,17 @@ final class TranscriptTransportSupportTests: XCTestCase {
         XCTAssertEqual(decoded?.source, .url)
     }
 
+    func testResolveSessionPolicyLeavesRequestedPolicyAloneWhenDebugOverrideDisabled() {
+        let policy = TranscriptTransportSupport.resolveSessionPolicy(
+            requestedPolicy: .new,
+            envelopeKind: .intent,
+            useSingleSessionDebug: false,
+            currentGameId: "game-1"
+        )
+
+        XCTAssertEqual(policy, .new)
+    }
+
     private func jsonString<T: Encodable>(_ value: T) throws -> String {
         let data = try JSONEncoder().encode(value)
         guard let string = String(data: data, encoding: .utf8) else {

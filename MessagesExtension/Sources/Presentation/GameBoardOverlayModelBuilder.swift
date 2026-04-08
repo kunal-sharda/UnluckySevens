@@ -14,11 +14,13 @@ enum GameBoardOverlayModelBuilder {
         let legalTiles = legalTileIDs(state: state, actingAs: actingAs, mode: mode)
         let legalNodes = legalNodeIDs(state: state, actingAs: actingAs, mode: mode)
         let legalEdges = legalEdgeIDs(state: state, actingAs: actingAs, mode: mode)
+        let anchorNodeID = setupAnchorNodeID(state: state, mode: mode)
 
         let overlay = GameBoardOverlayModel(
             legalTileIDs: legalTiles,
             legalNodeIDs: legalNodes,
             legalEdgeIDs: legalEdges,
+            anchorNodeID: anchorNodeID,
             selectedTarget: nil
         )
 
@@ -35,8 +37,23 @@ enum GameBoardOverlayModelBuilder {
             legalTileIDs: legalTiles,
             legalNodeIDs: legalNodes,
             legalEdgeIDs: legalEdges,
+            anchorNodeID: anchorNodeID,
             selectedTarget: normalizedSelection
         )
+    }
+
+    private static func setupAnchorNodeID(
+        state: CoreGameStateV1,
+        mode: GameMode
+    ) -> NodeID? {
+        guard
+            mode == .setup,
+            state.setupState?.step == .placeRoad
+        else {
+            return nil
+        }
+
+        return state.setupState?.lastPlacedSettlementNode
     }
 
     private static func legalTileIDs(

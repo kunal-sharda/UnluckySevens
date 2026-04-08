@@ -53,7 +53,7 @@ enum GameMode: Equatable {
         case .idle:
             return ""
         case .setup:
-            return "Tap the highlighted placement to continue setup."
+            return "Tap the highlighted road connected to the settlement you just placed."
         case .buildRoad:
             return "Tap a highlighted edge to build a road."
         case .buildSettlement:

@@ -12,11 +12,6 @@ struct LobbyShellView: View {
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: GameTheme.sectionSpacing) {
-                    HStack {
-                        Spacer()
-                        DebugHUDView(viewModel: viewModel)
-                    }
-
                     GameHeaderView(
                         model: GameHeaderModel(
                             statusLine: GameShellStatusLine(
@@ -171,14 +166,7 @@ struct LobbyShellView: View {
     }
 
     private var contextActions: some View {
-        HStack(spacing: GameTheme.inlineSpacing) {
-            if viewModel.canReloadSelectedBubble {
-                Button("Reload") {
-                    viewModel.reloadSelectedBubble()
-                }
-                .buttonStyle(.bordered)
-            }
-        }
+        EmptyView()
     }
 
     private func warningCard(text: String) -> some View {

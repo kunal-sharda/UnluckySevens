@@ -56,6 +56,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var activeContextSource: String = "-"
     @Published var activeContextUpdatedAgo: String = "-"
     @Published var staleContextWarning: String = "-"
+    @Published var latestUpdateNotice: String = "-"
     @Published var uiLog: [String] = []
     @Published var boardStrategy: BoardGenStrategyV1
     @Published var boardHash: String = "-"
@@ -76,16 +77,24 @@ final class LobbyDriverViewModel: ObservableObject {
     private let lastPublishedStateKey = "uls.lastPublishedState"
     private let lastPublishedStateMaxAge: TimeInterval = 600
     private let userDefaults: UserDefaults
+    private let diagnosticsEnabled = false
+    private let allowsRuntimeDebugControls = false
+    private let allowsCachedPublishedStateRecovery = false
+    private let showsLatestUpdateNotices = false
 
     private weak var activeConversation: MSConversation?
     private var selectedState: CoreGameStateV1?
     private var selectedJoinIntent: JoinIntentV1?
     private var selectedSetupIntent: SetupPlacementIntentV1?
     private var selectedTurnIntent: ULS_Transport.TurnIntentV1?
-    private var latestSelectedState: CoreGameStateV1?
+    private var latestKnownStatesByGameId: [String: CoreGameStateV1] = [:]
+    private var latestUpdateNoticeToken: Int = 0
     private var activeUpdatedAt: Date?
     private var activeSource: ActiveContextSource?
     private var stateSessionsByGameId: [String: MSSession] = [:]
+    private var lastResolvedSelectionSignature: String?
+    private var cachedGameScreenModelKey: GameScreenModelCacheKey?
+    private var cachedGameScreenModelValue: GameScreenModel?
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
@@ -98,11 +107,7 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private var allowSummaryPayloadFallback: Bool {
-        #if DEBUG
-        true
-        #else
         false
-        #endif
     }
 
     var canInvite: Bool {
@@ -131,16 +136,32 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     var gameScreenModel: GameScreenModel {
-        GameScreenModelBuilder.build(
-            context: GameScreenContext(
-                selectedState: selectedState,
-                actingAs: localActorIdentifier(),
-                contextBanner: activeContextBanner,
-                contextMeta: activeContextMeta,
-                actionAvailability: shellActionAvailability,
-                modeAvailability: shellModeAvailability
-            )
+        let context = GameScreenContext(
+            selectedState: selectedState,
+            actingAs: localActorIdentifier(),
+            contextBanner: activeContextBanner,
+            contextMeta: activeContextMeta,
+            actionAvailability: shellActionAvailability,
+            modeAvailability: shellModeAvailability
         )
+        let key = GameScreenModelCacheKey(
+            gameId: context.selectedState?.gameId,
+            stateHash: context.selectedState?.stateHash,
+            actor: context.actingAs,
+            contextBanner: context.contextBanner,
+            contextMeta: context.contextMeta,
+            actionAvailability: context.actionAvailability,
+            modeAvailability: context.modeAvailability
+        )
+
+        if let cachedGameScreenModelKey, cachedGameScreenModelKey == key, let cachedGameScreenModelValue {
+            return cachedGameScreenModelValue
+        }
+
+        let model = GameScreenModelBuilder.build(context: context)
+        cachedGameScreenModelKey = key
+        cachedGameScreenModelValue = model
+        return model
     }
 
     var setupGuidanceText: String? {
@@ -234,7 +255,14 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     var actingAsOptions: [String] {
-        selectedState?.roster ?? []
+        guard diagnosticsEnabled else {
+            return []
+        }
+        return selectedState?.roster ?? []
+    }
+
+    var shouldShowDebugHUD: Bool {
+        diagnosticsEnabled
     }
 
     var hasActiveContext: Bool {
@@ -254,6 +282,9 @@ final class LobbyDriverViewModel: ObservableObject {
             return "Source: -"
         }
         let source = activeContextSource == "-" ? "unknown" : activeContextSource
+        guard diagnosticsEnabled else {
+            return "Source: \(source)"
+        }
         let age = activeContextUpdatedAgo == "-" ? "0s ago" : activeContextUpdatedAgo
         return "Source: \(source), updated \(age)"
     }
@@ -267,7 +298,7 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     var canRecordJoin: Bool {
-        selectedJoinIntent != nil
+        diagnosticsEnabled && selectedJoinIntent != nil
     }
 
     var canReloadSelectedBubble: Bool {
@@ -522,7 +553,7 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     var canClearPendingJoins: Bool {
-        currentGameId() != nil
+        diagnosticsEnabled && currentGameId() != nil
     }
 
     var canApplySelectedSetupIntentAsState: Bool {
@@ -562,10 +593,10 @@ final class LobbyDriverViewModel: ObservableObject {
             return ""
         }
         guard let state = selectedState else {
-            return "No Active Context — tap a STATE bubble or press Reload."
+            return "No Active Context — tap a STATE bubble."
         }
         guard let actor = localActorIdentifier() else {
-            return "Choose Acting As from roster."
+            return "This device has not joined the selected game."
         }
         if requiresCurrentPlayer, actor != state.currentPlayer {
             return "Only current player can do this."
@@ -582,33 +613,47 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     func setActingAs(_ actor: String) {
+        guard allowsRuntimeDebugControls else {
+            return
+        }
         actingAs = actor
         refreshParticipantIdentityDebug()
     }
 
     func setUseSingleSessionDebug(_ enabled: Bool) {
+        guard allowsRuntimeDebugControls else {
+            return
+        }
         useSingleSessionDebug = enabled
     }
 
+    @discardableResult
     func updateContext(
         conversation: MSConversation?,
         selectedMessage: MSMessage?,
         trigger: TranscriptSelectionTrigger
-    ) {
+    ) -> Bool {
         activeConversation = conversation
+        if
+            trigger == .selectionPoll,
+            let selectedMessage,
+            let signature = selectionSignature(for: selectedMessage),
+            signature == lastResolvedSelectionSignature
+        {
+            return false
+        }
         refreshActiveContextMetadata()
         refreshParticipantIdentityDebug()
-        decodeSelectedMessage(
+        return decodeSelectedMessage(
             selectedMessage,
-            activationMode: .activateIfMissing,
             trigger: trigger
         )
     }
 
-    func reloadSelectedBubble() {
+    @discardableResult
+    func reloadSelectedBubble() -> Bool {
         decodeSelectedMessage(
             activeConversation?.selectedMessage,
-            activationMode: .force,
             trigger: .reload
         )
     }
@@ -620,6 +665,7 @@ final class LobbyDriverViewModel: ObservableObject {
         activeContextSource = "-"
         activeContextUpdatedAgo = "-"
         staleContextWarning = "-"
+        clearLatestUpdateNotice()
         userDefaults.removeObject(forKey: lastPublishedStateKey)
         if selectedTurnIntent == nil, selectedSetupIntent == nil, selectedJoinIntent == nil {
             resetDisplayedFields()
@@ -708,6 +754,10 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     func recordJoin() {
+        guard diagnosticsEnabled else {
+            setLastError("Debug join tools are disabled on this branch.")
+            return
+        }
         guard let intent = selectedJoinIntent else {
             setLastError("Select a JOIN intent first.")
             return
@@ -807,6 +857,10 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     func clearPendingJoins() {
+        guard diagnosticsEnabled else {
+            setLastError("Debug join tools are disabled on this branch.")
+            return
+        }
         guard let gameId = currentGameId() else {
             setLastError("Select a message with a gameId first.")
             return
@@ -1610,7 +1664,7 @@ final class LobbyDriverViewModel: ObservableObject {
 
     func applySelectedSetupIntentAsState() {
         guard let fromState = selectedState else {
-            setLastError("No Active Context — tap a STATE bubble or press Reload.")
+            setLastError("No Active Context — tap a STATE bubble.")
             return
         }
         guard let setupIntent = selectedSetupIntent else {
@@ -1643,7 +1697,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @discardableResult
     func publishSetupState(for target: GameBoardTarget) -> Bool {
         guard let fromState = selectedState else {
-            setLastError("No Active Context — tap a STATE bubble or press Reload.")
+            setLastError("No Active Context — tap a STATE bubble.")
             return false
         }
 
@@ -1740,7 +1794,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @discardableResult
     func handleDiscardFlowAction() -> Bool {
         guard let state = selectedState else {
-            setLastError("No Active Context — tap a STATE bubble or press Reload.")
+            setLastError("No Active Context — tap a STATE bubble.")
             return false
         }
 
@@ -1960,7 +2014,7 @@ final class LobbyDriverViewModel: ObservableObject {
 
     func applySelectedTurnIntentAsState() {
         guard let fromState = selectedState else {
-            setLastError("No Active Context — tap a STATE bubble or press Reload.")
+            setLastError("No Active Context — tap a STATE bubble.")
             return
         }
         guard let turnIntent = selectedTurnIntent else {
@@ -1993,7 +2047,7 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         guard let fromState = selectedState else {
-            setLastError("No Active Context — tap a STATE bubble or press Reload.")
+            setLastError("No Active Context — tap a STATE bubble.")
             return false
         }
 
@@ -2017,39 +2071,51 @@ final class LobbyDriverViewModel: ObservableObject {
 
     private func decodeSelectedMessage(
         _ message: MSMessage?,
-        activationMode: SelectionActivationMode,
         trigger: TranscriptSelectionTrigger
-    ) {
+    ) -> Bool {
         updateSelectedTransportSnapshot(message, trigger: trigger)
+
+        if
+            trigger == .selectionPoll,
+            let message,
+            let signature = selectionSignature(for: message),
+            signature == lastResolvedSelectionSignature
+        {
+            return false
+        }
 
         guard let message else {
             if selectedState == nil, restoreCachedPublishedStateIfAvailable(trigger: trigger) {
-                return
+                return false
             }
             selectionStatus = "No message selected"
             selectedDecodeResult = selectionStatus
             if selectedState == nil {
-                resetDisplayedFields()
-                refreshPendingJoiners(for: nil)
+                if diagnosticsEnabled {
+                    resetDisplayedFields()
+                    refreshPendingJoiners(for: nil)
+                }
             }
             appendLog("Selection \(trigger.label): no message selected")
-            return
+            return true
         }
 
         guard let encodedEnvelope = payloadValue(from: message) else {
             if selectedState == nil, restoreCachedPublishedStateIfAvailable(trigger: trigger) {
-                return
+                return false
             }
             selectionStatus = "Selected message has no transport payload"
             selectedDecodeResult = selectionStatus
             if selectedState == nil {
-                resetDisplayedFields()
-                refreshPendingJoiners(for: nil)
+                if diagnosticsEnabled {
+                    resetDisplayedFields()
+                    refreshPendingJoiners(for: nil)
+                }
             }
             appendLog(
                 "Selection \(trigger.label): no transport payload url=\(selectedURLPresence) payload=\(selectedPayloadQueryPresence)"
             )
-            return
+            return true
         }
 
         do {
@@ -2058,22 +2124,27 @@ final class LobbyDriverViewModel: ObservableObject {
                 envelope: envelope,
                 message: message,
                 source: encodedEnvelope.source,
-                activationMode: activationMode
+                trigger: trigger
             )
+            lastResolvedSelectionSignature = selectionSignature(for: message)
             selectedDecodeSource = encodedEnvelope.source.label
             selectedDecodeResult = selectionStatus
             appendLog("Selection \(trigger.label): decoded \(envelope.kind.rawValue) via \(encodedEnvelope.source.label)")
             setLastError(nil)
+            return false
         } catch {
             selectionStatus = "Failed to decode selected message"
             selectedDecodeSource = encodedEnvelope.source.label
             selectedDecodeResult = selectionStatus
             if selectedState == nil {
-                resetDisplayedFields()
-                refreshPendingJoiners(for: nil)
+                if diagnosticsEnabled {
+                    resetDisplayedFields()
+                    refreshPendingJoiners(for: nil)
+                }
             }
             setLastError("Decode failed: \(error.localizedDescription)")
             appendLog("Selection \(trigger.label): decode failed via \(encodedEnvelope.source.label)")
+            return false
         }
     }
 
@@ -2081,26 +2152,55 @@ final class LobbyDriverViewModel: ObservableObject {
         envelope: EnvelopeV1,
         message: MSMessage,
         source: TranscriptPayloadSource,
-        activationMode: SelectionActivationMode
+        trigger: TranscriptSelectionTrigger
     ) throws {
         switch envelope.body {
         case let .state(payload):
             let state = try decodePayload(CoreGameStateV1.self, from: payload)
-            latestSelectedState = state
+            latestKnownStatesByGameId = TranscriptStateSelection.recording(
+                state,
+                in: latestKnownStatesByGameId
+            )
             stateSessionsByGameId[state.gameId] = message.session
             selectedJoinIntent = nil
             selectedSetupIntent = nil
             selectedTurnIntent = nil
-            let shouldActivate =
-                activationMode == .force ||
-                (
-                    activationMode == .activateIfMissing &&
-                    (selectedState == nil || activeSource == .lastSentState || activeSource == .cachedPublishedState)
+            let transcriptActiveSource: TranscriptActiveContextSource?
+            switch activeSource {
+            case .selectedBubble:
+                transcriptActiveSource = .selectedBubble
+            case .lastSentState:
+                transcriptActiveSource = .lastSentState
+            case .cachedPublishedState:
+                transcriptActiveSource = .cachedPublishedState
+            case nil:
+                transcriptActiveSource = nil
+            }
+
+            let stateSelection = TranscriptStateSelection.resolve(
+                decodedState: state,
+                latestKnownStatesByGameId: latestKnownStatesByGameId,
+                activeState: selectedState,
+                activeSource: transcriptActiveSource,
+                source: source,
+                trigger: trigger
+            )
+
+            if stateSelection.shouldActivate {
+                setActiveContext(stateSelection.preferredState, source: .selectedBubble)
+            }
+
+            selectionStatus = stateSelection.selectionStatus
+
+            if stateSelection.redirectedToLatestKnown {
+                if stateSelection.shouldShowLatestUpdateNotice {
+                    showLatestUpdateNotice("Opened latest game update.")
+                }
+                appendLog(
+                    "Selection \(trigger.label): redirected stale rev=\(state.rev) -> latest rev=\(stateSelection.preferredState.rev)"
                 )
-            if shouldActivate {
-                setActiveContext(state, source: .selectedBubble)
-            } else {
-                selectionStatus = "Decoded STATE rev\(state.rev) via \(source.label)"
+            } else if stateSelection.shouldShowLatestUpdateNotice {
+                showLatestUpdateNotice("Opened latest game update.")
             }
             appendLog("Decoded STATE rev=\(state.rev)")
             refreshStaleContextWarning()
@@ -2130,6 +2230,10 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func setActiveContext(_ state: CoreGameStateV1, source: ActiveContextSource) {
+        latestKnownStatesByGameId = TranscriptStateSelection.recording(
+            state,
+            in: latestKnownStatesByGameId
+        )
         selectedState = state
         activeSource = source
         activeUpdatedAt = Date()
@@ -2157,13 +2261,13 @@ final class LobbyDriverViewModel: ObservableObject {
         if let local = localParticipantIdentifier(), state.roster.contains(local) {
             actingAs = local
         } else {
-            actingAs = state.currentPlayer
+            actingAs = "-"
         }
     }
 
     private func refreshActiveContextMetadata() {
         activeContextSource = activeSource?.label ?? "-"
-        if let updatedAt = activeUpdatedAt {
+        if diagnosticsEnabled, let updatedAt = activeUpdatedAt {
             let seconds = max(0, Int(Date().timeIntervalSince(updatedAt)))
             activeContextUpdatedAgo = "\(seconds)s ago"
         } else {
@@ -2175,20 +2279,25 @@ final class LobbyDriverViewModel: ObservableObject {
     private func refreshStaleContextWarning() {
         guard
             let active = selectedState,
-            let latest = latestSelectedState,
-            latest.gameId == active.gameId,
+            let latest = TranscriptStateSelection.latestKnownState(
+                for: active.gameId,
+                in: latestKnownStatesByGameId
+            ),
             latest.rev > active.rev
         else {
             staleContextWarning = "-"
             return
         }
-        staleContextWarning = "Active Context is stale. Tap latest STATE bubble and Reload."
+        staleContextWarning = "A newer update is available for this game."
     }
 
     private func updateSelectedTransportSnapshot(
         _ message: MSMessage?,
         trigger: TranscriptSelectionTrigger
     ) {
+        guard diagnosticsEnabled else {
+            return
+        }
         let snapshot = TranscriptTransportSupport.selectionSnapshot(
             for: message,
             summaryPayloadPrefix: summaryPayloadPrefix,
@@ -2207,11 +2316,14 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func refreshParticipantIdentityDebug() {
+        guard diagnosticsEnabled else {
+            return
+        }
         let localParticipant = localParticipantIdentifier()
         let pending = currentPendingJoiners()
 
         localParticipantDebug = localParticipant ?? "-"
-        resolvedActorDebug = localActorIdentifier() ?? "-"
+        resolvedActorDebug = debugActorIdentifier() ?? "-"
         canJoinDebug = canJoin ? "true" : "false"
 
         guard let state = selectedState, let localParticipant else {
@@ -2227,6 +2339,9 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func appendLog(_ message: String) {
+        guard diagnosticsEnabled else {
+            return
+        }
         uiLog.append(message)
         if uiLog.count > 20 {
             uiLog.removeFirst(uiLog.count - 20)
@@ -2236,11 +2351,13 @@ final class LobbyDriverViewModel: ObservableObject {
     private func restoreCachedPublishedStateIfAvailable(
         trigger: TranscriptSelectionTrigger
     ) -> Bool {
+        guard allowsCachedPublishedStateRecovery else {
+            return false
+        }
         guard let cachedState = cachedPublishedState() else {
             return false
         }
 
-        latestSelectedState = cachedState
         setActiveContext(cachedState, source: .cachedPublishedState)
         selectionStatus = "Restored cached STATE rev\(cachedState.rev)"
         selectedDecodeSource = TranscriptPayloadSource.localCache.label
@@ -2251,10 +2368,16 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func cachePublishedStateRecord(_ data: Data) {
+        guard allowsCachedPublishedStateRecovery else {
+            return
+        }
         userDefaults.set(data, forKey: lastPublishedStateKey)
     }
 
     private func cachedPublishedState() -> CoreGameStateV1? {
+        guard allowsCachedPublishedStateRecovery else {
+            return nil
+        }
         guard
             let data = userDefaults.data(forKey: lastPublishedStateKey),
             let cached = try? JSONDecoder().decode(CachedPublishedState.self, from: data)
@@ -2275,11 +2398,43 @@ final class LobbyDriverViewModel: ObservableObject {
         return state
     }
 
+    private func showLatestUpdateNotice(_ message: String) {
+        guard showsLatestUpdateNotices else {
+            return
+        }
+        latestUpdateNoticeToken += 1
+        let token = latestUpdateNoticeToken
+        latestUpdateNotice = message
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            guard let self, self.latestUpdateNoticeToken == token else {
+                return
+            }
+
+            self.latestUpdateNotice = "-"
+        }
+    }
+
+    private func clearLatestUpdateNotice() {
+        guard showsLatestUpdateNotices else {
+            latestUpdateNotice = "-"
+            return
+        }
+        latestUpdateNoticeToken += 1
+        latestUpdateNotice = "-"
+    }
+
     private func shortIdentifier(_ value: String) -> String {
         String(value.prefix(8))
     }
 
     private func render(state: CoreGameStateV1, source: TranscriptPayloadSource) {
+        selectionStatus = "Decoded STATE rev\(state.rev) via \(source.label)"
+        selectedDecodeResult = selectionStatus
+        guard diagnosticsEnabled else {
+            return
+        }
+
         kind = "STATE"
         gameId = state.gameId
         rev = String(state.rev)
@@ -2316,12 +2471,17 @@ final class LobbyDriverViewModel: ObservableObject {
         devDeckRemaining = String(state.devDeck.count)
         visibleDevCards = visibleDevCardsSummary(for: state)
         render(board: state.board)
-        selectionStatus = "Decoded STATE rev\(state.rev) via \(source.label)"
-        selectedDecodeResult = selectionStatus
         refreshPendingJoiners(for: state.gameId)
     }
 
     private func render(joinIntent: JoinIntentV1, source: TranscriptPayloadSource) {
+        rememberPendingJoiner(joinIntent.actor, for: joinIntent.gameId)
+        selectionStatus = "Decoded JOIN intent via \(source.label)"
+        selectedDecodeResult = selectionStatus
+        guard diagnosticsEnabled else {
+            return
+        }
+
         kind = "INTENT(join)"
         gameId = joinIntent.gameId
         rev = String(joinIntent.anchorRev)
@@ -2354,14 +2514,17 @@ final class LobbyDriverViewModel: ObservableObject {
         devDeckRemaining = "-"
         visibleDevCards = "-"
         resetBoardDebugFields()
-        rememberPendingJoiner(joinIntent.actor, for: joinIntent.gameId)
-        selectionStatus = "Decoded JOIN intent via \(source.label)"
-        selectedDecodeResult = selectionStatus
         refreshPendingJoiners(for: joinIntent.gameId)
         appendLog("Decoded INTENT kind=join actor=\(shortIdentifier(joinIntent.actor))")
     }
 
     private func render(setupIntent: SetupPlacementIntentV1, source: TranscriptPayloadSource) {
+        selectionStatus = "Decoded \(setupIntent.kind.rawValue) intent via \(source.label)"
+        selectedDecodeResult = selectionStatus
+        guard diagnosticsEnabled else {
+            return
+        }
+
         kind = "INTENT(\(setupIntent.kind.rawValue))"
         gameId = setupIntent.gameId
         rev = String(setupIntent.anchorRev)
@@ -2403,13 +2566,17 @@ final class LobbyDriverViewModel: ObservableObject {
             setupPlacement = "node: \(node), edge: \(edge)"
         }
         resetBoardDebugFields()
-        selectionStatus = "Decoded \(setupIntent.kind.rawValue) intent via \(source.label)"
-        selectedDecodeResult = selectionStatus
         refreshPendingJoiners(for: setupIntent.gameId)
         appendLog("Decoded INTENT kind=\(setupIntent.kind.rawValue) actor=\(shortIdentifier(setupIntent.actor))")
     }
 
     private func render(turnIntent decodedTurnIntent: ULS_Transport.TurnIntentV1, source: TranscriptPayloadSource) {
+        selectionStatus = "Decoded \(decodedTurnIntent.kind.rawValue) intent via \(source.label)"
+        selectedDecodeResult = selectionStatus
+        guard diagnosticsEnabled else {
+            return
+        }
+
         kind = "INTENT(\(decodedTurnIntent.kind.rawValue))"
         gameId = decodedTurnIntent.gameId
         rev = String(decodedTurnIntent.anchorRev)
@@ -2505,8 +2672,6 @@ final class LobbyDriverViewModel: ObservableObject {
         devDeckRemaining = "-"
         visibleDevCards = "-"
         resetBoardDebugFields()
-        selectionStatus = "Decoded \(decodedTurnIntent.kind.rawValue) intent via \(source.label)"
-        selectedDecodeResult = selectionStatus
         refreshPendingJoiners(for: decodedTurnIntent.gameId)
         appendLog("Decoded INTENT kind=\(decodedTurnIntent.kind.rawValue) actor=\(shortIdentifier(decodedTurnIntent.actor))")
     }
@@ -2532,6 +2697,9 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func resetDisplayedFields() {
+        guard diagnosticsEnabled else {
+            return
+        }
         kind = "-"
         gameId = "-"
         rev = "-"
@@ -2567,6 +2735,9 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func resetBoardDebugFields() {
+        guard diagnosticsEnabled else {
+            return
+        }
         boardHash = "-"
         boardGenerator = "-"
         boardRobberTile = "-"
@@ -2875,7 +3046,7 @@ final class LobbyDriverViewModel: ObservableObject {
         let resolvedPolicy = TranscriptTransportSupport.resolveSessionPolicy(
             requestedPolicy: sessionPolicy,
             envelopeKind: envelope.kind,
-            useSingleSessionDebug: useSingleSessionDebug,
+            useSingleSessionDebug: false,
             currentGameId: currentGameId()
         )
         let builtMessage = try TranscriptTransportSupport.buildMessage(
@@ -2885,7 +3056,7 @@ final class LobbyDriverViewModel: ObservableObject {
             session: session(for: resolvedPolicy),
             sessionPolicy: resolvedPolicy,
             summaryPayloadPrefix: summaryPayloadPrefix,
-            includeSummaryPayloadMirror: true
+            includeSummaryPayloadMirror: false
         )
         let cachedPublishedStateRecord = cachedPublishedStateRecord(from: envelope)
 
@@ -3126,6 +3297,13 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func localActorIdentifier() -> String? {
+        ProductActorResolver.resolve(
+            localParticipant: localParticipantIdentifier(),
+            state: selectedState
+        )
+    }
+
+    private func debugActorIdentifier() -> String? {
         if let state = selectedState, state.roster.contains(actingAs) {
             return actingAs
         }
@@ -3153,6 +3331,9 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func refreshPendingJoiners(for gameId: String?) {
+        guard diagnosticsEnabled else {
+            return
+        }
         guard let gameId else {
             pendingJoiners = "[]"
             refreshParticipantIdentityDebug()
@@ -3269,6 +3450,16 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
+    private func selectionSignature(for message: MSMessage) -> String? {
+        if let urlString = message.url?.absoluteString, !urlString.isEmpty {
+            return "url:\(urlString)"
+        }
+
+        let caption = (message.layout as? MSMessageTemplateLayout)?.caption ?? "-"
+        let summary = message.summaryText ?? "-"
+        return "summary:\(caption)|\(summary)"
+    }
+
     private func successStatus(for kind: ULS_Transport.TurnIntentV1.Kind) -> String {
         switch kind {
         case .rollDice:
@@ -3332,11 +3523,6 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
-    private enum SelectionActivationMode {
-        case activateIfMissing
-        case force
-    }
-
     private enum ActiveContextSource {
         case selectedBubble
         case lastSentState
@@ -3357,6 +3543,16 @@ final class LobbyDriverViewModel: ObservableObject {
     private struct CachedPublishedState: Codable {
         let payload: String
         let savedAt: TimeInterval
+    }
+
+    private struct GameScreenModelCacheKey: Equatable {
+        let gameId: String?
+        let stateHash: String?
+        let actor: String?
+        let contextBanner: String
+        let contextMeta: String
+        let actionAvailability: GameActionAvailability
+        let modeAvailability: GameModeAvailability
     }
 
     private enum SendError: LocalizedError {

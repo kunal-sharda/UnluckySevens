@@ -4,6 +4,7 @@ struct GameShellView: View {
     @ObservedObject var viewModel: LobbyDriverViewModel
     @State private var currentMode: GameMode = .idle
     @State private var selectedBoardTarget: GameBoardTarget?
+    @State private var isBoardInteracting: Bool = false
 
     var body: some View {
         let screenModel = viewModel.gameScreenModel
@@ -23,11 +24,6 @@ struct GameShellView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: GameTheme.sectionSpacing) {
                     VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-                        HStack {
-                            Spacer()
-                            DebugHUDView(viewModel: viewModel)
-                        }
-
                         GameHeaderView(model: screenModel.header)
                     }
 
@@ -35,7 +31,11 @@ struct GameShellView: View {
                         model: selectedBoardModel(screenModel: screenModel, mode: resolvedMode),
                         renderModel: screenModel.boardRenderModel,
                         overlayModel: overlayModel,
+                        interactionMode: resolvedMode,
                         selectionText: overlayModel.selectedTarget?.debugLabel,
+                        onInteractionChanged: { isInteracting in
+                            isBoardInteracting = isInteracting
+                        },
                         onTargetTap: { target in
                             handleBoardTap(target, mode: resolvedMode)
                         }
@@ -86,6 +86,7 @@ struct GameShellView: View {
                 .padding(.bottom, 196)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .scrollDisabled(isBoardInteracting)
         }
         .safeAreaInset(edge: .bottom) {
             GameBottomTrayView(
@@ -129,7 +130,9 @@ struct GameShellView: View {
 
         return GameBoardPlaceholderModel(
             title: mode.title,
-            subtitle: mode.subtitle
+            subtitle: mode == .setup
+                ? (viewModel.setupGuidanceText ?? mode.subtitle)
+                : mode.subtitle
         )
     }
 

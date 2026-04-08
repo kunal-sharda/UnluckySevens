@@ -20,7 +20,7 @@ enum SetupInteractionResolver {
         case .placeSettlement:
             return "Tap a highlighted node to place your settlement."
         case .placeRoad:
-            return "Tap a highlighted edge connected to your new settlement."
+            return "Tap the highlighted road connected to the settlement you just placed."
         case .done:
             return nil
         }

@@ -31,6 +31,8 @@ final class GameBoardCameraControllerTests: XCTestCase {
                 at: layout.nodePoint(for: 0),
                 state: GameBoardCameraState(),
                 renderModel: model,
+                overlayModel: .empty,
+                interactionMode: .idle,
                 viewportSize: viewportSize
             ),
             .node(0)
@@ -41,6 +43,8 @@ final class GameBoardCameraControllerTests: XCTestCase {
                 at: layout.tileCenter(for: 0),
                 state: GameBoardCameraState(),
                 renderModel: model,
+                overlayModel: .empty,
+                interactionMode: .idle,
                 viewportSize: viewportSize
             ),
             .tile(0)
@@ -55,9 +59,54 @@ final class GameBoardCameraControllerTests: XCTestCase {
                 at: transformedMidpoint,
                 state: transformedState,
                 renderModel: model,
+                overlayModel: .empty,
+                interactionMode: .idle,
                 viewportSize: viewportSize
             ),
             .edge(3)
+        )
+    }
+
+    func testSetupRoadModePrefersIncidentEdgeNearSettlementEndpoint() {
+        let model = makeRenderModel()
+        let viewportSize = CGSize(width: 320, height: 240)
+        let layout = GameBoardLayout(size: viewportSize, geometry: model.geometry)
+        let edgeID = 3
+        let anchorNodeID = model.topology.edges[edgeID].a
+        let edgeLine = layout.edgeLine(for: edgeID, topology: model.topology)
+        let anchorPoint = layout.nodePoint(for: anchorNodeID)
+        let startPoint: CGPoint
+        let endPoint: CGPoint
+
+        if distanceBetween(anchorPoint, edgeLine.start) <= distanceBetween(anchorPoint, edgeLine.end) {
+            startPoint = edgeLine.start
+            endPoint = edgeLine.end
+        } else {
+            startPoint = edgeLine.end
+            endPoint = edgeLine.start
+        }
+
+        let nearAnchorPoint = CGPoint(
+            x: startPoint.x + ((endPoint.x - startPoint.x) * 0.05),
+            y: startPoint.y + ((endPoint.y - startPoint.y) * 0.05)
+        )
+
+        XCTAssertEqual(
+            GameBoardCameraController.hitTarget(
+                at: nearAnchorPoint,
+                state: GameBoardCameraState(),
+                renderModel: model,
+                overlayModel: GameBoardOverlayModel(
+                    legalTileIDs: [],
+                    legalNodeIDs: [],
+                    legalEdgeIDs: [edgeID],
+                    anchorNodeID: anchorNodeID,
+                    selectedTarget: nil
+                ),
+                interactionMode: .setup,
+                viewportSize: viewportSize
+            ),
+            .edge(edgeID)
         )
     }
 
@@ -117,5 +166,11 @@ final class GameBoardCameraControllerTests: XCTestCase {
             x: center.x + ((point.x - center.x) * state.zoom) + state.offset.width,
             y: center.y + ((point.y - center.y) * state.zoom) + state.offset.height
         )
+    }
+
+    private func distanceBetween(_ lhs: CGPoint, _ rhs: CGPoint) -> CGFloat {
+        let dx = lhs.x - rhs.x
+        let dy = lhs.y - rhs.y
+        return sqrt((dx * dx) + (dy * dy))
     }
 }

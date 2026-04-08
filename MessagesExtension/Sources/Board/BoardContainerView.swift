@@ -4,7 +4,9 @@ struct BoardContainerView: View {
     let model: GameBoardPlaceholderModel
     let renderModel: GameBoardRenderModel?
     let overlayModel: GameBoardOverlayModel
+    let interactionMode: GameMode
     let selectionText: String?
+    let onInteractionChanged: ((Bool) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
     var body: some View {
@@ -23,6 +25,8 @@ struct BoardContainerView: View {
                 BoardSceneView(
                     renderModel: renderModel,
                     overlayModel: overlayModel,
+                    interactionMode: interactionMode,
+                    onInteractionChanged: onInteractionChanged,
                     onTargetTap: onTargetTap
                 )
                     .padding(.horizontal, 12)

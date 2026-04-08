@@ -90,6 +90,31 @@ final class GameScreenModelBuilderTests: XCTestCase {
         )
     }
 
+    func testBuildKeepsObserverReadOnlyAndSecrecySafe() {
+        let state = makeState(
+            currentPlayer: "A",
+            resourcesByPlayer: [
+                "A": ResourceHandV1(wood: 2, brick: 1),
+                "B": ResourceHandV1(wood: 1, sheep: 2),
+            ]
+        )
+
+        let model = GameScreenModelBuilder.build(
+            context: GameScreenContext(
+                selectedState: state,
+                actingAs: nil,
+                contextBanner: "banner",
+                contextMeta: "meta",
+                actionAvailability: .none,
+                modeAvailability: .none
+            )
+        )
+
+        XCTAssertTrue(model.handTray.chips.isEmpty)
+        XCTAssertEqual(model.opponents.map(\.handCount), [3, 3])
+        XCTAssertEqual(model.actionDock.items.map(\.isEnabled), [false, false, false, false, false])
+    }
+
     func testBuildMapsActionAvailabilityIntoDockItems() {
         let model = GameScreenModelBuilder.build(
             context: GameScreenContext(

@@ -4,12 +4,14 @@ struct GameBoardOverlayModel: Equatable {
     let legalTileIDs: [TileID]
     let legalNodeIDs: [NodeID]
     let legalEdgeIDs: [EdgeID]
+    let anchorNodeID: NodeID?
     let selectedTarget: GameBoardTarget?
 
     static let empty = GameBoardOverlayModel(
         legalTileIDs: [],
         legalNodeIDs: [],
         legalEdgeIDs: [],
+        anchorNodeID: nil,
         selectedTarget: nil
     )
 

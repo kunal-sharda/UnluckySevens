@@ -248,25 +248,24 @@ Expected observations:
 
 Goal:
 
-- make the real gameplay UI the primary path and validate it on hardware
+- make the real gameplay UI authoritative and responsive enough to sign off on real hardware
 
 Implement:
 
-- remove or demote remaining debug-first dependencies for the covered flows
-- tighten stale-context, empty-state, and interrupted-flow behavior
-- make same-bubble receive and reload behavior refresh active context instead of leaving the player on stale state while they remain in the same transcript bubble
-- add a product-visible reload or refresh path in the game shell so the current moment can be recovered without opening the debug HUD
-- add a transport sanity check before lobby join/start so selected invite bubbles prefer URL-backed decode on both sender and receiver, while debug builds surface any fallback recovery explicitly instead of silently blanking the shell
+- always request expanded presentation when the extension opens from the drawer or a transcript bubble
+- remove remaining debug-first dependencies from product authority, session behavior, and transcript transport on the clean branch
+- lock product actions to `local Messages participant ∩ joined game roster`; unresolved identity stays read-only and secrecy-safe
 - block host start when the lobby has not yet resolved at least two players on the host device, so phase-12 multiplayer validation cannot silently start from a one-player roster
-- reduce board redraw churn so overlay, mode, and selection changes do not fully rebuild the SpriteKit scene on every update
+- reduce board redraw and lifecycle churn so selection polling, overlay changes, and gameplay shell updates no longer make the board feel unplayable on device
+- prevent board pan/pinch from competing with the parent shell scroll view
 - improve setup-road affordance and hit-testing so endpoint-adjacent taps near the just-placed settlement still produce an understandable legal road selection
 - update [qa.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/qa.md) with any permanent new checks discovered during the phase
 - run the real-device lane against the actual covered flows
 
 Expected observations:
 
-- the app can carry a meaningful two-device gameplay segment through the product UI
-- debug UI is still available, but no longer required for the main flow
+- the joined local participant can act and non-joined / out-of-turn participants stay read-only
+- the board can be panned and zoomed without severe hitching on device
 - the phase ends with concrete hardware validation, not Simulator-only confidence
 
 ## Validation
@@ -305,11 +304,10 @@ Simulator checks:
 Real-device checks:
 
 1. Run `Real Device Shell Smoke` from [QA](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/qa.md) after the first substantial gameplay UI stage lands.
-2. Before lobby join/start validation, send an invite `STATE`, select it on both devices, and confirm the debug HUD reports a selected bubble with `payloadLength > 0` that decodes active context. Prefer URL-backed decode; if a debug build only recovers through `summary fallback`, capture it as a host-fidelity defect instead of silently treating it as canonical transport.
-3. Run `Real Device Messages Lifecycle` after the lobby join/start stage and after any later stage that changes transcript, bubble, or context behavior.
-4. Run `Real Device Turn-Taking Smoke` after each gameplay-flow stage.
-5. Run `Real Device UX Hardening` after any change to same-bubble recovery, board responsiveness, or setup-road interaction.
-6. Before calling phase 12 complete, run at least one real two-device gameplay segment covering join, host start, setup completion, one standard turn, and one cross-device response.
+2. Run `Real Device Lobby Smoke` after any lobby join/start change, explicitly confirming the host sees both players before start and the guest join uses the real local Messages identity.
+3. Run `Real Device Turn-Taking Smoke` after each gameplay-flow stage, explicitly verifying that non-current players cannot publish current-player actions.
+4. Run `Real Device UX Hardening` after any change to board responsiveness or setup-road interaction.
+5. Before calling phase 12 complete, run at least one real two-device gameplay segment covering join, host start, setup completion, one standard turn, and one cross-device response.
 
 ### Deferred Validation
 
@@ -356,7 +354,12 @@ Deferred by design in phase 12:
 - 2026-04-05: Apple’s `selectedMessage` contract and current forum reports both support treating transcript selection as an unstable host boundary rather than a full-fidelity persistence layer. Stage 12.7 therefore keeps the current payload shape for debug validation, but the longer-term product-safe direction is to move toward compact transcript tokens plus durable rehydration instead of relying on full-state URL roundtrip alone.
 - 2026-04-05: post-fix automated validation reran the full repo gate cleanly: `bash ./scripts/gen.sh`, `swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_Transport`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test`, with `110` non-eval core tests, `10` eval tests, `44` transport tests, and `72` MessagesExtension tests all green after the transport helper, debug-build fallback, and sender recovery hardening landed.
 - 2026-04-06: follow-up real-device UX testing exposed three remaining 12.7 hardening gaps that belong in the active plan rather than in future-phase debt by default: staying in the same selected bubble does not reliably promote newer received state, board redraw/update latency is high enough to be player-visible on both devices, and setup-road hit-testing still feels unnatural near the just-placed settlement endpoint.
-- The remaining unclosed part of Stage 12.7 is the late real-device hardening and hardware signoff pass. Simulator and automated lanes are now strong enough to support the phase, but they do not replace the required iPhone+iPad Messages pass described in [QA](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/qa.md).
+- 2026-04-06: Stage 12.7 now requests expanded presentation on every extension open path, promotes newest known `STATE` for the current game over stale selected bubbles, adds a product-visible reload action in the game shell, splits board base rendering from overlay-only updates, and makes setup-road taps near the freshly placed settlement endpoint resolve the intended legal edge instead of forcing a tiny mid-edge target.
+- 2026-04-06: latest-state hardening is now covered by focused pure selection tests instead of view-model-only behavior, so the simulator lane verifies both same-bubble auto-follow and stale-bubble redirect without needing a direct test dependency on the iMessage extension target.
+- 2026-04-08: Stage 12.7 is now intentionally narrowed to two exit metrics: product authority and severe lag. The clean branch no longer treats summary-mirrored payloads, runtime debug toggles, cached published-state recovery, or product-visible reload affordances as phase-12 solutions; those host-stability concerns move to the next phase instead of continuing to contaminate the product path.
+- 2026-04-08: product authority on the clean branch is now `local Messages participant ∩ joined game roster`. Debug impersonation no longer participates in gameplay publication, legality gating, or hidden-information projection, and unresolved identity is explicitly read-only.
+- 2026-04-08: the first lag pass now targets lifecycle churn before deeper board refactors: selection polling self-cancels once a stable selection is observed, product cache keys stop changing on every relative-age tick, diagnostics no longer publish the large transport/debug field set on the gameplay hot path, and active board gestures disable the parent shell scroll view so pan/pinch no longer fight vertical scrolling.
+- The remaining unclosed part of Stage 12.7 is the final real-device authority and responsiveness signoff pass. Reload / active-game sync, transcript collapse behavior, and deeper Messages-host durability are explicitly promoted into the next roadmap phase instead of stretching this phase further.
 - `MessagesExtensionTests` still emits an Xcode dependency-scan warning because Tuist does not support a direct unit-test dependency on an iMessage extension target in this project shape. The current workaround remains compiling selected extension source files into the test target; capture any future cleanup under the tech-debt tracker rather than forcing a larger restructure into this phase.
 - Real-device validation is expected to drive at least some late-stage UX adjustments; do not treat Simulator-only behavior as sufficient signoff for Messages-hosted gameplay.
 - If setup, trade, or dev-card orchestration starts overwhelming `GameShellView` or `LobbyDriverViewModel`, split it into feature-local helpers rather than growing more shared conditionals.
@@ -369,11 +372,11 @@ Planned result:
 - the lobby and core gameplay loop are playable from the product UI
 - trade is compact and readable in the product UI, with accept and execute flows staying visible in the shell
 - board taps, shell modes, and modal choices map cleanly into canonical intents
-- the repo is ready for a narrower phase 13 focused on recap, history, dispute mode, and final trust surfaces rather than basic playability gaps
+- the repo is ready for a narrower phase 13 focused on Messages-host stability, transcript recovery, and durability instead of continuing to blur those concerns into the clean product branch
 
 What remains after this phase by design:
 
-- flow hardening and real-device signoff
+- Messages-host stability, reload/active-game sync, and transcript collapse/readability work
 - recap/history/dispute UX
 - final bubble composition polish
 - any visual restyling that does not change the gameplay-flow substrate

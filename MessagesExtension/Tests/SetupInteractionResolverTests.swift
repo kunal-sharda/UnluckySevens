@@ -22,7 +22,7 @@ final class SetupInteractionResolverTests: XCTestCase {
         )
         XCTAssertEqual(
             SetupInteractionResolver.guidanceText(state: roadState, actingAs: "A"),
-            "Tap a highlighted edge connected to your new settlement."
+            "Tap the highlighted road connected to the settlement you just placed."
         )
     }
 

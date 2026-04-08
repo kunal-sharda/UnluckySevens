@@ -67,7 +67,7 @@ Run this after shell, layout, presentation, or mode-system changes.
 1. Install and launch the host app on both devices.
 2. Open Messages and confirm Unlucky Sevens appears in the app drawer on both devices.
 3. Open the same conversation between the two accounts.
-4. Open an existing canonical `STATE` bubble and confirm the shell renders:
+4. Open an existing canonical `STATE` bubble and confirm the extension requests expanded presentation and the shell renders:
    - header
    - board area
    - hand tray
@@ -76,7 +76,7 @@ Run this after shell, layout, presentation, or mode-system changes.
 5. Confirm the iPhone layout remains readable in compact extension sizing.
 6. Confirm the iPad layout remains readable and does not over-expand low-priority UI.
 7. Verify opponent information is still count-only and does not leak composition.
-8. Toggle debug UI and confirm it is still accessible without taking over the product shell.
+8. Confirm the shell remains product-focused and no debug UI is required to advance the normal game flow.
 
 ### Real Device Lobby Smoke
 
@@ -93,15 +93,14 @@ Run this after any lobby join/start UX change.
 
 ### Real Device Messages Lifecycle
 
-Run this after any transcript, bubble, session, or context-selection change.
+Run this after phase-13 stability work or when explicitly validating Messages host behavior. It is no longer a phase-12.7 acceptance gate.
 
 1. Send a new `STATE` bubble from one device.
 2. Select that bubble on the other device and confirm it becomes active context.
 3. Switch away from Messages and return.
 4. Reopen the same bubble and confirm the shell still resolves the correct context.
-5. Select an older bubble after a newer one exists and confirm stale-context behavior is obvious and recoverable.
-6. Reload the latest bubble and confirm the warning clears.
-7. Force-close and relaunch Messages, then confirm context can still be recovered from the selected bubble.
+5. Select an older bubble after a newer one exists and record whether the host keeps you on stale context, upgrades to the latest known state, or fails to recover.
+6. Force-close and relaunch Messages, then record whether context can still be recovered from the selected bubble.
 
 ### Real Device Turn-Taking Smoke
 
@@ -119,25 +118,25 @@ Run this after any action-flow change that affects turns, trades, robber, or dev
 
 ### Real Device UX Hardening
 
-Run this during phase-12 hardening or after any change to same-bubble recovery, board responsiveness, or setup-road interaction.
+Run this during phase-12 cleanup or after any change to product authority, board responsiveness, or setup-road interaction.
 
-1. Stay on the same selected bubble while the other device publishes a newer state, then confirm the current device either refreshes automatically or exposes a visible reload or refresh path outside the debug HUD.
-2. During setup road placement, tap near the just-placed settlement endpoint and confirm the intended legal road can still be selected without hunting for a tiny mid-edge target.
-3. Toggle setup, build, and turn overlays several times on both devices and confirm board updates remain responsive rather than visibly rebuilding or hitching.
-4. Pan and zoom after those updates and confirm responsiveness does not degrade noticeably on either device.
+1. During setup road placement, tap near the just-placed settlement endpoint and confirm the intended legal road can still be selected without hunting for a tiny mid-edge target.
+2. Toggle setup, build, and turn overlays several times on both devices and confirm board updates remain responsive rather than visibly rebuilding or hitching.
+3. Pan and zoom after those updates and confirm responsiveness does not degrade noticeably on either device.
+4. On the non-current device, confirm the shell remains read-only and out-of-turn actions cannot be published.
 
 ### Debug-Only Transport Triage
 
-Use this only when a selected transcript bubble does not open context on hardware.
+Use this only on the disposable debug branch when a selected transcript bubble does not open context on hardware. It is not part of the clean phase-driven-dev acceptance flow.
 
 1. Open the debug HUD on the affected device after selecting the bubble.
 2. Check `Selection` and `Transport Debug` before trying fallback actions.
 3. Confirm the selected bubble reports:
    - `message: present`
    - `payloadLength: > 0`
-   - `decodeSource: URL` or `summary fallback`
+   - `decodeSource: URL`
 4. Prefer `url: present` plus `payloadQuery: present`. If they are missing, treat it as a transport publication or host-selection failure rather than a lobby-state bug.
-5. If the selected bubble decodes from `summary fallback` in a debug build, capture it as a host-fidelity defect and continue the operator run with that repro attached. Do not treat summary fallback as canonical product transport.
+5. If a debug-only branch is temporarily using a mirrored summary fallback for host investigation, capture that as a host-fidelity defect and do not treat it as canonical product transport.
 6. If lobby `STATE` decodes but `Join Game` is still missing on the receiving device, inspect:
    - `localParticipant`
    - `resolvedActor`
@@ -145,7 +144,7 @@ Use this only when a selected transcript bubble does not open context on hardwar
    - `localPendingJoin`
    - `canJoin`
    - `isInviter`
-7. Capture the debug HUD state as the primary repro artifact before retrying with reload or a new bubble.
+7. Capture the debug HUD state as the primary repro artifact before retrying with a new bubble or escalating the issue into the stability phase.
 
 ## What Is Already Covered Well
 
@@ -224,6 +223,6 @@ Use the current product shell for one smoke pass and three targeted checks. Keep
 ### Targeted Check: Context / Secrecy Safety
 
 1. Select an older `STATE` bubble after a newer one exists.
-2. Verify the stale-context warning appears.
-3. Reload the latest bubble and verify the warning clears.
-4. Change `Acting As` and verify local player detail changes while opponent information remains count-only.
+2. Record whether the simulator shell resolves to the latest known game state, stays on stale context, or fails to recover.
+3. Confirm a non-joined participant remains read-only and only sees count-only hidden-information summaries.
+4. Confirm the joined local participant sees only their own hidden detail while opponent information remains count-only.

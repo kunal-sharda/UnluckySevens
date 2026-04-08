@@ -81,6 +81,7 @@ final class GameBoardOverlayModelBuilderTests: XCTestCase {
         )
         XCTAssertTrue(roadOverlay.legalNodeIDs.isEmpty)
         XCTAssertFalse(roadOverlay.legalEdgeIDs.isEmpty)
+        XCTAssertEqual(roadOverlay.anchorNodeID, settlementTarget)
         XCTAssertEqual(roadOverlay.selectedTarget, .edge(roadTarget))
     }
 
