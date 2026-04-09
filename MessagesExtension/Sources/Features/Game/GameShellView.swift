@@ -4,7 +4,6 @@ struct GameShellView: View {
     @ObservedObject var viewModel: LobbyDriverViewModel
     @State private var currentMode: GameMode = .idle
     @State private var selectedBoardTarget: GameBoardTarget?
-    @State private var isBoardInteracting: Bool = false
 
     var body: some View {
         let screenModel = viewModel.gameScreenModel
@@ -21,11 +20,16 @@ struct GameShellView: View {
             GameTheme.appBackground
                 .ignoresSafeArea()
 
-            ScrollView(.vertical, showsIndicators: false) {
+            GeometryReader { geometry in
+                let boardHeight = resolvedBoardHeight(for: geometry.size.height)
+                let railMaxHeight = resolvedRailHeight(
+                    totalHeight: geometry.size.height,
+                    boardHeight: boardHeight
+                )
+
                 VStack(alignment: .leading, spacing: GameTheme.sectionSpacing) {
-                    VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-                        GameHeaderView(model: screenModel.header)
-                    }
+                    GameHeaderView(model: screenModel.header)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
                     BoardContainerView(
                         model: selectedBoardModel(screenModel: screenModel, mode: resolvedMode),
@@ -33,60 +37,70 @@ struct GameShellView: View {
                         overlayModel: overlayModel,
                         interactionMode: resolvedMode,
                         selectionText: overlayModel.selectedTarget?.debugLabel,
-                        onInteractionChanged: { isInteracting in
-                            isBoardInteracting = isInteracting
-                        },
+                        onInteractionChanged: nil,
                         onTargetTap: { target in
                             handleBoardTap(target, mode: resolvedMode)
                         }
                     )
+                    .frame(height: boardHeight)
 
-                    GameModalHostView(
-                        mode: resolvedMode,
-                        setupInstruction: viewModel.setupGuidanceText,
-                        discardPanel: viewModel.discardPanelModel,
-                        tradePanel: viewModel.tradePanelModel,
-                        devCardPanel: viewModel.devCardPanelModel,
-                        robberVictimOptions: viewModel.robberVictimOptions,
-                        onDiscardAction: {
-                            guard viewModel.handleDiscardFlowAction() else { return }
-                            selectedBoardTarget = nil
-                        },
-                        onTradeAction: { action in
-                            guard viewModel.handleTradeAction(action) else { return }
-                            if action != .applySelectedAccept {
-                                currentMode = .idle
-                            }
-                            selectedBoardTarget = nil
-                        },
-                        onApplySelectedTurnIntent: {
-                            guard viewModel.publishSelectedTurnIntentState() else { return }
-                            selectedBoardTarget = nil
-                        },
-                        onExecuteTrade: { playerID in
-                            guard viewModel.publishTradeExecution(acceptingPlayer: playerID) else { return }
-                            currentMode = .idle
-                            selectedBoardTarget = nil
-                        },
-                        onDevCardAction: { action in
-                            guard viewModel.handleDevCardAction(action) else { return }
-                            currentMode = .idle
-                            selectedBoardTarget = nil
-                        },
-                        onSelectStealVictim: { victimPlayer in
-                            guard viewModel.publishRobberVictimState(victimPlayer: victimPlayer) else { return }
-                            currentMode = .idle
-                            selectedBoardTarget = nil
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: GameTheme.sectionSpacing) {
+                            PlayerSummaryStripView(summaries: screenModel.opponents)
+
+                            GameModalHostView(
+                                mode: resolvedMode,
+                                setupInstruction: viewModel.setupGuidanceText,
+                                discardPanel: viewModel.discardPanelModel,
+                                tradePanel: viewModel.tradePanelModel,
+                                devCardPanel: viewModel.devCardPanelModel,
+                                robberVictimOptions: viewModel.robberVictimOptions,
+                                onDiscardAction: {
+                                    guard viewModel.handleDiscardFlowAction() else { return }
+                                    selectedBoardTarget = nil
+                                },
+                                onTradeAction: { action in
+                                    guard viewModel.handleTradeAction(action) else { return }
+                                    if action != .applySelectedAccept {
+                                        currentMode = .idle
+                                    }
+                                    selectedBoardTarget = nil
+                                },
+                                onApplySelectedTurnIntent: {
+                                    guard viewModel.publishSelectedTurnIntentState() else { return }
+                                    selectedBoardTarget = nil
+                                },
+                                onExecuteTrade: { playerID in
+                                    guard viewModel.publishTradeExecution(acceptingPlayer: playerID) else { return }
+                                    currentMode = .idle
+                                    selectedBoardTarget = nil
+                                },
+                                onDevCardAction: { action in
+                                    guard viewModel.handleDevCardAction(action) else { return }
+                                    currentMode = .idle
+                                    selectedBoardTarget = nil
+                                },
+                                onSelectStealVictim: { victimPlayer in
+                                    guard viewModel.publishRobberVictimState(victimPlayer: victimPlayer) else { return }
+                                    currentMode = .idle
+                                    selectedBoardTarget = nil
+                                }
+                            )
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: railMaxHeight, alignment: .top)
+                    .background(GameTheme.surface.opacity(0.58))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: GameTheme.mediumRadius)
+                            .stroke(GameTheme.outline.opacity(0.10), lineWidth: 1)
                     )
-
-                    PlayerSummaryStripView(summaries: screenModel.opponents)
+                    .clipShape(RoundedRectangle(cornerRadius: GameTheme.mediumRadius))
                 }
                 .padding(GameTheme.shellPadding)
-                .padding(.bottom, 196)
+                .padding(.bottom, 168)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .scrollDisabled(isBoardInteracting)
         }
         .safeAreaInset(edge: .bottom) {
             GameBottomTrayView(
@@ -219,5 +233,14 @@ struct GameShellView: View {
         }
 
         selectedBoardTarget = normalizedTarget
+    }
+
+    private func resolvedBoardHeight(for totalHeight: CGFloat) -> CGFloat {
+        min(max(totalHeight * 0.46, 296), 430)
+    }
+
+    private func resolvedRailHeight(totalHeight: CGFloat, boardHeight: CGFloat) -> CGFloat {
+        let remaining = totalHeight - boardHeight - 260
+        return max(remaining, 96)
     }
 }

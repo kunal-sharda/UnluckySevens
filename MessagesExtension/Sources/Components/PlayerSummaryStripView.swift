@@ -42,6 +42,7 @@ private struct PlayerSummaryCard: View {
             .foregroundStyle(GameTheme.mutedInk)
         }
         .padding(GameTheme.compactPadding)
+        .frame(width: 148, alignment: .leading)
         .background(GameTheme.surface.opacity(0.90))
         .overlay(
             RoundedRectangle(cornerRadius: GameTheme.smallRadius)
