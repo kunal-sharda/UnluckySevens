@@ -3,8 +3,11 @@ import SpriteKit
 import ULS_CoreGame
 
 final class GameBoardScene: SKScene {
+    private let contentRootNode = SKNode()
     private let baseContentNode = SKNode()
     private let overlayContentNode = SKNode()
+    private let cameraNode = SKCameraNode()
+    private var currentCameraState = GameBoardCameraState()
 
     override init(size: CGSize) {
         super.init(size: size)
@@ -27,6 +30,7 @@ final class GameBoardScene: SKScene {
 
     func updateBase(renderModel: GameBoardRenderModel, size: CGSize) {
         self.size = size
+        applyCameraState()
         baseContentNode.removeAllChildren()
 
         let layout = GameBoardLayout(size: size, geometry: renderModel.geometry)
@@ -64,6 +68,7 @@ final class GameBoardScene: SKScene {
 
     func updateOverlay(renderModel: GameBoardRenderModel, size: CGSize, overlayModel: GameBoardOverlayModel) {
         self.size = size
+        applyCameraState()
         overlayContentNode.removeAllChildren()
 
         let layout = GameBoardLayout(size: size, geometry: renderModel.geometry)
@@ -86,6 +91,16 @@ final class GameBoardScene: SKScene {
 
     var debugOverlayChildCount: Int {
         overlayContentNode.children.count
+    }
+
+    var debugCameraState: GameBoardCameraState {
+        currentCameraState
+    }
+
+    func updateCamera(state: GameBoardCameraState, size: CGSize) {
+        self.size = size
+        currentCameraState = state
+        applyCameraState()
     }
 
     private func makeBoardBackdrop(size: CGSize) -> SKNode {
@@ -567,15 +582,36 @@ final class GameBoardScene: SKScene {
     }
 
     private func configureSceneRoots() {
+        camera = cameraNode
         baseContentNode.zPosition = 0
         overlayContentNode.zPosition = 90
 
+        if contentRootNode.parent == nil {
+            addChild(contentRootNode)
+        }
+
         if baseContentNode.parent == nil {
-            addChild(baseContentNode)
+            contentRootNode.addChild(baseContentNode)
         }
 
         if overlayContentNode.parent == nil {
-            addChild(overlayContentNode)
+            contentRootNode.addChild(overlayContentNode)
         }
+
+        if cameraNode.parent == nil {
+            addChild(cameraNode)
+        }
+    }
+
+    private func applyCameraState() {
+        let zoom = max(currentCameraState.zoom, 0.001)
+        let center = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
+
+        cameraNode.position = CGPoint(
+            x: center.x - (currentCameraState.offset.width / zoom),
+            y: center.y - (currentCameraState.offset.height / zoom)
+        )
+        cameraNode.xScale = 1 / zoom
+        cameraNode.yScale = 1 / zoom
     }
 }

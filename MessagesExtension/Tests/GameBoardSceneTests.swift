@@ -34,6 +34,15 @@ final class GameBoardSceneTests: XCTestCase {
         XCTAssertGreaterThan(scene.debugOverlayChildCount, 0)
     }
 
+    func testCameraUpdatesStayInSceneState() {
+        let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
+        let state = GameBoardCameraState(zoom: 1.8, offset: CGSize(width: 24, height: -18))
+
+        scene.updateCamera(state: state, size: CGSize(width: 320, height: 240))
+
+        XCTAssertEqual(scene.debugCameraState, state)
+    }
+
     private func makeRenderModel() -> GameBoardRenderModel {
         let board = BoardSetupV1(
             resourcesByTile: [

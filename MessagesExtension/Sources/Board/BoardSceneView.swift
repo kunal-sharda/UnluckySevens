@@ -25,8 +25,6 @@ struct BoardSceneView: View {
                     scene: scene,
                     options: [.allowsTransparency]
                 )
-                .scaleEffect(cameraState.zoom)
-                .offset(cameraState.offset)
                 .allowsHitTesting(false)
 
                 Color.clear
@@ -39,6 +37,7 @@ struct BoardSceneView: View {
             .onAppear {
                 scene.updateBase(renderModel: renderModel, size: geometry.size)
                 scene.updateOverlay(renderModel: renderModel, size: geometry.size, overlayModel: overlayModel)
+                scene.updateCamera(state: cameraState, size: geometry.size)
             }
             .onChange(of: renderModel) { _, newValue in
                 scene.updateBase(renderModel: newValue, size: geometry.size)
@@ -52,6 +51,7 @@ struct BoardSceneView: View {
                         contentFrame: layout.contentFrame
                     )
                 )
+                scene.updateCamera(state: cameraState, size: geometry.size)
             }
             .onChange(of: overlayModel) { _, newValue in
                 scene.updateOverlay(renderModel: renderModel, size: geometry.size, overlayModel: newValue)
@@ -69,6 +69,7 @@ struct BoardSceneView: View {
                         contentFrame: resizedLayout.contentFrame
                     )
                 )
+                scene.updateCamera(state: cameraState, size: newValue)
             }
             .onDisappear {
                 setInteractionActive(false)
@@ -89,6 +90,7 @@ struct BoardSceneView: View {
                     viewportSize: viewportSize,
                     contentFrame: contentFrame
                 )
+                scene.updateCamera(state: cameraState, size: viewportSize)
             }
             .onEnded { _ in
                 dragBaseState = nil
@@ -110,6 +112,7 @@ struct BoardSceneView: View {
                     viewportSize: viewportSize,
                     contentFrame: contentFrame
                 )
+                scene.updateCamera(state: cameraState, size: viewportSize)
             }
             .onEnded { _ in
                 pinchBaseState = nil
