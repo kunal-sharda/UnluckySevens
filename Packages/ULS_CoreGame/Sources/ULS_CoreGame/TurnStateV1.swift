@@ -8,6 +8,12 @@ public enum TurnStepV1: String, Codable, Equatable {
     case afterRoll
 }
 
+public extension TurnStepV1 {
+    var allowsDevCardPlay: Bool {
+        true
+    }
+}
+
 public struct DiceRollV1: Codable, Equatable {
     public let d1: Int
     public let d2: Int

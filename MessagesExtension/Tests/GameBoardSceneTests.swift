@@ -41,6 +41,21 @@ final class GameBoardSceneTests: XCTestCase {
         scene.updateCamera(state: state, size: CGSize(width: 320, height: 240))
 
         XCTAssertEqual(scene.debugCameraState, state)
+        XCTAssertEqual(scene.debugCameraNodePosition.x, 160 - (24 / 1.8), accuracy: 0.001)
+        XCTAssertEqual(scene.debugCameraNodePosition.y, 120 + (-18 / 1.8), accuracy: 0.001)
+    }
+
+    func testScenePointsUseTopLeftBoardCoordinates() {
+        let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
+
+        XCTAssertEqual(
+            scene.debugScenePoint(forLayoutPoint: CGPoint(x: 40, y: 20)),
+            CGPoint(x: 40, y: 220)
+        )
+        XCTAssertEqual(
+            scene.debugScenePoint(forLayoutPoint: CGPoint(x: 120, y: 200)),
+            CGPoint(x: 120, y: 40)
+        )
     }
 
     private func makeRenderModel() -> GameBoardRenderModel {

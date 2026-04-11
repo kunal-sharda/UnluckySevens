@@ -10,6 +10,8 @@ enum GameBoardCameraController {
     static let minZoom: CGFloat = 1.0
     static let maxZoom: CGFloat = 2.4
     fileprivate static let edgeEndpointExclusionFraction: CGFloat = 0.2
+    private static let minimumPanSlack: CGFloat = 24
+    private static let maximumPanSlack: CGFloat = 48
 
     static func clampedZoom(_ proposed: CGFloat) -> CGFloat {
         min(max(proposed, minZoom), maxZoom)
@@ -21,13 +23,23 @@ enum GameBoardCameraController {
         viewportSize: CGSize,
         contentFrame: CGRect
     ) -> CGSize {
-        let maxX = max(((contentFrame.width * zoom) - viewportSize.width) * 0.5, 0)
-        let maxY = max(((contentFrame.height * zoom) - viewportSize.height) * 0.5, 0)
+        let maxX = max(
+            max(((contentFrame.width * zoom) - viewportSize.width) * 0.5, 0),
+            panSlack(for: viewportSize.width)
+        )
+        let maxY = max(
+            max(((contentFrame.height * zoom) - viewportSize.height) * 0.5, 0),
+            panSlack(for: viewportSize.height)
+        )
 
         return CGSize(
             width: min(max(proposed.width, -maxX), maxX),
             height: min(max(proposed.height, -maxY), maxY)
         )
+    }
+
+    private static func panSlack(for viewportDimension: CGFloat) -> CGFloat {
+        min(max(viewportDimension * 0.10, minimumPanSlack), maximumPanSlack)
     }
 
     static func applyingDrag(
@@ -81,16 +93,28 @@ enum GameBoardCameraController {
             nearestNode(
                 to: boardPoint,
                 layout: layout,
-                count: renderModel.geometry.nodePositions.count,
+                candidateIDs: selectionContext.nodeCandidateIDs(
+                    totalCount: renderModel.geometry.nodePositions.count
+                ),
                 selectionContext: selectionContext
             ),
             nearestEdge(
                 to: boardPoint,
                 layout: layout,
                 topology: renderModel.topology,
+                candidateIDs: selectionContext.edgeCandidateIDs(
+                    totalCount: renderModel.topology.edges.count
+                ),
                 selectionContext: selectionContext
             ),
-            nearestTile(to: boardPoint, layout: layout, count: renderModel.tiles.count),
+            nearestTile(
+                to: boardPoint,
+                layout: layout,
+                candidateIDs: selectionContext.tileCandidateIDs(
+                    totalCount: renderModel.tiles.count
+                ),
+                selectionContext: selectionContext
+            ),
         ]
         .compactMap { $0 }
 
@@ -119,17 +143,17 @@ enum GameBoardCameraController {
     private static func nearestNode(
         to point: CGPoint,
         layout: GameBoardLayout,
-        count: Int,
+        candidateIDs: [NodeID],
         selectionContext: SelectionContext
     ) -> HitCandidate? {
-        guard !selectionContext.prefersSetupRoadEdges else {
+        guard !candidateIDs.isEmpty else {
             return nil
         }
 
-        let threshold = max(layout.structureRadius * 1.2, 14)
+        let threshold = selectionContext.nodeThreshold(layout: layout)
         var best: (id: Int, distance: CGFloat)?
 
-        for nodeID in 0..<count {
+        for nodeID in candidateIDs {
             let distance = distanceBetween(point, layout.nodePoint(for: nodeID))
             guard distance <= threshold else { continue }
             if distance < (best?.distance ?? .greatestFiniteMagnitude) {
@@ -152,12 +176,17 @@ enum GameBoardCameraController {
         to point: CGPoint,
         layout: GameBoardLayout,
         topology: BoardGraphV1,
+        candidateIDs: [EdgeID],
         selectionContext: SelectionContext
     ) -> HitCandidate? {
+        guard !candidateIDs.isEmpty else {
+            return nil
+        }
+
         let threshold = selectionContext.edgeThreshold(layout: layout)
         var best: (id: Int, distance: CGFloat)?
 
-        for edgeID in topology.edges.indices {
+        for edgeID in candidateIDs {
             let edgeLine = layout.edgeLine(for: edgeID, topology: topology)
             let projection = projectedPoint(point, onSegmentFrom: edgeLine.start, to: edgeLine.end)
             let edgeEndpointExclusionFraction = selectionContext.edgeEndpointExclusionFraction(
@@ -190,12 +219,17 @@ enum GameBoardCameraController {
     private static func nearestTile(
         to point: CGPoint,
         layout: GameBoardLayout,
-        count: Int
+        candidateIDs: [TileID],
+        selectionContext: SelectionContext
     ) -> HitCandidate? {
-        let threshold = max(layout.tileRadius * 0.9, 18)
+        guard !candidateIDs.isEmpty else {
+            return nil
+        }
+
+        let threshold = selectionContext.tileThreshold(layout: layout)
         var best: (id: Int, distance: CGFloat)?
 
-        for tileID in 0..<count {
+        for tileID in candidateIDs {
             let distance = distanceBetween(point, layout.tileCenter(for: tileID))
             guard distance <= threshold else { continue }
             if distance < (best?.distance ?? .greatestFiniteMagnitude) {
@@ -250,10 +284,30 @@ private struct SelectionContext {
     }
 
     func edgeThreshold(layout: GameBoardLayout) -> CGFloat {
-        if prefersSetupRoadEdges {
+        switch interactionMode {
+        case .setup, .buildRoad:
             return max(layout.roadWidth * 1.7, 16)
+        default:
+            return max(layout.roadWidth * 1.35, 12)
         }
-        return max(layout.roadWidth * 1.35, 12)
+    }
+
+    func nodeThreshold(layout: GameBoardLayout) -> CGFloat {
+        switch interactionMode {
+        case .setup, .buildSettlement, .buildCity, .robberVictim:
+            return max(layout.structureRadius * 1.65, 18)
+        default:
+            return max(layout.structureRadius * 1.2, 14)
+        }
+    }
+
+    func tileThreshold(layout: GameBoardLayout) -> CGFloat {
+        switch interactionMode {
+        case .robberMove:
+            return max(layout.tileRadius * 1.08, 24)
+        default:
+            return max(layout.tileRadius * 0.9, 18)
+        }
     }
 
     func edgeEndpointExclusionFraction(
@@ -272,6 +326,41 @@ private struct SelectionContext {
         }
 
         return topology.edges(incidentTo: anchorNodeID).contains(edgeID) ? 0.02 : 0.12
+    }
+
+    func nodeCandidateIDs(totalCount: Int) -> [NodeID] {
+        switch interactionMode {
+        case .idle:
+            return Array(0..<totalCount)
+        case .setup:
+            return prefersSetupRoadEdges ? [] : overlayModel.legalNodeIDs
+        case .buildSettlement, .buildCity, .robberVictim:
+            return overlayModel.legalNodeIDs
+        case .buildRoad, .robberMove, .trade, .playDevCard, .discard:
+            return []
+        }
+    }
+
+    func edgeCandidateIDs(totalCount: Int) -> [EdgeID] {
+        switch interactionMode {
+        case .idle:
+            return Array(0..<totalCount)
+        case .setup, .buildRoad:
+            return overlayModel.legalEdgeIDs
+        case .buildSettlement, .buildCity, .robberMove, .robberVictim, .trade, .playDevCard, .discard:
+            return []
+        }
+    }
+
+    func tileCandidateIDs(totalCount: Int) -> [TileID] {
+        switch interactionMode {
+        case .idle:
+            return Array(0..<totalCount)
+        case .robberMove:
+            return overlayModel.legalTileIDs
+        case .setup, .buildRoad, .buildSettlement, .buildCity, .robberVictim, .trade, .playDevCard, .discard:
+            return []
+        }
     }
 }
 

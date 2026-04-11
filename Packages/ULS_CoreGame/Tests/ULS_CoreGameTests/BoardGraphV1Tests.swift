@@ -86,6 +86,18 @@ final class BoardGraphV1Tests: XCTestCase {
         XCTAssertEqual(actual, expected)
     }
 
+    func testPortsFollowCanonicalTwoTwoThreePerimeterSpacing() {
+        let cycle = StandardBoardTopologyV1.coastalEdgeCycleForStandard()
+        let edgeIndices = Dictionary(uniqueKeysWithValues: cycle.enumerated().map { ($1, $0) })
+        let actual = board.ports.compactMap { edgeIndices[$0.edge] }
+
+        XCTAssertEqual(actual, [0, 3, 6, 10, 13, 16, 20, 23, 26])
+
+        let wrappedActual = actual + [actual[0] + cycle.count]
+        let stepPattern = zip(wrappedActual, wrappedActual.dropFirst()).map { $1 - $0 }
+        XCTAssertEqual(stepPattern, [3, 3, 4, 3, 3, 4, 3, 3, 4])
+    }
+
     func testPortKindAtNodeMatchesPortEdges() {
         for port in board.ports {
             let edge = board.edges[port.edge]

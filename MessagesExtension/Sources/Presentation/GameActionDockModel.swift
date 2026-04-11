@@ -1,3 +1,5 @@
 struct GameActionDockModel: Equatable {
-    let items: [GameActionDockItem]
+    let primaryItems: [GameActionDockItem]
+    let utilityItems: [GameActionDockItem]
+    let buildShelfItems: [GameBuildShelfItem]
 }

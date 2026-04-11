@@ -40,6 +40,11 @@ GitHub Actions mirrors this practical gate in `.github/workflows/ci.yml`.
   - run the Real Device Messages Lifecycle checklist
   - run the Real Device Turn-Taking Smoke checklist
   - run the Real Device UX Hardening checklist
+- Any shell-header, action-dock, player-name, or dev-card timing change:
+  - run the full Practical Gate
+  - run the Manual Simulator Runbook smoke pass
+  - run the Real Device Turn-Taking Smoke checklist
+  - run the Real Device Gameplay Cohesion checklist
 - Any new gameplay flow in the product UI:
   - run the full Practical Gate
   - run the relevant targeted simulator check
@@ -65,6 +70,8 @@ Treat this matrix as the baseline for async gameplay validation.
 Run this after shell, layout, presentation, or mode-system changes.
 
 1. Install the current development build on both devices. In the current repo shape this may still happen through the minimal containing-app shell, but the intended product surface is the Messages app drawer.
+   Recommended local pipeline:
+   `bash ./scripts/install-connected-devices.sh --clean`
 2. Open Messages and confirm Unlucky Sevens appears in the app drawer on both devices.
 3. Open the same conversation between the two accounts.
 4. Open an existing canonical `STATE` bubble and confirm the extension requests expanded presentation and the shell renders:
@@ -113,8 +120,33 @@ Run this after any action-flow change that affects turns, trades, robber, or dev
 5. Verify status text is correct on both sides:
    - `Your turn`
    - `Waiting on <player>`
-   - `Trade pending`
+   - `Roll pending` before the active player rolls
+   - `Roll: <d1> + <d2> = <total>` after the active player rolls
 6. Confirm no bubble or context step silently drops during cross-device play.
+
+### Real Device Gameplay Cohesion
+
+Run this before calling phase 12 complete.
+
+1. Open the same active game on both devices and verify the shell uses deterministic aliases such as `SheepGrazer` or `OreMiner` instead of raw participant IDs. The aliases should match on both devices for the same game.
+2. On a fresh turn before rolling, confirm the primary dock order is:
+   - `Roll`
+   - `End Turn`
+   - `Build`
+   - `Play Dev`
+3. Open `Build` and verify the shelf only shows legal actions from:
+   - `Road`
+   - `Settlement`
+   - `City`
+   - `Buy Dev`
+4. Tap random nodes, edges, and tiles while idle. Confirm nothing highlights or remains selected unless the active mode actually uses that board target class.
+5. If the acting player owns a legal pre-roll dev card, play it before rolling and confirm the state change publishes correctly. If the player buys a dev card after rolling, confirm that same non-VP card still cannot be played until a later turn.
+6. Open the trade panel as proposer and responder. Confirm the compact panel explains accepted, waiting, passive-decline, and execute/end-turn expiry behavior without leaking raw IDs or debug text.
+7. Finish a game-over state or load one from transcript and confirm the shell shows:
+   - winner clearly
+   - compact final score
+   - short last-turn recap
+   - no dead bottom tray
 
 ### Real Device UX Hardening
 
@@ -153,7 +185,7 @@ Use this only on the disposable debug branch when a selected transcript bubble d
 - the common turn loop and build/buy actions in the product shell
 - robber/discard forced-flow handling in the product shell
 - trade UX in the product shell, including compact player and maritime trade entry, accept intents, and execute flow
-- dev-card UX in the product shell, including compact buy/play actions and default-driven card effects
+- dev-card UX in the product shell, including compact play actions, pre-roll/post-roll timing, and default-driven card effects
 - setup sequencing and starting resources
 - deterministic dice, board generation, dev deck, and robber steal behavior
 - production, bank depletion, discard flow, robber flow
@@ -194,14 +226,15 @@ Use the current product shell for one smoke pass and three targeted checks. Keep
    - rev increments
    - phase is `turn`
    - step becomes `afterRoll` or the correct robber/discard subflow
-8. Perform one post-roll action such as build, trade, maritime trade, or dev-card purchase.
-9. Open the dev-card panel when legal and verify only legal buy/play actions are shown.
-10. Play one legal dev card and verify the resulting state change appears without leaking hidden card composition to opponents.
+8. If available, play one legal dev card before rolling and verify the resulting state change appears without leaking hidden card composition to opponents.
+9. Roll once, then perform one post-roll action such as build, trade, maritime trade, or dev-card purchase.
+10. Open the dev-card panel when legal and verify only legal play/reveal actions are shown there; buy-dev-card should now live under the `Build` shelf instead.
 11. End the turn and verify:
    - current player advances
    - step resets to `needsRoll`
    - trade offers clear
 12. Verify opponent hand and dev-card views show counts only, not composition.
+13. Verify the turn header never shows raw debug/context metadata; it should stay limited to ownership plus dice state.
 
 ### Targeted Check: Robber / Seven Flow
 

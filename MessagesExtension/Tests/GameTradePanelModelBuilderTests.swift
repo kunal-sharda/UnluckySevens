@@ -22,7 +22,9 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
         )
 
         XCTAssertNil(panel.activeOffer)
+        XCTAssertEqual(panel.roleTitle, "Trade Desk")
         XCTAssertTrue(panel.actions.contains(where: { $0.kind == .publishSuggestedOffer }))
+        XCTAssertFalse(panel.footnotes.isEmpty)
     }
 
     func testBuildActiveOfferForNonCurrentPlayerShowsAcceptAction() throws {
@@ -35,7 +37,7 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
         )
         let state = makeState(
             currentPlayer: "A",
-            resourcesByPlayer: ["A": .zero, "B": .zero],
+            resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(brick: 1)],
             activeTradeOffer: offer
         )
 
@@ -47,8 +49,13 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(panel.activeOffer?.proposerDisplay, "A")
+        XCTAssertEqual(
+            panel.activeOffer?.proposerDisplay,
+            PlayerPseudonymResolver.displayName(for: "A", gameID: state.gameId, roster: state.roster)
+        )
         XCTAssertEqual(panel.actions.map(\.kind), [.sendAcceptOffer])
+        XCTAssertEqual(panel.roleTitle, "Incoming Offer")
+        XCTAssertTrue(panel.footnotes.contains { $0.contains("Decline is passive") })
     }
 
     func testBuildActiveOfferForCurrentPlayerShowsApplySelectedAccept() throws {
@@ -82,6 +89,10 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
         )
 
         XCTAssertEqual(panel.actions.map(\.kind), [.applySelectedAccept])
+        XCTAssertEqual(
+            panel.participantStatuses.first(where: { $0.playerID == "B" })?.detailText,
+            "Selected bubble"
+        )
     }
 
     func testBuildActiveOfferForCurrentPlayerShowsExecuteOptions() throws {
@@ -110,8 +121,47 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(panel.executeOptions.map(\.playerID), ["B", "C"])
-        XCTAssertEqual(panel.acceptedPlayers, ["B", "C"])
+        XCTAssertEqual(
+            panel.executeOptions.map(\.displayName),
+            [
+                PlayerPseudonymResolver.displayName(for: "B", gameID: state.gameId, roster: state.roster),
+                PlayerPseudonymResolver.displayName(for: "C", gameID: state.gameId, roster: state.roster),
+            ]
+        )
+        XCTAssertEqual(
+            panel.acceptedPlayers,
+            [
+                PlayerPseudonymResolver.displayName(for: "B", gameID: state.gameId, roster: state.roster),
+                PlayerPseudonymResolver.displayName(for: "C", gameID: state.gameId, roster: state.roster),
+            ]
+        )
+        XCTAssertTrue(panel.footnotes.contains { $0.contains("end the turn") })
+    }
+
+    func testBuildActiveOfferForResponderWithoutRequiredCardsShowsNoAcceptAction() throws {
+        let offer = TradeOfferV1(
+            offerHash: "offer-1",
+            proposer: "A",
+            give: ResourceHandV1(wood: 1),
+            receive: ResourceHandV1(brick: 2),
+            createdRev: 8
+        )
+        let state = makeState(
+            currentPlayer: "A",
+            resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(brick: 1)],
+            activeTradeOffer: offer
+        )
+
+        let panel = try XCTUnwrap(
+            GameTradePanelModelBuilder.build(
+                state: state,
+                actingAs: "B",
+                selectedTurnIntent: nil
+            )
+        )
+
+        XCTAssertTrue(panel.actions.isEmpty)
+        XCTAssertTrue(panel.message.contains("cannot accept"))
     }
 
     private func makeState(

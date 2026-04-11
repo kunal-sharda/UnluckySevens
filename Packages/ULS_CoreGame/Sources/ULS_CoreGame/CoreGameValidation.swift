@@ -559,11 +559,11 @@ private func validateDevCardTransition(
     }
 
     if to.phase == .turn {
-        guard from.turnState?.step == .afterRoll, to.turnState?.step == .afterRoll else {
+        guard isDevCardPlayWindowStep(from.turnState?.step), isDevCardPlayWindowStep(to.turnState?.step) else {
             throw CoreGameError.devDeckInvalid
         }
     } else {
-        guard from.turnState?.step == .afterRoll, to.turnState == nil else {
+        guard isDevCardPlayWindowStep(from.turnState?.step), to.turnState == nil else {
             throw CoreGameError.devDeckInvalid
         }
     }
@@ -1193,6 +1193,29 @@ private func isAfterRollEconomyTransition(from: CoreGameStateV1, to: CoreGameSta
     return to.turnState == nil
 }
 
+private func isDevCardPlayWindowStep(_ step: TurnStepV1?) -> Bool {
+    guard let step else {
+        return false
+    }
+    return step.allowsDevCardPlay
+}
+
+private func isDevCardPlayEconomyTransition(from: CoreGameStateV1, to: CoreGameStateV1) -> Bool {
+    guard
+        from.phase == .turn,
+        (to.phase == .turn || to.phase == .gameOver),
+        from.currentPlayer == to.currentPlayer,
+        isDevCardPlayWindowStep(from.turnState?.step)
+    else {
+        return false
+    }
+
+    if to.phase == .turn {
+        return isDevCardPlayWindowStep(to.turnState?.step)
+    }
+    return to.turnState == nil
+}
+
 private func expectedEconomyAfterDiscardSubmissionIfAny(from: CoreGameStateV1, to: CoreGameStateV1) -> EconomyUpdateV1 {
     guard
         let fromTurn = from.turnState,
@@ -1455,7 +1478,7 @@ private func expectedEconomyAfterTradeExecutionIfAny(from: CoreGameStateV1, to: 
 
 private func expectedEconomyAfterDevCardIfAny(from: CoreGameStateV1, to: CoreGameStateV1) -> EconomyUpdateV1 {
     guard
-        isAfterRollEconomyTransition(from: from, to: to)
+        isDevCardPlayEconomyTransition(from: from, to: to)
     else {
         return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
     }
@@ -1678,8 +1701,8 @@ private func isKnightDevCardBoardTransition(from: CoreGameStateV1, to: CoreGameS
         from.phase == .turn,
         to.phase == .turn || to.phase == .gameOver,
         from.currentPlayer == to.currentPlayer,
-        from.turnState?.step == .afterRoll,
-        (to.phase == .turn && to.turnState?.step == .afterRoll) || (to.phase == .gameOver && to.turnState == nil)
+        isDevCardPlayWindowStep(from.turnState?.step),
+        (to.phase == .turn && isDevCardPlayWindowStep(to.turnState?.step)) || (to.phase == .gameOver && to.turnState == nil)
     else {
         return false
     }

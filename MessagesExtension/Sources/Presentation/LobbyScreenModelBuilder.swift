@@ -39,7 +39,10 @@ enum LobbyScreenModelBuilder {
         warningText: String?
     ) -> LobbyScreenModel {
         let host = state.roster.first
-        let participants = participantSummaries(for: state, context: context)
+        let visiblePlayers = uniquePlayers(
+            state.roster + context.pendingJoiners.filter { !state.roster.contains($0) }
+        )
+        let participants = participantSummaries(for: state, context: context, visiblePlayers: visiblePlayers)
         let joinedCount = participants.count
         let localActor = context.localActor
         let isLocalHost = localActor == host
@@ -61,11 +64,11 @@ enum LobbyScreenModelBuilder {
             helperText = "Starting stays disabled until at least two players appear in the lobby."
         } else if localHasJoined {
             title = "Joined Lobby"
-            subtitle = "Waiting for \(displayName(host)) to start the game."
+            subtitle = "Waiting for \(displayName(host, gameID: state.gameId, roster: visiblePlayers)) to start the game."
             helperText = "You are in the pending roster for this lobby."
         } else {
             title = "Join This Game"
-            subtitle = "Join now and wait for \(displayName(host)) to start."
+            subtitle = "Join now and wait for \(displayName(host, gameID: state.gameId, roster: visiblePlayers)) to start."
             helperText = "Joining sends a join intent immediately. The host decides when to start."
         }
 
@@ -104,7 +107,7 @@ enum LobbyScreenModelBuilder {
         let title = isLocalJoin ? "Join Sent" : "Join Intent"
         let subtitle = isLocalJoin
             ? "Waiting for the host to start from the invite state."
-            : "\(displayName(joinIntent.actor)) joined the lobby and is waiting for the host."
+            : "\(displayName(joinIntent.actor, gameID: joinIntent.gameId, roster: lobbyRoster(context: context, joinIntent: joinIntent))) joined the lobby and is waiting for the host."
 
         return LobbyScreenModel(
             title: title,
@@ -115,7 +118,7 @@ enum LobbyScreenModelBuilder {
             participants: [
                 LobbyParticipantSummary(
                     id: joinIntent.actor,
-                    displayName: displayName(joinIntent.actor),
+                    displayName: displayName(joinIntent.actor, gameID: joinIntent.gameId, roster: lobbyRoster(context: context, joinIntent: joinIntent)),
                     detailText: isLocalJoin ? "You joined" : "Joined",
                     isHost: false,
                     isLocalActor: isLocalJoin
@@ -130,17 +133,15 @@ enum LobbyScreenModelBuilder {
 
     private static func participantSummaries(
         for state: CoreGameStateV1,
-        context: LobbyScreenContext
+        context: LobbyScreenContext,
+        visiblePlayers: [String]
     ) -> [LobbyParticipantSummary] {
         let host = state.roster.first
-        let orderedPlayers = uniquePlayers(
-            state.roster + context.pendingJoiners.filter { !state.roster.contains($0) }
-        )
 
-        return orderedPlayers.map { player in
+        return visiblePlayers.map { player in
             LobbyParticipantSummary(
                 id: player,
-                displayName: displayName(player),
+                displayName: displayName(player, gameID: state.gameId, roster: visiblePlayers),
                 detailText: player == host ? "Host" : "Joined",
                 isHost: player == host,
                 isLocalActor: player == context.localActor
@@ -169,10 +170,22 @@ enum LobbyScreenModelBuilder {
         return nil
     }
 
-    private static func displayName(_ actor: String?) -> String {
-        guard let actor else {
-            return "the host"
+    private static func lobbyRoster(context: LobbyScreenContext, joinIntent: JoinIntentV1) -> [String] {
+        uniquePlayers([joinIntent.actor, context.localActor] + context.pendingJoiners.map(Optional.some))
+    }
+
+    private static func displayName(_ actor: String?, gameID: String?, roster: [String]) -> String {
+        PlayerPseudonymResolver.displayName(for: actor, gameID: gameID, roster: roster)
+    }
+
+    private static func uniquePlayers(_ players: [String?]) -> [String] {
+        var seen: Set<String> = []
+        var result: [String] = []
+
+        for player in players.compactMap({ $0 }) where seen.insert(player).inserted {
+            result.append(player)
         }
-        return String(actor.prefix(8))
+
+        return result
     }
 }

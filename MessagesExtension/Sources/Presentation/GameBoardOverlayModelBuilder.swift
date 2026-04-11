@@ -27,8 +27,6 @@ enum GameBoardOverlayModelBuilder {
         let normalizedSelection: GameBoardTarget?
         if let selectedTarget, overlay.allowsSelection(of: selectedTarget, in: mode) {
             normalizedSelection = selectedTarget
-        } else if mode == .idle {
-            normalizedSelection = selectedTarget
         } else {
             normalizedSelection = nil
         }

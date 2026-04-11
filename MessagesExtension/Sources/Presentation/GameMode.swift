@@ -23,6 +23,23 @@ enum GameMode: Equatable {
         }
     }
 
+    var buildShelfKind: GameBuildShelfItem.Kind? {
+        switch self {
+        case .buildRoad:
+            return .buildRoad
+        case .buildSettlement:
+            return .buildSettlement
+        case .buildCity:
+            return .buildCity
+        case .idle, .setup, .robberMove, .robberVictim, .trade, .playDevCard, .discard:
+            return nil
+        }
+    }
+
+    var isBuildMode: Bool {
+        buildShelfKind != nil
+    }
+
     var title: String {
         switch self {
         case .idle:

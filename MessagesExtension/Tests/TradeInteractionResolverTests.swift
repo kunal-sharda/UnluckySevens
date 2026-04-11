@@ -40,7 +40,7 @@ final class TradeInteractionResolverTests: XCTestCase {
         )
         let state = makeState(
             currentPlayer: "A",
-            resourcesByPlayer: ["A": .zero, "B": .zero],
+            resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(brick: 1)],
             activeTradeOffer: offer
         )
 
@@ -60,6 +60,28 @@ final class TradeInteractionResolverTests: XCTestCase {
                 actor: "B"
             )
         )
+    }
+
+    func testDraftAcceptTradeIntentRequiresResponderToAffordRequestedCards() {
+        let offer = TradeOfferV1(
+            offerHash: "offer-1",
+            proposer: "A",
+            give: ResourceHandV1(wood: 1),
+            receive: ResourceHandV1(brick: 2),
+            createdRev: 8
+        )
+        let state = makeState(
+            currentPlayer: "A",
+            resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(brick: 1)],
+            activeTradeOffer: offer
+        )
+
+        let intent = TradeInteractionResolver.draftAcceptTradeIntent(
+            state: state,
+            actingAs: "B"
+        )
+
+        XCTAssertNil(intent)
     }
 
     func testDraftExecuteTradeIntentForAcceptedPlayer() {

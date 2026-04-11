@@ -1,5 +1,6 @@
 import ULS_CoreGame
 import XCTest
+@testable import MessagesExtension
 
 final class GameRobberVictimOptionBuilderTests: XCTestCase {
     private let topology = StandardBoardTopologyV1.standard()
@@ -27,8 +28,16 @@ final class GameRobberVictimOptionBuilderTests: XCTestCase {
         XCTAssertEqual(
             options,
             [
-                GameRobberVictimOption(playerID: "B", displayName: "B", handCount: 3),
-                GameRobberVictimOption(playerID: "C", displayName: "C", handCount: 2),
+                GameRobberVictimOption(
+                    playerID: "B",
+                    displayName: PlayerPseudonymResolver.displayName(for: "B", gameID: state.gameId, roster: state.roster),
+                    handCount: 3
+                ),
+                GameRobberVictimOption(
+                    playerID: "C",
+                    displayName: PlayerPseudonymResolver.displayName(for: "C", gameID: state.gameId, roster: state.roster),
+                    handCount: 2
+                ),
             ]
         )
     }

@@ -41,7 +41,7 @@ enum GameDiscardPanelModelBuilder {
             return GameDiscardPanelModel(
                 waitingPlayers: waitingPlayers,
                 action: .applySelectedDiscard(
-                    playerDisplay: shortIdentifier(discardPlayer),
+                    playerDisplay: playerName(discardPlayer, in: state),
                     suggested: handChips(from: discarded)
                 )
             )
@@ -56,11 +56,11 @@ enum GameDiscardPanelModelBuilder {
             .keys
             .filter { submitted[$0] == nil }
             .sorted()
-            .map(shortIdentifier)
+            .map { playerName($0, in: state) }
     }
 
-    private static func shortIdentifier(_ value: String) -> String {
-        String(value.prefix(8))
+    private static func playerName(_ playerID: String, in state: CoreGameStateV1) -> String {
+        PlayerPseudonymResolver.displayName(for: playerID, gameID: state.gameId, roster: state.roster)
     }
 
     private static func handChips(from hand: ResourceHandV1) -> [GameHandChip] {

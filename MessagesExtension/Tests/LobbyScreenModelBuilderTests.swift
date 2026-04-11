@@ -1,6 +1,7 @@
 import XCTest
 import ULS_CoreGame
 import ULS_Transport
+@testable import MessagesExtension
 
 final class LobbyScreenModelBuilderTests: XCTestCase {
     func testBuildForHostLobbyShowsParticipantsAndStart() {
@@ -41,6 +42,44 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
         XCTAssertEqual(model.participants.first?.detailText, "Host")
         XCTAssertEqual(model.startButton?.title, "Start Game")
         XCTAssertNil(model.joinButton)
+    }
+
+    func testBuildForHostLobbyAssignsUniqueAliasesToPendingJoiners() {
+        let host = "host-player"
+        let alice = "alice-player"
+        let bob = "bob-player"
+        let state = CoreGameStateV1(
+            gameId: "game-1",
+            rev: 0,
+            prevHash: nil,
+            stateHash: "",
+            roster: [host],
+            currentPlayer: host,
+            phase: .lobby,
+            seed: nil,
+            diceRngState: nil,
+            resourcesByPlayer: [host: .zero],
+            boardRules: nil,
+            board: nil
+        ).rehashed()
+
+        let model = LobbyScreenModelBuilder.build(
+            context: LobbyScreenContext(
+                selectedState: state,
+                selectedJoinIntent: nil,
+                localActor: host,
+                pendingJoiners: [alice, bob],
+                contextMeta: "Source: test",
+                staleWarning: "-",
+                lastError: "-",
+                canInvite: true,
+                canJoin: false,
+                canStartGame: true
+            )
+        )
+
+        XCTAssertEqual(model.participants.count, 3)
+        XCTAssertEqual(Set(model.participants.map(\.displayName)).count, 3)
     }
 
     func testBuildForHostLobbyWithoutGuestShowsInviteFriendsAndNoStart() {
@@ -142,8 +181,38 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
         )
 
         XCTAssertEqual(model.title, "Join Sent")
-        XCTAssertEqual(model.participants.first?.displayName, "guest-pl")
+        XCTAssertEqual(
+            model.participants.first?.displayName,
+            PlayerPseudonymResolver.displayName(for: "guest-player", gameID: intent.gameId, roster: ["guest-player"])
+        )
         XCTAssertNil(model.joinButton)
         XCTAssertNil(model.startButton)
+    }
+
+    func testBuildForJoinIntentUsesUniqueAliasWithinVisibleLobbyPlayers() {
+        let intent = JoinIntentV1(
+            gameId: "game-1",
+            anchorRev: 0,
+            anchorHash: "hash",
+            actor: "guest-two"
+        )
+
+        let model = LobbyScreenModelBuilder.build(
+            context: LobbyScreenContext(
+                selectedState: nil,
+                selectedJoinIntent: intent,
+                localActor: "host-player",
+                pendingJoiners: ["guest-one", "guest-two"],
+                contextMeta: "Source: test",
+                staleWarning: "-",
+                lastError: "-",
+                canInvite: true,
+                canJoin: false,
+                canStartGame: false
+            )
+        )
+
+        XCTAssertEqual(model.participants.count, 1)
+        XCTAssertNotEqual(model.participants[0].displayName, PlayerPseudonymResolver.displayName(for: "guest-one", gameID: intent.gameId, roster: ["host-player", "guest-one", "guest-two"]))
     }
 }

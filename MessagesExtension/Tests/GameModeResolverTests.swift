@@ -20,7 +20,7 @@ final class GameModeResolverTests: XCTestCase {
         )
     }
 
-    func testBuildCyclesThroughAvailableModesThenReturnsToIdle() {
+    func testBuildActionLeavesModeSelectionToTheBuildShelf() {
         let availability = GameModeAvailability(
             canSetup: false,
             canBuildRoad: true,
@@ -33,13 +33,10 @@ final class GameModeResolverTests: XCTestCase {
             canDiscard: false
         )
 
-        let first = GameModeResolver.nextMode(for: .build, currentMode: .idle, availability: availability)
-        let second = GameModeResolver.nextMode(for: .build, currentMode: first, availability: availability)
-        let third = GameModeResolver.nextMode(for: .build, currentMode: second, availability: availability)
-
-        XCTAssertEqual(first, .buildRoad)
-        XCTAssertEqual(second, .buildSettlement)
-        XCTAssertEqual(third, .idle)
+        XCTAssertEqual(
+            GameModeResolver.nextMode(for: .build, currentMode: .idle, availability: availability),
+            .idle
+        )
     }
 
     func testTradeModeTogglesOnAndOff() {
@@ -80,6 +77,26 @@ final class GameModeResolverTests: XCTestCase {
 
         XCTAssertEqual(selected, .playDevCard)
         XCTAssertEqual(cleared, .idle)
+    }
+
+    func testDevCardModeStaysOpenWhenThePanelIsAvailableForBuyingOnly() {
+        let availability = GameModeAvailability(
+            canSetup: false,
+            canBuildRoad: false,
+            canBuildSettlement: false,
+            canBuildCity: false,
+            canRobberMove: false,
+            canRobberVictim: false,
+            canTrade: false,
+            canPlayDevCard: true,
+            canDiscard: false
+        )
+
+        let selected = GameModeResolver.nextMode(for: .devCards, currentMode: .idle, availability: availability)
+        let normalized = GameModeResolver.normalized(currentMode: selected, availability: availability)
+
+        XCTAssertEqual(selected, .playDevCard)
+        XCTAssertEqual(normalized, .playDevCard)
     }
 
     func testRollAndEndTurnClearModeToIdle() {

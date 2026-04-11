@@ -24,6 +24,7 @@ struct GameBoardRoadRenderModel: Equatable {
 }
 
 struct GameBoardPortRenderModel: Equatable {
+    let slotIndex: Int
     let edgeID: EdgeID
     let kind: PortKindV1
 }

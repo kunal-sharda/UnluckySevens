@@ -55,7 +55,8 @@ final class TurnDevCardsV1Tests: XCTestCase {
                 "B": .zero,
             ],
             robberRngState: seed,
-            settlementsByNode: [topology.tiles[robbedTile].nodes[0]: victim]
+            settlementsByNode: [topology.tiles[robbedTile].nodes[0]: victim],
+            turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
         )
 
         var expectedRng = DeterministicRNG(seed: seed)
@@ -78,6 +79,42 @@ final class TurnDevCardsV1Tests: XCTestCase {
         XCTAssertThrowsError(try apply(intent: .playMonopoly(resource: .wood), to: played, actor: "A")) { error in
             XCTAssertEqual(error as? CoreGameError, .devCardAlreadyPlayedThisTurn)
         }
+
+        let rolled = try apply(intent: .rollDice, to: played, actor: "A")
+        XCTAssertEqual(rolled.turnState?.step, .afterRoll)
+    }
+
+    func testRevealVictoryPointCanHappenBeforeRollingAfterSameTurnDevCardPlay() throws {
+        let state = makeState(
+            resourcesByPlayer: [
+                "A": ResourceHandV1(),
+                "B": ResourceHandV1(wood: 1),
+            ],
+            devCardsByPlayer: [
+                "A": DevCardInventoryV1(knight: 1),
+                "B": .zero,
+            ],
+            newDevCardsByPlayer: [
+                "A": DevCardInventoryV1(victoryPoint: 1),
+                "B": .zero,
+            ],
+            robberRngState: 0x0F0E0D0C,
+            settlementsByNode: [topology.tiles[0].nodes[0]: "B"],
+            turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
+        )
+
+        let playedKnight = try apply(
+            intent: .playKnight(tileID: 0, victimPlayer: "B"),
+            to: state,
+            actor: "A"
+        )
+        XCTAssertTrue(playedKnight.devCardActionPlayedThisTurn)
+
+        let revealed = try apply(intent: .revealVictoryPoint, to: playedKnight, actor: "A")
+
+        XCTAssertEqual(revealed.revealedVictoryPointsByPlayer["A"], 1)
+        XCTAssertEqual(revealed.newDevCardsByPlayer["A"]?.victoryPoint, 0)
+        XCTAssertTrue(revealed.devCardActionPlayedThisTurn)
     }
 
     func testMonopolyCollectsAllOfSelectedResource() throws {
@@ -182,7 +219,8 @@ final class TurnDevCardsV1Tests: XCTestCase {
         newDevCardsByPlayer: [String: DevCardInventoryV1] = [:],
         robberRngState: UInt64 = 0x1234,
         settlementsByNode: [NodeID: String] = [:],
-        roadsByEdge: [EdgeID: String] = [:]
+        roadsByEdge: [EdgeID: String] = [:],
+        turnState: TurnStateV1 = TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 4, d2: 3))
     ) -> CoreGameStateV1 {
         let roster = Array(resourcesByPlayer.keys).sorted()
         let board = BoardSetupV1(
@@ -216,7 +254,7 @@ final class TurnDevCardsV1Tests: XCTestCase {
             boardRules: BoardRulesV1(strategy: .randomV1),
             board: board,
             setupState: nil,
-            turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 4, d2: 3))
+            turnState: turnState
         ).rehashed()
     }
 

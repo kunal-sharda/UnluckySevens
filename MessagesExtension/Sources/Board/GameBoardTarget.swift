@@ -6,6 +6,25 @@ enum GameBoardTarget: Equatable {
     case node(NodeID)
     case edge(EdgeID)
 
+    func selectionLabel(for mode: GameMode) -> String {
+        switch (mode, self) {
+        case (.setup, .node), (.buildSettlement, .node):
+            return "Settlement selected"
+        case (.buildCity, .node):
+            return "City target selected"
+        case (.robberVictim, .node):
+            return "Victim selected"
+        case (.setup, .edge), (.buildRoad, .edge):
+            return "Road selected"
+        case (.robberMove, .tile):
+            return "Robber tile selected"
+        case (.idle, _):
+            return debugLabel
+        default:
+            return debugLabel
+        }
+    }
+
     var debugLabel: String {
         switch self {
         case let .tile(id):

@@ -17,7 +17,7 @@ struct GameBoardOverlayModel: Equatable {
 
     func allowsSelection(of target: GameBoardTarget, in mode: GameMode) -> Bool {
         if mode == .idle {
-            return true
+            return false
         }
 
         switch target {

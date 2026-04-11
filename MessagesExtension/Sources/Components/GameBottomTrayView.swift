@@ -4,7 +4,10 @@ struct GameBottomTrayView: View {
     let handTray: GameHandTrayModel
     let actionDock: GameActionDockModel
     let selectedKind: GameActionDockItem.Kind?
+    let selectedBuildKind: GameBuildShelfItem.Kind?
+    let isBuildShelfPresented: Bool
     let onSelect: (GameActionDockItem.Kind) -> Void
+    let onSelectBuild: (GameBuildShelfItem.Kind) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: GameTheme.blockSpacing) {
@@ -13,7 +16,10 @@ struct GameBottomTrayView: View {
             ActionDockView(
                 model: actionDock,
                 selectedKind: selectedKind,
-                onSelect: onSelect
+                selectedBuildKind: selectedBuildKind,
+                isBuildShelfPresented: isBuildShelfPresented,
+                onSelect: onSelect,
+                onSelectBuild: onSelectBuild
             )
         }
         .padding(GameTheme.compactPadding)

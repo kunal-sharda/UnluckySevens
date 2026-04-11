@@ -494,7 +494,7 @@ final class LobbyDriverViewModel: ObservableObject {
         guard
             let state = selectedState,
             state.phase == .turn,
-            state.turnState?.step == .afterRoll,
+            state.turnState?.step.allowsDevCardPlay == true,
             let actor = localActorIdentifier(),
             actor == state.currentPlayer
         else {
@@ -525,7 +525,7 @@ final class LobbyDriverViewModel: ObservableObject {
         guard
             let state = selectedState,
             state.phase == .turn,
-            state.turnState?.step == .afterRoll,
+            state.turnState?.step.allowsDevCardPlay == true,
             let actor = localActorIdentifier(),
             actor == state.currentPlayer
         else {
@@ -2923,7 +2923,7 @@ final class LobbyDriverViewModel: ObservableObject {
         guard
             let state = selectedState,
             state.phase == .turn,
-            state.turnState?.step == .afterRoll,
+            state.turnState?.step.allowsDevCardPlay == true,
             let actor = localActorIdentifier(),
             actor == state.currentPlayer,
             !state.devCardActionPlayedThisTurn

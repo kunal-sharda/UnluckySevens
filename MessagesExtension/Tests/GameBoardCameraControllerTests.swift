@@ -21,6 +21,18 @@ final class GameBoardCameraControllerTests: XCTestCase {
         XCTAssertEqual(offset.height, -60, accuracy: 0.001)
     }
 
+    func testClampedOffsetAllowsLimitedPanSlackAtFittedZoom() {
+        let offset = GameBoardCameraController.clampedOffset(
+            CGSize(width: 900, height: -900),
+            zoom: 1.0,
+            viewportSize: CGSize(width: 320, height: 240),
+            contentFrame: CGRect(x: 20, y: 20, width: 220, height: 180)
+        )
+
+        XCTAssertEqual(offset.width, 32, accuracy: 0.001)
+        XCTAssertEqual(offset.height, -24, accuracy: 0.001)
+    }
+
     func testHitTargetResolvesNodeTileAndEdgeAcrossCameraTransforms() {
         let model = makeRenderModel()
         let viewportSize = CGSize(width: 320, height: 240)
@@ -107,6 +119,53 @@ final class GameBoardCameraControllerTests: XCTestCase {
                 viewportSize: viewportSize
             ),
             .edge(edgeID)
+        )
+    }
+
+    func testBuildRoadModeOnlyResolvesLegalEdges() {
+        let model = makeRenderModel()
+        let viewportSize = CGSize(width: 320, height: 240)
+        let layout = GameBoardLayout(size: viewportSize, geometry: model.geometry)
+        let edgeID = 3
+        let edgeLine = layout.edgeLine(for: edgeID, topology: model.topology)
+        let point = CGPoint(
+            x: edgeLine.start.x + ((edgeLine.end.x - edgeLine.start.x) * 0.22),
+            y: edgeLine.start.y + ((edgeLine.end.y - edgeLine.start.y) * 0.22)
+        )
+
+        XCTAssertEqual(
+            GameBoardCameraController.hitTarget(
+                at: point,
+                state: GameBoardCameraState(),
+                renderModel: model,
+                overlayModel: GameBoardOverlayModel(
+                    legalTileIDs: [],
+                    legalNodeIDs: [model.topology.edges[edgeID].a],
+                    legalEdgeIDs: [edgeID],
+                    anchorNodeID: nil,
+                    selectedTarget: nil
+                ),
+                interactionMode: .buildRoad,
+                viewportSize: viewportSize
+            ),
+            .edge(edgeID)
+        )
+    }
+
+    func testTradeModeDoesNotResolveBoardTargets() {
+        let model = makeRenderModel()
+        let viewportSize = CGSize(width: 320, height: 240)
+        let layout = GameBoardLayout(size: viewportSize, geometry: model.geometry)
+
+        XCTAssertNil(
+            GameBoardCameraController.hitTarget(
+                at: layout.nodePoint(for: 0),
+                state: GameBoardCameraState(),
+                renderModel: model,
+                overlayModel: .empty,
+                interactionMode: .trade,
+                viewportSize: viewportSize
+            )
         )
     }
 

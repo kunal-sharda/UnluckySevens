@@ -23,10 +23,16 @@ This document summarizes the player-facing flows the UI must support in the curr
 
 ## Turn Flow
 
-- Optional dev-card play at the start of a turn, subject to core timing rules.
+- Optional dev-card play before or after the roll, subject to core timing rules and never for a non-VP card bought on the same turn.
 - Roll.
 - Resolve either production or the full seven/robber subflow.
 - Optionally trade, build, buy or play allowed dev cards, and then end turn.
+- The primary dock order should stay shallow and predictable:
+  - `Roll`
+  - `End Turn`
+  - `Build`
+  - `Play Dev`
+- `Build` opens a compact shelf for legal build/buy actions such as road, settlement, city, and dev-card purchase.
 - Dev-card actions should stay compact and default-driven rather than expanding into a deep form flow.
 - If the active player reaches the win threshold on their turn, the game ends immediately.
 - Forced subflows such as discard and robber movement should feel blocking rather than like optional side actions.
@@ -42,17 +48,23 @@ This document summarizes the player-facing flows the UI must support in the curr
 
 ## Audit and Game-Over Flow
 
-- The default audit surface should show a short last-turn recap.
+- Minimum end-of-game clarity in the default shell should show:
+  - the winner clearly
+  - a compact final score summary
+  - a short last-turn recap when available
 - One round of history should be available without overwhelming the main screen.
 - A fuller dispute view exists for deliberate inspection.
-- The win state should present the winner clearly and preserve the final game summary.
+- The win state should preserve the final game summary.
 
 ## Bubble Experience
 
 - The transcript bubble should carry enough information to understand the current moment at a glance.
 - The expanded Messages view should remain the place for richer actions and board interaction.
-- The primary bubble status language should stay compact and direct:
+- The primary shell status language should stay compact and direct:
   - `Your turn`
   - `Waiting on <player>`
-  - `Trade pending`
+- The top shell summary should show dice state during turn play:
+  - `Roll pending`
+  - `Roll: 4 + 3 = 7`
+- Player-facing names in the shell should use deterministic per-game aliases until explicit player naming exists.
 - The bubble should support lobby readability as well as in-game readability; joining and host-start should not create avoidable transcript clutter.

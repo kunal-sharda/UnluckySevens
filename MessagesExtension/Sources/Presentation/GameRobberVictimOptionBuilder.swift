@@ -22,13 +22,9 @@ enum GameRobberVictimOptionBuilder {
         return (state.turnState?.eligibleStealVictims ?? []).sorted().map { victim in
             GameRobberVictimOption(
                 playerID: victim,
-                displayName: shortIdentifier(victim),
+                displayName: PlayerPseudonymResolver.displayName(for: victim, gameID: state.gameId, roster: state.roster),
                 handCount: visibleHandCounts[victim] ?? 0
             )
         }
-    }
-
-    private static func shortIdentifier(_ value: String) -> String {
-        String(value.prefix(8))
     }
 }

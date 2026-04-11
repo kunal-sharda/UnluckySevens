@@ -1,4 +1,30 @@
+import Foundation
 import ProjectDescription
+
+let localSigningXcconfigPath = "Config/LocalSigning.xcconfig"
+let localSigningSettings: Settings? = {
+    let absolutePath = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+        .appendingPathComponent(localSigningXcconfigPath)
+        .path
+
+    guard FileManager.default.fileExists(atPath: absolutePath) else {
+        return nil
+    }
+
+    return .settings(
+        configurations: [
+            .debug(
+                name: "Debug",
+                xcconfig: .relativeToRoot(localSigningXcconfigPath)
+            ),
+            .release(
+                name: "Release",
+                xcconfig: .relativeToRoot(localSigningXcconfigPath)
+            ),
+        ],
+        defaultSettings: .recommended
+    )
+}()
 
 let project = Project(
     name: "UnluckySevens",
@@ -22,7 +48,8 @@ let project = Project(
             sources: ["App/Sources/**"],
             dependencies: [
                 .target(name: "MessagesExtension")
-            ]
+            ],
+            settings: localSigningSettings
         ),
         .target(
             name: "MessagesExtension",
@@ -48,7 +75,8 @@ let project = Project(
             dependencies: [
                 .package(product: "ULS_CoreGame"),
                 .package(product: "ULS_Transport"),
-            ]
+            ],
+            settings: localSigningSettings
         ),
         .target(
             name: "MessagesExtensionTests",

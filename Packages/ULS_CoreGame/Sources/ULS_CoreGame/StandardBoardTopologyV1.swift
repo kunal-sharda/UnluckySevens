@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 public enum StandardBoardTopologyV1 {
@@ -56,6 +57,10 @@ public enum StandardBoardTopologyV1 {
 
     internal static func canonicalFramePortEdgesForStandard() -> [EdgeID] {
         canonicalFramePortEdges(from: buildGeometry())
+    }
+
+    internal static func coastalEdgeCycleForStandard() -> [EdgeID] {
+        canonicalCoastalEdgeCycle(from: buildGeometry())
     }
 
     private static func buildGeometry() -> Geometry {
@@ -118,6 +123,48 @@ public enum StandardBoardTopologyV1 {
     }
 
     private static func canonicalFramePortEdges(from geometry: Geometry) -> [EdgeID] {
+        let cycle = canonicalCoastalEdgeCycle(from: geometry)
+        let harborStepOffsets = [0, 3, 6, 10, 13, 16, 20, 23, 26]
+
+        return harborStepOffsets.map { cycle[$0] }
+    }
+
+    private static func canonicalCoastalEdgeCycle(from geometry: Geometry) -> [EdgeID] {
+        let cycle = coastalEdgeCycle(from: geometry)
+        guard !cycle.isEmpty else { return cycle }
+
+        let targetAngle = -CGFloat.pi * 0.75
+        let startIndex = cycle.indices.min { lhs, rhs in
+            angularDistance(
+                from: midpointAngle(for: cycle[lhs], geometry: geometry),
+                to: targetAngle
+            ) < angularDistance(
+                from: midpointAngle(for: cycle[rhs], geometry: geometry),
+                to: targetAngle
+            )
+        } ?? 0
+
+        let rotated = Array(cycle[startIndex...] + cycle[..<startIndex])
+        guard rotated.count > 2 else { return rotated }
+
+        let startAngle = midpointAngle(for: rotated[0], geometry: geometry)
+        let nextDelta = wrappedAngleDelta(
+            from: startAngle,
+            to: midpointAngle(for: rotated[1], geometry: geometry)
+        )
+        let previousDelta = wrappedAngleDelta(
+            from: startAngle,
+            to: midpointAngle(for: rotated[rotated.count - 1], geometry: geometry)
+        )
+
+        guard nextDelta <= previousDelta else {
+            return [rotated[0]] + Array(rotated.dropFirst().reversed())
+        }
+
+        return rotated
+    }
+
+    private static func coastalEdgeCycle(from geometry: Geometry) -> [EdgeID] {
         let coastalEdges = geometry.edgeToTiles.enumerated()
             .filter { _, adjacent in adjacent.count == 1 }
             .map(\.offset)
@@ -189,17 +236,67 @@ public enum StandardBoardTopologyV1 {
 
         precondition(cycle.count == coastalEdges.count, "Perimeter cycle must include all coastal edges exactly once.")
 
-        var frameSlots: [EdgeID] = []
-        for side in 0..<6 {
-            let base = side * 5
-            frameSlots.append(cycle[base + 1])
-            frameSlots.append(cycle[base + 2])
-            frameSlots.append(cycle[base + 3])
+        return cycle
+    }
+
+    private static func midpointAngle(for edgeID: EdgeID, geometry: Geometry) -> CGFloat {
+        let midpoint = renderMidpoint(for: edgeID, geometry: geometry)
+        let center = renderCenter(for: geometry)
+        return atan2(midpoint.y - center.y, midpoint.x - center.x)
+    }
+
+    private static func renderMidpoint(for edgeID: EdgeID, geometry: Geometry) -> CGPoint {
+        let horizontalScale = sqrt(3.0) * 0.5
+        let edge = geometry.edges[edgeID]
+        let a = geometry.nodeCoordinates[edge.a]
+        let b = geometry.nodeCoordinates[edge.b]
+        let ax = CGFloat(Double(a.u) * horizontalScale)
+        let ay = CGFloat(Double(a.w) * 0.5)
+        let bx = CGFloat(Double(b.u) * horizontalScale)
+        let by = CGFloat(Double(b.w) * 0.5)
+
+        return CGPoint(x: (ax + bx) * 0.5, y: (ay + by) * 0.5)
+    }
+
+    private static func renderCenter(for geometry: Geometry) -> CGPoint {
+        let points = geometry.nodeCoordinates.map {
+            CGPoint(
+                x: CGFloat(Double($0.u) * (sqrt(3.0) * 0.5)),
+                y: CGFloat(Double($0.w) * 0.5)
+            )
         }
 
-        return frameSlots.enumerated().compactMap { index, edgeID in
-            index.isMultiple(of: 2) ? edgeID : nil
+        let minX = points.map(\.x).min() ?? 0
+        let maxX = points.map(\.x).max() ?? 0
+        let minY = points.map(\.y).min() ?? 0
+        let maxY = points.map(\.y).max() ?? 0
+
+        return CGPoint(x: (minX + maxX) * 0.5, y: (minY + maxY) * 0.5)
+    }
+
+    private static func angularDistance(from lhs: CGFloat, to rhs: CGFloat) -> CGFloat {
+        let delta = abs(wrappedSignedAngleDelta(from: lhs, to: rhs))
+        return min(delta, (CGFloat.pi * 2) - delta)
+    }
+
+    private static func wrappedAngleDelta(from lhs: CGFloat, to rhs: CGFloat) -> CGFloat {
+        let tau = CGFloat.pi * 2
+        var delta = (rhs - lhs).truncatingRemainder(dividingBy: tau)
+        if delta < 0 {
+            delta += tau
         }
+        return delta
+    }
+
+    private static func wrappedSignedAngleDelta(from lhs: CGFloat, to rhs: CGFloat) -> CGFloat {
+        let tau = CGFloat.pi * 2
+        var delta = (rhs - lhs).truncatingRemainder(dividingBy: tau)
+        if delta > .pi {
+            delta -= tau
+        } else if delta < -.pi {
+            delta += tau
+        }
+        return delta
     }
 
     private static func tileCoordinates() -> [(q: Int, r: Int)] {

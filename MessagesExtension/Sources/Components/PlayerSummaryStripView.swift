@@ -22,7 +22,7 @@ private struct PlayerSummaryCard: View {
     let summary: GameOpponentSummary
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 Circle()
                     .fill(summary.isCurrentPlayer ? GameTheme.accent : GameTheme.outline.opacity(0.35))
@@ -40,9 +40,12 @@ private struct PlayerSummaryCard: View {
             }
             .font(GameTheme.metaFont)
             .foregroundStyle(GameTheme.mutedInk)
+
+            Spacer(minLength: 0)
         }
         .padding(GameTheme.compactPadding)
-        .frame(width: 148, alignment: .leading)
+        .frame(width: 156, alignment: .leading)
+        .frame(minHeight: 78, alignment: .leading)
         .background(GameTheme.surface.opacity(0.90))
         .overlay(
             RoundedRectangle(cornerRadius: GameTheme.smallRadius)

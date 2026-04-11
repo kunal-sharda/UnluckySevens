@@ -11,10 +11,12 @@ struct GameHeaderView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.9)
 
-            Text(model.statusLine.subtitle)
-                .font(GameTheme.bodyFont)
-                .foregroundStyle(GameTheme.mutedInk)
-                .lineLimit(2)
+            if !model.statusLine.subtitle.isEmpty {
+                Text(model.statusLine.subtitle)
+                    .font(GameTheme.bodyFont)
+                    .foregroundStyle(GameTheme.mutedInk)
+                    .lineLimit(2)
+            }
 
             if !model.metaText.isEmpty {
                 Label(model.metaText, systemImage: "ellipsis.message")

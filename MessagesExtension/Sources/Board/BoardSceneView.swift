@@ -29,8 +29,10 @@ struct BoardSceneView: View {
 
                 Color.clear
                     .contentShape(Rectangle())
-                    .highPriorityGesture(dragGesture(viewportSize: geometry.size, contentFrame: layout.contentFrame))
-                    .highPriorityGesture(magnificationGesture(viewportSize: geometry.size, contentFrame: layout.contentFrame))
+                    .gesture(
+                        dragGesture(viewportSize: geometry.size, contentFrame: layout.contentFrame)
+                            .simultaneously(with: magnificationGesture(viewportSize: geometry.size, contentFrame: layout.contentFrame))
+                    )
                     .simultaneousGesture(tapGesture(viewportSize: geometry.size))
             }
             .clipped()

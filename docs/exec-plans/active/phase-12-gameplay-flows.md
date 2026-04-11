@@ -39,7 +39,8 @@ What exists today:
 
 What is still missing:
 
-- the main gameplay loop is still not ready for a full two-device signoff without leaning on debug controls
+- phase 12.7 is closed, but phase 12 still needs the 12.8 product-cohesion device pass before the gameplay phase can be called complete
+- the remaining open questions are player-facing UX questions, not missing core game rules: shell/header clarity, deterministic aliases, action-dock flow, pre-roll dev-card timing, and final full-match device signoff
 
 Important constraints already locked in the repo:
 
@@ -57,8 +58,8 @@ User-visible result:
 - setup feels guided and blocking rather than debug-like
 - the common turn loop is compact and legible inside the current shell
 - robber flow is obvious and cannot be bypassed accidentally
-- trade feels compact and legible through the product modal and shell rather than raw debug buttons
-- dev-card actions are available through focused product UI rather than raw debug buttons
+- trade feels coherent and complete enough for a full asynchronous game rather than stopping at default-path shortcuts
+- dev-card actions feel like real player choices inside the product UI rather than only a thin wrapper over engine defaults
 - the real UI can carry a live two-device game segment without depending on the debug HUD
 
 Code and docs result:
@@ -71,8 +72,8 @@ Code and docs result:
 
 Acceptance boundary:
 
-- phase 12 ends when lobby join/start, setup, the common turn loop, robber flow, trade flow, and dev-card flow are playable from the product UI
-- phase 12 does not need final recap/history/dispute UX polish; that remains phase 13
+- phase 12 ends when lobby join/start, setup, the common turn loop, robber flow, trade flow, and dev-card flow feel product-complete enough to support a full match from the real UI
+- phase 12 does not need final recap/history/dispute UX polish; that remains phase 14 after host-stability work
 - phase 12 does not lock final board art or final bubble-card composition as long as the flow substrate is stable
 
 ## Implementation Plan
@@ -268,6 +269,42 @@ Expected observations:
 - the board can be panned and zoomed without severe hitching on device
 - the phase ends with concrete hardware validation, not Simulator-only confidence
 
+### Stage 12.8 — Full-Game Product Cohesion
+
+Goal:
+
+- make the already-landed gameplay systems feel like a coherent end-user game rather than a collection of debug-era surfaces and raw participant IDs
+
+Implement:
+
+- finish board interaction correctness and feedback so pan, zoom, tap, and placement stay trustworthy across the whole match
+- simplify the shell header to turn ownership plus dice state instead of transport/debug context copy
+- replace raw participant identifiers in player-facing UI with deterministic per-game pseudonyms
+- reorganize the bottom tray around the common action order: `Roll`, `End Turn`, `Build`, `Play Dev`, with `Build` opening a compact shelf for legal build/buy actions
+- suppress idle board-target selection so nodes, edges, and tiles only highlight when the active mode actually uses them
+- clarify the current compact trade protocol with clearer proposer/respondent state, passive-decline language, and execution status without inventing new transport semantics
+- align dev-card timing and shell affordances with the intended turn flow instead of leaving them as post-roll-only product shortcuts by accident
+- add any minimal end-of-game clarity needed so a full played match does not feel unfinished at the moment of victory
+
+Key files and likely additions:
+
+- [GameShellView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Game/GameShellView.swift)
+- [BoardSceneView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Board/BoardSceneView.swift)
+- [GameBoardCameraController.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Board/GameBoardCameraController.swift)
+- [GameModalHostView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Components/GameModalHostView.swift)
+- [GameTradePanelModelBuilder.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/GameTradePanelModelBuilder.swift)
+- [TradeInteractionResolver.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/TradeInteractionResolver.swift)
+- [GameDevCardPanelModelBuilder.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/GameDevCardPanelModelBuilder.swift)
+- [DevCardInteractionResolver.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/DevCardInteractionResolver.swift)
+- focused feature files under `MessagesExtension/Sources/Features/Trade/` and `MessagesExtension/Sources/Features/DevCards/` if the interaction surface needs more structure
+
+Expected observations:
+
+- board movement and placement are reliable enough that the main board no longer feels like a hostile control surface
+- the shell header, aliases, and dock order all read like a real game instead of leaked protocol/debug state
+- trade and dev-card flows are compact, but legible enough that a full match no longer relies on raw participant IDs or invisible timing rules
+- a full match can end without the last steps feeling like placeholder UI
+
 ## Validation
 
 ### Automated
@@ -325,7 +362,8 @@ Deferred by design in phase 12:
 - [x] Stage 12.4 — Robber and Discard UX
 - [x] Stage 12.5 — Trade UX
 - [x] Stage 12.6 — Dev Card UX
-- [ ] Stage 12.7 — Flow Hardening and Real-Device Pass
+- [x] Stage 12.7 — Flow Hardening and Real-Device Pass
+- [ ] Stage 12.8 — Full-Game Product Cohesion
 
 ## Decisions and Discoveries
 
@@ -340,6 +378,7 @@ Deferred by design in phase 12:
 - Stage 12.1 through 12.5 validation ran through the MessagesExtension-focused lane: `bash ./scripts/gen.sh`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test -only-testing:MessagesExtensionTests`, with `49` MessagesExtension tests green after the robber/discard slice landed and trade UX stayed within the product shell.
 - Stage 12.6 keeps dev-card UX compact instead of introducing a new full-screen flow: the shell opens a focused dev-card panel, buy/play actions stay default-driven through pure `GameDevCardPanelModelBuilder` and `DevCardInteractionResolver` seams, and the current player publishes the resulting canonical state transitions directly from the product UI.
 - Knight default selection cannot reuse the robber-move legality query because knight play happens from normal turn state rather than `needsRobberMove`; the resolver now prefers a non-current robber tile with a default steal target, then falls back to the first legal non-current robber tile.
+- Follow-up UX audit after stages 12.5 and 12.6 showed an important boundary mistake: both slices landed real product entry points, but they still stop at narrow default-path interactions rather than fully expressing the player choice space for trade and dev cards. Stage 12.8 exists to close that gap instead of pretending phase 12 is done once the rules are merely reachable from the shell.
 - Stage 12.6 validation stayed inside the MessagesExtension-focused lane: `bash ./scripts/gen.sh`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, the focused dev-card tests, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test -only-testing:MessagesExtensionTests`, with `68` MessagesExtension tests green after the dev-card slice landed.
 - Stage 12.7 automated validation is green across the full repo gate: `bash ./scripts/gen.sh`, `swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_Transport`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test`, with the eval lane passing `10` tests in about `140s`.
 - 2026-04-05: real-device transport triage exposed a hardware-only failure signature during invite validation. Selecting a just-sent invite bubble on iPad and iPhone could leave the shell in `No Lobby Selected`, and the debug HUD reported `Selected message has no transport payload` even though the transcript bubble existed.
@@ -359,7 +398,12 @@ Deferred by design in phase 12:
 - 2026-04-08: Stage 12.7 is now intentionally narrowed to two exit metrics: product authority and severe lag. The clean branch no longer treats summary-mirrored payloads, runtime debug toggles, cached published-state recovery, or product-visible reload affordances as phase-12 solutions; those host-stability concerns move to the next phase instead of continuing to contaminate the product path.
 - 2026-04-08: product authority on the clean branch is now `local Messages participant ∩ joined game roster`. Debug impersonation no longer participates in gameplay publication, legality gating, or hidden-information projection, and unresolved identity is explicitly read-only.
 - 2026-04-08: the first lag pass now targets lifecycle churn before deeper board refactors: selection polling self-cancels once a stable selection is observed, product cache keys stop changing on every relative-age tick, diagnostics no longer publish the large transport/debug field set on the gameplay hot path, and active board gestures disable the parent shell scroll view so pan/pinch no longer fight vertical scrolling.
-- The remaining unclosed part of Stage 12.7 is the final real-device authority and responsiveness signoff pass. Reload / active-game sync, transcript collapse behavior, and deeper Messages-host durability are explicitly promoted into the next roadmap phase instead of stretching this phase further.
+- 2026-04-08: Stage 12.7 is closed by the real-device authority and responsiveness pass. Reload / active-game sync, transcript collapse behavior, and deeper Messages-host durability are explicitly promoted into the next roadmap phase instead of stretching phase 12 further.
+- 2026-04-10: Stage 12.8 narrows the “product cohesion” goal to the actual phase-12 blockers: remove raw participant IDs from the player-facing shell, simplify the turn header to ownership plus dice state, stop idle board taps from highlighting arbitrary targets, move dev-card purchase into the build shelf, and allow legal dev-card play before or after the dice roll as long as the card was not bought that turn.
+- 2026-04-10: Stage 12.8 deliberately does not invent new trade or naming protocol. The trade panel is still compact and protocol-constrained, but it now states proposer/respondent status, passive decline, and execute/end-turn expiry behavior clearly enough for a full asynchronous match without pretending there is already a custom composer, cancel bubble, or counteroffer flow.
+- 2026-04-10: deterministic player aliases now come from a per-game pseudonym resolver seeded by `gameId` plus roster membership. The intended product constraint is consistency across devices and transcript reopens, not exposing real Messages contact names that the framework does not provide.
+- 2026-04-10: dev-card timing is now aligned end to end through `TurnStepV1.allowsDevCardPlay`, the reducer, validation, and the Messages shell, so legal non-purchase dev cards can be played pre-roll or post-roll while buy-dev-card remains an after-roll action.
+- 2026-04-10: Stage 12.8 automated validation is green across the full repo gate after the cohesion pass landed: `bash ./scripts/gen.sh`, `swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_Transport`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test`, with `111` non-eval core tests, `10` eval tests, `44` transport tests, and `103` MessagesExtension tests all green.
 - `MessagesExtensionTests` still emits an Xcode dependency-scan warning because Tuist does not support a direct unit-test dependency on an iMessage extension target in this project shape. The current workaround remains compiling selected extension source files into the test target; capture any future cleanup under the tech-debt tracker rather than forcing a larger restructure into this phase.
 - Real-device validation is expected to drive at least some late-stage UX adjustments; do not treat Simulator-only behavior as sufficient signoff for Messages-hosted gameplay.
 - If setup, trade, or dev-card orchestration starts overwhelming `GameShellView` or `LobbyDriverViewModel`, split it into feature-local helpers rather than growing more shared conditionals.
@@ -370,13 +414,14 @@ Deferred by design in phase 12:
 Planned result:
 
 - the lobby and core gameplay loop are playable from the product UI
-- trade is compact and readable in the product UI, with accept and execute flows staying visible in the shell
+- trade and dev-card flows are compact but coherent enough that a full match does not rely on raw IDs, hidden timing assumptions, or debug-era affordances as the primary product behavior
 - board taps, shell modes, and modal choices map cleanly into canonical intents
-- the repo is ready for a narrower phase 13 focused on Messages-host stability, transcript recovery, and durability instead of continuing to blur those concerns into the clean product branch
+- once the current device QA closes stage 12.8, the repo is ready for a narrower phase 13 focused on Messages-host stability, transcript recovery, and durability instead of still using phase 12 to finish basic gameplay UX
 
 What remains after this phase by design:
 
 - Messages-host stability, reload/active-game sync, and transcript collapse/readability work
+- multi-game lifecycle, archive/leave/forfeit, and durable game identity work
 - recap/history/dispute UX
 - final bubble composition polish
 - any visual restyling that does not change the gameplay-flow substrate

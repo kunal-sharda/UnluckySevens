@@ -3,24 +3,26 @@ import ULS_CoreGame
 enum GameScreenModelBuilder {
     static func build(context: GameScreenContext) -> GameScreenModel {
         let statusLine = makeStatusLine(context: context)
+        let actionAvailability = resolvedActionAvailability(context: context)
 
         return GameScreenModel(
             header: GameHeaderModel(
                 statusLine: statusLine,
-                metaText: context.contextMeta
+                metaText: makeMetaText(context: context)
             ),
             opponents: makeOpponentSummaries(context: context),
             board: GameBoardPlaceholderModel(
                 title: statusLine.title,
-                subtitle: context.contextBanner
+                subtitle: statusLine.subtitle
             ),
             boardRenderModel: GameBoardRenderModelBuilder.build(state: context.selectedState),
             handTray: GameHandTrayModel(
                 title: "Your Hand",
                 chips: makeHandChips(context: context)
             ),
-            actionDock: GameActionDockModel(
-                items: makeActionDockItems(context: context)
+            actionDock: makeActionDockModel(
+                actionAvailability: actionAvailability,
+                modeAvailability: context.modeAvailability
             ),
             modeAvailability: context.modeAvailability
         )
@@ -29,18 +31,50 @@ enum GameScreenModelBuilder {
     private static func makeStatusLine(context: GameScreenContext) -> GameShellStatusLine {
         let state = context.selectedState
         let currentPlayer = state?.currentPlayer
-        let currentPlayerDisplay = currentPlayer.map(shortIdentifier) ?? "player"
-        let discardRequiredForActingPlayer = state?.turnState?.discardRequirementsByPlayer[context.actingAs ?? ""] != nil
+        let currentPlayerDisplay = currentPlayer.map {
+            PlayerPseudonymResolver.displayName(for: $0, gameID: state?.gameId, roster: state?.roster ?? [])
+        } ?? "player"
+        let winnerDisplay = state?.winnerPlayer.map {
+            PlayerPseudonymResolver.displayName(for: $0, gameID: state?.gameId, roster: state?.roster ?? [])
+        }
 
         return GameShellStatusLineResolver.resolve(
-            hasTradePending: state?.activeTradeOffer != nil,
             actingAs: context.actingAs,
             currentPlayer: currentPlayer,
             currentPlayerDisplay: currentPlayerDisplay,
-            subtitle: context.contextBanner,
-            turnStep: state?.turnState?.step,
-            discardRequiredForActingPlayer: discardRequiredForActingPlayer
+            subtitle: makeSubtitle(context: context),
+            phase: state?.phase,
+            winnerDisplay: winnerDisplay,
+            didLocalPlayerWin: context.actingAs == state?.winnerPlayer
         )
+    }
+
+    private static func makeSubtitle(context: GameScreenContext) -> String {
+        guard let state = context.selectedState else {
+            return "Open a game bubble to continue."
+        }
+
+        if state.phase == .gameOver {
+            return finalScoreSummary(for: state)
+        }
+
+        if state.phase == .turn, let roll = state.turnState?.lastRoll {
+            return "Roll: \(roll.d1) + \(roll.d2) = \(roll.d1 + roll.d2)"
+        }
+
+        if state.phase == .turn {
+            return "Roll pending"
+        }
+
+        return ""
+    }
+
+    private static func makeMetaText(context: GameScreenContext) -> String {
+        guard let state = context.selectedState, state.phase == .gameOver else {
+            return ""
+        }
+
+        return recapSummary(for: state) ?? ""
     }
 
     private static func makeOpponentSummaries(context: GameScreenContext) -> [GameOpponentSummary] {
@@ -60,7 +94,7 @@ enum GameScreenModelBuilder {
 
             return GameOpponentSummary(
                 id: player,
-                displayName: shortIdentifier(player),
+                displayName: PlayerPseudonymResolver.displayName(for: player, gameID: state.gameId, roster: state.roster),
                 victoryPoints: victoryPoints[player] ?? 0,
                 handCount: handCounts[player] ?? 0,
                 isCurrentPlayer: player == state.currentPlayer
@@ -89,51 +123,152 @@ enum GameScreenModelBuilder {
         ]
     }
 
-    private static func makeActionDockItems(context: GameScreenContext) -> [GameActionDockItem] {
-        [
-            GameActionDockItem(
-                kind: .roll,
-                title: "Roll",
-                systemImage: "die.face.5",
-                isEnabled: context.actionAvailability.canRoll
-            ),
-            GameActionDockItem(
-                kind: .build,
-                title: "Build",
-                systemImage: "hammer.fill",
-                isEnabled: context.actionAvailability.canBuild
-            ),
-            GameActionDockItem(
-                kind: .trade,
-                title: "Trade",
-                systemImage: "arrow.left.arrow.right",
-                isEnabled: context.actionAvailability.canTrade
-            ),
-            GameActionDockItem(
-                kind: .devCards,
-                title: devCardDockTitle(for: context.actionAvailability),
-                systemImage: context.actionAvailability.canBuyDevCard
-                    ? "plus.rectangle.on.folder.fill"
-                    : "sparkles.rectangle.stack.fill",
-                isEnabled: context.actionAvailability.canUseDevCards
-            ),
-            GameActionDockItem(
-                kind: .endTurn,
-                title: "End Turn",
-                systemImage: "flag.pattern.checkered",
-                isEnabled: context.actionAvailability.canEndTurn
-            ),
-        ]
-    }
-
-    private static func shortIdentifier(_ value: String) -> String {
-        String(value.prefix(8))
-    }
-
-    private static func devCardDockTitle(for availability: GameActionAvailability) -> String {
-        if availability.canBuyDevCard && !availability.canPlayDevCards {
-            return "Buy Dev"
+    private static func resolvedActionAvailability(context: GameScreenContext) -> GameActionAvailability {
+        if context.selectedState?.phase == .gameOver {
+            return .none
         }
-        return "Dev Cards"
+
+        return context.actionAvailability
+    }
+
+    private static func makeActionDockModel(
+        actionAvailability: GameActionAvailability,
+        modeAvailability: GameModeAvailability
+    ) -> GameActionDockModel {
+        GameActionDockModel(
+            primaryItems: [
+                GameActionDockItem(
+                    kind: .roll,
+                    title: "Roll",
+                    systemImage: "die.face.5",
+                    isEnabled: actionAvailability.canRoll
+                ),
+                GameActionDockItem(
+                    kind: .endTurn,
+                    title: "End Turn",
+                    systemImage: "flag.pattern.checkered",
+                    isEnabled: actionAvailability.canEndTurn
+                ),
+                GameActionDockItem(
+                    kind: .build,
+                    title: "Build",
+                    systemImage: "hammer.fill",
+                    isEnabled: actionAvailability.canBuild || actionAvailability.canBuyDevCard
+                ),
+                GameActionDockItem(
+                    kind: .devCards,
+                    title: "Play Dev",
+                    systemImage: "sparkles.rectangle.stack.fill",
+                    isEnabled: actionAvailability.canPlayDevCards
+                ),
+            ],
+            utilityItems: [
+                GameActionDockItem(
+                    kind: .trade,
+                    title: "Trade",
+                    systemImage: "arrow.left.arrow.right",
+                    isEnabled: actionAvailability.canTrade
+                ),
+            ].filter(\.isEnabled),
+            buildShelfItems: [
+                GameBuildShelfItem(
+                    kind: .buildRoad,
+                    title: "Road",
+                    systemImage: "road.lanes",
+                    isEnabled: modeAvailability.canBuildRoad
+                ),
+                GameBuildShelfItem(
+                    kind: .buildSettlement,
+                    title: "Settlement",
+                    systemImage: "house.fill",
+                    isEnabled: modeAvailability.canBuildSettlement
+                ),
+                GameBuildShelfItem(
+                    kind: .buildCity,
+                    title: "City",
+                    systemImage: "building.2.fill",
+                    isEnabled: modeAvailability.canBuildCity
+                ),
+                GameBuildShelfItem(
+                    kind: .buyDevCard,
+                    title: "Buy Dev",
+                    systemImage: "plus.rectangle.on.folder.fill",
+                    isEnabled: actionAvailability.canBuyDevCard
+                ),
+            ].filter(\.isEnabled)
+        )
+    }
+
+    private static func finalScoreSummary(for state: CoreGameStateV1) -> String {
+        let scoreLine = state.roster
+            .map { "\(PlayerPseudonymResolver.displayName(for: $0, gameID: state.gameId, roster: state.roster)) \(victoryPoints(for: $0, in: state))" }
+            .joined(separator: " | ")
+        return "Final score: \(scoreLine)"
+    }
+
+    private static func recapSummary(for state: CoreGameStateV1) -> String? {
+        guard let recap = state.lastTurnRecap else {
+            return nil
+        }
+
+        var parts: [String] = []
+        if let rollTotal = recap.rollTotal {
+            parts.append("rolled \(rollTotal)")
+        }
+
+        let actionText = recap.actions
+            .prefix(3)
+            .map(actionLabel)
+            .joined(separator: ", ")
+        if !actionText.isEmpty {
+            parts.append(actionText)
+        }
+
+        guard !parts.isEmpty else {
+            return nil
+        }
+
+        return "Last turn: \(PlayerPseudonymResolver.displayName(for: recap.actor, gameID: state.gameId, roster: state.roster)) \(parts.joined(separator: ", "))"
+    }
+
+    private static func actionLabel(_ action: AuditActionV1) -> String {
+        switch action {
+        case .rollDice:
+            return "rolled"
+        case .submitDiscard:
+            return "discarded"
+        case .moveRobber:
+            return "moved robber"
+        case .selectStealVictim:
+            return "stole"
+        case .buildRoad:
+            return "built road"
+        case .buildSettlement:
+            return "built settlement"
+        case .buildCity:
+            return "built city"
+        case .proposeTrade:
+            return "offered trade"
+        case .acceptTrade:
+            return "accepted trade"
+        case .executeTrade:
+            return "executed trade"
+        case .maritimeTrade:
+            return "maritime trade"
+        case .buyDevCard:
+            return "bought dev card"
+        case .playKnight:
+            return "played knight"
+        case .playMonopoly:
+            return "played monopoly"
+        case .playYearOfPlenty:
+            return "played year of plenty"
+        case .playRoadBuilding:
+            return "played road building"
+        case .revealVictoryPoint:
+            return "revealed VP"
+        case .endTurn:
+            return "ended turn"
+        }
     }
 }

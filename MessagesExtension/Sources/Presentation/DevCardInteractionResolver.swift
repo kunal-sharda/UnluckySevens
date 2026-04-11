@@ -37,8 +37,11 @@ enum DevCardInteractionResolver {
     ) -> ULS_Transport.TurnIntentV1? {
         guard
             let state,
+            state.phase == .turn,
+            state.turnState?.step.allowsDevCardPlay == true,
             let actingAs,
             actingAs == state.currentPlayer,
+            !state.devCardActionPlayedThisTurn,
             (state.devCardsByPlayer[actingAs] ?? .zero).knight > 0,
             let tileID = preferredKnightTileID(in: state, actor: actingAs)
         else {
@@ -62,8 +65,11 @@ enum DevCardInteractionResolver {
     ) -> ULS_Transport.TurnIntentV1? {
         guard
             let state,
+            state.phase == .turn,
+            state.turnState?.step.allowsDevCardPlay == true,
             let actingAs,
             actingAs == state.currentPlayer,
+            !state.devCardActionPlayedThisTurn,
             (state.devCardsByPlayer[actingAs] ?? .zero).monopoly > 0,
             let resource = state.defaultMonopolyResource(for: actingAs)
         else {
@@ -86,8 +92,11 @@ enum DevCardInteractionResolver {
     ) -> ULS_Transport.TurnIntentV1? {
         guard
             let state,
+            state.phase == .turn,
+            state.turnState?.step.allowsDevCardPlay == true,
             let actingAs,
             actingAs == state.currentPlayer,
+            !state.devCardActionPlayedThisTurn,
             (state.devCardsByPlayer[actingAs] ?? .zero).yearOfPlenty > 0,
             let selection = state.defaultYearOfPlentyResources()
         else {
@@ -111,8 +120,11 @@ enum DevCardInteractionResolver {
     ) -> ULS_Transport.TurnIntentV1? {
         guard
             let state,
+            state.phase == .turn,
+            state.turnState?.step.allowsDevCardPlay == true,
             let actingAs,
             actingAs == state.currentPlayer,
+            !state.devCardActionPlayedThisTurn,
             (state.devCardsByPlayer[actingAs] ?? .zero).roadBuilding > 0,
             let edges = state.defaultRoadBuildingEdges(for: actingAs)
         else {
@@ -136,6 +148,8 @@ enum DevCardInteractionResolver {
     ) -> ULS_Transport.TurnIntentV1? {
         guard
             let state,
+            state.phase == .turn,
+            state.turnState?.step.allowsDevCardPlay == true,
             let actingAs,
             actingAs == state.currentPlayer
         else {

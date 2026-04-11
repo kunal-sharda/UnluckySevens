@@ -20,7 +20,7 @@ enum GameBoardRenderModelBuilder {
 
         let ports = topology.ports.enumerated().map { index, port in
             let kind = index < board.portsByIndex.count ? board.portsByIndex[index] : port.kind
-            return GameBoardPortRenderModel(edgeID: port.edge, kind: kind)
+            return GameBoardPortRenderModel(slotIndex: index, edgeID: port.edge, kind: kind)
         }
 
         let settlements = state.settlementsByNode

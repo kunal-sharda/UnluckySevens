@@ -25,7 +25,7 @@ enum GameModeResolver {
 
         switch actionKind {
         case .build:
-            return nextBuildMode(currentMode: currentMode, availability: availability)
+            return .idle
         case .trade:
             return toggle(mode: .trade, currentMode: currentMode, isAvailable: availability.canTrade)
         case .devCards:
@@ -75,42 +75,6 @@ enum GameModeResolver {
             return availability.canDiscard
         }
     }
-
-    private static func nextBuildMode(
-        currentMode: GameMode,
-        availability: GameModeAvailability
-    ) -> GameMode {
-        let buildModes = availableBuildModes(in: availability)
-        guard !buildModes.isEmpty else {
-            return .idle
-        }
-
-        guard let index = buildModes.firstIndex(of: currentMode) else {
-            return buildModes[0]
-        }
-
-        let nextIndex = buildModes.index(after: index)
-        if nextIndex == buildModes.endIndex {
-            return .idle
-        }
-
-        return buildModes[nextIndex]
-    }
-
-    private static func availableBuildModes(in availability: GameModeAvailability) -> [GameMode] {
-        var modes: [GameMode] = []
-        if availability.canBuildRoad {
-            modes.append(.buildRoad)
-        }
-        if availability.canBuildSettlement {
-            modes.append(.buildSettlement)
-        }
-        if availability.canBuildCity {
-            modes.append(.buildCity)
-        }
-        return modes
-    }
-
     private static func toggle(
         mode: GameMode,
         currentMode: GameMode,

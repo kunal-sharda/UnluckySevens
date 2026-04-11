@@ -6,7 +6,7 @@ struct GameBoardLayout {
     let geometry: BoardRenderGeometryV1
 
     private let padding: CGFloat = 28
-    private let portMarginMultiplier: CGFloat = 1.7
+    private let portMarginMultiplier: CGFloat = 2.0
 
     init(size: CGSize, geometry: BoardRenderGeometryV1) {
         self.size = size
@@ -25,6 +25,10 @@ struct GameBoardLayout {
         max(tileRadius * 0.22, 8)
     }
 
+    var portBadgeSize: CGSize {
+        CGSize(width: max(tileRadius * 0.56, 20), height: max(tileRadius * 0.28, 13))
+    }
+
     var boardCenter: CGPoint {
         CGPoint(x: size.width * 0.5, y: size.height * 0.5)
     }
@@ -41,6 +45,20 @@ struct GameBoardLayout {
             y: minY - inset,
             width: max((maxX - minX) + (inset * 2), 1),
             height: max((maxY - minY) + (inset * 2), 1)
+        )
+    }
+
+    var boardHullFrame: CGRect {
+        let minX = geometry.nodePositions.indices.map { nodePoint(for: $0).x }.min() ?? 0
+        let maxX = geometry.nodePositions.indices.map { nodePoint(for: $0).x }.max() ?? size.width
+        let minY = geometry.nodePositions.indices.map { nodePoint(for: $0).y }.min() ?? 0
+        let maxY = geometry.nodePositions.indices.map { nodePoint(for: $0).y }.max() ?? size.height
+
+        return CGRect(
+            x: minX,
+            y: minY,
+            width: max(maxX - minX, 1),
+            height: max(maxY - minY, 1)
         )
     }
 
@@ -65,13 +83,27 @@ struct GameBoardLayout {
         )
     }
 
-    func portAnchor(for edgeID: EdgeID, topology: BoardGraphV1) -> CGPoint {
-        let midpoint = edgeMidpoint(for: edgeID, topology: topology)
-        let direction = normalizedVector(from: boardCenter, to: midpoint)
-        let offset = max(tileRadius * 0.9, 24)
-        return CGPoint(
-            x: midpoint.x + (direction.dx * offset),
-            y: midpoint.y + (direction.dy * offset)
+    func edgeLength(for edgeID: EdgeID, topology: BoardGraphV1) -> CGFloat {
+        let edgeLine = edgeLine(for: edgeID, topology: topology)
+        return hypot(
+            edgeLine.end.x - edgeLine.start.x,
+            edgeLine.end.y - edgeLine.start.y
+        )
+    }
+
+    func portAnchor(for port: GameBoardPortRenderModel, topology: BoardGraphV1) -> CGPoint {
+        let midpoint = edgeMidpoint(for: port.edgeID, topology: topology)
+        let direction = outwardEdgeNormal(for: port.edgeID, topology: topology)
+        let edgeLength = edgeLength(for: port.edgeID, topology: topology)
+        let desiredOffset = max(edgeLength * 0.92, 16)
+        let candidate = CGPoint(
+            x: midpoint.x + (direction.dx * desiredOffset),
+            y: midpoint.y + (direction.dy * desiredOffset)
+        )
+
+        return clamp(
+            point: candidate,
+            to: viewportFrame(for: portBadgeSize)
         )
     }
 
@@ -114,6 +146,35 @@ struct GameBoardLayout {
         let dy = end.y - start.y
         let magnitude = max(sqrt((dx * dx) + (dy * dy)), 0.001)
         return CGVector(dx: dx / magnitude, dy: dy / magnitude)
+    }
+
+    private func outwardEdgeNormal(for edgeID: EdgeID, topology: BoardGraphV1) -> CGVector {
+        let edgeLine = edgeLine(for: edgeID, topology: topology)
+        let tangent = normalizedVector(from: edgeLine.start, to: edgeLine.end)
+        let centerToMidpoint = normalizedVector(from: boardCenter, to: edgeMidpoint(for: edgeID, topology: topology))
+        let leftNormal = CGVector(dx: -tangent.dy, dy: tangent.dx)
+        let rightNormal = CGVector(dx: tangent.dy, dy: -tangent.dx)
+
+        return dot(leftNormal, centerToMidpoint) >= dot(rightNormal, centerToMidpoint)
+            ? leftNormal
+            : rightNormal
+    }
+
+    private func viewportFrame(for badgeSize: CGSize) -> CGRect {
+        let insetX = (badgeSize.width * 0.5) + 8
+        let insetY = (badgeSize.height * 0.5) + 8
+        return CGRect(origin: .zero, size: size).insetBy(dx: insetX, dy: insetY)
+    }
+
+    private func clamp(point: CGPoint, to frame: CGRect) -> CGPoint {
+        CGPoint(
+            x: min(max(point.x, frame.minX), frame.maxX),
+            y: min(max(point.y, frame.minY), frame.maxY)
+        )
+    }
+
+    private func dot(_ lhs: CGVector, _ rhs: CGVector) -> CGFloat {
+        (lhs.dx * rhs.dx) + (lhs.dy * rhs.dy)
     }
 
     private var layoutScale: CGFloat {

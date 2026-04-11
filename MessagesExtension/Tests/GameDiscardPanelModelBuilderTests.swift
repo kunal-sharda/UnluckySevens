@@ -1,6 +1,7 @@
 import ULS_CoreGame
 import ULS_Transport
 import XCTest
+@testable import MessagesExtension
 
 final class GameDiscardPanelModelBuilderTests: XCTestCase {
     private let topology = StandardBoardTopologyV1.standard()
@@ -28,7 +29,9 @@ final class GameDiscardPanelModelBuilderTests: XCTestCase {
         XCTAssertEqual(
             model,
             GameDiscardPanelModel(
-                waitingPlayers: ["A"],
+                waitingPlayers: [
+                    PlayerPseudonymResolver.displayName(for: "A", gameID: state.gameId, roster: state.roster)
+                ],
                 action: .publishSuggestedDiscard(
                     requiredCount: 2,
                     suggested: [
@@ -63,7 +66,9 @@ final class GameDiscardPanelModelBuilderTests: XCTestCase {
         XCTAssertEqual(
             model,
             GameDiscardPanelModel(
-                waitingPlayers: ["B"],
+                waitingPlayers: [
+                    PlayerPseudonymResolver.displayName(for: "B", gameID: state.gameId, roster: state.roster)
+                ],
                 action: .sendSuggestedDiscard(
                     requiredCount: 2,
                     suggested: [
@@ -103,9 +108,11 @@ final class GameDiscardPanelModelBuilderTests: XCTestCase {
         XCTAssertEqual(
             model,
             GameDiscardPanelModel(
-                waitingPlayers: ["B"],
+                waitingPlayers: [
+                    PlayerPseudonymResolver.displayName(for: "B", gameID: state.gameId, roster: state.roster)
+                ],
                 action: .applySelectedDiscard(
-                    playerDisplay: "B",
+                    playerDisplay: PlayerPseudonymResolver.displayName(for: "B", gameID: state.gameId, roster: state.roster),
                     suggested: [GameHandChip(resource: .wood, count: 2)]
                 )
             )
@@ -131,7 +138,13 @@ final class GameDiscardPanelModelBuilderTests: XCTestCase {
 
         XCTAssertEqual(
             model,
-            GameDiscardPanelModel(waitingPlayers: ["B", "C"], action: nil)
+            GameDiscardPanelModel(
+                waitingPlayers: [
+                    PlayerPseudonymResolver.displayName(for: "B", gameID: state.gameId, roster: state.roster),
+                    PlayerPseudonymResolver.displayName(for: "C", gameID: state.gameId, roster: state.roster)
+                ],
+                action: nil
+            )
         )
     }
 

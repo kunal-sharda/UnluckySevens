@@ -37,6 +37,26 @@ final class DevCardInteractionResolverTests: XCTestCase {
         XCTAssertNotNil(intent?.devCardTileID)
     }
 
+    func testDraftPlayKnightIntentBeforeRollingIsLegalForCurrentPlayer() {
+        let topology = StandardBoardTopologyV1.standard()
+        let victimNode = topology.tiles[1].nodes[0]
+        let state = makeState(
+            resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(wood: 2)],
+            devCardsByPlayer: ["A": DevCardInventoryV1(knight: 1)],
+            settlementsByNode: [victimNode: "B"],
+            turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
+        )
+
+        let intent = DevCardInteractionResolver.draftPlayKnightIntent(
+            state: state,
+            actingAs: "A"
+        )
+
+        XCTAssertEqual(intent?.kind, .playDevCard)
+        XCTAssertEqual(intent?.devCardPlayKind, .knight)
+        XCTAssertNotNil(intent?.devCardTileID)
+    }
+
     func testDraftPlayYearOfPlentyIntentUsesDefaultPair() {
         let state = makeState(
             resourcesByPlayer: ["A": .zero, "B": .zero],
@@ -84,12 +104,28 @@ final class DevCardInteractionResolverTests: XCTestCase {
         XCTAssertEqual(intent?.devCardPlayKind, .revealVictoryPoint)
     }
 
+    func testDraftRevealVictoryPointIntentBeforeRollingIsLegalForCurrentPlayer() {
+        let state = makeState(
+            resourcesByPlayer: ["A": .zero, "B": .zero],
+            newDevCardsByPlayer: ["A": DevCardInventoryV1(victoryPoint: 1)],
+            turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
+        )
+
+        let intent = DevCardInteractionResolver.draftRevealVictoryPointIntent(
+            state: state,
+            actingAs: "A"
+        )
+
+        XCTAssertEqual(intent?.devCardPlayKind, .revealVictoryPoint)
+    }
+
     private func makeState(
         resourcesByPlayer: [String: ResourceHandV1],
         devCardsByPlayer: [String: DevCardInventoryV1] = [:],
         newDevCardsByPlayer: [String: DevCardInventoryV1] = [:],
         settlementsByNode: [Int: String] = [:],
-        roadsByEdge: [Int: String] = [:]
+        roadsByEdge: [Int: String] = [:],
+        turnState: TurnStateV1 = TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 4, d2: 2))
     ) -> CoreGameStateV1 {
         let topology = StandardBoardTopologyV1.standard()
         let board = BoardSetupV1(
@@ -121,7 +157,7 @@ final class DevCardInteractionResolverTests: XCTestCase {
             roadsByEdge: roadsByEdge,
             boardRules: BoardRulesV1(strategy: .randomV1),
             board: board,
-            turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 4, d2: 2))
+            turnState: turnState
         ).rehashed()
     }
 }

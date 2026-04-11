@@ -2,28 +2,23 @@ import ULS_CoreGame
 import XCTest
 
 final class GameShellStatusLineResolverTests: XCTestCase {
-    func testTradePendingOverridesTurnOwnershipStatus() {
+    func testOpenGameShownWithoutCurrentPlayer() {
         let line = GameShellStatusLineResolver.resolve(
-            hasTradePending: true,
-            actingAs: "A",
-            currentPlayer: "A",
-            currentPlayerDisplay: "A",
-            subtitle: "subtitle",
-            turnStep: .pendingDiscards,
-            discardRequiredForActingPlayer: true
+            actingAs: nil,
+            currentPlayer: nil,
+            currentPlayerDisplay: "player",
+            subtitle: "subtitle"
         )
 
-        XCTAssertEqual(line.title, "Trade pending")
+        XCTAssertEqual(line.title, "Open game")
     }
 
     func testYourTurnShownForCurrentActorWithoutTrade() {
         let line = GameShellStatusLineResolver.resolve(
-            hasTradePending: false,
             actingAs: "A",
             currentPlayer: "A",
             currentPlayerDisplay: "A",
-            subtitle: "subtitle",
-            turnStep: .afterRoll
+            subtitle: "subtitle"
         )
 
         XCTAssertEqual(line.title, "Your turn")
@@ -31,54 +26,36 @@ final class GameShellStatusLineResolverTests: XCTestCase {
 
     func testWaitingOnShownForNonCurrentActorWithoutTrade() {
         let line = GameShellStatusLineResolver.resolve(
-            hasTradePending: false,
             actingAs: "B",
             currentPlayer: "A",
             currentPlayerDisplay: "A",
-            subtitle: "subtitle",
-            turnStep: .afterRoll
+            subtitle: "subtitle"
         )
 
         XCTAssertEqual(line.title, "Waiting on A")
     }
 
-    func testDiscardRequiredShownForActingPlayerDuringPendingDiscards() {
-        let line = GameShellStatusLineResolver.resolve(
-            hasTradePending: false,
+    func testGameOverShowsWinnerStatus() {
+        let winnerLine = GameShellStatusLineResolver.resolve(
             actingAs: "A",
             currentPlayer: "B",
             currentPlayerDisplay: "B",
-            subtitle: "subtitle",
-            turnStep: .pendingDiscards,
-            discardRequiredForActingPlayer: true
+            subtitle: "Final score: A 10 | B 7",
+            phase: .gameOver,
+            winnerDisplay: "A",
+            didLocalPlayerWin: true
         )
+        XCTAssertEqual(winnerLine.title, "You won")
 
-        XCTAssertEqual(line.title, "Discard required")
-    }
-
-    func testRobberMoveShownForCurrentActor() {
-        let line = GameShellStatusLineResolver.resolve(
-            hasTradePending: false,
-            actingAs: "A",
-            currentPlayer: "A",
-            currentPlayerDisplay: "A",
-            subtitle: "subtitle",
-            turnStep: .needsRobberMove
+        let loserLine = GameShellStatusLineResolver.resolve(
+            actingAs: "B",
+            currentPlayer: "B",
+            currentPlayerDisplay: "B",
+            subtitle: "Final score: A 10 | B 7",
+            phase: .gameOver,
+            winnerDisplay: "A",
+            didLocalPlayerWin: false
         )
-
-        XCTAssertEqual(line.title, "Move the robber")
-    }
-
-    func testStealCardShownForCurrentActor() {
-        let line = GameShellStatusLineResolver.resolve(
-            hasTradePending: false,
-            actingAs: "A",
-            currentPlayer: "A",
-            currentPlayerDisplay: "A",
-            subtitle: "subtitle",
-            turnStep: .needsRobberSteal
-        )
-
-        XCTAssertEqual(line.title, "Steal a card")
+        XCTAssertEqual(loserLine.title, "A won")
     }
 }

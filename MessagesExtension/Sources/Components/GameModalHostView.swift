@@ -114,6 +114,10 @@ struct GameModalHostView: View {
     @ViewBuilder
     private func tradeContent(fallbackMessage: String) -> some View {
         if let tradePanel {
+            Label(tradePanel.roleTitle, systemImage: "arrow.left.arrow.right.circle.fill")
+                .font(GameTheme.metaFont.weight(.semibold))
+                .foregroundStyle(GameTheme.ink)
+
             Text(tradePanel.message)
                 .font(GameTheme.metaFont)
                 .foregroundStyle(GameTheme.mutedInk)
@@ -123,14 +127,24 @@ struct GameModalHostView: View {
                 tradeOfferSection(activeOffer)
             }
 
-            if !tradePanel.acceptedPlayers.isEmpty {
-                Text("Accepted: \(tradePanel.acceptedPlayers.joined(separator: ", "))")
-                    .font(GameTheme.metaFont)
-                    .foregroundStyle(GameTheme.mutedInk)
+            if !tradePanel.participantStatuses.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Responses")
+                        .font(GameTheme.metaFont.weight(.semibold))
+                        .foregroundStyle(GameTheme.ink)
+
+                    ForEach(tradePanel.participantStatuses) { status in
+                        tradeParticipantStatusRow(status)
+                    }
+                }
             }
 
             ForEach(tradePanel.actions) { action in
                 VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+                    Label(action.title, systemImage: action.systemImage)
+                        .font(GameTheme.metaFont.weight(.semibold))
+                        .foregroundStyle(GameTheme.ink)
+
                     Text(action.detail)
                         .font(GameTheme.metaFont)
                         .foregroundStyle(GameTheme.mutedInk)
@@ -148,7 +162,7 @@ struct GameModalHostView: View {
                     Button {
                         onTradeAction(action.kind)
                     } label: {
-                        Text(action.title)
+                        Label(action.title, systemImage: action.systemImage)
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
@@ -178,6 +192,18 @@ struct GameModalHostView: View {
                     }
                 }
             }
+
+            if !tradePanel.footnotes.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(Array(tradePanel.footnotes.enumerated()), id: \.offset) { _, note in
+                        Text(note)
+                            .font(GameTheme.metaFont)
+                            .foregroundStyle(GameTheme.mutedInk)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(.top, 4)
+            }
         } else {
             Text(fallbackMessage)
                 .font(GameTheme.metaFont)
@@ -194,6 +220,17 @@ struct GameModalHostView: View {
                 .foregroundStyle(GameTheme.mutedInk)
                 .fixedSize(horizontal: false, vertical: true)
 
+            if !devCardPanel.timingNotes.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(Array(devCardPanel.timingNotes.enumerated()), id: \.offset) { _, note in
+                        Text(note)
+                            .font(GameTheme.metaFont)
+                            .foregroundStyle(GameTheme.mutedInk)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+
             if !devCardPanel.playableCounts.isEmpty {
                 devCardCountSection(title: "Playable", counts: devCardPanel.playableCounts)
             }
@@ -202,26 +239,60 @@ struct GameModalHostView: View {
                 devCardCountSection(title: "New This Turn", counts: devCardPanel.newCounts)
             }
 
-            ForEach(devCardPanel.actions) { action in
+            if let buyAction = devCardPanel.buyAction {
                 VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-                    Label(action.title, systemImage: action.systemImage)
+                    Text("Buy")
                         .font(GameTheme.metaFont.weight(.semibold))
                         .foregroundStyle(GameTheme.ink)
 
-                    Text(action.detail)
+                    Label(buyAction.title, systemImage: buyAction.systemImage)
+                        .font(GameTheme.metaFont.weight(.semibold))
+                        .foregroundStyle(GameTheme.ink)
+
+                    Text(buyAction.detail)
                         .font(GameTheme.metaFont)
                         .foregroundStyle(GameTheme.mutedInk)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Button {
-                        onDevCardAction(action.kind)
+                        onDevCardAction(buyAction.kind)
                     } label: {
-                        Text(action.title)
+                        Label(buyAction.title, systemImage: buyAction.systemImage)
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                 }
                 .padding(.top, 4)
+            }
+
+            if !devCardPanel.playActions.isEmpty {
+                VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+                    Text("Play Or Reveal")
+                        .font(GameTheme.metaFont.weight(.semibold))
+                        .foregroundStyle(GameTheme.ink)
+
+                    ForEach(devCardPanel.playActions) { action in
+                        VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+                            Label(action.title, systemImage: action.systemImage)
+                                .font(GameTheme.metaFont.weight(.semibold))
+                                .foregroundStyle(GameTheme.ink)
+
+                            Text(action.detail)
+                                .font(GameTheme.metaFont)
+                                .foregroundStyle(GameTheme.mutedInk)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Button {
+                                onDevCardAction(action.kind)
+                            } label: {
+                                Label(action.title, systemImage: action.systemImage)
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                        .padding(.top, 4)
+                    }
+                }
             }
         } else {
             Text(fallbackMessage)
@@ -275,6 +346,24 @@ struct GameModalHostView: View {
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func tradeParticipantStatusRow(_ status: GameTradeParticipantStatus) -> some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(status.isPositive ? GameTheme.accent : GameTheme.outline.opacity(0.35))
+                .frame(width: 8, height: 8)
+
+            Text(status.displayName)
+                .foregroundStyle(GameTheme.ink)
+
+            Spacer()
+
+            Text(status.detailText)
+                .font(GameTheme.metaFont)
+                .foregroundStyle(status.isEmphasized ? GameTheme.accent : GameTheme.mutedInk)
         }
     }
 

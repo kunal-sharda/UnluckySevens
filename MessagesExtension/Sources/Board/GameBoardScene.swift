@@ -97,6 +97,14 @@ final class GameBoardScene: SKScene {
         currentCameraState
     }
 
+    var debugCameraNodePosition: CGPoint {
+        cameraNode.position
+    }
+
+    func debugScenePoint(forLayoutPoint point: CGPoint) -> CGPoint {
+        scenePoint(for: point)
+    }
+
     func updateCamera(state: GameBoardCameraState, size: CGSize) {
         self.size = size
         currentCameraState = state
@@ -127,7 +135,7 @@ final class GameBoardScene: SKScene {
 
     private func makeTileNode(tile: GameBoardTileRenderModel, layout: GameBoardLayout) -> SKNode {
         let tileNode = SKNode()
-        tileNode.position = layout.tileCenter(for: tile.tileID)
+        tileNode.position = scenePoint(for: layout.tileCenter(for: tile.tileID))
         tileNode.zPosition = 20
 
         let shadow = SKShapeNode(path: hexagonPath(radius: layout.tileRadius))
@@ -213,24 +221,37 @@ final class GameBoardScene: SKScene {
         let node = SKNode()
         node.zPosition = 35
 
-        let midpoint = layout.edgeMidpoint(for: port.edgeID, topology: topology)
-        let anchor = layout.portAnchor(for: port.edgeID, topology: topology)
+        let edgeLine = layout.edgeLine(for: port.edgeID, topology: topology)
+        let anchor = layout.portAnchor(for: port, topology: topology)
+        let sceneStart = scenePoint(for: edgeLine.start)
+        let sceneEnd = scenePoint(for: edgeLine.end)
+        let sceneAnchor = scenePoint(for: anchor)
+        let badgeRotation = portBadgeRotation(for: layout.edgeAngle(for: port.edgeID, topology: topology))
 
-        let tetherPath = CGMutablePath()
-        tetherPath.move(to: midpoint)
-        tetherPath.addLine(to: anchor)
+        node.addChild(
+            makePortTether(
+                from: sceneAnchor,
+                to: sceneStart,
+                width: max(layout.tileRadius * 0.08, 2)
+            )
+        )
+        node.addChild(
+            makePortTether(
+                from: sceneAnchor,
+                to: sceneEnd,
+                width: max(layout.tileRadius * 0.08, 2)
+            )
+        )
+        let badgeSize = layout.portBadgeSize
+        let badgeContainer = SKNode()
+        badgeContainer.position = sceneAnchor
+        badgeContainer.zRotation = badgeRotation
+        badgeContainer.zPosition = 1
 
-        let tether = SKShapeNode(path: tetherPath)
-        tether.strokeColor = GameBoardPalette.portStroke.withAlphaComponent(0.75)
-        tether.lineWidth = max(layout.tileRadius * 0.08, 2)
-        tether.lineCap = .round
-        node.addChild(tether)
-
-        let badgeSize = CGSize(width: max(layout.tileRadius * 0.68, 24), height: max(layout.tileRadius * 0.34, 16))
         let badge = SKShapeNode(
             rect: CGRect(
-                x: anchor.x - (badgeSize.width * 0.5),
-                y: anchor.y - (badgeSize.height * 0.5),
+                x: -(badgeSize.width * 0.5),
+                y: -(badgeSize.height * 0.5),
                 width: badgeSize.width,
                 height: badgeSize.height
             ),
@@ -239,19 +260,48 @@ final class GameBoardScene: SKScene {
         badge.fillColor = GameBoardPalette.portFill
         badge.strokeColor = GameBoardPalette.portStroke
         badge.lineWidth = 1
-        node.addChild(badge)
+        badgeContainer.addChild(badge)
 
         let label = SKLabelNode(text: GameBoardPalette.portLabel(for: port.kind))
         label.fontName = "AvenirNext-Bold"
-        label.fontSize = max(layout.tileRadius * 0.15, 8)
+        label.fontSize = max(layout.tileRadius * 0.14, 7.5)
         label.fontColor = GameBoardPalette.ink
-        label.position = anchor
+        label.position = .zero
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
         label.zPosition = 1
-        node.addChild(label)
+        badgeContainer.addChild(label)
+        node.addChild(badgeContainer)
 
         return node
+    }
+
+    private func portBadgeRotation(for edgeAngle: CGFloat) -> CGFloat {
+        var sceneAlignedAngle = -edgeAngle
+        while sceneAlignedAngle > (.pi * 0.5) {
+            sceneAlignedAngle -= .pi
+        }
+        while sceneAlignedAngle < (-.pi * 0.5) {
+            sceneAlignedAngle += .pi
+        }
+        return sceneAlignedAngle
+    }
+
+    private func makePortTether(
+        from start: CGPoint,
+        to end: CGPoint,
+        width: CGFloat,
+        alpha: CGFloat = 0.75
+    ) -> SKShapeNode {
+        let path = CGMutablePath()
+        path.move(to: start)
+        path.addLine(to: end)
+
+        let tether = SKShapeNode(path: path)
+        tether.strokeColor = GameBoardPalette.portStroke.withAlphaComponent(alpha)
+        tether.lineWidth = width
+        tether.lineCap = .round
+        return tether
     }
 
     private func makeRoadNode(
@@ -264,12 +314,14 @@ final class GameBoardScene: SKScene {
         node.zPosition = 50
 
         let edgeLine = layout.edgeLine(for: road.edgeID, topology: topology)
+        let sceneStart = scenePoint(for: edgeLine.start)
+        let sceneEnd = scenePoint(for: edgeLine.end)
         let color = GameBoardPalette.playerColor(owner: road.owner, playerOrder: playerOrder)
         let stroke = GameBoardPalette.playerStroke(owner: road.owner, playerOrder: playerOrder)
 
         let shadowPath = CGMutablePath()
-        shadowPath.move(to: edgeLine.start)
-        shadowPath.addLine(to: edgeLine.end)
+        shadowPath.move(to: sceneStart)
+        shadowPath.addLine(to: sceneEnd)
 
         let shadow = SKShapeNode(path: shadowPath)
         shadow.strokeColor = GameBoardPalette.roadShadow
@@ -279,8 +331,8 @@ final class GameBoardScene: SKScene {
         node.addChild(shadow)
 
         let roadPath = CGMutablePath()
-        roadPath.move(to: edgeLine.start)
-        roadPath.addLine(to: edgeLine.end)
+        roadPath.move(to: sceneStart)
+        roadPath.addLine(to: sceneEnd)
 
         let roadLine = SKShapeNode(path: roadPath)
         roadLine.strokeColor = color
@@ -310,7 +362,7 @@ final class GameBoardScene: SKScene {
         playerOrder: [String]
     ) -> SKNode {
         let node = SKNode()
-        node.position = layout.nodePoint(for: structure.nodeID)
+        node.position = scenePoint(for: layout.nodePoint(for: structure.nodeID))
         node.zPosition = 60
 
         let shadow = SKShapeNode(path: structurePath(kind: structure.kind, radius: layout.structureRadius))
@@ -346,7 +398,7 @@ final class GameBoardScene: SKScene {
         if let anchorNodeID = overlayModel.anchorNodeID {
             node.addChild(
                 makeAnchorHighlightNode(
-                    at: layout.nodePoint(for: anchorNodeID),
+                    at: scenePoint(for: layout.nodePoint(for: anchorNodeID)),
                     radius: layout.structureRadius
                 )
             )
@@ -355,7 +407,7 @@ final class GameBoardScene: SKScene {
         for tileID in overlayModel.legalTileIDs {
             node.addChild(
                 makeTileHighlightNode(
-                    at: layout.tileCenter(for: tileID),
+                    at: scenePoint(for: layout.tileCenter(for: tileID)),
                     radius: layout.tileRadius,
                     isSelected: overlayModel.selectedTarget == .tile(tileID)
                 )
@@ -376,7 +428,7 @@ final class GameBoardScene: SKScene {
         for nodeID in overlayModel.legalNodeIDs {
             node.addChild(
                 makeNodeHighlightNode(
-                    at: layout.nodePoint(for: nodeID),
+                    at: scenePoint(for: layout.nodePoint(for: nodeID)),
                     radius: layout.structureRadius,
                     isSelected: overlayModel.selectedTarget == .node(nodeID),
                     denseCluster: denseNodeHighlights
@@ -389,7 +441,7 @@ final class GameBoardScene: SKScene {
             case let .tile(tileID) where !overlayModel.legalTileIDs.contains(tileID):
                 node.addChild(
                     makeTileHighlightNode(
-                        at: layout.tileCenter(for: tileID),
+                        at: scenePoint(for: layout.tileCenter(for: tileID)),
                         radius: layout.tileRadius,
                         isSelected: true
                     )
@@ -397,7 +449,7 @@ final class GameBoardScene: SKScene {
             case let .node(nodeID) where !overlayModel.legalNodeIDs.contains(nodeID):
                 node.addChild(
                     makeNodeHighlightNode(
-                        at: layout.nodePoint(for: nodeID),
+                        at: scenePoint(for: layout.nodePoint(for: nodeID)),
                         radius: layout.structureRadius,
                         isSelected: true,
                         denseCluster: false
@@ -459,6 +511,14 @@ final class GameBoardScene: SKScene {
         halo.lineWidth = isSelected ? 4 : 1.6
         node.addChild(halo)
 
+        if isSelected {
+            let ring = SKShapeNode(path: hexagonPath(radius: radius * 1.11))
+            ring.fillColor = .clear
+            ring.strokeColor = GameBoardPalette.selectedHighlight.withAlphaComponent(0.36)
+            ring.lineWidth = 2
+            node.addChild(ring)
+        }
+
         return node
     }
 
@@ -470,10 +530,12 @@ final class GameBoardScene: SKScene {
     ) -> SKNode {
         let node = SKNode()
         let edgeLine = layout.edgeLine(for: edgeID, topology: topology)
+        let sceneStart = scenePoint(for: edgeLine.start)
+        let sceneEnd = scenePoint(for: edgeLine.end)
 
         let path = CGMutablePath()
-        path.move(to: edgeLine.start)
-        path.addLine(to: edgeLine.end)
+        path.move(to: sceneStart)
+        path.addLine(to: sceneEnd)
 
         let halo = SKShapeNode(path: path)
         halo.strokeColor = isSelected ? GameBoardPalette.selectedHighlight : GameBoardPalette.legalHighlight
@@ -481,6 +543,14 @@ final class GameBoardScene: SKScene {
         halo.lineCap = .round
         halo.alpha = isSelected ? 0.92 : 0.40
         node.addChild(halo)
+
+        if isSelected {
+            let glow = SKShapeNode(path: path)
+            glow.strokeColor = GameBoardPalette.selectedHighlight.withAlphaComponent(0.26)
+            glow.lineWidth = layout.roadWidth + 12
+            glow.lineCap = .round
+            node.addChild(glow)
+        }
 
         return node
     }
@@ -509,6 +579,14 @@ final class GameBoardScene: SKScene {
         ring.lineWidth = denseCluster ? (isSelected ? 3 : 1.5) : (isSelected ? 4 : 2.2)
         node.addChild(ring)
 
+        if isSelected {
+            let outerRing = SKShapeNode(circleOfRadius: circleRadius + 6)
+            outerRing.fillColor = .clear
+            outerRing.strokeColor = GameBoardPalette.selectedHighlight.withAlphaComponent(0.32)
+            outerRing.lineWidth = 1.8
+            node.addChild(outerRing)
+        }
+
         return node
     }
 
@@ -532,6 +610,10 @@ final class GameBoardScene: SKScene {
 
         path.closeSubpath()
         return path
+    }
+
+    private func scenePoint(for point: CGPoint) -> CGPoint {
+        CGPoint(x: point.x, y: size.height - point.y)
     }
 
     private func structurePath(kind: GameBoardStructureRenderModel.Kind, radius: CGFloat) -> CGPath {
@@ -609,7 +691,9 @@ final class GameBoardScene: SKScene {
 
         cameraNode.position = CGPoint(
             x: center.x - (currentCameraState.offset.width / zoom),
-            y: center.y - (currentCameraState.offset.height / zoom)
+            // Layout/tap coordinates are top-left based, so positive vertical
+            // offset should move the visible board down with the user's drag.
+            y: center.y + (currentCameraState.offset.height / zoom)
         )
         cameraNode.xScale = 1 / zoom
         cameraNode.yScale = 1 / zoom

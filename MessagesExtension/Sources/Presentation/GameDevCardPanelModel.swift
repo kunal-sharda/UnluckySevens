@@ -27,5 +27,7 @@ struct GameDevCardPanelModel: Equatable {
     let message: String
     let playableCounts: [GameDevCardCount]
     let newCounts: [GameDevCardCount]
-    let actions: [GameDevCardAction]
+    let buyAction: GameDevCardAction?
+    let playActions: [GameDevCardAction]
+    let timingNotes: [String]
 }

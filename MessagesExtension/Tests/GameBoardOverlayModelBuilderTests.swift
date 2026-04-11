@@ -4,7 +4,7 @@ import XCTest
 final class GameBoardOverlayModelBuilderTests: XCTestCase {
     private let topology = StandardBoardTopologyV1.standard()
 
-    func testIdlePreservesSelectedTarget() throws {
+    func testIdleIgnoresSelectedTarget() throws {
         let state = makeTurnState()
 
         let overlay = GameBoardOverlayModelBuilder.build(
@@ -14,7 +14,7 @@ final class GameBoardOverlayModelBuilderTests: XCTestCase {
             selectedTarget: .tile(3)
         )
 
-        XCTAssertEqual(overlay.selectedTarget, .tile(3))
+        XCTAssertNil(overlay.selectedTarget)
         XCTAssertTrue(overlay.legalTileIDs.isEmpty)
         XCTAssertTrue(overlay.legalNodeIDs.isEmpty)
         XCTAssertTrue(overlay.legalEdgeIDs.isEmpty)

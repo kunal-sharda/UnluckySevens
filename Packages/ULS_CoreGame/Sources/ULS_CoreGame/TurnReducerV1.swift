@@ -635,7 +635,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         )
 
     case let .playKnight(tileID, victimPlayer):
-        guard turnState.step == .afterRoll else {
+        guard turnState.step.allowsDevCardPlay else {
             throw CoreGameError.turnStepMismatch
         }
         try ensureDevCardActionCanBePlayed(state: state)
@@ -711,7 +711,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         )
 
     case let .playMonopoly(resource):
-        guard turnState.step == .afterRoll else {
+        guard turnState.step.allowsDevCardPlay else {
             throw CoreGameError.turnStepMismatch
         }
         try ensureDevCardActionCanBePlayed(state: state)
@@ -751,7 +751,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         )
 
     case let .playYearOfPlenty(first, second):
-        guard turnState.step == .afterRoll else {
+        guard turnState.step.allowsDevCardPlay else {
             throw CoreGameError.turnStepMismatch
         }
         try ensureDevCardActionCanBePlayed(state: state)
@@ -796,7 +796,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         )
 
     case let .playRoadBuilding(firstEdgeID, secondEdgeID):
-        guard turnState.step == .afterRoll else {
+        guard turnState.step.allowsDevCardPlay else {
             throw CoreGameError.turnStepMismatch
         }
         try ensureDevCardActionCanBePlayed(state: state)
@@ -877,7 +877,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         )
 
     case .revealVictoryPoint:
-        guard turnState.step == .afterRoll else {
+        guard turnState.step.allowsDevCardPlay else {
             throw CoreGameError.turnStepMismatch
         }
 

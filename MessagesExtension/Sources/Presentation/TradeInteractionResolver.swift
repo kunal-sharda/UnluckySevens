@@ -64,7 +64,8 @@ enum TradeInteractionResolver {
             let offer = state.activeTradeOffer,
             let actingAs,
             actingAs != state.currentPlayer,
-            !state.pendingTradeAccepts.contains(where: { $0.acceptingPlayer == actingAs })
+            !state.pendingTradeAccepts.contains(where: { $0.acceptingPlayer == actingAs }),
+            canAfford(hand: state.resourcesByPlayer[actingAs] ?? .zero, cost: offer.receive)
         else {
             return nil
         }
@@ -114,5 +115,13 @@ enum TradeInteractionResolver {
             wheat: hand.wheat,
             ore: hand.ore
         )
+    }
+
+    private static func canAfford(hand: ResourceHandV1, cost: ResourceHandV1) -> Bool {
+        hand.wood >= cost.wood
+            && hand.brick >= cost.brick
+            && hand.sheep >= cost.sheep
+            && hand.wheat >= cost.wheat
+            && hand.ore >= cost.ore
     }
 }

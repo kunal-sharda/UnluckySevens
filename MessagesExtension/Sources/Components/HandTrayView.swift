@@ -14,11 +14,15 @@ struct HandTrayView: View {
                 ContentUnavailableView("No visible hand", systemImage: "shippingbox")
                     .frame(maxWidth: .infinity)
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: GameTheme.chipSpacing) {
-                        ForEach(model.chips) { chip in
-                            HandChipView(chip: chip)
-                        }
+                LazyVGrid(
+                    columns: Array(
+                        repeating: GridItem(.flexible(minimum: 0), spacing: GameTheme.chipSpacing),
+                        count: model.chips.count
+                    ),
+                    spacing: GameTheme.chipSpacing
+                ) {
+                    ForEach(model.chips) { chip in
+                        HandChipView(chip: chip)
                     }
                 }
             }
@@ -37,16 +41,19 @@ private struct HandChipView: View {
     let chip: GameHandChip
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(spacing: 4) {
             Text(chip.shortLabel)
                 .font(GameTheme.chipFont)
                 .foregroundStyle(GameTheme.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
             Text("\(chip.count)")
-                .font(GameTheme.metaFont)
+                .font(GameTheme.headingFont)
                 .foregroundStyle(GameTheme.mutedInk)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, minHeight: 58)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
         .background(backgroundColor(for: chip.resource))
         .overlay(
             RoundedRectangle(cornerRadius: GameTheme.smallRadius)
