@@ -10,7 +10,12 @@ public enum TurnStepV1: String, Codable, Equatable {
 
 public extension TurnStepV1 {
     var allowsDevCardPlay: Bool {
-        true
+        switch self {
+        case .needsRoll, .afterRoll:
+            return true
+        case .pendingDiscards, .needsRobberMove, .needsRobberSteal:
+            return false
+        }
     }
 }
 

@@ -122,11 +122,77 @@ final class GameBoardOverlayModelBuilderTests: XCTestCase {
         XCTAssertEqual(robberVictimOverlay.selectedTarget, .node(victimNode))
     }
 
+    func testChoiceDrivenDevCardModesUseOnlyTheirLegalTargetClass() throws {
+        let victimNode = try XCTUnwrap(topology.tiles[1].nodes.first)
+        let state = makeTurnState(
+            resourcesByPlayer: [
+                "A": .zero,
+                "B": ResourceHandV1(wood: 2),
+            ],
+            devCardsByPlayer: ["A": DevCardInventoryV1(knight: 1, roadBuilding: 1)],
+            settlementsByNode: [victimNode: "B"],
+            roadsByEdge: [0: "A"]
+        )
+
+        let knightTile = try XCTUnwrap(
+            state.legalKnightMoveTilesForDevCard(for: "A").first { tileID in
+                topology.tiles[tileID].nodes.contains(victimNode)
+            }
+        )
+        let knightMoveOverlay = GameBoardOverlayModelBuilder.build(
+            state: state,
+            actingAs: "A",
+            mode: .devCardKnightMove,
+            selectedTarget: .tile(knightTile)
+        )
+        XCTAssertEqual(knightMoveOverlay.legalTileIDs, state.legalKnightMoveTilesForDevCard(for: "A"))
+        XCTAssertTrue(knightMoveOverlay.legalNodeIDs.isEmpty)
+        XCTAssertTrue(knightMoveOverlay.legalEdgeIDs.isEmpty)
+        XCTAssertEqual(knightMoveOverlay.selectedTarget, .tile(knightTile))
+
+        let victimOverlay = GameBoardOverlayModelBuilder.build(
+            state: state,
+            actingAs: "A",
+            mode: .devCardKnightVictim,
+            devCardDraft: .knight(tileID: knightTile, victimPlayer: nil),
+            selectedTarget: .node(victimNode)
+        )
+        XCTAssertEqual(victimOverlay.legalNodeIDs, [victimNode])
+        XCTAssertTrue(victimOverlay.legalTileIDs.isEmpty)
+        XCTAssertTrue(victimOverlay.legalEdgeIDs.isEmpty)
+        XCTAssertEqual(victimOverlay.selectedTarget, .node(victimNode))
+
+        let firstRoad = try XCTUnwrap(state.legalRoadBuildingFirstEdges(for: "A").first)
+        let firstRoadOverlay = GameBoardOverlayModelBuilder.build(
+            state: state,
+            actingAs: "A",
+            mode: .devCardRoadBuildingFirst,
+            selectedTarget: .edge(firstRoad)
+        )
+        XCTAssertEqual(firstRoadOverlay.legalEdgeIDs, state.legalRoadBuildingFirstEdges(for: "A"))
+        XCTAssertEqual(firstRoadOverlay.selectedTarget, .edge(firstRoad))
+
+        let secondRoad = try XCTUnwrap(state.legalRoadBuildingSecondEdges(for: "A", firstEdgeID: firstRoad).first)
+        let secondRoadOverlay = GameBoardOverlayModelBuilder.build(
+            state: state,
+            actingAs: "A",
+            mode: .devCardRoadBuildingSecond,
+            devCardDraft: .roadBuilding(firstEdgeID: firstRoad, secondEdgeID: nil),
+            selectedTarget: .edge(secondRoad)
+        )
+        XCTAssertEqual(
+            secondRoadOverlay.legalEdgeIDs,
+            state.legalRoadBuildingSecondEdges(for: "A", firstEdgeID: firstRoad)
+        )
+        XCTAssertEqual(secondRoadOverlay.selectedTarget, .edge(secondRoad))
+    }
+
     private func makeTurnState(
         resourcesByPlayer: [String: ResourceHandV1] = [
             "A": ResourceHandV1(wood: 5, brick: 5, sheep: 5, wheat: 5, ore: 5),
             "B": .zero,
         ],
+        devCardsByPlayer: [String: DevCardInventoryV1] = [:],
         settlementsByNode: [NodeID: String] = [:],
         citiesByNode: [NodeID: String] = [:],
         roadsByEdge: [EdgeID: String] = [:],
@@ -154,6 +220,7 @@ final class GameBoardOverlayModelBuilderTests: XCTestCase {
             diceRngState: 12,
             robberRngState: 13,
             resourcesByPlayer: resourcesByPlayer,
+            devCardsByPlayer: devCardsByPlayer,
             settlementsByNode: settlementsByNode,
             citiesByNode: citiesByNode,
             roadsByEdge: roadsByEdge,

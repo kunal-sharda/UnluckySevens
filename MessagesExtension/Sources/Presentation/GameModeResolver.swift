@@ -69,7 +69,13 @@ enum GameModeResolver {
             return availability.canRobberVictim
         case .trade:
             return availability.canTrade
-        case .playDevCard:
+        case .playDevCard,
+             .devCardKnightMove,
+             .devCardKnightVictim,
+             .devCardMonopoly,
+             .devCardYearOfPlenty,
+             .devCardRoadBuildingFirst,
+             .devCardRoadBuildingSecond:
             return availability.canPlayDevCard
         case .discard:
             return availability.canDiscard

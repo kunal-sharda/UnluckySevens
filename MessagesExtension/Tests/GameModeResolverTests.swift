@@ -99,6 +99,30 @@ final class GameModeResolverTests: XCTestCase {
         XCTAssertEqual(normalized, .playDevCard)
     }
 
+    func testChoiceDrivenDevCardSubmodesRemainAvailableWhileDevCardsAreAvailable() {
+        let availability = GameModeAvailability(
+            canSetup: false,
+            canBuildRoad: false,
+            canBuildSettlement: false,
+            canBuildCity: false,
+            canRobberMove: false,
+            canRobberVictim: false,
+            canTrade: false,
+            canPlayDevCard: true,
+            canDiscard: false
+        )
+
+        XCTAssertEqual(
+            GameModeResolver.normalized(currentMode: .devCardMonopoly, availability: availability),
+            .devCardMonopoly
+        )
+        XCTAssertEqual(
+            GameModeResolver.normalized(currentMode: .devCardRoadBuildingSecond, availability: availability),
+            .devCardRoadBuildingSecond
+        )
+        XCTAssertTrue(GameMode.devCardKnightMove.isDevCardMode)
+    }
+
     func testRollAndEndTurnClearModeToIdle() {
         let availability = GameModeAvailability(
             canSetup: false,

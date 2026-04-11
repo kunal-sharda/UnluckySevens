@@ -213,11 +213,65 @@ final class CoreGameViewQueriesV1Tests: XCTestCase {
         )
     }
 
+    func testChoiceDrivenDevCardQueriesExposeLegalSelections() throws {
+        let homeNode = topology.tiles[0].nodes[0]
+        let victimNode = topology.tiles[2].nodes[0]
+        let firstRoadOptions = topology.edges(incidentTo: homeNode).sorted()
+        let state = makeState(
+            resourcesByPlayer: [
+                "A": .zero,
+                "B": ResourceHandV1(wood: 1, brick: 2),
+                "C": ResourceHandV1(ore: 1),
+            ],
+            bankResources: ResourceHandV1(wood: 2, brick: 0, sheep: 1, wheat: 3, ore: 1),
+            devCardsByPlayer: [
+                "A": DevCardInventoryV1(knight: 1, monopoly: 1, yearOfPlenty: 1, roadBuilding: 1, victoryPoint: 1),
+                "B": .zero,
+                "C": .zero,
+            ],
+            revealedVictoryPointsByPlayer: [
+                "A": 9,
+                "B": 0,
+                "C": 0,
+            ],
+            settlementsByNode: [
+                homeNode: "A",
+                victimNode: "B",
+            ]
+        )
+
+        XCTAssertEqual(state.legalKnightMoveTilesForDevCard(for: "A").count, 18)
+        XCTAssertEqual(state.legalKnightVictims(for: 2, actor: "A"), ["B"])
+        XCTAssertEqual(state.knightVictimCandidateNodes(for: 2, actor: "A"), [victimNode])
+
+        let monopolyPreviews = state.monopolyPreviews(for: "A")
+        XCTAssertEqual(monopolyPreviews.count, 5)
+        XCTAssertEqual(monopolyPreviews.first(where: { $0.resource == ResourceV1.brick })?.claimCount, 2)
+        XCTAssertEqual(monopolyPreviews.first(where: { $0.resource == ResourceV1.ore })?.claimCount, 1)
+
+        let bankOptions = state.yearOfPlentyBankOptions(for: "A")
+        XCTAssertEqual(
+            bankOptions.map { $0.resource },
+            [ResourceV1.wood, ResourceV1.sheep, ResourceV1.wheat, ResourceV1.ore]
+        )
+        XCTAssertEqual(bankOptions.first(where: { $0.resource == ResourceV1.wood })?.remainingCount, 2)
+
+        let legalFirstEdges = state.legalRoadBuildingFirstEdges(for: "A")
+        XCTAssertFalse(legalFirstEdges.isEmpty)
+        XCTAssertEqual(legalFirstEdges, firstRoadOptions)
+        let secondEdges = state.legalRoadBuildingSecondEdges(for: "A", firstEdgeID: legalFirstEdges[0])
+        XCTAssertFalse(secondEdges.isEmpty)
+
+        XCTAssertTrue(state.canRevealVictoryPoint(for: "A"))
+        XCTAssertFalse(state.canRevealVictoryPoint(for: "B"))
+    }
+
     private func makeState(
         resourcesByPlayer: [String: ResourceHandV1],
         bankResources: ResourceHandV1 = .standardBank,
         devCardsByPlayer: [String: DevCardInventoryV1] = [:],
         newDevCardsByPlayer: [String: DevCardInventoryV1] = [:],
+        revealedVictoryPointsByPlayer: [String: Int] = [:],
         settlementsByNode: [NodeID: String] = [:],
         citiesByNode: [NodeID: String] = [:],
         roadsByEdge: [EdgeID: String] = [:],
@@ -255,6 +309,7 @@ final class CoreGameViewQueriesV1Tests: XCTestCase {
             devDeck: [],
             devCardsByPlayer: normalizedDevCards,
             newDevCardsByPlayer: normalizedNewDevCards,
+            revealedVictoryPointsByPlayer: revealedVictoryPointsByPlayer,
             settlementsByNode: settlementsByNode,
             citiesByNode: citiesByNode,
             roadsByEdge: roadsByEdge,

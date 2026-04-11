@@ -33,7 +33,9 @@ enum DevCardInteractionResolver {
 
     static func draftPlayKnightIntent(
         state: CoreGameStateV1?,
-        actingAs: String?
+        actingAs: String?,
+        tileID: TileID,
+        victimPlayer: String?
     ) -> ULS_Transport.TurnIntentV1? {
         guard
             let state,
@@ -43,15 +45,20 @@ enum DevCardInteractionResolver {
             actingAs == state.currentPlayer,
             !state.devCardActionPlayedThisTurn,
             (state.devCardsByPlayer[actingAs] ?? .zero).knight > 0,
-            let tileID = preferredKnightTileID(in: state, actor: actingAs)
+            state.legalKnightMoveTilesForDevCard(for: actingAs).contains(tileID)
         else {
+            return nil
+        }
+
+        let legalVictims = state.legalKnightVictims(for: tileID, actor: actingAs)
+        guard victimPlayer == nil || legalVictims.contains(victimPlayer!) else {
             return nil
         }
 
         return ULS_Transport.TurnIntentV1(
             playDevCardKind: .knight,
             tileID: tileID,
-            victimPlayer: state.defaultKnightVictim(for: tileID, actor: actingAs),
+            victimPlayer: victimPlayer,
             gameId: state.gameId,
             anchorRev: state.rev,
             anchorHash: state.stateHash,
@@ -61,7 +68,8 @@ enum DevCardInteractionResolver {
 
     static func draftPlayMonopolyIntent(
         state: CoreGameStateV1?,
-        actingAs: String?
+        actingAs: String?,
+        resource: ResourceV1
     ) -> ULS_Transport.TurnIntentV1? {
         guard
             let state,
@@ -71,7 +79,7 @@ enum DevCardInteractionResolver {
             actingAs == state.currentPlayer,
             !state.devCardActionPlayedThisTurn,
             (state.devCardsByPlayer[actingAs] ?? .zero).monopoly > 0,
-            let resource = state.defaultMonopolyResource(for: actingAs)
+            resource != .desert
         else {
             return nil
         }
@@ -88,7 +96,9 @@ enum DevCardInteractionResolver {
 
     static func draftPlayYearOfPlentyIntent(
         state: CoreGameStateV1?,
-        actingAs: String?
+        actingAs: String?,
+        firstResource: ResourceV1,
+        secondResource: ResourceV1
     ) -> ULS_Transport.TurnIntentV1? {
         guard
             let state,
@@ -97,16 +107,33 @@ enum DevCardInteractionResolver {
             let actingAs,
             actingAs == state.currentPlayer,
             !state.devCardActionPlayedThisTurn,
-            (state.devCardsByPlayer[actingAs] ?? .zero).yearOfPlenty > 0,
-            let selection = state.defaultYearOfPlentyResources()
+            (state.devCardsByPlayer[actingAs] ?? .zero).yearOfPlenty > 0
         else {
             return nil
+        }
+        guard firstResource != .desert, secondResource != .desert else {
+            return nil
+        }
+        let options = Dictionary(
+            uniqueKeysWithValues: state.yearOfPlentyBankOptions(for: actingAs).map { ($0.resource, $0.remainingCount) }
+        )
+        guard options[firstResource] != nil else {
+            return nil
+        }
+        if firstResource == secondResource {
+            guard (options[firstResource] ?? 0) >= 2 else {
+                return nil
+            }
+        } else {
+            guard options[secondResource] != nil else {
+                return nil
+            }
         }
 
         return ULS_Transport.TurnIntentV1(
             playDevCardKind: .yearOfPlenty,
-            firstResource: transportResource(from: selection.first),
-            secondResource: transportResource(from: selection.second),
+            firstResource: transportResource(from: firstResource),
+            secondResource: transportResource(from: secondResource),
             gameId: state.gameId,
             anchorRev: state.rev,
             anchorHash: state.stateHash,
@@ -116,7 +143,9 @@ enum DevCardInteractionResolver {
 
     static func draftPlayRoadBuildingIntent(
         state: CoreGameStateV1?,
-        actingAs: String?
+        actingAs: String?,
+        firstEdgeID: EdgeID,
+        secondEdgeID: EdgeID
     ) -> ULS_Transport.TurnIntentV1? {
         guard
             let state,
@@ -126,15 +155,16 @@ enum DevCardInteractionResolver {
             actingAs == state.currentPlayer,
             !state.devCardActionPlayedThisTurn,
             (state.devCardsByPlayer[actingAs] ?? .zero).roadBuilding > 0,
-            let edges = state.defaultRoadBuildingEdges(for: actingAs)
+            state.legalRoadBuildingFirstEdges(for: actingAs).contains(firstEdgeID),
+            state.legalRoadBuildingSecondEdges(for: actingAs, firstEdgeID: firstEdgeID).contains(secondEdgeID)
         else {
             return nil
         }
 
         return ULS_Transport.TurnIntentV1(
             playDevCardKind: .roadBuilding,
-            firstEdgeID: edges.firstEdgeID,
-            secondEdgeID: edges.secondEdgeID,
+            firstEdgeID: firstEdgeID,
+            secondEdgeID: secondEdgeID,
             gameId: state.gameId,
             anchorRev: state.rev,
             anchorHash: state.stateHash,
@@ -151,14 +181,9 @@ enum DevCardInteractionResolver {
             state.phase == .turn,
             state.turnState?.step.allowsDevCardPlay == true,
             let actingAs,
-            actingAs == state.currentPlayer
+            actingAs == state.currentPlayer,
+            state.canRevealVictoryPoint(for: actingAs)
         else {
-            return nil
-        }
-
-        let playable = state.devCardsByPlayer[actingAs] ?? .zero
-        let newCards = state.newDevCardsByPlayer[actingAs] ?? .zero
-        guard playable.victoryPoint > 0 || newCards.victoryPoint > 0 else {
             return nil
         }
 
@@ -186,17 +211,5 @@ enum DevCardInteractionResolver {
         case .desert:
             return .wood
         }
-    }
-
-    private static func preferredKnightTileID(in state: CoreGameStateV1, actor: String) -> TileID? {
-        guard let board = state.board else {
-            return nil
-        }
-
-        let candidateTiles = board.resourcesByTile.indices.filter { $0 != board.robberTile }
-        if let victimTile = candidateTiles.first(where: { state.defaultKnightVictim(for: $0, actor: actor) != nil }) {
-            return victimTile
-        }
-        return candidateTiles.first
     }
 }

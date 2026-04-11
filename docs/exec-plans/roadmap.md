@@ -41,9 +41,12 @@ Scope:
 - simplify the top-of-shell turn presentation so it shows turn ownership and dice state instead of transport/debug-style context copy
 - replace raw participant identifiers with deterministic per-game pseudonyms so the game remains readable across devices without relying on unavailable Messages display names
 - reorganize the bottom tray around the common action order: `Roll`, `End Turn`, `Build`, and `Play Dev`, with `Build` opening a compact shelf for legal build/buy choices
-- widen dev-card timing to match standard turn flow: playable before or after rolling, but still not on the turn they were acquired
+- keep `Buy Dev` under `Build`, keep the public bank tray visible near the hand tray, and use that tray as the explicit chooser for Monopoly and Year of Plenty
+- keep dev-card timing aligned with the current standard turn flow: playable before or after rolling, but still not on the turn they were acquired unless a Victory Point reveal immediately wins
+- replace the old default-driven dev-card shortcuts with staged Knight, Monopoly, Year Of Plenty, and Road Building choice flows that feel like authored product interactions
 - keep the current compact trade protocol, but make proposer/respondent state and passive-decline behavior explicit enough that the shell no longer feels like a debug wrapper
 - add any minimal end-of-game clarity needed so a full played match does not feel unfinished at the moment of victory
+- finish with real-device full-match signoff for the phase-12 gameplay surface
 
 Not this phase:
 

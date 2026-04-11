@@ -26,8 +26,12 @@ struct GameDevCardAction: Identifiable, Equatable {
 struct GameDevCardPanelModel: Equatable {
     let message: String
     let playableCounts: [GameDevCardCount]
+    let heldCounts: [GameDevCardCount]
     let newCounts: [GameDevCardCount]
-    let buyAction: GameDevCardAction?
     let playActions: [GameDevCardAction]
     let timingNotes: [String]
+    let draftSummary: String?
+    let confirmTitle: String?
+    let canConfirm: Bool
+    let showsBackButton: Bool
 }

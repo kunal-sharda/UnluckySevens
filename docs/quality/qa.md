@@ -12,6 +12,7 @@ swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals
 swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals
 swift test --package-path Packages/ULS_Transport
 xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build
+xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test
 ```
 
 GitHub Actions mirrors this practical gate in `.github/workflows/ci.yml`.
@@ -40,7 +41,7 @@ GitHub Actions mirrors this practical gate in `.github/workflows/ci.yml`.
   - run the Real Device Messages Lifecycle checklist
   - run the Real Device Turn-Taking Smoke checklist
   - run the Real Device UX Hardening checklist
-- Any shell-header, action-dock, player-name, or dev-card timing change:
+- Any shell-header, action-dock, player-name, bank-tray, or dev-card timing/change-flow update:
   - run the full Practical Gate
   - run the Manual Simulator Runbook smoke pass
   - run the Real Device Turn-Taking Smoke checklist
@@ -71,13 +72,14 @@ Run this after shell, layout, presentation, or mode-system changes.
 
 1. Install the current development build on both devices. In the current repo shape this may still happen through the minimal containing-app shell, but the intended product surface is the Messages app drawer.
    Recommended local pipeline:
-   `bash ./scripts/install-connected-devices.sh --clean`
+   `bash ./scripts/install-connected-devices.sh`
 2. Open Messages and confirm Unlucky Sevens appears in the app drawer on both devices.
 3. Open the same conversation between the two accounts.
 4. Open an existing canonical `STATE` bubble and confirm the extension requests expanded presentation and the shell renders:
    - header
    - board area
    - hand tray
+   - bank tray
    - action dock
    - compact opponent summaries
 5. Confirm the iPhone layout remains readable in compact extension sizing.
@@ -139,10 +141,22 @@ Run this before calling phase 12 complete.
    - `Settlement`
    - `City`
    - `Buy Dev`
-4. Tap random nodes, edges, and tiles while idle. Confirm nothing highlights or remains selected unless the active mode actually uses that board target class.
-5. If the acting player owns a legal pre-roll dev card, play it before rolling and confirm the state change publishes correctly. If the player buys a dev card after rolling, confirm that same non-VP card still cannot be played until a later turn.
-6. Open the trade panel as proposer and responder. Confirm the compact panel explains accepted, waiting, passive-decline, and execute/end-turn expiry behavior without leaking raw IDs or debug text.
-7. Finish a game-over state or load one from transcript and confirm the shell shows:
+   Confirm the shelf makes bank-backed purchase availability visible instead of burying it behind debug copy.
+4. Confirm the public bank tray stays visible near the hand tray with counts for wood, brick, sheep, wheat, and ore. Verify it only becomes interactive during Monopoly or Year of Plenty selection.
+5. Tap random nodes, edges, and tiles while idle. Confirm nothing highlights or remains selected unless the active mode actually uses that board target class.
+6. Open the dev-card panel and confirm the legal actions are choice-driven, not just default labels:
+   - Knight
+   - Monopoly
+   - Year of Plenty
+   - Road Building
+   Verify each option only appears when legal for the current turn state.
+7. Play Knight and confirm the robber moves to the selected tile. If the chosen tile has multiple legal victims, verify the victim selection step becomes explicit; if it has one or zero legal victims, verify the flow resolves without an unnecessary extra picker.
+8. Play Monopoly and confirm the chosen resource is the one collected from opponents.
+9. Play Year of Plenty and confirm the selected two resources are taken from the bank and added to the player.
+10. Play Road Building and confirm the selected two edges are placed without resource cost.
+11. If a Victory Point card is present, confirm it is only surfaced when revealing it would immediately win the game.
+12. Open the trade panel as proposer and responder. Confirm the compact panel explains accepted, waiting, passive-decline, and execute/end-turn expiry behavior without leaking raw IDs or debug text.
+13. Finish a game-over state or load one from transcript and confirm the shell shows:
    - winner clearly
    - compact final score
    - short last-turn recap
@@ -185,7 +199,7 @@ Use this only on the disposable debug branch when a selected transcript bubble d
 - the common turn loop and build/buy actions in the product shell
 - robber/discard forced-flow handling in the product shell
 - trade UX in the product shell, including compact player and maritime trade entry, accept intents, and execute flow
-- dev-card UX in the product shell, including compact play actions, pre-roll/post-roll timing, and default-driven card effects
+- dev-card UX in the product shell, including compact play actions, pre-roll/post-roll timing, staged bank/board choice flows, and winning-only Victory Point reveal
 - setup sequencing and starting resources
 - deterministic dice, board generation, dev deck, and robber steal behavior
 - production, bank depletion, discard flow, robber flow
@@ -227,14 +241,17 @@ Use the current product shell for one smoke pass and three targeted checks. Keep
    - phase is `turn`
    - step becomes `afterRoll` or the correct robber/discard subflow
 8. If available, play one legal dev card before rolling and verify the resulting state change appears without leaking hidden card composition to opponents.
-9. Roll once, then perform one post-roll action such as build, trade, maritime trade, or dev-card purchase.
-10. Open the dev-card panel when legal and verify only legal play/reveal actions are shown there; buy-dev-card should now live under the `Build` shelf instead.
-11. End the turn and verify:
-   - current player advances
-   - step resets to `needsRoll`
-   - trade offers clear
-12. Verify opponent hand and dev-card views show counts only, not composition.
-13. Verify the turn header never shows raw debug/context metadata; it should stay limited to ownership plus dice state.
+9. Confirm the public bank tray stays visible near the hand tray with counts for wood, brick, sheep, wheat, and ore, and only becomes interactive during Monopoly or Year of Plenty selection.
+10. Roll once, then perform one post-roll action such as build, trade, maritime trade, or dev-card purchase.
+11. Open the dev-card panel when legal and verify only legal play/reveal actions are shown there; buy-dev-card should now live under the `Build` shelf instead.
+12. Verify `Play Dev` never falls back to default-choice labels for Knight, Monopoly, Year of Plenty, or Road Building. Knight should move through tile choice first and only open a victim choice when the chosen tile has multiple eligible steals; Monopoly should use the bank strip, Year of Plenty should use first/second bank picks, and Road Building should use first/second road choice.
+13. Verify Victory Point reveal stays hidden unless the reveal would immediately win the game.
+14. End the turn and verify:
+    - current player advances
+    - step resets to `needsRoll`
+    - trade offers clear
+15. Verify opponent hand and dev-card views show counts only, not composition.
+16. Verify the turn header never shows raw debug/context metadata; it should stay limited to ownership plus dice state.
 
 ### Targeted Check: Robber / Seven Flow
 

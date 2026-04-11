@@ -29,13 +29,14 @@ final class TurnDevCardsV1Tests: XCTestCase {
                 "A": ResourceHandV1(sheep: 1, wheat: 1, ore: 1),
                 "B": .zero,
             ],
-            devDeck: [.victoryPoint]
+            devDeck: [.victoryPoint],
+            revealedVictoryPointsByPlayer: ["A": 9, "B": 0]
         )
 
         let bought = try apply(intent: .buyDevCard, to: state, actor: "A")
         let revealed = try apply(intent: .revealVictoryPoint, to: bought, actor: "A")
 
-        XCTAssertEqual(revealed.revealedVictoryPointsByPlayer["A"], 1)
+        XCTAssertEqual(revealed.revealedVictoryPointsByPlayer["A"], 10)
         XCTAssertEqual(revealed.newDevCardsByPlayer["A"]?.victoryPoint, 0)
         XCTAssertNoThrow(try validateTransition(from: bought, to: revealed, actor: "A"))
     }
@@ -98,6 +99,10 @@ final class TurnDevCardsV1Tests: XCTestCase {
                 "A": DevCardInventoryV1(victoryPoint: 1),
                 "B": .zero,
             ],
+            revealedVictoryPointsByPlayer: [
+                "A": 9,
+                "B": 0,
+            ],
             robberRngState: 0x0F0E0D0C,
             settlementsByNode: [topology.tiles[0].nodes[0]: "B"],
             turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
@@ -112,9 +117,50 @@ final class TurnDevCardsV1Tests: XCTestCase {
 
         let revealed = try apply(intent: .revealVictoryPoint, to: playedKnight, actor: "A")
 
-        XCTAssertEqual(revealed.revealedVictoryPointsByPlayer["A"], 1)
+        XCTAssertEqual(revealed.revealedVictoryPointsByPlayer["A"], 10)
         XCTAssertEqual(revealed.newDevCardsByPlayer["A"]?.victoryPoint, 0)
         XCTAssertTrue(revealed.devCardActionPlayedThisTurn)
+    }
+
+    func testRevealVictoryPointRequiresWinningThreshold() throws {
+        let state = makeState(
+            resourcesByPlayer: [
+                "A": .zero,
+                "B": .zero,
+            ],
+            newDevCardsByPlayer: [
+                "A": DevCardInventoryV1(victoryPoint: 1),
+                "B": .zero,
+            ],
+            revealedVictoryPointsByPlayer: [
+                "A": 8,
+                "B": 0,
+            ],
+            turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
+        )
+
+        XCTAssertThrowsError(try apply(intent: .revealVictoryPoint, to: state, actor: "A")) { error in
+            XCTAssertEqual(error as? CoreGameError, .victoryPointRevealNotWinning)
+        }
+    }
+
+    func testCannotPlayKnightDuringForcedRobberStep() throws {
+        let state = makeState(
+            resourcesByPlayer: [
+                "A": .zero,
+                "B": ResourceHandV1(wood: 1),
+            ],
+            devCardsByPlayer: [
+                "A": DevCardInventoryV1(knight: 1),
+                "B": .zero,
+            ],
+            settlementsByNode: [topology.tiles[0].nodes[0]: "B"],
+            turnState: TurnStateV1(step: .needsRobberMove, lastRoll: DiceRollV1(d1: 3, d2: 4))
+        )
+
+        XCTAssertThrowsError(try apply(intent: .playKnight(tileID: 0, victimPlayer: "B"), to: state, actor: "A")) { error in
+            XCTAssertEqual(error as? CoreGameError, .turnStepMismatch)
+        }
     }
 
     func testMonopolyCollectsAllOfSelectedResource() throws {
@@ -217,6 +263,7 @@ final class TurnDevCardsV1Tests: XCTestCase {
         devDeck: [DevCardV1] = [],
         devCardsByPlayer: [String: DevCardInventoryV1] = [:],
         newDevCardsByPlayer: [String: DevCardInventoryV1] = [:],
+        revealedVictoryPointsByPlayer: [String: Int] = [:],
         robberRngState: UInt64 = 0x1234,
         settlementsByNode: [NodeID: String] = [:],
         roadsByEdge: [EdgeID: String] = [:],
@@ -248,6 +295,7 @@ final class TurnDevCardsV1Tests: XCTestCase {
             devDeck: devDeck,
             devCardsByPlayer: devCardsByPlayer,
             newDevCardsByPlayer: newDevCardsByPlayer,
+            revealedVictoryPointsByPlayer: revealedVictoryPointsByPlayer,
             settlementsByNode: settlementsByNode,
             citiesByNode: [:],
             roadsByEdge: roadsByEdge,

@@ -65,6 +65,7 @@ public enum CoreGameError: Error, Equatable {
     case devCardAlreadyPlayedThisTurn
     case devCardNotOwned
     case devCardPayloadInvalid
+    case victoryPointRevealNotWinning
     case awardStateInvalid
     case victoryStateInvalid
     case auditLogInvalid
@@ -1893,6 +1894,9 @@ private func isRevealVictoryPointTransitionForAudit(from: CoreGameStateV1, to: C
         return false
     }
     let actor = from.currentPlayer
+    guard victoryPoints(for: actor, in: to) >= 10 else {
+        return false
+    }
     guard from.devDeck == to.devDeck else {
         return false
     }

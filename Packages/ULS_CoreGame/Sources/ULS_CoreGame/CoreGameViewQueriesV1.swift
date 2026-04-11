@@ -63,6 +63,26 @@ public struct ResourcePairV1: Equatable {
     }
 }
 
+public struct MonopolyPreviewV1: Equatable {
+    public let resource: ResourceV1
+    public let claimCount: Int
+
+    public init(resource: ResourceV1, claimCount: Int) {
+        self.resource = resource
+        self.claimCount = claimCount
+    }
+}
+
+public struct BankResourceOptionV1: Equatable {
+    public let resource: ResourceV1
+    public let remainingCount: Int
+
+    public init(resource: ResourceV1, remainingCount: Int) {
+        self.resource = resource
+        self.remainingCount = remainingCount
+    }
+}
+
 public struct EdgePairV1: Equatable {
     public let firstEdgeID: EdgeID
     public let secondEdgeID: EdgeID
@@ -99,9 +119,28 @@ public extension CoreGameStateV1 {
     }
 
     func defaultKnightVictim(for tileID: TileID, actor: String) -> String? {
+        legalKnightVictims(for: tileID, actor: actor).first
+    }
+
+    func legalKnightMoveTilesForDevCard(for actor: String) -> [TileID] {
+        guard
+            phase == .turn,
+            turnState?.step.allowsDevCardPlay == true,
+            currentPlayer == actor,
+            !devCardActionPlayedThisTurn,
+            (devCardsByPlayer[actor] ?? .zero).knight > 0,
+            let board
+        else {
+            return []
+        }
+
+        return board.resourcesByTile.indices.filter { $0 != board.robberTile }
+    }
+
+    func legalKnightVictims(for tileID: TileID, actor: String) -> [String] {
         let topology = StandardBoardTopologyV1.standard()
         guard tileID >= 0, tileID < topology.tiles.count else {
-            return nil
+            return []
         }
 
         var victims: Set<String> = []
@@ -121,7 +160,30 @@ public extension CoreGameStateV1 {
             }
         }
 
-        return victims.sorted().first
+        return victims.sorted()
+    }
+
+    func knightVictimCandidateNodes(for tileID: TileID, actor: String) -> [NodeID] {
+        let topology = StandardBoardTopologyV1.standard()
+        let victims = Set(legalKnightVictims(for: tileID, actor: actor))
+        guard tileID >= 0, tileID < topology.tiles.count, !victims.isEmpty else {
+            return []
+        }
+
+        return Array(
+            Set(
+                topology.tiles[tileID].nodes.filter { nodeID in
+                    if let owner = citiesByNode[nodeID] {
+                        return victims.contains(owner)
+                    }
+                    if let owner = settlementsByNode[nodeID] {
+                        return victims.contains(owner)
+                    }
+                    return false
+                }
+            )
+        )
+        .sorted()
     }
 
     func defaultMonopolyResource(for actor: String) -> ResourceV1? {
@@ -143,6 +205,29 @@ public extension CoreGameStateV1 {
         return bestResource ?? Self.tradeableResources.first
     }
 
+    func monopolyPreviews(for actor: String) -> [MonopolyPreviewV1] {
+        guard
+            phase == .turn,
+            turnState?.step.allowsDevCardPlay == true,
+            currentPlayer == actor,
+            !devCardActionPlayedThisTurn,
+            (devCardsByPlayer[actor] ?? .zero).monopoly > 0
+        else {
+            return []
+        }
+
+        return Self.tradeableResources.map { resource in
+            MonopolyPreviewV1(
+                resource: resource,
+                claimCount: roster
+                    .filter { $0 != actor }
+                    .reduce(0) { partial, player in
+                        partial + (resourcesByPlayer[player] ?? .zero).count(for: resource)
+                    }
+            )
+        }
+    }
+
     func defaultYearOfPlentyResources() -> ResourcePairV1? {
         for resource in Self.tradeableResources where bankResources.count(for: resource) >= 2 {
             return ResourcePairV1(first: resource, second: resource)
@@ -156,28 +241,89 @@ public extension CoreGameStateV1 {
         return ResourcePairV1(first: available[0], second: available[1])
     }
 
+    func yearOfPlentyBankOptions(for actor: String) -> [BankResourceOptionV1] {
+        guard
+            phase == .turn,
+            turnState?.step.allowsDevCardPlay == true,
+            currentPlayer == actor,
+            !devCardActionPlayedThisTurn,
+            (devCardsByPlayer[actor] ?? .zero).yearOfPlenty > 0
+        else {
+            return []
+        }
+
+        return Self.tradeableResources.compactMap { resource in
+            let remainingCount = bankResources.count(for: resource)
+            guard remainingCount > 0 else {
+                return nil
+            }
+            return BankResourceOptionV1(resource: resource, remainingCount: remainingCount)
+        }
+    }
+
     func defaultRoadBuildingEdges(for player: String) -> EdgePairV1? {
-        let topology = StandardBoardTopologyV1.standard()
-        let roadCount = roadsByEdge.values.filter { $0 == player }.count
-        guard roadCount <= 13 else {
+        guard let firstEdgeID = legalRoadBuildingFirstEdges(for: player).first,
+              let secondEdgeID = legalRoadBuildingSecondEdges(for: player, firstEdgeID: firstEdgeID).first else {
             return nil
         }
 
-        for firstEdge in topology.edges.indices where roadsByEdge[firstEdge] == nil {
-            if !isRoadConnected(firstEdge, player: player, roads: roadsByEdge) {
-                continue
-            }
+        return EdgePairV1(firstEdgeID: firstEdgeID, secondEdgeID: secondEdgeID)
+    }
 
-            var roadsAfterFirst = roadsByEdge
-            roadsAfterFirst[firstEdge] = player
-            for secondEdge in topology.edges.indices where secondEdge != firstEdge && roadsAfterFirst[secondEdge] == nil {
-                if isRoadConnected(secondEdge, player: player, roads: roadsAfterFirst) {
-                    return EdgePairV1(firstEdgeID: firstEdge, secondEdgeID: secondEdge)
-                }
-            }
+    func legalRoadBuildingFirstEdges(for player: String) -> [EdgeID] {
+        let topology = StandardBoardTopologyV1.standard()
+        guard canPlayRoadBuilding(for: player) else {
+            return []
         }
 
-        return nil
+        return topology.edges.indices.filter { firstEdgeID in
+            guard roadsByEdge[firstEdgeID] == nil, isRoadConnected(firstEdgeID, player: player, roads: roadsByEdge) else {
+                return false
+            }
+            return !legalRoadBuildingSecondEdges(for: player, firstEdgeID: firstEdgeID).isEmpty
+        }
+    }
+
+    func legalRoadBuildingSecondEdges(for player: String, firstEdgeID: EdgeID) -> [EdgeID] {
+        let topology = StandardBoardTopologyV1.standard()
+        guard canPlayRoadBuilding(for: player) else {
+            return []
+        }
+        guard firstEdgeID >= 0, firstEdgeID < topology.edges.count else {
+            return []
+        }
+        guard roadsByEdge[firstEdgeID] == nil, isRoadConnected(firstEdgeID, player: player, roads: roadsByEdge) else {
+            return []
+        }
+
+        var roadsAfterFirst = roadsByEdge
+        roadsAfterFirst[firstEdgeID] = player
+        return topology.edges.indices.filter { secondEdgeID in
+            guard secondEdgeID != firstEdgeID else {
+                return false
+            }
+            guard roadsAfterFirst[secondEdgeID] == nil else {
+                return false
+            }
+            return isRoadConnected(secondEdgeID, player: player, roads: roadsAfterFirst)
+        }
+    }
+
+    func canRevealVictoryPoint(for actor: String, winningGoal: Int = 10) -> Bool {
+        guard
+            phase == .turn,
+            turnState?.step.allowsDevCardPlay == true,
+            currentPlayer == actor
+        else {
+            return false
+        }
+
+        let hiddenVictoryPoints = (devCardsByPlayer[actor] ?? .zero).victoryPoint + (newDevCardsByPlayer[actor] ?? .zero).victoryPoint
+        guard hiddenVictoryPoints > 0 else {
+            return false
+        }
+
+        return victoryPoints(for: actor, in: self) + 1 >= winningGoal
     }
 
     func firstLegalRoadEdge(for player: String) -> EdgeID? {
@@ -411,6 +557,21 @@ public extension CoreGameStateV1 {
 
     private static var tradeableResources: [ResourceV1] {
         [.wood, .brick, .sheep, .wheat, .ore]
+    }
+
+    private func canPlayRoadBuilding(for player: String) -> Bool {
+        let roadCount = roadsByEdge.values.filter { $0 == player }.count
+        return
+            phase == .turn &&
+            turnState?.step.allowsDevCardPlay == true &&
+            currentPlayer == player &&
+            !devCardActionPlayedThisTurn &&
+            (devCardsByPlayer[player] ?? .zero).roadBuilding > 0 &&
+            roadCount <= 13
+    }
+
+    private func resourceOrder(_ resource: ResourceV1) -> Int {
+        Self.tradeableResources.firstIndex(of: resource) ?? .max
     }
 
     private func canAfford(hand: ResourceHandV1, cost: ResourceHandV1) -> Bool {

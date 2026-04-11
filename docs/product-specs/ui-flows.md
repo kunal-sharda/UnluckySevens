@@ -23,7 +23,8 @@ This document summarizes the player-facing flows the UI must support in the curr
 
 ## Turn Flow
 
-- Optional dev-card play before or after the roll, subject to core timing rules and never for a non-VP card bought on the same turn.
+- Optional non-VP dev-card play before or after the roll, subject to core timing rules and never for a non-VP card bought on the same turn.
+- Victory Point cards stay hidden unless revealing them would immediately win the game.
 - Roll.
 - Resolve either production or the full seven/robber subflow.
 - Optionally trade, build, buy or play allowed dev cards, and then end turn.
@@ -32,8 +33,10 @@ This document summarizes the player-facing flows the UI must support in the curr
   - `End Turn`
   - `Build`
   - `Play Dev`
-- `Build` opens a compact shelf for legal build/buy actions such as road, settlement, city, and dev-card purchase.
-- Dev-card actions should stay compact and default-driven rather than expanding into a deep form flow.
+- `Build` opens a compact shelf for legal build/buy actions such as road, settlement, city, and dev-card purchase, while keeping bank-backed availability visible.
+- The bank strip stays visible near the hand tray with public remaining counts for wood, brick, sheep, wheat, and ore. It becomes interactive only for resource-selecting dev-card flows such as Monopoly and Year of Plenty.
+- Dev-card actions should be choice-driven for Knight, Monopoly, Year of Plenty, and Road Building rather than expanding into a deep form flow or hiding behind defaults.
+- Knight should stage through robber-tile choice first and only ask for an explicit victim when the chosen tile has multiple eligible steals.
 - If the active player reaches the win threshold on their turn, the game ends immediately.
 - Forced subflows such as discard and robber movement should feel blocking rather than like optional side actions.
 

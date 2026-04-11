@@ -880,6 +880,9 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         guard turnState.step.allowsDevCardPlay else {
             throw CoreGameError.turnStepMismatch
         }
+        guard state.canRevealVictoryPoint(for: state.currentPlayer) else {
+            throw CoreGameError.victoryPointRevealNotWinning
+        }
 
         let player = state.currentPlayer
         var devCardsByPlayer = state.devCardsByPlayer

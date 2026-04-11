@@ -169,6 +169,85 @@ final class GameBoardCameraControllerTests: XCTestCase {
         )
     }
 
+    func testChoiceDrivenDevCardModesOnlyResolveTheirLegalTargets() {
+        let model = makeRenderModel()
+        let viewportSize = CGSize(width: 320, height: 240)
+        let layout = GameBoardLayout(size: viewportSize, geometry: model.geometry)
+        let tileID = 0
+        let nodeID = 0
+        let edgeID = 3
+
+        XCTAssertEqual(
+            GameBoardCameraController.hitTarget(
+                at: layout.tileCenter(for: tileID),
+                state: GameBoardCameraState(),
+                renderModel: model,
+                overlayModel: GameBoardOverlayModel(
+                    legalTileIDs: [tileID],
+                    legalNodeIDs: [],
+                    legalEdgeIDs: [],
+                    anchorNodeID: nil,
+                    selectedTarget: nil
+                ),
+                interactionMode: .devCardKnightMove,
+                viewportSize: viewportSize
+            ),
+            .tile(tileID)
+        )
+
+        XCTAssertEqual(
+            GameBoardCameraController.hitTarget(
+                at: layout.nodePoint(for: nodeID),
+                state: GameBoardCameraState(),
+                renderModel: model,
+                overlayModel: GameBoardOverlayModel(
+                    legalTileIDs: [],
+                    legalNodeIDs: [nodeID],
+                    legalEdgeIDs: [],
+                    anchorNodeID: nil,
+                    selectedTarget: nil
+                ),
+                interactionMode: .devCardKnightVictim,
+                viewportSize: viewportSize
+            ),
+            .node(nodeID)
+        )
+
+        let edgeLine = layout.edgeLine(for: edgeID, topology: model.topology)
+        let edgePoint = CGPoint(
+            x: edgeLine.start.x + ((edgeLine.end.x - edgeLine.start.x) * 0.22),
+            y: edgeLine.start.y + ((edgeLine.end.y - edgeLine.start.y) * 0.22)
+        )
+        XCTAssertEqual(
+            GameBoardCameraController.hitTarget(
+                at: edgePoint,
+                state: GameBoardCameraState(),
+                renderModel: model,
+                overlayModel: GameBoardOverlayModel(
+                    legalTileIDs: [],
+                    legalNodeIDs: [],
+                    legalEdgeIDs: [edgeID],
+                    anchorNodeID: nil,
+                    selectedTarget: nil
+                ),
+                interactionMode: .devCardRoadBuildingFirst,
+                viewportSize: viewportSize
+            ),
+            .edge(edgeID)
+        )
+
+        XCTAssertNil(
+            GameBoardCameraController.hitTarget(
+                at: layout.nodePoint(for: nodeID),
+                state: GameBoardCameraState(),
+                renderModel: model,
+                overlayModel: .empty,
+                interactionMode: .devCardMonopoly,
+                viewportSize: viewportSize
+            )
+        )
+    }
+
     private func makeRenderModel() -> GameBoardRenderModel {
         let board = BoardSetupV1(
             resourcesByTile: [

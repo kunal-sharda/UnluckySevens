@@ -6,6 +6,7 @@ struct GameShellView: View {
     @State private var currentMode: GameMode = .idle
     @State private var selectedBoardTarget: GameBoardTarget?
     @State private var boardHintText: String?
+    @State private var devCardDraft: GameDevCardDraft?
     @State private var isBuildShelfExpanded = false
 
     var body: some View {
@@ -16,8 +17,17 @@ struct GameShellView: View {
             availability: screenModel.modeAvailability
         )
         let isBuildShelfPresented = isBuildShelfExpanded || resolvedMode.isBuildMode
+        let bankTrayModel = viewModel.makeBankTrayModel(
+            mode: resolvedMode,
+            draft: devCardDraft
+        )
+        let devCardPanelModel = viewModel.makeDevCardPanelModel(
+            mode: resolvedMode,
+            draft: devCardDraft
+        )
         let overlayModel = viewModel.makeBoardOverlayModel(
             mode: resolvedMode,
+            devCardDraft: devCardDraft,
             selectedTarget: selectedBoardTarget
         )
 
@@ -58,7 +68,7 @@ struct GameShellView: View {
                                 setupInstruction: viewModel.setupGuidanceText,
                                 discardPanel: viewModel.discardPanelModel,
                                 tradePanel: viewModel.tradePanelModel,
-                                devCardPanel: viewModel.devCardPanelModel,
+                                devCardPanel: devCardPanelModel,
                                 robberVictimOptions: viewModel.robberVictimOptions,
                                 onDiscardAction: {
                                     guard viewModel.handleDiscardFlowAction() else { return }
@@ -81,9 +91,13 @@ struct GameShellView: View {
                                     selectedBoardTarget = nil
                                 },
                                 onDevCardAction: { action in
-                                    guard viewModel.handleDevCardAction(action) else { return }
-                                    currentMode = .idle
-                                    selectedBoardTarget = nil
+                                    handleDevCardSelection(action)
+                                },
+                                onConfirmDevCardDraft: {
+                                    handleConfirmDevCardDraft()
+                                },
+                                onResetDevCardDraft: {
+                                    resetDevCardDraft()
                                 },
                                 onSelectStealVictim: { victimPlayer in
                                     guard viewModel.publishRobberVictimState(victimPlayer: victimPlayer) else { return }
@@ -111,6 +125,7 @@ struct GameShellView: View {
             if !isGameOver {
                 GameBottomTrayView(
                     handTray: screenModel.handTray,
+                    bankTray: bankTrayModel,
                     actionDock: screenModel.actionDock,
                     selectedKind: selectedDockKind(mode: resolvedMode, isBuildShelfPresented: isBuildShelfPresented),
                     selectedBuildKind: resolvedMode.buildShelfKind,
@@ -124,6 +139,8 @@ struct GameShellView: View {
                     )
                 } onSelectBuild: { buildKind in
                     handleBuildShelfSelection(buildKind)
+                } onSelectBankResource: { resource in
+                    handleBankResourceSelection(resource, mode: resolvedMode)
                 }
                 .padding(.horizontal, GameTheme.shellPadding)
                 .padding(.top, 8)
@@ -135,6 +152,9 @@ struct GameShellView: View {
             synchronizeMode(with: screenModel.modeAvailability)
             synchronizeBoardSelection(mode: resolvedMode)
             boardHintText = nil
+            if !resolvedMode.isDevCardMode {
+                devCardDraft = nil
+            }
         }
         .onChange(of: screenModel.modeAvailability) { _, availability in
             synchronizeMode(with: availability)
@@ -147,6 +167,9 @@ struct GameShellView: View {
             synchronizeBoardSelection(mode: newMode)
             if !newMode.isBuildMode, !isBuildShelfExpanded {
                 selectedBoardTarget = nil
+            }
+            if !newMode.isDevCardMode {
+                devCardDraft = nil
             }
         }
         .onChange(of: screenModel.boardRenderModel) { _, _ in
@@ -193,6 +216,7 @@ struct GameShellView: View {
                 guard !actionDock.buildShelfItems.isEmpty else {
                     self.currentMode = .idle
                     self.isBuildShelfExpanded = false
+                    self.devCardDraft = nil
                     return
                 }
 
@@ -200,23 +224,28 @@ struct GameShellView: View {
                     self.currentMode = .idle
                     self.selectedBoardTarget = nil
                     self.isBuildShelfExpanded = false
+                    self.devCardDraft = nil
                 } else {
                     self.currentMode = .idle
                     self.selectedBoardTarget = nil
                     self.isBuildShelfExpanded = true
+                    self.devCardDraft = nil
                 }
             case .trade, .devCards:
-                self.currentMode = GameModeResolver.nextMode(
+                let nextMode = GameModeResolver.nextMode(
                     for: actionKind,
                     currentMode: currentMode,
                     availability: availability
                 )
+                self.currentMode = nextMode
                 self.selectedBoardTarget = nil
                 self.isBuildShelfExpanded = false
+                self.devCardDraft = nextMode.isDevCardMode ? nil : nil
             case .roll, .endTurn:
                 self.currentMode = .idle
                 self.selectedBoardTarget = nil
                 self.isBuildShelfExpanded = false
+                self.devCardDraft = nil
             }
         }
     }
@@ -228,20 +257,24 @@ struct GameShellView: View {
                 currentMode = .buildRoad
                 selectedBoardTarget = nil
                 boardHintText = nil
+                devCardDraft = nil
             case .buildSettlement:
                 currentMode = .buildSettlement
                 selectedBoardTarget = nil
                 boardHintText = nil
+                devCardDraft = nil
             case .buildCity:
                 currentMode = .buildCity
                 selectedBoardTarget = nil
                 boardHintText = nil
+                devCardDraft = nil
             case .buyDevCard:
                 guard viewModel.handleDevCardAction(.buyDevCard) else { return }
                 currentMode = .idle
                 selectedBoardTarget = nil
                 boardHintText = nil
                 isBuildShelfExpanded = false
+                devCardDraft = nil
             }
         }
     }
@@ -264,8 +297,93 @@ struct GameShellView: View {
     ) -> GameBoardTarget? {
         viewModel.makeBoardOverlayModel(
             mode: mode,
+            devCardDraft: devCardDraft,
             selectedTarget: target
         ).selectedTarget
+    }
+
+    private func handleDevCardSelection(_ action: GameDevCardActionKind) {
+        withAnimation(GameTheme.quickAnimation) {
+            switch action {
+            case .buyDevCard, .revealVictoryPoint:
+                guard viewModel.handleDevCardAction(action) else { return }
+                dismissDevCardFlow()
+            case .playKnight:
+                devCardDraft = .knight(tileID: nil, victimPlayer: nil)
+                currentMode = .devCardKnightMove
+                selectedBoardTarget = nil
+                boardHintText = nil
+            case .playMonopoly:
+                devCardDraft = .monopoly(resource: nil)
+                currentMode = .devCardMonopoly
+                selectedBoardTarget = nil
+                boardHintText = nil
+            case .playYearOfPlenty:
+                devCardDraft = .yearOfPlenty(first: nil, second: nil)
+                currentMode = .devCardYearOfPlenty
+                selectedBoardTarget = nil
+                boardHintText = nil
+            case .playRoadBuilding:
+                devCardDraft = .roadBuilding(firstEdgeID: nil, secondEdgeID: nil)
+                currentMode = .devCardRoadBuildingFirst
+                selectedBoardTarget = nil
+                boardHintText = nil
+            }
+        }
+    }
+
+    private func handleConfirmDevCardDraft() {
+        guard let devCardDraft else {
+            return
+        }
+        guard viewModel.publishDevCardDraft(devCardDraft) else {
+            return
+        }
+
+        withAnimation(GameTheme.quickAnimation) {
+            dismissDevCardFlow()
+        }
+    }
+
+    private func handleBankResourceSelection(_ resource: ResourceV1, mode: GameMode) {
+        guard mode.isDevCardMode else {
+            return
+        }
+
+        withAnimation(GameTheme.quickAnimation) {
+            switch devCardDraft {
+            case .monopoly:
+                devCardDraft = .monopoly(resource: resource)
+            case let .yearOfPlenty(first, second):
+                if first == nil {
+                    devCardDraft = .yearOfPlenty(first: resource, second: nil)
+                } else if second == nil {
+                    devCardDraft = .yearOfPlenty(first: first, second: resource)
+                } else {
+                    devCardDraft = .yearOfPlenty(first: first, second: resource)
+                }
+            default:
+                break
+            }
+            boardHintText = nil
+        }
+    }
+
+    private func resetDevCardDraft() {
+        withAnimation(GameTheme.quickAnimation) {
+            devCardDraft = nil
+            currentMode = .playDevCard
+            selectedBoardTarget = nil
+            boardHintText = nil
+        }
+    }
+
+    private func dismissDevCardFlow() {
+        devCardDraft = nil
+        currentMode = .idle
+        selectedBoardTarget = nil
+        boardHintText = nil
+        isBuildShelfExpanded = false
     }
 
     private func handleBoardTap(_ target: GameBoardTarget, mode: GameMode) {
@@ -297,6 +415,63 @@ struct GameShellView: View {
                 selectedBoardTarget = normalizedTarget
                 boardHintText = normalizedTarget.selectionLabel(for: mode)
             }
+        case .devCardKnightMove:
+            guard case let .tile(tileID)? = normalizedTarget else {
+                boardHintText = failureHint(for: mode)
+                return
+            }
+            let victims = viewModel.legalKnightVictims(for: tileID)
+            if victims.count <= 1 {
+                if viewModel.publishDevCardDraft(.knight(tileID: tileID, victimPlayer: victims.first)) {
+                    dismissDevCardFlow()
+                } else {
+                    selectedBoardTarget = normalizedTarget
+                    boardHintText = normalizedTarget?.selectionLabel(for: mode)
+                }
+            } else {
+                devCardDraft = .knight(tileID: tileID, victimPlayer: nil)
+                currentMode = .devCardKnightVictim
+                selectedBoardTarget = nil
+                boardHintText = "Choose the victim to steal from."
+            }
+        case .devCardKnightVictim:
+            guard
+                case let .node(nodeID)? = normalizedTarget,
+                case let .knight(tileID?, _) = devCardDraft,
+                let victimPlayer = viewModel.knightVictimPlayer(for: nodeID, tileID: tileID)
+            else {
+                boardHintText = failureHint(for: mode)
+                return
+            }
+            if viewModel.publishDevCardDraft(.knight(tileID: tileID, victimPlayer: victimPlayer)) {
+                dismissDevCardFlow()
+            } else {
+                selectedBoardTarget = normalizedTarget
+                boardHintText = normalizedTarget?.selectionLabel(for: mode)
+            }
+        case .devCardRoadBuildingFirst:
+            guard case let .edge(edgeID)? = normalizedTarget else {
+                boardHintText = failureHint(for: mode)
+                return
+            }
+            devCardDraft = .roadBuilding(firstEdgeID: edgeID, secondEdgeID: nil)
+            currentMode = .devCardRoadBuildingSecond
+            selectedBoardTarget = nil
+            boardHintText = "Choose the second road."
+        case .devCardRoadBuildingSecond:
+            guard
+                case let .edge(edgeID)? = normalizedTarget,
+                case let .roadBuilding(firstEdgeID?, _) = devCardDraft
+            else {
+                boardHintText = failureHint(for: mode)
+                return
+            }
+            if viewModel.publishDevCardDraft(.roadBuilding(firstEdgeID: firstEdgeID, secondEdgeID: edgeID)) {
+                dismissDevCardFlow()
+            } else {
+                selectedBoardTarget = normalizedTarget
+                boardHintText = normalizedTarget?.selectionLabel(for: mode)
+            }
         default:
             selectedBoardTarget = nil
             boardHintText = nil
@@ -306,6 +481,7 @@ struct GameShellView: View {
     private func synchronizeBoardSelection(mode: GameMode) {
         let normalizedTarget = viewModel.makeBoardOverlayModel(
             mode: mode,
+            devCardDraft: devCardDraft,
             selectedTarget: selectedBoardTarget
         ).selectedTarget
 
@@ -342,7 +518,15 @@ struct GameShellView: View {
             return "Tap a highlighted tile to move the robber."
         case .robberVictim:
             return "Tap a highlighted victim to steal."
-        case .idle, .trade, .playDevCard, .discard:
+        case .devCardKnightMove:
+            return "Tap a highlighted tile to move the robber."
+        case .devCardKnightVictim:
+            return "Tap a highlighted victim to steal."
+        case .devCardRoadBuildingFirst:
+            return "Tap a highlighted edge for the first road."
+        case .devCardRoadBuildingSecond:
+            return "Tap a highlighted edge for the second road."
+        case .idle, .trade, .playDevCard, .devCardMonopoly, .devCardYearOfPlenty, .discard:
             return nil
         }
     }

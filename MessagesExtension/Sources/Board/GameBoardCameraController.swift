@@ -334,9 +334,18 @@ private struct SelectionContext {
             return Array(0..<totalCount)
         case .setup:
             return prefersSetupRoadEdges ? [] : overlayModel.legalNodeIDs
-        case .buildSettlement, .buildCity, .robberVictim:
+        case .buildSettlement, .buildCity, .robberVictim, .devCardKnightVictim:
             return overlayModel.legalNodeIDs
-        case .buildRoad, .robberMove, .trade, .playDevCard, .discard:
+        case .buildRoad,
+             .robberMove,
+             .trade,
+             .playDevCard,
+             .devCardKnightMove,
+             .devCardMonopoly,
+             .devCardYearOfPlenty,
+             .devCardRoadBuildingFirst,
+             .devCardRoadBuildingSecond,
+             .discard:
             return []
         }
     }
@@ -345,9 +354,19 @@ private struct SelectionContext {
         switch interactionMode {
         case .idle:
             return Array(0..<totalCount)
-        case .setup, .buildRoad:
+        case .setup, .buildRoad, .devCardRoadBuildingFirst, .devCardRoadBuildingSecond:
             return overlayModel.legalEdgeIDs
-        case .buildSettlement, .buildCity, .robberMove, .robberVictim, .trade, .playDevCard, .discard:
+        case .buildSettlement,
+             .buildCity,
+             .robberMove,
+             .robberVictim,
+             .trade,
+             .playDevCard,
+             .devCardKnightMove,
+             .devCardKnightVictim,
+             .devCardMonopoly,
+             .devCardYearOfPlenty,
+             .discard:
             return []
         }
     }
@@ -356,9 +375,21 @@ private struct SelectionContext {
         switch interactionMode {
         case .idle:
             return Array(0..<totalCount)
-        case .robberMove:
+        case .robberMove, .devCardKnightMove:
             return overlayModel.legalTileIDs
-        case .setup, .buildRoad, .buildSettlement, .buildCity, .robberVictim, .trade, .playDevCard, .discard:
+        case .setup,
+             .buildRoad,
+             .buildSettlement,
+             .buildCity,
+             .robberVictim,
+             .trade,
+             .playDevCard,
+             .devCardKnightVictim,
+             .devCardMonopoly,
+             .devCardYearOfPlenty,
+             .devCardRoadBuildingFirst,
+             .devCardRoadBuildingSecond,
+             .discard:
             return []
         }
     }

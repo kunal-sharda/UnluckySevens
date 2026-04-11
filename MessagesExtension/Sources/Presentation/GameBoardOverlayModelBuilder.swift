@@ -5,6 +5,7 @@ enum GameBoardOverlayModelBuilder {
         state: CoreGameStateV1?,
         actingAs: String?,
         mode: GameMode,
+        devCardDraft: GameDevCardDraft? = nil,
         selectedTarget: GameBoardTarget?
     ) -> GameBoardOverlayModel {
         guard let state else {
@@ -12,8 +13,8 @@ enum GameBoardOverlayModelBuilder {
         }
 
         let legalTiles = legalTileIDs(state: state, actingAs: actingAs, mode: mode)
-        let legalNodes = legalNodeIDs(state: state, actingAs: actingAs, mode: mode)
-        let legalEdges = legalEdgeIDs(state: state, actingAs: actingAs, mode: mode)
+        let legalNodes = legalNodeIDs(state: state, actingAs: actingAs, mode: mode, devCardDraft: devCardDraft)
+        let legalEdges = legalEdgeIDs(state: state, actingAs: actingAs, mode: mode, devCardDraft: devCardDraft)
         let anchorNodeID = setupAnchorNodeID(state: state, mode: mode)
 
         let overlay = GameBoardOverlayModel(
@@ -66,6 +67,8 @@ enum GameBoardOverlayModelBuilder {
         switch mode {
         case .robberMove:
             return state.legalRobberMoveTiles(for: actor)
+        case .devCardKnightMove:
+            return state.legalKnightMoveTilesForDevCard(for: actor)
         default:
             return []
         }
@@ -74,7 +77,8 @@ enum GameBoardOverlayModelBuilder {
     private static func legalNodeIDs(
         state: CoreGameStateV1,
         actingAs: String?,
-        mode: GameMode
+        mode: GameMode,
+        devCardDraft: GameDevCardDraft?
     ) -> [NodeID] {
         guard let actor = actingAs else {
             return []
@@ -89,7 +93,12 @@ enum GameBoardOverlayModelBuilder {
             return state.legalBuildCityNodes(for: actor)
         case .robberVictim:
             return state.robberVictimCandidateNodes(for: actor)
-        case .idle, .buildRoad, .robberMove, .trade, .playDevCard, .discard:
+        case .devCardKnightVictim:
+            guard case let .knight(tileID?, _) = devCardDraft else {
+                return []
+            }
+            return state.knightVictimCandidateNodes(for: tileID, actor: actor)
+        case .idle, .buildRoad, .robberMove, .trade, .playDevCard, .devCardKnightMove, .devCardMonopoly, .devCardYearOfPlenty, .devCardRoadBuildingFirst, .devCardRoadBuildingSecond, .discard:
             return []
         }
     }
@@ -97,7 +106,8 @@ enum GameBoardOverlayModelBuilder {
     private static func legalEdgeIDs(
         state: CoreGameStateV1,
         actingAs: String?,
-        mode: GameMode
+        mode: GameMode,
+        devCardDraft: GameDevCardDraft?
     ) -> [EdgeID] {
         guard let actor = actingAs else {
             return []
@@ -108,7 +118,14 @@ enum GameBoardOverlayModelBuilder {
             return state.legalSetupRoadEdges(for: actor)
         case .buildRoad:
             return state.legalBuildRoadEdges(for: actor)
-        case .idle, .buildSettlement, .buildCity, .robberMove, .robberVictim, .trade, .playDevCard, .discard:
+        case .devCardRoadBuildingFirst:
+            return state.legalRoadBuildingFirstEdges(for: actor)
+        case .devCardRoadBuildingSecond:
+            guard case let .roadBuilding(firstEdgeID?, _) = devCardDraft else {
+                return []
+            }
+            return state.legalRoadBuildingSecondEdges(for: actor, firstEdgeID: firstEdgeID)
+        case .idle, .buildSettlement, .buildCity, .robberMove, .robberVictim, .trade, .playDevCard, .devCardKnightMove, .devCardKnightVictim, .devCardMonopoly, .devCardYearOfPlenty, .discard:
             return []
         }
     }

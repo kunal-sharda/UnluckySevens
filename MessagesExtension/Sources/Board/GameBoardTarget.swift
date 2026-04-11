@@ -12,11 +12,11 @@ enum GameBoardTarget: Equatable {
             return "Settlement selected"
         case (.buildCity, .node):
             return "City target selected"
-        case (.robberVictim, .node):
+        case (.robberVictim, .node), (.devCardKnightVictim, .node):
             return "Victim selected"
-        case (.setup, .edge), (.buildRoad, .edge):
+        case (.setup, .edge), (.buildRoad, .edge), (.devCardRoadBuildingFirst, .edge), (.devCardRoadBuildingSecond, .edge):
             return "Road selected"
-        case (.robberMove, .tile):
+        case (.robberMove, .tile), (.devCardKnightMove, .tile):
             return "Robber tile selected"
         case (.idle, _):
             return debugLabel

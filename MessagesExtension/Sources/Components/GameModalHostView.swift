@@ -13,6 +13,8 @@ struct GameModalHostView: View {
     let onApplySelectedTurnIntent: () -> Void
     let onExecuteTrade: (String) -> Void
     let onDevCardAction: (GameDevCardActionKind) -> Void
+    let onConfirmDevCardDraft: () -> Void
+    let onResetDevCardDraft: () -> Void
     let onSelectStealVictim: (String) -> Void
 
     var body: some View {
@@ -43,7 +45,13 @@ struct GameModalHostView: View {
             discardContent(fallbackMessage: fallbackMessage)
         case .trade:
             tradeContent(fallbackMessage: fallbackMessage)
-        case .playDevCard:
+        case .playDevCard,
+             .devCardKnightMove,
+             .devCardKnightVictim,
+             .devCardMonopoly,
+             .devCardYearOfPlenty,
+             .devCardRoadBuildingFirst,
+             .devCardRoadBuildingSecond:
             devCardContent(fallbackMessage: fallbackMessage)
         case .robberVictim:
             robberVictimContent(fallbackMessage: fallbackMessage)
@@ -235,34 +243,19 @@ struct GameModalHostView: View {
                 devCardCountSection(title: "Playable", counts: devCardPanel.playableCounts)
             }
 
-            if !devCardPanel.newCounts.isEmpty {
-                devCardCountSection(title: "New This Turn", counts: devCardPanel.newCounts)
+            if !devCardPanel.heldCounts.isEmpty {
+                devCardCountSection(title: "Held", counts: devCardPanel.heldCounts)
             }
 
-            if let buyAction = devCardPanel.buyAction {
-                VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-                    Text("Buy")
-                        .font(GameTheme.metaFont.weight(.semibold))
-                        .foregroundStyle(GameTheme.ink)
+            if !devCardPanel.newCounts.isEmpty {
+                devCardCountSection(title: "Held This Turn", counts: devCardPanel.newCounts)
+            }
 
-                    Label(buyAction.title, systemImage: buyAction.systemImage)
-                        .font(GameTheme.metaFont.weight(.semibold))
-                        .foregroundStyle(GameTheme.ink)
-
-                    Text(buyAction.detail)
-                        .font(GameTheme.metaFont)
-                        .foregroundStyle(GameTheme.mutedInk)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Button {
-                        onDevCardAction(buyAction.kind)
-                    } label: {
-                        Label(buyAction.title, systemImage: buyAction.systemImage)
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-                .padding(.top, 4)
+            if let draftSummary = devCardPanel.draftSummary {
+                Text(draftSummary)
+                    .font(GameTheme.metaFont.weight(.semibold))
+                    .foregroundStyle(GameTheme.accent)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             if !devCardPanel.playActions.isEmpty {
@@ -293,6 +286,23 @@ struct GameModalHostView: View {
                         .padding(.top, 4)
                     }
                 }
+            }
+
+            if let confirmTitle = devCardPanel.confirmTitle {
+                Button(confirmTitle) {
+                    onConfirmDevCardDraft()
+                }
+                .frame(maxWidth: .infinity)
+                .buttonStyle(.borderedProminent)
+                .disabled(!devCardPanel.canConfirm)
+            }
+
+            if devCardPanel.showsBackButton {
+                Button("Back To Cards") {
+                    onResetDevCardDraft()
+                }
+                .frame(maxWidth: .infinity)
+                .buttonStyle(.bordered)
             }
         } else {
             Text(fallbackMessage)
@@ -480,7 +490,19 @@ struct GameModalHostView: View {
         case .trade:
             return ("Trade", "Player and maritime trade actions now flow through compact suggested actions instead of the debug controls.", "arrow.left.arrow.right.circle.fill")
         case .playDevCard:
-            return ("Dev Cards", "Buy and play development cards from a compact, default-driven panel instead of the debug controls.", "sparkles.rectangle.stack.fill")
+            return ("Dev Cards", "Choose a development card to play, then complete the required board or bank selections.", "sparkles.rectangle.stack.fill")
+        case .devCardKnightMove:
+            return ("Play Knight", "Choose the robber tile on the board.", "shield.lefthalf.filled")
+        case .devCardKnightVictim:
+            return ("Knight Victim", "Choose which highlighted player to steal from.", "person.crop.circle.badge.questionmark")
+        case .devCardMonopoly:
+            return ("Play Monopoly", "Choose a resource from the bank strip, then confirm.", "shippingbox.fill")
+        case .devCardYearOfPlenty:
+            return ("Year Of Plenty", "Choose two resources from the bank strip, then confirm.", "leaf.fill")
+        case .devCardRoadBuildingFirst:
+            return ("Road Building", "Choose the first road on the board.", "road.lanes")
+        case .devCardRoadBuildingSecond:
+            return ("Road Building", "Choose the second connected road on the board.", "road.lanes")
         case .discard:
             return ("Discard Required", "Discard resolution is blocking turn progress.", "exclamationmark.triangle.fill")
         default:

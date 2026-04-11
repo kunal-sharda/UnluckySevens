@@ -198,23 +198,64 @@ final class LobbyDriverViewModel: ObservableObject {
         )
     }
 
-    var devCardPanelModel: GameDevCardPanelModel? {
-        GameDevCardPanelModelBuilder.build(
-            state: selectedState,
-            actingAs: localActorIdentifier()
-        )
-    }
-
     func makeBoardOverlayModel(
         mode: GameMode,
+        devCardDraft: GameDevCardDraft? = nil,
         selectedTarget: GameBoardTarget?
     ) -> GameBoardOverlayModel {
         GameBoardOverlayModelBuilder.build(
             state: selectedState,
             actingAs: localActorIdentifier(),
             mode: mode,
+            devCardDraft: devCardDraft,
             selectedTarget: selectedTarget
         )
+    }
+
+    func makeDevCardPanelModel(
+        mode: GameMode,
+        draft: GameDevCardDraft?
+    ) -> GameDevCardPanelModel? {
+        GameDevCardPanelModelBuilder.build(
+            state: selectedState,
+            actingAs: localActorIdentifier(),
+            mode: mode,
+            draft: draft
+        )
+    }
+
+    func makeBankTrayModel(
+        mode: GameMode,
+        draft: GameDevCardDraft?
+    ) -> GameBankTrayModel {
+        GameBankTrayModelBuilder.build(
+            state: selectedState,
+            actingAs: localActorIdentifier(),
+            mode: mode,
+            draft: draft
+        )
+    }
+
+    func legalKnightVictims(for tileID: TileID) -> [String] {
+        guard let state = selectedState, let actor = localActorIdentifier() else {
+            return []
+        }
+        return state.legalKnightVictims(for: tileID, actor: actor)
+    }
+
+    func knightVictimPlayer(for nodeID: NodeID, tileID: TileID) -> String? {
+        guard let state = selectedState, let actor = localActorIdentifier() else {
+            return nil
+        }
+
+        let victims = Set(state.legalKnightVictims(for: tileID, actor: actor))
+        if let cityOwner = state.citiesByNode[nodeID], victims.contains(cityOwner) {
+            return cityOwner
+        }
+        if let settlementOwner = state.settlementsByNode[nodeID], victims.contains(settlementOwner) {
+            return settlementOwner
+        }
+        return nil
     }
 
     private var shellActionAvailability: GameActionAvailability {
@@ -500,15 +541,27 @@ final class LobbyDriverViewModel: ObservableObject {
         else {
             return false
         }
-        return state.board != nil && (state.devCardsByPlayer[actor] ?? .zero).knight > 0
+        return !state.legalKnightMoveTilesForDevCard(for: actor).isEmpty
     }
 
     var canSendPlayMonopolyIntentDebug: Bool {
-        canSendNamedDevCardIntentDebug { $0.monopoly > 0 }
+        guard canSendNamedDevCardIntentDebug({ $0.monopoly > 0 }),
+              let state = selectedState,
+              let actor = localActorIdentifier()
+        else {
+            return false
+        }
+        return !state.monopolyPreviews(for: actor).isEmpty
     }
 
     var canSendPlayYearOfPlentyIntentDebug: Bool {
-        canSendNamedDevCardIntentDebug { $0.yearOfPlenty > 0 }
+        guard canSendNamedDevCardIntentDebug({ $0.yearOfPlenty > 0 }),
+              let state = selectedState,
+              let actor = localActorIdentifier()
+        else {
+            return false
+        }
+        return state.yearOfPlentyBankOptions(for: actor).reduce(0) { $0 + $1.remainingCount } >= 2
     }
 
     var canSendPlayRoadBuildingIntentDebug: Bool {
@@ -518,7 +571,7 @@ final class LobbyDriverViewModel: ObservableObject {
         else {
             return false
         }
-        return defaultRoadBuildingEdges(for: actor, in: state) != nil
+        return !state.legalRoadBuildingFirstEdges(for: actor).isEmpty
     }
 
     var canSendRevealVictoryPointIntentDebug: Bool {
@@ -531,9 +584,7 @@ final class LobbyDriverViewModel: ObservableObject {
         else {
             return false
         }
-        let playable = state.devCardsByPlayer[actor] ?? .zero
-        let newlyBought = state.newDevCardsByPlayer[actor] ?? .zero
-        return playable.victoryPoint > 0 || newlyBought.victoryPoint > 0
+        return state.canRevealVictoryPoint(for: actor)
     }
 
     var canSendEndTurnIntentDebug: Bool {
@@ -1917,46 +1968,96 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func handleDevCardAction(_ action: GameDevCardActionKind) -> Bool {
+        switch action {
+        case .buyDevCard:
+            guard let intent = DevCardInteractionResolver.draftBuyDevCardIntent(
+                state: selectedState,
+                actingAs: localActorIdentifier()
+            ) else {
+                setLastError("Selected dev-card action is not legal.")
+                return false
+            }
+            do {
+                try applyAndPublishTurnIntent(intent, successStatus: "Published dev-card purchase")
+                return true
+            } catch {
+                setLastError("Dev-card action failed: \(error.localizedDescription)")
+                return false
+            }
+        case .revealVictoryPoint:
+            guard let intent = DevCardInteractionResolver.draftRevealVictoryPointIntent(
+                state: selectedState,
+                actingAs: localActorIdentifier()
+            ) else {
+                setLastError("Selected dev-card action is not legal.")
+                return false
+            }
+            do {
+                try applyAndPublishTurnIntent(intent, successStatus: "Published victory-point reveal")
+                return true
+            } catch {
+                setLastError("Dev-card action failed: \(error.localizedDescription)")
+                return false
+            }
+        case .playKnight, .playMonopoly, .playYearOfPlenty, .playRoadBuilding:
+            setLastError("Selected dev-card action needs additional choices first.")
+            return false
+        }
+    }
+
+    @discardableResult
+    func publishDevCardDraft(_ draft: GameDevCardDraft) -> Bool {
         let intent: ULS_Transport.TurnIntentV1?
         let successStatus: String
 
-        switch action {
-        case .buyDevCard:
-            intent = DevCardInteractionResolver.draftBuyDevCardIntent(
-                state: selectedState,
-                actingAs: localActorIdentifier()
-            )
-            successStatus = "Published dev-card purchase"
-        case .playKnight:
+        switch draft {
+        case let .knight(tileID, victimPlayer):
+            guard let tileID else {
+                setLastError("Knight play needs a robber tile.")
+                return false
+            }
             intent = DevCardInteractionResolver.draftPlayKnightIntent(
                 state: selectedState,
-                actingAs: localActorIdentifier()
+                actingAs: localActorIdentifier(),
+                tileID: tileID,
+                victimPlayer: victimPlayer
             )
             successStatus = "Published knight play"
-        case .playMonopoly:
+        case let .monopoly(resource):
+            guard let resource else {
+                setLastError("Monopoly needs a selected resource.")
+                return false
+            }
             intent = DevCardInteractionResolver.draftPlayMonopolyIntent(
                 state: selectedState,
-                actingAs: localActorIdentifier()
+                actingAs: localActorIdentifier(),
+                resource: resource
             )
             successStatus = "Published monopoly play"
-        case .playYearOfPlenty:
+        case let .yearOfPlenty(first, second):
+            guard let first, let second else {
+                setLastError("Year Of Plenty needs two resources.")
+                return false
+            }
             intent = DevCardInteractionResolver.draftPlayYearOfPlentyIntent(
                 state: selectedState,
-                actingAs: localActorIdentifier()
+                actingAs: localActorIdentifier(),
+                firstResource: first,
+                secondResource: second
             )
             successStatus = "Published year-of-plenty play"
-        case .playRoadBuilding:
+        case let .roadBuilding(firstEdgeID, secondEdgeID):
+            guard let firstEdgeID, let secondEdgeID else {
+                setLastError("Road Building needs two roads.")
+                return false
+            }
             intent = DevCardInteractionResolver.draftPlayRoadBuildingIntent(
                 state: selectedState,
-                actingAs: localActorIdentifier()
+                actingAs: localActorIdentifier(),
+                firstEdgeID: firstEdgeID,
+                secondEdgeID: secondEdgeID
             )
             successStatus = "Published road-building play"
-        case .revealVictoryPoint:
-            intent = DevCardInteractionResolver.draftRevealVictoryPointIntent(
-                state: selectedState,
-                actingAs: localActorIdentifier()
-            )
-            successStatus = "Published victory-point reveal"
         }
 
         guard let intent else {

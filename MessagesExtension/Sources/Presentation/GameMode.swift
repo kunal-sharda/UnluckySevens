@@ -8,6 +8,12 @@ enum GameMode: Equatable {
     case robberVictim
     case trade
     case playDevCard
+    case devCardKnightMove
+    case devCardKnightVictim
+    case devCardMonopoly
+    case devCardYearOfPlenty
+    case devCardRoadBuildingFirst
+    case devCardRoadBuildingSecond
     case discard
 
     var actionKind: GameActionDockItem.Kind? {
@@ -16,7 +22,13 @@ enum GameMode: Equatable {
             return .build
         case .trade:
             return .trade
-        case .playDevCard:
+        case .playDevCard,
+             .devCardKnightMove,
+             .devCardKnightVictim,
+             .devCardMonopoly,
+             .devCardYearOfPlenty,
+             .devCardRoadBuildingFirst,
+             .devCardRoadBuildingSecond:
             return .devCards
         case .idle, .setup, .robberMove, .robberVictim, .discard:
             return nil
@@ -31,13 +43,40 @@ enum GameMode: Equatable {
             return .buildSettlement
         case .buildCity:
             return .buildCity
-        case .idle, .setup, .robberMove, .robberVictim, .trade, .playDevCard, .discard:
+        case .idle,
+             .setup,
+             .robberMove,
+             .robberVictim,
+             .trade,
+             .playDevCard,
+             .devCardKnightMove,
+             .devCardKnightVictim,
+             .devCardMonopoly,
+             .devCardYearOfPlenty,
+             .devCardRoadBuildingFirst,
+             .devCardRoadBuildingSecond,
+             .discard:
             return nil
         }
     }
 
     var isBuildMode: Bool {
         buildShelfKind != nil
+    }
+
+    var isDevCardMode: Bool {
+        switch self {
+        case .playDevCard,
+             .devCardKnightMove,
+             .devCardKnightVictim,
+             .devCardMonopoly,
+             .devCardYearOfPlenty,
+             .devCardRoadBuildingFirst,
+             .devCardRoadBuildingSecond:
+            return true
+        default:
+            return false
+        }
     }
 
     var title: String {
@@ -60,6 +99,18 @@ enum GameMode: Equatable {
             return "Trade"
         case .playDevCard:
             return "Dev Cards"
+        case .devCardKnightMove:
+            return "Knight"
+        case .devCardKnightVictim:
+            return "Knight Victim"
+        case .devCardMonopoly:
+            return "Monopoly"
+        case .devCardYearOfPlenty:
+            return "Year Of Plenty"
+        case .devCardRoadBuildingFirst:
+            return "Road Building"
+        case .devCardRoadBuildingSecond:
+            return "Road Building"
         case .discard:
             return "Discard"
         }
@@ -84,7 +135,19 @@ enum GameMode: Equatable {
         case .trade:
             return "Trade mode is active. Offer and accept flows will plug in during the gameplay UX stage."
         case .playDevCard:
-            return "Buy or play development cards from a compact action panel."
+            return "Choose a development card to play."
+        case .devCardKnightMove:
+            return "Tap a highlighted tile to move the robber."
+        case .devCardKnightVictim:
+            return "Tap a highlighted victim to steal."
+        case .devCardMonopoly:
+            return "Choose the resource to claim from every opponent."
+        case .devCardYearOfPlenty:
+            return "Choose two resources from the bank."
+        case .devCardRoadBuildingFirst:
+            return "Tap the first highlighted road."
+        case .devCardRoadBuildingSecond:
+            return "Tap the second highlighted road."
         case .discard:
             return "Discard resolution is required before robber handling can continue."
         }

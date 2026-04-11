@@ -34,18 +34,20 @@ What exists today:
 - phase 10 established a board-first shell, compact opponent summaries, a hand tray, an action dock, and easy-but-secondary debug surfaces
 - phase 11 replaced placeholder board art with a real SpriteKit board, pan/zoom, typed board hit targets, mode-driven highlights, and snapshot rendering
 - stages 12.1 through 12.6 are now landed: lobby join/start is productized, setup placement is playable from the board, the common turn loop can roll, build, buy, and end turn from the product UI, robber/discard flow is wired through the product shell, trade UX is live in the compact modal/shell surfaces, and dev-card actions are available through the compact product panel
+- stage 12.8 now includes a persistent public bank tray, `Buy Dev` under `Build`, staged Knight/Monopoly/Year Of Plenty/Road Building choice flows, and winning-only Victory Point reveal visibility
 - `ULS_CoreGame` already owns legality, viewer-safe projections, and default action selection through [CoreGameViewQueriesV1.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/Packages/ULS_CoreGame/Sources/ULS_CoreGame/CoreGameViewQueriesV1.swift)
 - the main integration point is still [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift), which owns transcript context, debug actions, and shell inputs
 
 What is still missing:
 
 - phase 12.7 is closed, but phase 12 still needs the 12.8 product-cohesion device pass before the gameplay phase can be called complete
-- the remaining open questions are player-facing UX questions, not missing core game rules: shell/header clarity, deterministic aliases, action-dock flow, pre-roll dev-card timing, and final full-match device signoff
+- the remaining gate is full-match real-device signoff and any small polish issues that emerge from that pass, not missing core game rules or missing dev-card/bank feature surfaces
 
 Important constraints already locked in the repo:
 
 - `MessagesExtension` must not invent legality or hidden-information rules
 - board taps and modal selections must map into canonical intents, not mutate state directly
+- this slice does not change transport or protocol shape; it tightens presentation, choice surfaces, and timing affordances on top of the existing canonical state/intent model
 - the current shell hierarchy remains board-first with compact, progressive disclosure
 - motion should remain restrained and the Messages UI should stay shallow rather than turning into a deep form-based app
 - real-device validation matters more than Simulator-only validation for this phase because the user-visible value is Messages-hosted turn-taking
@@ -67,6 +69,7 @@ Code and docs result:
 - gameplay-specific UI orchestration is split into focused feature areas under `MessagesExtension/Sources/Features/`
 - lobby participation and host-start handling no longer depend on manual local recording as the primary UX
 - board target selection, modal choices, and action-dock taps converge into a small number of intent-drafting paths
+- bank visibility and dev-card choice surfaces stay obvious enough that the player can understand what the shelf can legally do at a glance
 - any additive presentation types stay presentation-only and keep legality in `ULS_CoreGame`
 - [QA](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/qa.md) is updated with any new permanent simulator or real-device checks discovered during implementation
 
@@ -280,10 +283,12 @@ Implement:
 - finish board interaction correctness and feedback so pan, zoom, tap, and placement stay trustworthy across the whole match
 - simplify the shell header to turn ownership plus dice state instead of transport/debug context copy
 - replace raw participant identifiers in player-facing UI with deterministic per-game pseudonyms
-- reorganize the bottom tray around the common action order: `Roll`, `End Turn`, `Build`, `Play Dev`, with `Build` opening a compact shelf for legal build/buy actions
+- reorganize the bottom tray around the common action order: `Roll`, `End Turn`, `Build`, `Play Dev`, with `Build` opening a compact shelf for legal build/buy actions and visible bank-aware purchase availability
 - suppress idle board-target selection so nodes, edges, and tiles only highlight when the active mode actually uses them
 - clarify the current compact trade protocol with clearer proposer/respondent state, passive-decline language, and execution status without inventing new transport semantics
 - align dev-card timing and shell affordances with the intended turn flow instead of leaving them as post-roll-only product shortcuts by accident
+- replace hidden-default dev-card shortcuts with choice-driven play for Knight, Monopoly, Year of Plenty, and Road Building
+- keep Victory Point reveals hidden unless revealing them would immediately win the game
 - add any minimal end-of-game clarity needed so a full played match does not feel unfinished at the moment of victory
 
 Key files and likely additions:
@@ -302,7 +307,7 @@ Expected observations:
 
 - board movement and placement are reliable enough that the main board no longer feels like a hostile control surface
 - the shell header, aliases, and dock order all read like a real game instead of leaked protocol/debug state
-- trade and dev-card flows are compact, but legible enough that a full match no longer relies on raw participant IDs or invisible timing rules
+- trade and dev-card flows are compact, but legible enough that a full match no longer relies on raw participant IDs, invisible timing rules, or hidden default-choice shortcuts
 - a full match can end without the last steps feeling like placeholder UI
 
 ## Validation
@@ -399,11 +404,12 @@ Deferred by design in phase 12:
 - 2026-04-08: product authority on the clean branch is now `local Messages participant ∩ joined game roster`. Debug impersonation no longer participates in gameplay publication, legality gating, or hidden-information projection, and unresolved identity is explicitly read-only.
 - 2026-04-08: the first lag pass now targets lifecycle churn before deeper board refactors: selection polling self-cancels once a stable selection is observed, product cache keys stop changing on every relative-age tick, diagnostics no longer publish the large transport/debug field set on the gameplay hot path, and active board gestures disable the parent shell scroll view so pan/pinch no longer fight vertical scrolling.
 - 2026-04-08: Stage 12.7 is closed by the real-device authority and responsiveness pass. Reload / active-game sync, transcript collapse behavior, and deeper Messages-host durability are explicitly promoted into the next roadmap phase instead of stretching phase 12 further.
-- 2026-04-10: Stage 12.8 narrows the “product cohesion” goal to the actual phase-12 blockers: remove raw participant IDs from the player-facing shell, simplify the turn header to ownership plus dice state, stop idle board taps from highlighting arbitrary targets, move dev-card purchase into the build shelf, and allow legal dev-card play before or after the dice roll as long as the card was not bought that turn.
+- 2026-04-10: Stage 12.8 narrows the “product cohesion” goal to the actual phase-12 blockers: remove raw participant IDs from the player-facing shell, simplify the turn header to ownership plus dice state, stop idle board taps from highlighting arbitrary targets, move dev-card purchase into the build shelf, add a persistent public bank strip, and allow legal dev-card play before or after the dice roll as long as the card was not bought that turn.
 - 2026-04-10: Stage 12.8 deliberately does not invent new trade or naming protocol. The trade panel is still compact and protocol-constrained, but it now states proposer/respondent status, passive decline, and execute/end-turn expiry behavior clearly enough for a full asynchronous match without pretending there is already a custom composer, cancel bubble, or counteroffer flow.
 - 2026-04-10: deterministic player aliases now come from a per-game pseudonym resolver seeded by `gameId` plus roster membership. The intended product constraint is consistency across devices and transcript reopens, not exposing real Messages contact names that the framework does not provide.
 - 2026-04-10: dev-card timing is now aligned end to end through `TurnStepV1.allowsDevCardPlay`, the reducer, validation, and the Messages shell, so legal non-purchase dev cards can be played pre-roll or post-roll while buy-dev-card remains an after-roll action.
-- 2026-04-10: Stage 12.8 automated validation is green across the full repo gate after the cohesion pass landed: `bash ./scripts/gen.sh`, `swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_Transport`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test`, with `111` non-eval core tests, `10` eval tests, `44` transport tests, and `103` MessagesExtension tests all green.
+- 2026-04-10: Stage 12.8 replaces hidden-default dev-card shortcuts with explicit staged choice flows for Knight, Monopoly, Year of Plenty, and Road Building. Victory Point cards stay hidden as inventory until a reveal would immediately win, and Road Building still publishes as one canonical two-edge intent rather than inventing new transport shape.
+- 2026-04-10: Stage 12.8 automated validation is green across the full repo gate after the cohesion pass landed: `bash ./scripts/gen.sh`, `swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_Transport`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test`, with `115` non-eval core tests, `10` eval tests, `44` transport tests, and `111` MessagesExtension tests all green.
 - `MessagesExtensionTests` still emits an Xcode dependency-scan warning because Tuist does not support a direct unit-test dependency on an iMessage extension target in this project shape. The current workaround remains compiling selected extension source files into the test target; capture any future cleanup under the tech-debt tracker rather than forcing a larger restructure into this phase.
 - Real-device validation is expected to drive at least some late-stage UX adjustments; do not treat Simulator-only behavior as sufficient signoff for Messages-hosted gameplay.
 - If setup, trade, or dev-card orchestration starts overwhelming `GameShellView` or `LobbyDriverViewModel`, split it into feature-local helpers rather than growing more shared conditionals.
