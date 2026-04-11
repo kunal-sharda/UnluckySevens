@@ -7,7 +7,7 @@ final class GameBankTrayModelBuilderTests: XCTestCase {
         let state = makeState(
             resourcesByPlayer: [
                 "A": .zero,
-                "B": ResourceHandV1(ore: 2, wood: 1),
+                "B": ResourceHandV1(wood: 1, ore: 2),
                 "C": ResourceHandV1(ore: 1),
             ]
         )
@@ -23,7 +23,7 @@ final class GameBankTrayModelBuilderTests: XCTestCase {
         XCTAssertEqual(model.subtitle, "Choose the resource to claim from every opponent.")
         XCTAssertEqual(model.chips.count, 5)
 
-        let oreChip = model.chips.first(where: { $0.resource == .ore })
+        let oreChip = model.chips.first(where: { $0.resource == ResourceV1.ore })
         XCTAssertEqual(oreChip?.count, 19)
         XCTAssertEqual(oreChip?.detailText, "Claim 3")
         XCTAssertEqual(oreChip?.isSelected, true)

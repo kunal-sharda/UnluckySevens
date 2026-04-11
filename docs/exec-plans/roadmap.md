@@ -20,7 +20,8 @@ Do not put day-to-day execution notes here. If a future phase becomes active, cr
 - Status: active
 - Why it is still the gate:
   - phase 12.7 closed the authority and severe-lag blockers, but phase 12 still needs one final product-cohesion pass plus device QA before phase 13
-  - the game shell now exposes the full turn loop, but the player-facing experience still needs final verification around build/dev-card affordances, consistent player aliases, and simpler turn presentation
+- the game shell now exposes the full turn loop, but the player-facing experience still needs final verification around build/dev-card affordances, consistent player aliases, and simpler turn presentation
+- the game shell has now moved to a board-first shelf model, so the remaining gate is real-device verification that the new `Header + Board + Dock` hierarchy and utility shelf feel coherent on hardware
   - phase 13 should start only after the current full-match gameplay surface is signed off on hardware, not while phase-12 UX details are still shifting
 
 Do not start phase 13 until the current 12.8 slice is signed off on real devices.
@@ -41,7 +42,7 @@ Scope:
 - simplify the top-of-shell turn presentation so it shows turn ownership and dice state instead of transport/debug-style context copy
 - replace raw participant identifiers with deterministic per-game pseudonyms so the game remains readable across devices without relying on unavailable Messages display names
 - reorganize the bottom tray around the common action order: `Roll`, `End Turn`, `Build`, and `Play Dev`, with `Build` opening a compact shelf for legal build/buy choices
-- keep `Buy Dev` under `Build`, keep the public bank tray visible near the hand tray, and use that tray as the explicit chooser for Monopoly and Year of Plenty
+- keep `Buy Dev` under `Build`, keep bank information quickly accessible through the shared lower shelf, and use the bank shelf as the explicit chooser for Monopoly and Year of Plenty
 - keep dev-card timing aligned with the current standard turn flow: playable before or after rolling, but still not on the turn they were acquired unless a Victory Point reveal immediately wins
 - replace the old default-driven dev-card shortcuts with staged Knight, Monopoly, Year Of Plenty, and Road Building choice flows that feel like authored product interactions
 - keep the current compact trade protocol, but make proposer/respondent state and passive-decline behavior explicit enough that the shell no longer feels like a debug wrapper
@@ -125,6 +126,7 @@ Scope:
 - split the extension more cleanly by host lifecycle, transport adaptation, lobby/game orchestration, board coordination, and debug/operator surfaces
 - extract shared seams so tests no longer need to duplicate extension sources
 - deepen board and bubble visual regression coverage where the substrate already exists but assertions are still shallow
+- add deliberate screen-size and Messages-presentation-size support so the shell and board layout hold up across short, tall, narrow, and larger device classes instead of tuning only for the current primary phone lane
 - stabilize any remaining structural board-performance or interaction-ergonomics issues that should not stay buried in feature code
 
 Primary debt links:

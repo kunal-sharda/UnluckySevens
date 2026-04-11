@@ -7,8 +7,8 @@ struct GameBoardCameraState: Equatable {
 }
 
 enum GameBoardCameraController {
-    static let minZoom: CGFloat = 1.0
-    static let maxZoom: CGFloat = 2.4
+    static let minZoom: CGFloat = 0.9
+    static let maxZoom: CGFloat = 2.8
     fileprivate static let edgeEndpointExclusionFraction: CGFloat = 0.2
     private static let minimumPanSlack: CGFloat = 24
     private static let maximumPanSlack: CGFloat = 48

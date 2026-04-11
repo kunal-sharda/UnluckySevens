@@ -160,10 +160,7 @@ final class GameScreenModelBuilderTests: XCTestCase {
                 GameActionDockItem(kind: .devCards, title: "Play Dev", systemImage: "sparkles.rectangle.stack.fill", isEnabled: false),
             ]
         )
-        XCTAssertEqual(
-            model.actionDock.utilityItems,
-            [GameActionDockItem(kind: .trade, title: "Trade", systemImage: "arrow.left.arrow.right", isEnabled: true)]
-        )
+        XCTAssertTrue(model.actionDock.utilityItems.isEmpty)
         XCTAssertTrue(model.actionDock.buildShelfItems.isEmpty)
     }
 

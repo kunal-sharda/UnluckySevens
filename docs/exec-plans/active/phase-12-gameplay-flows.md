@@ -34,7 +34,7 @@ What exists today:
 - phase 10 established a board-first shell, compact opponent summaries, a hand tray, an action dock, and easy-but-secondary debug surfaces
 - phase 11 replaced placeholder board art with a real SpriteKit board, pan/zoom, typed board hit targets, mode-driven highlights, and snapshot rendering
 - stages 12.1 through 12.6 are now landed: lobby join/start is productized, setup placement is playable from the board, the common turn loop can roll, build, buy, and end turn from the product UI, robber/discard flow is wired through the product shell, trade UX is live in the compact modal/shell surfaces, and dev-card actions are available through the compact product panel
-- stage 12.8 now includes a persistent public bank tray, `Buy Dev` under `Build`, staged Knight/Monopoly/Year Of Plenty/Road Building choice flows, and winning-only Victory Point reveal visibility
+- stage 12.8 now includes `Buy Dev` under `Build`, staged Knight/Monopoly/Year Of Plenty/Road Building choice flows, winning-only Victory Point reveal visibility, and a board-first shell that collapses hand, bank, player summaries, build actions, and dev-card inventory into a shared lower shelf
 - `ULS_CoreGame` already owns legality, viewer-safe projections, and default action selection through [CoreGameViewQueriesV1.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/Packages/ULS_CoreGame/Sources/ULS_CoreGame/CoreGameViewQueriesV1.swift)
 - the main integration point is still [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift), which owns transcript context, debug actions, and shell inputs
 
@@ -69,7 +69,7 @@ Code and docs result:
 - gameplay-specific UI orchestration is split into focused feature areas under `MessagesExtension/Sources/Features/`
 - lobby participation and host-start handling no longer depend on manual local recording as the primary UX
 - board target selection, modal choices, and action-dock taps converge into a small number of intent-drafting paths
-- bank visibility and dev-card choice surfaces stay obvious enough that the player can understand what the shelf can legally do at a glance
+- lower-shelf utility affordances and dev-card choice surfaces stay obvious enough that the player can understand what the shell can legally do at a glance
 - any additive presentation types stay presentation-only and keep legality in `ULS_CoreGame`
 - [QA](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/qa.md) is updated with any new permanent simulator or real-device checks discovered during implementation
 
@@ -289,6 +289,13 @@ Implement:
 - align dev-card timing and shell affordances with the intended turn flow instead of leaving them as post-roll-only product shortcuts by accident
 - replace hidden-default dev-card shortcuts with choice-driven play for Knight, Monopoly, Year of Plenty, and Road Building
 - keep Victory Point reveals hidden unless revealing them would immediately win the game
+- collapse the stacked lower shell into a strict `Header + Board + Dock` default layout with whole-number targets:
+  - collapsed: `12%` header, `70%` board, `18%` dock region
+  - expanded: `10%` header, `60%` board, `18%` shelf, `12%` dock row
+- move hand, bank, and players into a compact utility strip plus one shared expandable shelf
+- keep `Trade` in the `Hand` shelf instead of the persistent dock
+- keep `Players` shelf-only and public-info-only
+- replace the large board HUD with a compact bottom-center in-board hint pill during guided modes
 - add any minimal end-of-game clarity needed so a full played match does not feel unfinished at the moment of victory
 
 Key files and likely additions:
@@ -306,7 +313,7 @@ Key files and likely additions:
 Expected observations:
 
 - board movement and placement are reliable enough that the main board no longer feels like a hostile control surface
-- the shell header, aliases, and dock order all read like a real game instead of leaked protocol/debug state
+- the shell header, board, utility strip, and dock now read as one coherent board-first surface instead of stacked cards leaking protocol/debug state
 - trade and dev-card flows are compact, but legible enough that a full match no longer relies on raw participant IDs, invisible timing rules, or hidden default-choice shortcuts
 - a full match can end without the last steps feeling like placeholder UI
 
@@ -341,7 +348,9 @@ Simulator checks:
 4. Trigger or reach a seven flow and complete discard, robber move, and victim selection.
 5. Propose one player trade and one maritime trade.
 6. Buy and play at least one dev card through the real UI.
-7. Confirm stale-context behavior remains visible and recoverable after gameplay actions.
+7. Confirm the default shell reads as header, board, utility strip, and dock rather than stacked hand/bank/player cards.
+8. Confirm hand, bank, and players each expand through the shared shelf, with only one shelf open at a time.
+9. Confirm stale-context behavior remains visible and recoverable after gameplay actions.
 
 Real-device checks:
 
@@ -410,6 +419,8 @@ Deferred by design in phase 12:
 - 2026-04-10: dev-card timing is now aligned end to end through `TurnStepV1.allowsDevCardPlay`, the reducer, validation, and the Messages shell, so legal non-purchase dev cards can be played pre-roll or post-roll while buy-dev-card remains an after-roll action.
 - 2026-04-10: Stage 12.8 replaces hidden-default dev-card shortcuts with explicit staged choice flows for Knight, Monopoly, Year of Plenty, and Road Building. Victory Point cards stay hidden as inventory until a reveal would immediately win, and Road Building still publishes as one canonical two-edge intent rather than inventing new transport shape.
 - 2026-04-10: Stage 12.8 automated validation is green across the full repo gate after the cohesion pass landed: `bash ./scripts/gen.sh`, `swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_Transport`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test`, with `115` non-eval core tests, `10` eval tests, `44` transport tests, and `111` MessagesExtension tests all green.
+- 2026-04-10: Stage 12.8 shell consolidation removes the always-open hand tray, bank tray, and opponent cards from the default screen. The normal shell is now `Header + Board + Utility Strip + Dock`, while build, dev cards, hand, bank, and players all route through one shared lower shelf instead of competing stacked cards.
+- 2026-04-10: the layout contract is now explicit in code and tests rather than informal view tweaking: collapsed shell targets `12% / 70% / 18%`, expanded shelf targets `10% / 60% / 18% / 12%`, the board clips strictly to its slot, and the board hint sits bottom-center inside the ocean margin rather than as a large translucent HUD.
 - `MessagesExtensionTests` still emits an Xcode dependency-scan warning because Tuist does not support a direct unit-test dependency on an iMessage extension target in this project shape. The current workaround remains compiling selected extension source files into the test target; capture any future cleanup under the tech-debt tracker rather than forcing a larger restructure into this phase.
 - Real-device validation is expected to drive at least some late-stage UX adjustments; do not treat Simulator-only behavior as sufficient signoff for Messages-hosted gameplay.
 - If setup, trade, or dev-card orchestration starts overwhelming `GameShellView` or `LobbyDriverViewModel`, split it into feature-local helpers rather than growing more shared conditionals.
@@ -420,7 +431,7 @@ Deferred by design in phase 12:
 Planned result:
 
 - the lobby and core gameplay loop are playable from the product UI
-- trade and dev-card flows are compact but coherent enough that a full match does not rely on raw IDs, hidden timing assumptions, or debug-era affordances as the primary product behavior
+- trade and dev-card flows are compact but coherent enough that a full match does not rely on raw IDs, hidden timing assumptions, or stacked debug-era shell affordances as the primary product behavior
 - board taps, shell modes, and modal choices map cleanly into canonical intents
 - once the current device QA closes stage 12.8, the repo is ready for a narrower phase 13 focused on Messages-host stability, transcript recovery, and durability instead of still using phase 12 to finish basic gameplay UX
 

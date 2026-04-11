@@ -6,9 +6,15 @@ struct HandTrayView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-            Text(model.title)
-                .font(GameTheme.headingFont)
-                .foregroundStyle(GameTheme.ink)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(model.title)
+                    .font(GameTheme.headingFont)
+                    .foregroundStyle(GameTheme.ink)
+
+                Text("Resource hand")
+                    .font(GameTheme.metaFont)
+                    .foregroundStyle(GameTheme.mutedInk)
+            }
 
             if model.chips.isEmpty {
                 ContentUnavailableView("No visible hand", systemImage: "shippingbox")
@@ -17,7 +23,7 @@ struct HandTrayView: View {
                 LazyVGrid(
                     columns: Array(
                         repeating: GridItem(.flexible(minimum: 0), spacing: GameTheme.chipSpacing),
-                        count: model.chips.count
+                        count: 5
                     ),
                     spacing: GameTheme.chipSpacing
                 ) {
@@ -28,7 +34,7 @@ struct HandTrayView: View {
             }
         }
         .padding(GameTheme.compactPadding)
-        .background(GameTheme.surface.opacity(0.92))
+        .background(GameTheme.surface.opacity(0.90))
         .overlay(
             RoundedRectangle(cornerRadius: GameTheme.mediumRadius)
                 .stroke(GameTheme.outline.opacity(0.16), lineWidth: 1)
@@ -51,7 +57,7 @@ private struct HandChipView: View {
                 .font(GameTheme.headingFont)
                 .foregroundStyle(GameTheme.mutedInk)
         }
-        .frame(maxWidth: .infinity, minHeight: 58)
+        .frame(maxWidth: .infinity, minHeight: 52)
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .background(backgroundColor(for: chip.resource))

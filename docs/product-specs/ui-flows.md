@@ -28,21 +28,44 @@ This document summarizes the player-facing flows the UI must support in the curr
 - Roll.
 - Resolve either production or the full seven/robber subflow.
 - Optionally trade, build, buy or play allowed dev cards, and then end turn.
+- The default shell should read as:
+  - header
+  - board
+  - utility strip
+  - dock
+- The default height targets are:
+  - header `12%`
+  - board `70%`
+  - dock region `18%`
+- When a lower shelf is open, the shell should shift to:
+  - header `10%`
+  - board `60%`
+  - shelf `18%`
+  - dock row `12%`
 - The primary dock order should stay shallow and predictable:
   - `Roll`
   - `End Turn`
   - `Build`
   - `Play Dev`
-- `Build` opens a compact shelf for legal build/buy actions such as road, settlement, city, and dev-card purchase, while keeping bank-backed availability visible.
-- The bank strip stays visible near the hand tray with public remaining counts for wood, brick, sheep, wheat, and ore. It becomes interactive only for resource-selecting dev-card flows such as Monopoly and Year of Plenty.
+- A compact utility strip above the dock should provide:
+  - `Hand`
+  - `Bank`
+  - `Players`
+- Only one lower shelf should be open at a time.
+- `Build` opens a compact shelf for legal build/buy actions such as road, settlement, city, and dev-card purchase.
+- `Trade` should be entered from the `Hand` shelf, not from the persistent dock.
+- The bank should be quickly accessible rather than always expanded. Its full public counts for wood, brick, sheep, wheat, and ore should live in the `Bank` shelf and become interactive only for Monopoly and Year of Plenty.
+- Opponent summaries should be shelf-only rather than always visible in the main shell.
 - Dev-card actions should be choice-driven for Knight, Monopoly, Year of Plenty, and Road Building rather than expanding into a deep form flow or hiding behind defaults.
 - Knight should stage through robber-tile choice first and only ask for an explicit victim when the chosen tile has multiple eligible steals.
+- Guided board flows should use a compact bottom-center in-board hint pill rather than a large floating HUD card.
 - If the active player reaches the win threshold on their turn, the game ends immediately.
 - Forced subflows such as discard and robber movement should feel blocking rather than like optional side actions.
 
 ## Trade Flow
 
-- The current player sees a compact trade modal with suggested player-trade and maritime-trade actions.
+- The current player enters trade from the `Hand` shelf.
+- The current player sees a compact trade surface with suggested player-trade and maritime-trade actions.
 - Other players can respond through accept-style intent bubbles.
 - The current player can apply a selected accept-intent bubble and execute with the accepted players before end turn.
 - Bank and port trades should feel distinct from player-to-player trade offers.
@@ -70,4 +93,5 @@ This document summarizes the player-facing flows the UI must support in the curr
   - `Roll pending`
   - `Roll: 4 + 3 = 7`
 - Player-facing names in the shell should use deterministic per-game aliases until explicit player naming exists.
+- The main screen should avoid persistent stacked cards; hand, bank, player summaries, build choices, and dev-card inventory should appear through the shared lower shelf instead.
 - The bubble should support lobby readability as well as in-game readability; joining and host-start should not create avoidable transcript clutter.

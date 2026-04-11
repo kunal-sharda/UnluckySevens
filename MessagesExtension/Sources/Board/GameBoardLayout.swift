@@ -5,8 +5,10 @@ struct GameBoardLayout {
     let size: CGSize
     let geometry: BoardRenderGeometryV1
 
-    private let padding: CGFloat = 28
-    private let portMarginMultiplier: CGFloat = 2.0
+    private let padding: CGFloat = 18
+    private let horizontalSeaMultiplier: CGFloat = 2.1
+    private let topSeaMultiplier: CGFloat = 1.45
+    private let bottomSeaMultiplier: CGFloat = 3.25
 
     init(size: CGSize, geometry: BoardRenderGeometryV1) {
         self.size = size
@@ -208,9 +210,15 @@ struct GameBoardLayout {
     }
 
     private var expandedBounds: CGRect {
-        bounds.insetBy(
-            dx: -(normalizedTileRadius * portMarginMultiplier),
-            dy: -(normalizedTileRadius * portMarginMultiplier * 0.92)
+        let horizontalInset = normalizedTileRadius * horizontalSeaMultiplier
+        let topInset = normalizedTileRadius * topSeaMultiplier
+        let bottomInset = normalizedTileRadius * bottomSeaMultiplier
+
+        return CGRect(
+            x: bounds.minX - horizontalInset,
+            y: bounds.minY - topInset,
+            width: bounds.width + (horizontalInset * 2),
+            height: bounds.height + topInset + bottomInset
         )
     }
 }

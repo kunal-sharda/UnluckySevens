@@ -162,14 +162,7 @@ enum GameScreenModelBuilder {
                     isEnabled: actionAvailability.canPlayDevCards
                 ),
             ],
-            utilityItems: [
-                GameActionDockItem(
-                    kind: .trade,
-                    title: "Trade",
-                    systemImage: "arrow.left.arrow.right",
-                    isEnabled: actionAvailability.canTrade
-                ),
-            ].filter(\.isEnabled),
+            utilityItems: [],
             buildShelfItems: [
                 GameBuildShelfItem(
                     kind: .buildRoad,

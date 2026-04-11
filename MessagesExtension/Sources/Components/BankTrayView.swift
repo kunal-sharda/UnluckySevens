@@ -16,14 +16,15 @@ struct BankTrayView: View {
                     Text(subtitle)
                         .font(GameTheme.metaFont)
                         .foregroundStyle(GameTheme.mutedInk)
-                        .lineLimit(2)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
             }
 
             LazyVGrid(
                 columns: Array(
                     repeating: GridItem(.flexible(minimum: 0), spacing: GameTheme.chipSpacing),
-                    count: max(model.chips.count, 1)
+                    count: 5
                 ),
                 spacing: GameTheme.chipSpacing
             ) {
@@ -35,7 +36,7 @@ struct BankTrayView: View {
             }
         }
         .padding(GameTheme.compactPadding)
-        .background(GameTheme.surface.opacity(0.92))
+        .background(GameTheme.surface.opacity(0.90))
         .overlay(
             RoundedRectangle(cornerRadius: GameTheme.mediumRadius)
                 .stroke(GameTheme.outline.opacity(0.16), lineWidth: 1)
@@ -86,7 +87,7 @@ private struct BankChipButton: View {
                         .frame(height: 12)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 72, alignment: .top)
+            .frame(maxWidth: .infinity, minHeight: 66, alignment: .top)
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
             .background(backgroundColor(for: chip.resource, selected: chip.isSelected))

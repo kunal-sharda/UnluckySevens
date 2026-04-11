@@ -4,9 +4,9 @@ import XCTest
 
 final class GameBoardCameraControllerTests: XCTestCase {
     func testClampedZoomLimitsRange() {
-        XCTAssertEqual(GameBoardCameraController.clampedZoom(0.2), 1.0)
+        XCTAssertEqual(GameBoardCameraController.clampedZoom(0.2), 0.9)
         XCTAssertEqual(GameBoardCameraController.clampedZoom(1.4), 1.4)
-        XCTAssertEqual(GameBoardCameraController.clampedZoom(8.0), 2.4)
+        XCTAssertEqual(GameBoardCameraController.clampedZoom(8.0), 2.8)
     }
 
     func testClampedOffsetKeepsViewportInsideContentBounds() {

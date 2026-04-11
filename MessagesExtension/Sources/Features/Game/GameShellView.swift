@@ -7,7 +7,7 @@ struct GameShellView: View {
     @State private var selectedBoardTarget: GameBoardTarget?
     @State private var boardHintText: String?
     @State private var devCardDraft: GameDevCardDraft?
-    @State private var isBuildShelfExpanded = false
+    @State private var manualLowerShelf: GameLowerShelf?
 
     var body: some View {
         let screenModel = viewModel.gameScreenModel
@@ -16,7 +16,8 @@ struct GameShellView: View {
             currentMode: currentMode,
             availability: screenModel.modeAvailability
         )
-        let isBuildShelfPresented = isBuildShelfExpanded || resolvedMode.isBuildMode
+        let activeLowerShelf = resolvedLowerShelf(mode: resolvedMode)
+        let isShelfPresented = activeLowerShelf != nil
         let bankTrayModel = viewModel.makeBankTrayModel(
             mode: resolvedMode,
             draft: devCardDraft
@@ -30,122 +31,120 @@ struct GameShellView: View {
             devCardDraft: devCardDraft,
             selectedTarget: selectedBoardTarget
         )
+        let headerModel = GameHeaderModel(
+            statusLine: screenModel.header.statusLine,
+            metaText: ""
+        )
 
         ZStack {
             GameTheme.appBackground
                 .ignoresSafeArea()
 
             GeometryReader { geometry in
-                let boardHeight = resolvedBoardHeight(for: geometry.size.height)
-                let railMaxHeight = resolvedRailHeight(
-                    totalHeight: geometry.size.height,
-                    boardHeight: boardHeight
+                let shellLayout = GameShellLayoutMetrics.resolve(
+                    availableHeight: max(geometry.size.height - (GameTheme.shellPadding * 2), 0),
+                    spacing: GameTheme.sectionSpacing,
+                    isShelfPresented: isShelfPresented && !isGameOver
                 )
 
                 VStack(alignment: .leading, spacing: GameTheme.sectionSpacing) {
-                    GameHeaderView(model: screenModel.header)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    GameHeaderView(model: headerModel)
+                        .frame(height: shellLayout.headerHeight, alignment: .topLeading)
 
                     BoardContainerView(
                         model: selectedBoardModel(screenModel: screenModel, mode: resolvedMode),
                         renderModel: screenModel.boardRenderModel,
                         overlayModel: overlayModel,
                         interactionMode: resolvedMode,
-                        selectionText: overlayModel.selectedTarget?.selectionLabel(for: resolvedMode) ?? boardHintText,
+                        selectionText: resolvedBoardHintText(
+                            mode: resolvedMode,
+                            overlayModel: overlayModel
+                        ),
                         onInteractionChanged: nil,
                         onTargetTap: { target in
                             handleBoardTap(target, mode: resolvedMode)
                         }
                     )
-                    .frame(height: boardHeight)
+                    .frame(height: shellLayout.boardHeight, alignment: .top)
+                    .clipped()
 
-                    ScrollView(.vertical, showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: GameTheme.sectionSpacing) {
-                            PlayerSummaryStripView(summaries: screenModel.opponents)
-
-                            GameModalHostView(
-                                mode: resolvedMode,
-                                setupInstruction: viewModel.setupGuidanceText,
-                                discardPanel: viewModel.discardPanelModel,
-                                tradePanel: viewModel.tradePanelModel,
-                                devCardPanel: devCardPanelModel,
-                                robberVictimOptions: viewModel.robberVictimOptions,
-                                onDiscardAction: {
-                                    guard viewModel.handleDiscardFlowAction() else { return }
-                                    selectedBoardTarget = nil
-                                },
-                                onTradeAction: { action in
-                                    guard viewModel.handleTradeAction(action) else { return }
-                                    if action != .applySelectedAccept {
-                                        currentMode = .idle
-                                    }
-                                    selectedBoardTarget = nil
-                                },
-                                onApplySelectedTurnIntent: {
-                                    guard viewModel.publishSelectedTurnIntentState() else { return }
-                                    selectedBoardTarget = nil
-                                },
-                                onExecuteTrade: { playerID in
-                                    guard viewModel.publishTradeExecution(acceptingPlayer: playerID) else { return }
+                    if !isGameOver {
+                        GameBottomTrayView(
+                            layout: shellLayout.lowerRail,
+                            activeShelf: activeLowerShelf,
+                            selectedUtilityShelf: selectedUtilityShelf(mode: resolvedMode),
+                            handTray: screenModel.handTray,
+                            bankTray: bankTrayModel,
+                            opponents: screenModel.opponents,
+                            actionDock: screenModel.actionDock,
+                            selectedDockKind: selectedDockKind(activeShelf: activeLowerShelf),
+                            selectedBuildKind: resolvedMode.buildShelfKind,
+                            mode: resolvedMode,
+                            setupInstruction: viewModel.setupGuidanceText,
+                            discardPanel: viewModel.discardPanelModel,
+                            tradePanel: viewModel.tradePanelModel,
+                            devCardPanel: devCardPanelModel,
+                            robberVictimOptions: viewModel.robberVictimOptions,
+                            onSelectDock: { actionKind in
+                                handleActionSelection(
+                                    actionKind,
+                                    currentMode: resolvedMode,
+                                    availability: screenModel.modeAvailability,
+                                    actionDock: screenModel.actionDock
+                                )
+                            },
+                            onSelectBuild: { buildKind in
+                                handleBuildShelfSelection(buildKind)
+                            },
+                            onSelectUtilityShelf: { shelf in
+                                handleUtilityShelfSelection(shelf, currentMode: resolvedMode)
+                            },
+                            onSelectBankResource: { resource in
+                                handleBankResourceSelection(resource, mode: resolvedMode)
+                            },
+                            onOpenTrade: {
+                                handleTradeShelfSelection()
+                            },
+                            onDiscardAction: {
+                                guard viewModel.handleDiscardFlowAction() else { return }
+                                selectedBoardTarget = nil
+                            },
+                            onTradeAction: { action in
+                                guard viewModel.handleTradeAction(action) else { return }
+                                if action != .applySelectedAccept {
                                     currentMode = .idle
-                                    selectedBoardTarget = nil
-                                },
-                                onDevCardAction: { action in
-                                    handleDevCardSelection(action)
-                                },
-                                onConfirmDevCardDraft: {
-                                    handleConfirmDevCardDraft()
-                                },
-                                onResetDevCardDraft: {
-                                    resetDevCardDraft()
-                                },
-                                onSelectStealVictim: { victimPlayer in
-                                    guard viewModel.publishRobberVictimState(victimPlayer: victimPlayer) else { return }
-                                    currentMode = .idle
-                                    selectedBoardTarget = nil
                                 }
-                            )
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                                selectedBoardTarget = nil
+                            },
+                            onApplySelectedTurnIntent: {
+                                guard viewModel.publishSelectedTurnIntentState() else { return }
+                                selectedBoardTarget = nil
+                            },
+                            onExecuteTrade: { playerID in
+                                guard viewModel.publishTradeExecution(acceptingPlayer: playerID) else { return }
+                                currentMode = .idle
+                                selectedBoardTarget = nil
+                            },
+                            onDevCardAction: { action in
+                                handleDevCardSelection(action)
+                            },
+                            onConfirmDevCardDraft: {
+                                handleConfirmDevCardDraft()
+                            },
+                            onResetDevCardDraft: {
+                                resetDevCardDraft()
+                            },
+                            onSelectStealVictim: { victimPlayer in
+                                guard viewModel.publishRobberVictimState(victimPlayer: victimPlayer) else { return }
+                                currentMode = .idle
+                                selectedBoardTarget = nil
+                            }
+                        )
+                        .frame(height: shellLayout.trayHeight, alignment: .top)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: railMaxHeight, alignment: .top)
-                    .background(GameTheme.surface.opacity(0.58))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: GameTheme.mediumRadius)
-                            .stroke(GameTheme.outline.opacity(0.10), lineWidth: 1)
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: GameTheme.mediumRadius))
                 }
                 .padding(GameTheme.shellPadding)
-                .padding(.bottom, 168)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .safeAreaInset(edge: .bottom) {
-            if !isGameOver {
-                GameBottomTrayView(
-                    handTray: screenModel.handTray,
-                    bankTray: bankTrayModel,
-                    actionDock: screenModel.actionDock,
-                    selectedKind: selectedDockKind(mode: resolvedMode, isBuildShelfPresented: isBuildShelfPresented),
-                    selectedBuildKind: resolvedMode.buildShelfKind,
-                    isBuildShelfPresented: isBuildShelfPresented
-                ) { actionKind in
-                    handleActionSelection(
-                        actionKind,
-                        currentMode: resolvedMode,
-                        availability: screenModel.modeAvailability,
-                        actionDock: screenModel.actionDock
-                    )
-                } onSelectBuild: { buildKind in
-                    handleBuildShelfSelection(buildKind)
-                } onSelectBankResource: { resource in
-                    handleBankResourceSelection(resource, mode: resolvedMode)
-                }
-                .padding(.horizontal, GameTheme.shellPadding)
-                .padding(.top, 8)
-                .padding(.bottom, 8)
-                .background(GameTheme.appBackground)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
         .onAppear {
@@ -158,22 +157,52 @@ struct GameShellView: View {
         }
         .onChange(of: screenModel.modeAvailability) { _, availability in
             synchronizeMode(with: availability)
-            if !resolvedMode.isBuildMode, screenModel.actionDock.buildShelfItems.isEmpty {
-                isBuildShelfExpanded = false
-            }
         }
         .onChange(of: resolvedMode) { _, newMode in
             boardHintText = nil
             synchronizeBoardSelection(mode: newMode)
-            if !newMode.isBuildMode, !isBuildShelfExpanded {
-                selectedBoardTarget = nil
-            }
             if !newMode.isDevCardMode {
                 devCardDraft = nil
+            }
+            if newMode.isForcedBoardMode {
+                manualLowerShelf = nil
             }
         }
         .onChange(of: screenModel.boardRenderModel) { _, _ in
             synchronizeBoardSelection(mode: resolvedMode)
+        }
+    }
+
+    private func resolvedLowerShelf(mode: GameMode) -> GameLowerShelf? {
+        if mode == .discard || mode == .robberVictim {
+            return .forcedFlow
+        }
+        if mode.isDevCardMode {
+            return .devCards
+        }
+        if mode.isBuildMode || manualLowerShelf == .build {
+            return .build
+        }
+        if mode == .trade {
+            return .hand
+        }
+        switch manualLowerShelf {
+        case .hand, .bank, .players:
+            return manualLowerShelf
+        default:
+            return nil
+        }
+    }
+
+    private func selectedUtilityShelf(mode: GameMode) -> GameLowerShelf? {
+        if mode == .trade {
+            return .hand
+        }
+        switch manualLowerShelf {
+        case .hand, .bank, .players:
+            return manualLowerShelf
+        default:
+            return nil
         }
     }
 
@@ -193,6 +222,28 @@ struct GameShellView: View {
         )
     }
 
+    private func resolvedBoardHintText(
+        mode: GameMode,
+        overlayModel: GameBoardOverlayModel
+    ) -> String? {
+        if let selectedTarget = overlayModel.selectedTarget {
+            return selectedTarget.selectionLabel(for: mode)
+        }
+
+        if let boardHintText {
+            return boardHintText
+        }
+
+        switch mode {
+        case .setup:
+            return viewModel.setupGuidanceText ?? "Tap a highlighted settlement or road."
+        case .buildRoad, .buildSettlement, .buildCity, .robberMove, .devCardKnightMove, .devCardKnightVictim, .devCardRoadBuildingFirst, .devCardRoadBuildingSecond:
+            return failureHint(for: mode)
+        case .idle, .trade, .playDevCard, .devCardMonopoly, .devCardYearOfPlenty, .discard, .robberVictim:
+            return nil
+        }
+    }
+
     private func handleActionSelection(
         _ actionKind: GameActionDockItem.Kind,
         currentMode: GameMode,
@@ -204,7 +255,7 @@ struct GameShellView: View {
                 self.currentMode = .idle
                 self.selectedBoardTarget = nil
                 self.boardHintText = nil
-                self.isBuildShelfExpanded = false
+                self.manualLowerShelf = nil
             }
             return
         }
@@ -215,23 +266,23 @@ struct GameShellView: View {
             case .build:
                 guard !actionDock.buildShelfItems.isEmpty else {
                     self.currentMode = .idle
-                    self.isBuildShelfExpanded = false
+                    self.manualLowerShelf = nil
                     self.devCardDraft = nil
                     return
                 }
 
-                if currentMode.isBuildMode || isBuildShelfExpanded {
+                if resolvedLowerShelf(mode: currentMode) == .build {
                     self.currentMode = .idle
                     self.selectedBoardTarget = nil
-                    self.isBuildShelfExpanded = false
+                    self.manualLowerShelf = nil
                     self.devCardDraft = nil
                 } else {
                     self.currentMode = .idle
                     self.selectedBoardTarget = nil
-                    self.isBuildShelfExpanded = true
+                    self.manualLowerShelf = .build
                     self.devCardDraft = nil
                 }
-            case .trade, .devCards:
+            case .devCards:
                 let nextMode = GameModeResolver.nextMode(
                     for: actionKind,
                     currentMode: currentMode,
@@ -239,19 +290,59 @@ struct GameShellView: View {
                 )
                 self.currentMode = nextMode
                 self.selectedBoardTarget = nil
-                self.isBuildShelfExpanded = false
-                self.devCardDraft = nextMode.isDevCardMode ? nil : nil
+                self.manualLowerShelf = nil
+                self.devCardDraft = nil
+            case .trade:
+                self.currentMode = .trade
+                self.selectedBoardTarget = nil
+                self.manualLowerShelf = .hand
             case .roll, .endTurn:
                 self.currentMode = .idle
                 self.selectedBoardTarget = nil
-                self.isBuildShelfExpanded = false
+                self.manualLowerShelf = nil
                 self.devCardDraft = nil
             }
         }
     }
 
+    private func handleUtilityShelfSelection(_ shelf: GameLowerShelf, currentMode: GameMode) {
+        withAnimation(GameTheme.quickAnimation) {
+            if selectedUtilityShelf(mode: currentMode) == shelf {
+                if currentMode == .trade {
+                    self.currentMode = .idle
+                }
+                self.manualLowerShelf = nil
+            } else {
+                if currentMode == .trade {
+                    self.currentMode = .idle
+                }
+                self.manualLowerShelf = shelf
+            }
+            self.selectedBoardTarget = nil
+            self.boardHintText = nil
+        }
+    }
+
+    private func handleTradeShelfSelection() {
+        guard viewModel.tradePanelModel != nil else {
+            return
+        }
+
+        withAnimation(GameTheme.quickAnimation) {
+            if currentMode == .trade {
+                currentMode = .idle
+            } else {
+                currentMode = .trade
+                manualLowerShelf = .hand
+            }
+            selectedBoardTarget = nil
+            boardHintText = nil
+        }
+    }
+
     private func handleBuildShelfSelection(_ buildKind: GameBuildShelfItem.Kind) {
         withAnimation(GameTheme.quickAnimation) {
+            manualLowerShelf = .build
             switch buildKind {
             case .buildRoad:
                 currentMode = .buildRoad
@@ -273,7 +364,7 @@ struct GameShellView: View {
                 currentMode = .idle
                 selectedBoardTarget = nil
                 boardHintText = nil
-                isBuildShelfExpanded = false
+                manualLowerShelf = nil
                 devCardDraft = nil
             }
         }
@@ -383,7 +474,7 @@ struct GameShellView: View {
         currentMode = .idle
         selectedBoardTarget = nil
         boardHintText = nil
-        isBuildShelfExpanded = false
+        manualLowerShelf = nil
     }
 
     private func handleBoardTap(_ target: GameBoardTarget, mode: GameMode) {
@@ -411,6 +502,7 @@ struct GameShellView: View {
                 currentMode = .idle
                 selectedBoardTarget = nil
                 boardHintText = nil
+                manualLowerShelf = nil
             } else {
                 selectedBoardTarget = normalizedTarget
                 boardHintText = normalizedTarget.selectionLabel(for: mode)
@@ -495,15 +587,6 @@ struct GameShellView: View {
         }
     }
 
-    private func resolvedBoardHeight(for totalHeight: CGFloat) -> CGFloat {
-        min(max(totalHeight * 0.46, 296), 430)
-    }
-
-    private func resolvedRailHeight(totalHeight: CGFloat, boardHeight: CGFloat) -> CGFloat {
-        let remaining = totalHeight - boardHeight - 260
-        return max(remaining, 96)
-    }
-
     private func failureHint(for mode: GameMode) -> String? {
         switch mode {
         case .setup:
@@ -531,13 +614,18 @@ struct GameShellView: View {
         }
     }
 
-    private func selectedDockKind(
-        mode: GameMode,
-        isBuildShelfPresented: Bool
-    ) -> GameActionDockItem.Kind? {
-        if isBuildShelfPresented || mode.isBuildMode {
-            return .build
+    private func selectedDockKind(activeShelf: GameLowerShelf?) -> GameActionDockItem.Kind? {
+        activeShelf?.actionKind
+    }
+}
+
+private extension GameMode {
+    var isForcedBoardMode: Bool {
+        switch self {
+        case .setup, .robberMove, .robberVictim, .discard:
+            return true
+        default:
+            return false
         }
-        return mode.actionKind
     }
 }

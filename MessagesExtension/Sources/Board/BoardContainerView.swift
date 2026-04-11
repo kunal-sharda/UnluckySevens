@@ -9,12 +9,19 @@ struct BoardContainerView: View {
     let onInteractionChanged: ((Bool) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
-    private var shouldShowBoardHUD: Bool {
-        renderModel == nil || interactionMode != .idle || selectionText != nil
+    private var shouldShowBoardHeader: Bool {
+        renderModel != nil || !model.subtitle.isEmpty
+    }
+
+    private var boardHintText: String? {
+        guard renderModel != nil else {
+            return nil
+        }
+        return selectionText
     }
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
+        ZStack {
             LinearGradient(
                 colors: [
                     GameTheme.water.opacity(0.18),
@@ -28,8 +35,8 @@ struct BoardContainerView: View {
             boardCanvas
 
             VStack(alignment: .leading, spacing: 6) {
-                if shouldShowBoardHUD {
-                    boardHUD
+                if shouldShowBoardHeader {
+                    boardHeader
                 }
 
                 Spacer(minLength: 0)
@@ -40,8 +47,36 @@ struct BoardContainerView: View {
             }
             .padding(GameTheme.shellPadding)
             .allowsHitTesting(false)
+
+            if let boardHintText {
+                VStack {
+                    Spacer(minLength: 0)
+
+                    Text(boardHintText)
+                        .font(GameTheme.metaFont.weight(.semibold))
+                        .foregroundStyle(GameTheme.accent)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: 240)
+                        .background(GameTheme.surface.opacity(0.92))
+                        .overlay(
+                            Capsule()
+                                .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
+                        )
+                        .clipShape(Capsule())
+                        .padding(.bottom, 24)
+                }
+                .padding(.horizontal, 24)
+                .allowsHitTesting(false)
+            }
         }
-        .frame(maxWidth: .infinity, minHeight: renderModel == nil ? 260 : 312, alignment: .topLeading)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: renderModel == nil ? 260 : nil,
+            alignment: .topLeading
+        )
         .overlay(
             RoundedRectangle(cornerRadius: GameTheme.largeRadius)
                 .stroke(GameTheme.outline.opacity(0.18), lineWidth: 1)
@@ -68,48 +103,39 @@ struct BoardContainerView: View {
                     onInteractionChanged: onInteractionChanged,
                     onTargetTap: onTargetTap
                 )
-                .padding(.horizontal, 10)
-                .padding(.vertical, 12)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 6)
             } else {
                 BoardPlaceholderArtView()
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 16)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 10)
             }
         }
-        .padding(8)
+        .padding(4)
     }
 
-    private var boardHUD: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Label("Board", systemImage: "hexagon")
-                    .font(GameTheme.headingFont)
-                    .foregroundStyle(GameTheme.ink)
+    private var boardHeader: some View {
+        HStack(spacing: 8) {
+            Label("Board", systemImage: "hexagon")
+                .font(GameTheme.headingFont)
+                .foregroundStyle(GameTheme.ink)
 
-                if interactionMode != .idle && model.title != "Board" {
-                    Text(model.title)
-                        .font(GameTheme.metaFont.weight(.semibold))
-                        .foregroundStyle(GameTheme.accent)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(GameTheme.surface.opacity(0.88))
-                        .clipShape(Capsule())
-                }
-
-                Spacer(minLength: 0)
-            }
-
-            if let selectionText {
-                Text(selectionText)
+            if interactionMode != .idle && model.title != "Board" {
+                Text(model.title)
                     .font(GameTheme.metaFont.weight(.semibold))
                     .foregroundStyle(GameTheme.accent)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(GameTheme.surface.opacity(0.88))
+                    .clipShape(Capsule())
             } else if renderModel == nil, !model.subtitle.isEmpty {
                 Text(model.subtitle)
                     .font(GameTheme.metaFont)
                     .foregroundStyle(GameTheme.mutedInk)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(2)
             }
+
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, renderModel == nil ? 10 : 8)

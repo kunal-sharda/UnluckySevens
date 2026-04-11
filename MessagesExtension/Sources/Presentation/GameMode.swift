@@ -133,7 +133,7 @@ enum GameMode: Equatable {
         case .robberVictim:
             return "Robber victim selection is required before turn play can continue."
         case .trade:
-            return "Trade mode is active. Offer and accept flows will plug in during the gameplay UX stage."
+            return "Open the hand shelf to review offers, accept responses, or publish a trade."
         case .playDevCard:
             return "Choose a development card to play."
         case .devCardKnightMove:
