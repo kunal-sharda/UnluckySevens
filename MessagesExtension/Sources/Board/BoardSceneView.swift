@@ -15,6 +15,7 @@ struct BoardSceneView: View {
     @State private var isDragInteracting: Bool = false
     @State private var isPinchInteracting: Bool = false
     @State private var isInteracting: Bool = false
+    @State private var resizeCommitTask: Task<Void, Never>?
 
     var body: some View {
         GeometryReader { geometry in
@@ -42,6 +43,7 @@ struct BoardSceneView: View {
                 scene.updateCamera(state: cameraState, size: geometry.size)
             }
             .onChange(of: renderModel) { _, newValue in
+                cancelResizeCommit()
                 scene.updateBase(renderModel: newValue, size: geometry.size)
                 scene.updateOverlay(renderModel: newValue, size: geometry.size, overlayModel: overlayModel)
                 cameraState = GameBoardCameraState(
@@ -56,11 +58,11 @@ struct BoardSceneView: View {
                 scene.updateCamera(state: cameraState, size: geometry.size)
             }
             .onChange(of: overlayModel) { _, newValue in
+                cancelResizeCommit()
                 scene.updateOverlay(renderModel: renderModel, size: geometry.size, overlayModel: newValue)
             }
             .onChange(of: geometry.size) { _, newValue in
-                scene.updateBase(renderModel: renderModel, size: newValue)
-                scene.updateOverlay(renderModel: renderModel, size: newValue, overlayModel: overlayModel)
+                scene.updateViewport(size: newValue)
                 let resizedLayout = GameBoardLayout(size: newValue, geometry: renderModel.geometry)
                 cameraState = GameBoardCameraState(
                     zoom: cameraState.zoom,
@@ -72,11 +74,38 @@ struct BoardSceneView: View {
                     )
                 )
                 scene.updateCamera(state: cameraState, size: newValue)
+                scheduleResizeCommit(
+                    size: newValue,
+                    renderModel: renderModel,
+                    overlayModel: overlayModel
+                )
             }
             .onDisappear {
+                cancelResizeCommit()
                 setInteractionActive(false)
             }
         }
+    }
+
+    private func scheduleResizeCommit(
+        size: CGSize,
+        renderModel: GameBoardRenderModel,
+        overlayModel: GameBoardOverlayModel
+    ) {
+        cancelResizeCommit()
+        resizeCommitTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 140_000_000)
+            guard !Task.isCancelled else { return }
+            scene.updateBase(renderModel: renderModel, size: size)
+            scene.updateOverlay(renderModel: renderModel, size: size, overlayModel: overlayModel)
+            scene.updateCamera(state: cameraState, size: size)
+            resizeCommitTask = nil
+        }
+    }
+
+    private func cancelResizeCommit() {
+        resizeCommitTask?.cancel()
+        resizeCommitTask = nil
     }
 
     private func dragGesture(viewportSize: CGSize, contentFrame: CGRect) -> some Gesture {

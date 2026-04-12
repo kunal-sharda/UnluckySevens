@@ -155,7 +155,7 @@ final class GameScreenModelBuilderTests: XCTestCase {
             model.actionDock.primaryItems,
             [
                 GameActionDockItem(kind: .roll, title: "Roll", systemImage: "die.face.5", isEnabled: true),
-                GameActionDockItem(kind: .endTurn, title: "End Turn", systemImage: "flag.pattern.checkered", isEnabled: true),
+                GameActionDockItem(kind: .endTurn, title: "End Turn", systemImage: "flag.fill", isEnabled: true),
                 GameActionDockItem(kind: .build, title: "Build", systemImage: "hammer.fill", isEnabled: false),
                 GameActionDockItem(kind: .devCards, title: "Play Dev", systemImage: "sparkles.rectangle.stack.fill", isEnabled: false),
             ]

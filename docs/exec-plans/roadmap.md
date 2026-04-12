@@ -21,7 +21,7 @@ Do not put day-to-day execution notes here. If a future phase becomes active, cr
 - Why it is still the gate:
   - phase 12.7 closed the authority and severe-lag blockers, but phase 12 still needs one final product-cohesion pass plus device QA before phase 13
 - the game shell now exposes the full turn loop, but the player-facing experience still needs final verification around build/dev-card affordances, consistent player aliases, and simpler turn presentation
-- the game shell has now moved to a board-first shelf model, so the remaining gate is real-device verification that the new `Header + Board + Dock` hierarchy and utility shelf feel coherent on hardware
+- the game shell has now moved to a fixed board-first overlay-shelf model, so the remaining gate is real-device verification that the new `Header + Board + Dock` hierarchy, pull-tab utility entry, and no-unintended-overlap rule feel coherent on hardware
   - phase 13 should start only after the current full-match gameplay surface is signed off on hardware, not while phase-12 UX details are still shifting
 
 Do not start phase 13 until the current 12.8 slice is signed off on real devices.

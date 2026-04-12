@@ -146,7 +146,7 @@ enum GameScreenModelBuilder {
                 GameActionDockItem(
                     kind: .endTurn,
                     title: "End Turn",
-                    systemImage: "flag.pattern.checkered",
+                    systemImage: "flag.fill",
                     isEnabled: actionAvailability.canEndTurn
                 ),
                 GameActionDockItem(

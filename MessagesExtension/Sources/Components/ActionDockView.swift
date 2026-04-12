@@ -10,9 +10,7 @@ struct ActionDockView: View {
             ForEach(model.primaryItems) { item in
                 ActionDockButton(item: item, isSelected: selectedKind == item.kind) {
                     guard item.isEnabled else { return }
-                    withAnimation(GameTheme.quickAnimation) {
-                        onSelect(item.kind)
-                    }
+                    onSelect(item.kind)
                 }
             }
         }
@@ -29,12 +27,13 @@ private struct ActionDockButton: View {
             VStack(spacing: 5) {
                 Image(systemName: item.systemImage)
                     .font(.system(size: 15, weight: .semibold))
+                    .frame(height: 18)
 
                 Text(item.title)
                     .font(GameTheme.metaFont.weight(.semibold))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.80)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .frame(maxWidth: .infinity, minHeight: 16)
             }
             .foregroundStyle(item.isEnabled ? GameTheme.ink : GameTheme.mutedInk)
             .frame(maxWidth: .infinity, minHeight: 58)
@@ -50,6 +49,7 @@ private struct ActionDockButton: View {
         .buttonStyle(.plain)
         .disabled(!item.isEnabled)
         .scaleEffect(isSelected ? GameTheme.pressedScale : 1)
+        .animation(GameTheme.quickAnimation, value: isSelected)
         .accessibilityHint(item.isEnabled ? "Selects \(item.title)" : "\(item.title) is not available")
     }
 

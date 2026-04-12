@@ -31,34 +31,47 @@ This document summarizes the player-facing flows the UI must support in the curr
 - The default shell should read as:
   - header
   - board
-  - utility strip
+  - handle band
   - dock
-- The default height targets are:
+- The fixed shell height targets are:
   - header `12%`
   - board `70%`
   - dock region `18%`
-- When a lower shelf is open, the shell should shift to:
-  - header `10%`
-  - board `60%`
-  - shelf `18%`
+- Within the dock region:
+  - handle band `6%`
   - dock row `12%`
+- The lower shelf should be an overlay, not a layout reflow:
+  - total shelf height `18%`
+  - visible in lower rail `6%`
+  - overlap into the board `12%`
 - The primary dock order should stay shallow and predictable:
   - `Roll`
   - `End Turn`
   - `Build`
   - `Play Dev`
-- A compact utility strip above the dock should provide:
+- The collapsed lower rail should show only:
+  - a small centered pull-tab / chevron in the handle band
+  - the four dock actions in the dock row
+- Only one lower shelf should be open at a time.
+- Opening the pull-tab should reveal a compact shelf header with:
   - `Hand`
   - `Bank`
   - `Players`
-- Only one lower shelf should be open at a time.
+  - close chevron
+- `Hand`, `Bank`, and `Players` utility shelves should be content-only. They should not repeat inner section titles or subtitles once the shelf header is visible.
+- `Hand`, `Bank`, and `Players` utility shelves should not scroll in the normal case.
 - `Build` opens a compact shelf for legal build/buy actions such as road, settlement, city, and dev-card purchase.
+- `Build` and `Play Dev` should use the same overlay shelf surface as the utility entry path.
 - `Trade` should be entered from the `Hand` shelf, not from the persistent dock.
+- The `Hand` shelf should show the five resource chips first and a full-width `Trade` action row directly below them when trade is currently available.
 - The bank should be quickly accessible rather than always expanded. Its full public counts for wood, brick, sheep, wheat, and ore should live in the `Bank` shelf and become interactive only for Monopoly and Year of Plenty.
+- The bank should reuse the same five-chip visual format as the hand in normal viewing, adding only minimal selection decoration during Monopoly or Year of Plenty.
 - Opponent summaries should be shelf-only rather than always visible in the main shell.
 - Dev-card actions should be choice-driven for Knight, Monopoly, Year of Plenty, and Road Building rather than expanding into a deep form flow or hiding behind defaults.
 - Knight should stage through robber-tile choice first and only ask for an explicit victim when the chosen tile has multiple eligible steals.
 - Guided board flows should use a compact bottom-center in-board hint pill rather than a large floating HUD card.
+- The hint pill should be single-line by default and shift upward when the overlay shelf is open so it never sits inside the shelf overlap zone.
+- The only valid overlap in the shell is the deliberate shelf-over-board overlay at the bottom edge. Utility tabs, dock buttons, board chrome, and content regions must otherwise stack without collision or wrapping.
 - If the active player reaches the win threshold on their turn, the game ends immediately.
 - Forced subflows such as discard and robber movement should feel blocking rather than like optional side actions.
 
@@ -94,4 +107,5 @@ This document summarizes the player-facing flows the UI must support in the curr
   - `Roll: 4 + 3 = 7`
 - Player-facing names in the shell should use deterministic per-game aliases until explicit player naming exists.
 - The main screen should avoid persistent stacked cards; hand, bank, player summaries, build choices, and dev-card inventory should appear through the shared lower shelf instead.
+- The board should not resize when the lower shelf opens. The shelf should slide over the bottom of the board while the board and dock remain fixed.
 - The bubble should support lobby readability as well as in-game readability; joining and host-start should not create avoidable transcript clutter.

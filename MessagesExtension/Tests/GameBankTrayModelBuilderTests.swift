@@ -3,6 +3,26 @@ import XCTest
 @testable import MessagesExtension
 
 final class GameBankTrayModelBuilderTests: XCTestCase {
+    func testNormalModeShowsPassiveCountsWithoutSelectionMetadata() {
+        let state = makeState(
+            resourcesByPlayer: ["A": .zero, "B": .zero],
+            bankResources: ResourceHandV1(wood: 18, brick: 17, sheep: 16, wheat: 15, ore: 14)
+        )
+
+        let model = GameBankTrayModelBuilder.build(
+            state: state,
+            actingAs: "A",
+            mode: .idle,
+            draft: nil
+        )
+
+        XCTAssertEqual(model.chips.map(\.count), [18, 17, 16, 15, 14])
+        XCTAssertTrue(model.chips.allSatisfy { !$0.isEnabled })
+        XCTAssertTrue(model.chips.allSatisfy { !$0.isSelected })
+        XCTAssertTrue(model.chips.allSatisfy { $0.selectionIndex == nil })
+        XCTAssertTrue(model.chips.allSatisfy { $0.detailText == nil })
+    }
+
     func testMonopolyModeShowsPersistentCountsAndClaimPreviews() {
         let state = makeState(
             resourcesByPlayer: [

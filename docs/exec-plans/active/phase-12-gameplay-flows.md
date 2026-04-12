@@ -289,13 +289,21 @@ Implement:
 - align dev-card timing and shell affordances with the intended turn flow instead of leaving them as post-roll-only product shortcuts by accident
 - replace hidden-default dev-card shortcuts with choice-driven play for Knight, Monopoly, Year of Plenty, and Road Building
 - keep Victory Point reveals hidden unless revealing them would immediately win the game
-- collapse the stacked lower shell into a strict `Header + Board + Dock` default layout with whole-number targets:
-  - collapsed: `12%` header, `70%` board, `18%` dock region
-  - expanded: `10%` header, `60%` board, `18%` shelf, `12%` dock row
-- move hand, bank, and players into a compact utility strip plus one shared expandable shelf
+- lock the shell geometry to a fixed `12%` header, `70%` board, and `18%` dock region so the board never shrinks when shelves open
+- split the dock region into a `6%` handle band and `12%` dock row
+- replace the always-visible utility strip with a collapsed pull-tab that opens the shared lower shelf for `Hand`, `Bank`, and `Players`
+- render the shared lower shelf as an `18%` overlay that stays `6%` visible inside the lower rail and intentionally overlaps only the bottom `12%` of the board
+- treat unintended overlap as a defect: utility controls, dock controls, shelf header, board header, and board content must not collide or wrap because of insufficient height
 - keep `Trade` in the `Hand` shelf instead of the persistent dock
+- make `Hand`, `Bank`, and `Players` content-only utility shelves with no repeated inner titles or subtitles
+- keep `Hand`, `Bank`, and `Players` non-scroll in the normal case
+- reuse one shared five-chip visual format for `Hand` and `Bank`, adding only minimal bank selection decoration during Monopoly and Year of Plenty
+- place a full-width `Trade` action row directly under the hand chips whenever trade is currently available
 - keep `Players` shelf-only and public-info-only
+- keep the dock row fixed while the overlay shelf animates only opacity and vertical offset, not board or shell geometry
+- reserve fixed icon and label slots in the dock row so `End Turn` stays legible on iPad and narrow layouts
 - replace the large board HUD with a compact bottom-center in-board hint pill during guided modes
+- shrink guided hints to one-line chips that move upward when the overlay shelf is open
 - add any minimal end-of-game clarity needed so a full played match does not feel unfinished at the moment of victory
 
 Key files and likely additions:
@@ -313,7 +321,11 @@ Key files and likely additions:
 Expected observations:
 
 - board movement and placement are reliable enough that the main board no longer feels like a hostile control surface
-- the shell header, board, utility strip, and dock now read as one coherent board-first surface instead of stacked cards leaking protocol/debug state
+- the shell header, board, handle band, and dock now read as one coherent board-first surface instead of stacked cards leaking protocol/debug state
+- shelf open and close no longer force a board resize or other geometry churn that causes visible hitching on device
+- the only allowed overlap is the deliberate shelf-over-board band at the bottom edge; accidental collisions between shell regions are gone
+- hand and bank now read as the same utility surface instead of two different component systems, and the bank no longer looks like a dead pseudo-button grid during normal viewing
+- utility shelves stay compact and content-only instead of spending vertical space on repeated headings or unnecessary scrolling
 - trade and dev-card flows are compact, but legible enough that a full match no longer relies on raw participant IDs, invisible timing rules, or hidden default-choice shortcuts
 - a full match can end without the last steps feeling like placeholder UI
 
@@ -348,9 +360,10 @@ Simulator checks:
 4. Trigger or reach a seven flow and complete discard, robber move, and victim selection.
 5. Propose one player trade and one maritime trade.
 6. Buy and play at least one dev card through the real UI.
-7. Confirm the default shell reads as header, board, utility strip, and dock rather than stacked hand/bank/player cards.
-8. Confirm hand, bank, and players each expand through the shared shelf, with only one shelf open at a time.
-9. Confirm stale-context behavior remains visible and recoverable after gameplay actions.
+7. Confirm the default shell reads as header, board, handle band, and dock rather than stacked hand/bank/player cards.
+8. Confirm the collapsed lower rail shows only the pull-tab and dock row, with no unintended overlap between utility affordances and dock buttons.
+9. Confirm hand, bank, and players expand only after opening the pull-tab, with only one shelf open at a time.
+10. Confirm stale-context behavior remains visible and recoverable after gameplay actions.
 
 Real-device checks:
 
@@ -413,13 +426,14 @@ Deferred by design in phase 12:
 - 2026-04-08: product authority on the clean branch is now `local Messages participant ∩ joined game roster`. Debug impersonation no longer participates in gameplay publication, legality gating, or hidden-information projection, and unresolved identity is explicitly read-only.
 - 2026-04-08: the first lag pass now targets lifecycle churn before deeper board refactors: selection polling self-cancels once a stable selection is observed, product cache keys stop changing on every relative-age tick, diagnostics no longer publish the large transport/debug field set on the gameplay hot path, and active board gestures disable the parent shell scroll view so pan/pinch no longer fight vertical scrolling.
 - 2026-04-08: Stage 12.7 is closed by the real-device authority and responsiveness pass. Reload / active-game sync, transcript collapse behavior, and deeper Messages-host durability are explicitly promoted into the next roadmap phase instead of stretching phase 12 further.
-- 2026-04-10: Stage 12.8 narrows the “product cohesion” goal to the actual phase-12 blockers: remove raw participant IDs from the player-facing shell, simplify the turn header to ownership plus dice state, stop idle board taps from highlighting arbitrary targets, move dev-card purchase into the build shelf, add a persistent public bank strip, and allow legal dev-card play before or after the dice roll as long as the card was not bought that turn.
+- 2026-04-10: Stage 12.8 narrows the “product cohesion” goal to the actual phase-12 blockers: remove raw participant IDs from the player-facing shell, simplify the turn header to ownership plus dice state, stop idle board taps from highlighting arbitrary targets, move dev-card purchase into the build shelf, keep public bank counts quickly accessible through the lower shelf, and allow legal dev-card play before or after the dice roll as long as the card was not bought that turn.
 - 2026-04-10: Stage 12.8 deliberately does not invent new trade or naming protocol. The trade panel is still compact and protocol-constrained, but it now states proposer/respondent status, passive decline, and execute/end-turn expiry behavior clearly enough for a full asynchronous match without pretending there is already a custom composer, cancel bubble, or counteroffer flow.
 - 2026-04-10: deterministic player aliases now come from a per-game pseudonym resolver seeded by `gameId` plus roster membership. The intended product constraint is consistency across devices and transcript reopens, not exposing real Messages contact names that the framework does not provide.
 - 2026-04-10: dev-card timing is now aligned end to end through `TurnStepV1.allowsDevCardPlay`, the reducer, validation, and the Messages shell, so legal non-purchase dev cards can be played pre-roll or post-roll while buy-dev-card remains an after-roll action.
 - 2026-04-10: Stage 12.8 replaces hidden-default dev-card shortcuts with explicit staged choice flows for Knight, Monopoly, Year of Plenty, and Road Building. Victory Point cards stay hidden as inventory until a reveal would immediately win, and Road Building still publishes as one canonical two-edge intent rather than inventing new transport shape.
 - 2026-04-10: Stage 12.8 automated validation is green across the full repo gate after the cohesion pass landed: `bash ./scripts/gen.sh`, `swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_Transport`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test`, with `115` non-eval core tests, `10` eval tests, `44` transport tests, and `111` MessagesExtension tests all green.
-- 2026-04-10: Stage 12.8 shell consolidation removes the always-open hand tray, bank tray, and opponent cards from the default screen. The normal shell is now `Header + Board + Utility Strip + Dock`, while build, dev cards, hand, bank, and players all route through one shared lower shelf instead of competing stacked cards.
+- 2026-04-10: Stage 12.8 shell consolidation removes the always-open hand tray, bank tray, and opponent cards from the default screen. The normal shell is now `Header + Board + Handle Band + Dock`, while build, dev cards, hand, bank, and players all route through one shared lower shelf instead of competing stacked cards.
+- 2026-04-12: the final 12.8 utility cleanup keeps `Hand`, `Bank`, and `Players` content-only and non-scroll, makes the bank reuse the hand chip geometry in normal viewing, places `Trade` as a full-width row inside the hand shelf, and hardens the dock button layout so `End Turn` stays visible on iPad.
 - 2026-04-10: the layout contract is now explicit in code and tests rather than informal view tweaking: collapsed shell targets `12% / 70% / 18%`, expanded shelf targets `10% / 60% / 18% / 12%`, the board clips strictly to its slot, and the board hint sits bottom-center inside the ocean margin rather than as a large translucent HUD.
 - `MessagesExtensionTests` still emits an Xcode dependency-scan warning because Tuist does not support a direct unit-test dependency on an iMessage extension target in this project shape. The current workaround remains compiling selected extension source files into the test target; capture any future cleanup under the tech-debt tracker rather than forcing a larger restructure into this phase.
 - Real-device validation is expected to drive at least some late-stage UX adjustments; do not treat Simulator-only behavior as sufficient signoff for Messages-hosted gameplay.

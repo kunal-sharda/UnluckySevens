@@ -45,6 +45,25 @@ final class GameBoardSceneTests: XCTestCase {
         XCTAssertEqual(scene.debugCameraNodePosition.y, 120 + (-18 / 1.8), accuracy: 0.001)
     }
 
+    func testViewportResizeDoesNotRebuildBaseSceneTree() {
+        let renderModel = makeRenderModel()
+        let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
+
+        scene.update(
+            renderModel: renderModel,
+            size: CGSize(width: 320, height: 240),
+            overlayModel: .empty
+        )
+
+        let baseIdentifier = scene.debugBaseNodeIdentifier
+        let baseChildCount = scene.debugBaseChildCount
+
+        scene.updateViewport(size: CGSize(width: 320, height: 180))
+
+        XCTAssertEqual(scene.debugBaseNodeIdentifier, baseIdentifier)
+        XCTAssertEqual(scene.debugBaseChildCount, baseChildCount)
+    }
+
     func testScenePointsUseTopLeftBoardCoordinates() {
         let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
 

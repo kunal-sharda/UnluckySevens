@@ -6,6 +6,7 @@ struct BoardContainerView: View {
     let overlayModel: GameBoardOverlayModel
     let interactionMode: GameMode
     let selectionText: String?
+    let hintBottomInset: CGFloat
     let onInteractionChanged: ((Bool) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
@@ -53,22 +54,23 @@ struct BoardContainerView: View {
                     Spacer(minLength: 0)
 
                     Text(boardHintText)
-                        .font(GameTheme.metaFont.weight(.semibold))
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundStyle(GameTheme.accent)
                         .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .frame(maxWidth: 240)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .frame(maxWidth: 180)
                         .background(GameTheme.surface.opacity(0.92))
                         .overlay(
                             Capsule()
                                 .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
                         )
                         .clipShape(Capsule())
-                        .padding(.bottom, 24)
+                        .padding(.bottom, hintBottomInset)
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 20)
                 .allowsHitTesting(false)
             }
         }

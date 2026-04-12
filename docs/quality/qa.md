@@ -78,22 +78,28 @@ Run this after shell, layout, presentation, or mode-system changes.
 4. Open an existing canonical `STATE` bubble and confirm the extension requests expanded presentation and the shell renders:
    - header
    - board area
-   - utility strip
+   - handle band
    - action dock
-5. Confirm the utility strip exposes:
-   - `Hand`
-   - `Bank`
-   - `Players`
+5. Confirm the collapsed lower rail shows only:
+   - small centered pull-tab
+   - dock row
 6. Confirm the persistent dock order stays:
    - `Roll`
    - `End Turn`
    - `Build`
    - `Play Dev`
-7. Confirm hand, bank, and player summaries are not always-open cards in the default shell.
-8. Confirm the iPhone layout remains readable in compact extension sizing.
-9. Confirm the iPad layout remains readable and does not over-expand low-priority UI.
-10. Verify opponent information is still count-only and does not leak composition.
-11. Confirm the shell remains product-focused and no debug UI is required to advance the normal game flow.
+7. Open the pull-tab and confirm the overlay shelf header exposes:
+   - `Hand`
+   - `Bank`
+   - `Players`
+   - close chevron
+8. Confirm hand, bank, and player summaries are not always-open cards in the default shell.
+9. Confirm `Hand`, `Bank`, and `Players` do not repeat inner titles or subtitles once the shelf is open.
+10. Confirm `Hand`, `Bank`, and `Players` do not scroll in the normal case.
+11. Confirm the iPhone layout remains readable in compact extension sizing.
+12. Confirm the iPad layout remains readable and does not over-expand low-priority UI.
+13. Verify opponent information is still count-only and does not leak composition.
+14. Confirm the shell remains product-focused and no debug UI is required to advance the normal game flow.
 
 ### Real Device Lobby Smoke
 
@@ -142,41 +148,50 @@ Run this before calling phase 12 complete.
 2. On a fresh turn before rolling, confirm the default shell reads as:
    - header
    - board
-   - utility strip
+   - handle band
    - dock
-3. Confirm the primary dock order is:
+3. Confirm the board does not resize when opening or closing `Hand`, `Bank`, `Players`, `Build`, or `Play Dev`.
+4. Confirm the primary dock order is:
    - `Roll`
    - `End Turn`
    - `Build`
    - `Play Dev`
-4. Confirm the full island and all ports are visible at default zoom, with a small ocean margin and slightly more water below the island than above. Confirm you can zoom out only slightly beyond default and zoom in much further than the fit overview.
-5. Open `Build` and verify the shelf only shows legal actions from:
+5. Confirm the collapsed lower rail shows only the pull-tab and the dock row; utility cards should not be visible until the pull-tab is opened.
+6. Confirm the full island and all ports are visible at default zoom, with a small ocean margin and slightly more water below the island than above. Confirm you can zoom out only slightly beyond default and zoom in much further than the fit overview.
+7. Confirm the overlay shelf overlaps the board intentionally only at the bottom edge. No utility/header/dock content should collide or wrap into neighboring regions.
+8. Open `Build` and verify the shelf only shows legal actions from:
    - `Road`
    - `Settlement`
    - `City`
    - `Buy Dev`
-6. Tap `Hand`, `Bank`, and `Players` and confirm only one shelf opens at a time.
-7. Open the `Hand` shelf and confirm trade is entered from there instead of from a persistent dock button.
-8. Open the `Bank` shelf and confirm it shows public remaining counts for wood, brick, sheep, wheat, and ore. Verify it only becomes interactive during Monopoly or Year of Plenty selection.
-9. Open the `Players` shelf and confirm each opponent row only shows:
+9. Tap the pull-tab, then `Hand`, `Bank`, and `Players`, and confirm only one shelf opens at a time.
+10. Close each shelf through both:
+   - the close chevron
+   - tapping the selected utility tab again
+11. Open the `Hand` shelf and confirm trade is entered from there instead of from a persistent dock button.
+12. Confirm the `Hand` shelf shows the five resource chips first, with a full-width `Trade` row underneath when trade is currently available.
+13. Open the `Bank` shelf and confirm it shows public remaining counts for wood, brick, sheep, wheat, and ore using the same chip sizing and spacing as the `Hand` shelf. Verify it only becomes interactive during Monopoly or Year of Plenty selection.
+14. Open the `Players` shelf and confirm each opponent row only shows:
    - alias
    - current-turn indicator
    - public VP
    - public hand count
-10. Tap random nodes, edges, and tiles while idle. Confirm nothing highlights or remains selected unless the active mode actually uses that board target class.
-11. Open the dev-card panel and confirm the legal actions are choice-driven, not just default labels:
+15. Confirm `Hand`, `Bank`, and `Players` do not add inner titles or subtitles and do not scroll in the normal case.
+16. Tap random nodes, edges, and tiles while idle. Confirm nothing highlights or remains selected unless the active mode actually uses that board target class.
+17. Open the dev-card panel and confirm the legal actions are choice-driven, not just default labels:
    - Knight
    - Monopoly
    - Year of Plenty
    - Road Building
    Verify each option only appears when legal for the current turn state.
-12. Play Knight and confirm the robber moves to the selected tile. If the chosen tile has multiple legal victims, verify the victim selection step becomes explicit; if it has one or zero legal victims, verify the flow resolves without an unnecessary extra picker.
-13. Play Monopoly and confirm the chosen resource is the one collected from opponents.
-14. Play Year of Plenty and confirm the selected two resources are taken from the bank and added to the player.
-15. Play Road Building and confirm the selected two edges are placed without resource cost.
-16. If a Victory Point card is present, confirm it is only surfaced when revealing it would immediately win the game.
-17. Open the trade panel as proposer and responder. Confirm the compact panel explains accepted, waiting, passive-decline, and execute/end-turn expiry behavior without leaking raw IDs or debug text.
-18. Finish a game-over state or load one from transcript and confirm the shell shows:
+18. Play Knight and confirm the robber moves to the selected tile. If the chosen tile has multiple legal victims, verify the victim selection step becomes explicit; if it has one or zero legal victims, verify the flow resolves without an unnecessary extra picker.
+19. Play Monopoly and confirm the chosen resource is the one collected from opponents.
+20. Play Year of Plenty and confirm the selected two resources are taken from the bank and added to the player.
+21. Play Road Building and confirm the selected two edges are placed without resource cost.
+22. If a Victory Point card is present, confirm it is only surfaced when revealing it would immediately win the game.
+23. Open the trade panel as proposer and responder. Confirm the compact panel explains accepted, waiting, passive-decline, and execute/end-turn expiry behavior without leaking raw IDs or debug text.
+24. Enter setup, build, robber, Knight, and Road Building flows and confirm the in-board hint chip is small, single-line, and shifted above the overlay shelf when the shelf is open.
+25. Finish a game-over state or load one from transcript and confirm the shell shows:
    - winner clearly
    - compact final score
    - short last-turn recap
@@ -261,19 +276,21 @@ Use the current product shell for one smoke pass and three targeted checks. Keep
    - phase is `turn`
    - step becomes `afterRoll` or the correct robber/discard subflow
 8. If available, play one legal dev card before rolling and verify the resulting state change appears without leaking hidden card composition to opponents.
-9. Confirm the default shell reads as header, board, utility strip, and dock rather than stacked hand/bank/player cards.
-10. Tap `Hand`, `Bank`, and `Players` and confirm only one shelf opens at a time.
-11. Confirm the bank shelf shows public counts for wood, brick, sheep, wheat, and ore, and only becomes interactive during Monopoly or Year of Plenty selection.
-12. Roll once, then perform one post-roll action such as build, trade, maritime trade, or dev-card purchase.
-13. Open the dev-card panel when legal and verify only legal play/reveal actions are shown there; buy-dev-card should now live under the `Build` shelf instead.
-14. Verify `Play Dev` never falls back to default-choice labels for Knight, Monopoly, Year of Plenty, or Road Building. Knight should move through tile choice first and only open a victim choice when the chosen tile has multiple eligible steals; Monopoly should use the bank shelf, Year of Plenty should use first/second bank picks, and Road Building should use first/second road choice.
-15. Verify Victory Point reveal stays hidden unless the reveal would immediately win the game.
-16. End the turn and verify:
+9. Confirm the default shell reads as header, board, handle band, and dock rather than stacked hand/bank/player cards.
+10. Confirm the board does not resize when opening `Hand`, `Bank`, `Players`, `Build`, or `Play Dev`.
+11. Tap the pull-tab, then `Hand`, `Bank`, and `Players`, and confirm only one shelf opens at a time and each shelf can be closed via the chevron or by tapping the selected tab again.
+12. Confirm the bank shelf shows public counts for wood, brick, sheep, wheat, and ore, and only becomes interactive during Monopoly or Year of Plenty selection.
+13. Roll once, then perform one post-roll action such as build, trade, maritime trade, or dev-card purchase.
+14. Open the dev-card panel when legal and verify only legal play/reveal actions are shown there; buy-dev-card should now live under the `Build` shelf instead.
+15. Verify `Play Dev` never falls back to default-choice labels for Knight, Monopoly, Year of Plenty, or Road Building. Knight should move through tile choice first and only open a victim choice when the chosen tile has multiple eligible steals; Monopoly should use the bank shelf, Year of Plenty should use first/second bank picks, and Road Building should use first/second road choice.
+16. Verify Victory Point reveal stays hidden unless the reveal would immediately win the game.
+17. Confirm the only valid overlap is the overlay shelf covering the bottom of the board; handle-band controls, dock controls, and board chrome must not collide or wrap.
+18. End the turn and verify:
     - current player advances
     - step resets to `needsRoll`
     - trade offers clear
-17. Verify opponent hand and dev-card views show counts only, not composition.
-18. Verify the turn header never shows raw debug/context metadata; it should stay limited to ownership plus dice state.
+19. Verify opponent hand and dev-card views show counts only, not composition.
+20. Verify the turn header never shows raw debug/context metadata; it should stay limited to ownership plus dice state.
 
 ### Targeted Check: Robber / Seven Flow
 

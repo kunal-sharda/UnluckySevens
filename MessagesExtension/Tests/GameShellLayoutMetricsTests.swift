@@ -5,28 +5,31 @@ final class GameShellLayoutMetricsTests: XCTestCase {
     func testCollapsedLayoutUsesWholeNumberRatios() {
         let metrics = GameShellLayoutMetrics.resolve(
             availableHeight: 1000,
-            spacing: 0,
-            isShelfPresented: false
+            spacing: 0
         )
 
         XCTAssertEqual(metrics.headerHeight, 120, accuracy: 0.001)
         XCTAssertEqual(metrics.boardHeight, 700, accuracy: 0.001)
         XCTAssertEqual(metrics.trayHeight, 180, accuracy: 0.001)
-        XCTAssertEqual(metrics.lowerRail.topSectionHeight, 60, accuracy: 0.001)
+        XCTAssertEqual(metrics.lowerRail.handleBandHeight, 60, accuracy: 0.001)
         XCTAssertEqual(metrics.lowerRail.dockHeight, 120, accuracy: 0.001)
+        XCTAssertEqual(metrics.overlayShelf.totalHeight, 180, accuracy: 0.001)
+        XCTAssertEqual(metrics.overlayShelf.visibleInLowerRailHeight, 60, accuracy: 0.001)
+        XCTAssertEqual(metrics.overlayShelf.overlapIntoBoardHeight, 120, accuracy: 0.001)
     }
 
-    func testExpandedLayoutUsesWholeNumberRatios() {
+    func testOverlayShelfUsesFixedCompactHeader() {
         let metrics = GameShellLayoutMetrics.resolve(
             availableHeight: 1000,
-            spacing: 0,
-            isShelfPresented: true
+            spacing: 0
         )
 
-        XCTAssertEqual(metrics.headerHeight, 100, accuracy: 0.001)
-        XCTAssertEqual(metrics.boardHeight, 600, accuracy: 0.001)
-        XCTAssertEqual(metrics.trayHeight, 300, accuracy: 0.001)
-        XCTAssertEqual(metrics.lowerRail.topSectionHeight, 180, accuracy: 0.001)
-        XCTAssertEqual(metrics.lowerRail.dockHeight, 120, accuracy: 0.001)
+        XCTAssertGreaterThanOrEqual(metrics.overlayShelf.headerHeight, 40)
+        XCTAssertLessThanOrEqual(metrics.overlayShelf.headerHeight, 46)
+        XCTAssertEqual(
+            metrics.overlayShelf.contentHeight,
+            metrics.overlayShelf.totalHeight - metrics.overlayShelf.headerHeight,
+            accuracy: 0.001
+        )
     }
 }

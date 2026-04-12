@@ -7,17 +7,7 @@ struct PlayerSummaryStripView: View {
         if summaries.isEmpty {
             EmptyView()
         } else {
-            VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("Players")
-                        .font(GameTheme.headingFont)
-                        .foregroundStyle(GameTheme.ink)
-
-                    Text("Public summaries")
-                        .font(GameTheme.metaFont)
-                        .foregroundStyle(GameTheme.mutedInk)
-                }
-
+            VStack(spacing: GameTheme.inlineSpacing) {
                 VStack(spacing: GameTheme.inlineSpacing) {
                     ForEach(summaries) { summary in
                         PlayerSummaryRow(summary: summary)

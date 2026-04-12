@@ -28,6 +28,11 @@ final class GameBoardScene: SKScene {
         updateOverlay(renderModel: renderModel, size: size, overlayModel: overlayModel)
     }
 
+    func updateViewport(size: CGSize) {
+        self.size = size
+        applyCameraState()
+    }
+
     func updateBase(renderModel: GameBoardRenderModel, size: CGSize) {
         self.size = size
         applyCameraState()
