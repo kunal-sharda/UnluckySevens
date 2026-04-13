@@ -19,6 +19,8 @@ GitHub Actions mirrors this practical gate in `.github/workflows/ci.yml`.
 
 `ULS_CoreGameEvals` is the deterministic engine eval harness. `ULS_CoreGameTests` remains the normal core test suite.
 
+Run these validation commands serially. Do not run `swift test` or `xcodebuild` in parallel on this repo; the Messages/simulator lane is prone to lock contention and misleading failures when multiple test or build processes overlap.
+
 ## When To Run What
 
 - Any `ULS_CoreGame` or `ULS_Transport` change:
@@ -96,8 +98,8 @@ Run this after shell, layout, presentation, or mode-system changes.
 8. Confirm hand, bank, and player summaries are not always-open cards in the default shell.
 9. Confirm `Hand`, `Bank`, and `Players` do not repeat inner titles or subtitles once the shelf is open.
 10. Confirm `Hand`, `Bank`, and `Players` do not scroll in the normal case.
-11. Confirm the iPhone layout remains readable in compact extension sizing.
-12. Confirm the iPad layout remains readable and does not over-expand low-priority UI.
+11. Confirm the iPhone layout remains readable in compact extension sizing and that the shell continues to fit the visible host bounds while the board stays responsive.
+12. Confirm the iPad layout remains readable, does not over-expand low-priority UI, and caps the lower-rail content width instead of stretching hand/bank/player content across the full host width.
 13. Verify opponent information is still count-only and does not leak composition.
 14. Confirm the shell remains product-focused and no debug UI is required to advance the normal game flow.
 
@@ -196,6 +198,14 @@ Run this before calling phase 12 complete.
    - compact final score
    - short last-turn recap
    - no dead bottom tray
+26. Open and close `Hand`, `Bank`, `Players`, `Build`, and `Play Dev` repeatedly and confirm the board does not visibly hitch or rebuild while the shelf changes.
+27. In setup and build modes, tap one legal target once and confirm nothing publishes yet. Confirm the target highlights, the compact confirm surface appears, and both publish paths work:
+   - `Confirm`
+   - tapping the same selected target again
+28. After selecting a setup/build target, tap a different legal target and confirm the selection moves without publishing. Tap `Cancel` and confirm the pending selection clears cleanly.
+29. Drag down from the top of the Messages transcript to collapse the host while a live game is open, both with the shelf closed and with a shelf open. Confirm the board freezes visually during host drag, ignores board input while frozen, and only performs one clean final refit after the host settles.
+30. On both iPhone and iPad, confirm the `Hand` and `Bank` shelves keep the same chip sizing and a capped reading width instead of stretching to full host width.
+31. In a visibly constrained host height, confirm a utility shelf closes instead of rendering partially offscreen or leaving unreachable content below the viewport.
 
 ### Real Device UX Hardening
 
@@ -278,19 +288,20 @@ Use the current product shell for one smoke pass and three targeted checks. Keep
 8. If available, play one legal dev card before rolling and verify the resulting state change appears without leaking hidden card composition to opponents.
 9. Confirm the default shell reads as header, board, handle band, and dock rather than stacked hand/bank/player cards.
 10. Confirm the board does not resize when opening `Hand`, `Bank`, `Players`, `Build`, or `Play Dev`.
-11. Tap the pull-tab, then `Hand`, `Bank`, and `Players`, and confirm only one shelf opens at a time and each shelf can be closed via the chevron or by tapping the selected tab again.
-12. Confirm the bank shelf shows public counts for wood, brick, sheep, wheat, and ore, and only becomes interactive during Monopoly or Year of Plenty selection.
-13. Roll once, then perform one post-roll action such as build, trade, maritime trade, or dev-card purchase.
-14. Open the dev-card panel when legal and verify only legal play/reveal actions are shown there; buy-dev-card should now live under the `Build` shelf instead.
-15. Verify `Play Dev` never falls back to default-choice labels for Knight, Monopoly, Year of Plenty, or Road Building. Knight should move through tile choice first and only open a victim choice when the chosen tile has multiple eligible steals; Monopoly should use the bank shelf, Year of Plenty should use first/second bank picks, and Road Building should use first/second road choice.
-16. Verify Victory Point reveal stays hidden unless the reveal would immediately win the game.
-17. Confirm the only valid overlap is the overlay shelf covering the bottom of the board; handle-band controls, dock controls, and board chrome must not collide or wrap.
-18. End the turn and verify:
+11. Drag the Messages host between expanded and constrained heights and confirm the board world stays visually stable even though the visible viewport changes.
+12. Tap the pull-tab, then `Hand`, `Bank`, and `Players`, and confirm only one shelf opens at a time and each shelf can be closed via the chevron or by tapping the selected tab again.
+13. Confirm the bank shelf shows public counts for wood, brick, sheep, wheat, and ore, and only becomes interactive during Monopoly or Year of Plenty selection.
+14. Roll once, then perform one post-roll action such as build, trade, maritime trade, or dev-card purchase.
+15. Open the dev-card panel when legal and verify only legal play/reveal actions are shown there; buy-dev-card should now live under the `Build` shelf instead.
+16. Verify `Play Dev` never falls back to default-choice labels for Knight, Monopoly, Year of Plenty, or Road Building. Knight should move through tile choice first and only open a victim choice when the chosen tile has multiple eligible steals; Monopoly should use the bank shelf, Year of Plenty should use first/second bank picks, and Road Building should use first/second road choice.
+17. Verify Victory Point reveal stays hidden unless the reveal would immediately win the game.
+18. Confirm the only valid overlap is the overlay shelf covering the bottom of the board; handle-band controls, dock controls, and board chrome must not collide or wrap.
+19. End the turn and verify:
     - current player advances
     - step resets to `needsRoll`
     - trade offers clear
-19. Verify opponent hand and dev-card views show counts only, not composition.
-20. Verify the turn header never shows raw debug/context metadata; it should stay limited to ownership plus dice state.
+20. Verify opponent hand and dev-card views show counts only, not composition.
+21. Verify the turn header never shows raw debug/context metadata; it should stay limited to ownership plus dice state.
 
 ### Targeted Check: Robber / Seven Flow
 

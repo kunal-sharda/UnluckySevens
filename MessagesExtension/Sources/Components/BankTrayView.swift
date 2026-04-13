@@ -3,12 +3,13 @@ import ULS_CoreGame
 
 struct BankTrayView: View {
     let model: GameBankTrayModel
+    let density: ResourceChipDensity
     let onSelect: (ResourceV1) -> Void
 
     var body: some View {
         let isInteractive = model.chips.contains(where: { $0.detailText != nil || $0.selectionIndex != nil || $0.isEnabled })
 
-        ResourceChipGridView(items: model.chips) { chip in
+        ResourceChipGridView(items: model.chips, density: density) { chip in
             ResourceCountChipView(
                 resource: chip.resource,
                 label: chip.resource.shortLabel,
@@ -17,11 +18,12 @@ struct BankTrayView: View {
                 isSelected: isInteractive && chip.isSelected,
                 selectionBadge: isInteractive ? chip.selectionIndex.map(String.init) : nil,
                 detailBadge: isInteractive ? chip.detailText : nil,
+                density: density,
                 action: isInteractive ? { onSelect(chip.resource) } : nil,
                 accessibilityLabel: accessibilityLabel(for: chip)
             )
         }
-        .padding(GameTheme.compactPadding)
+        .padding(density.containerPadding)
         .background(GameTheme.surface.opacity(0.90))
         .overlay(
             RoundedRectangle(cornerRadius: GameTheme.mediumRadius)

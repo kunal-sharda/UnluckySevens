@@ -32,4 +32,28 @@ final class GameShellLayoutMetricsTests: XCTestCase {
             accuracy: 0.001
         )
     }
+
+    func testLowerRailWidthCapsOnWideLayouts() {
+        XCTAssertEqual(GameShellLayoutMetrics.lowerRailWidth(for: 380), 380, accuracy: 0.001)
+        XCTAssertEqual(
+            GameShellLayoutMetrics.lowerRailWidth(for: 900),
+            GameShellLayoutMetrics.maxPadLowerRailWidth,
+            accuracy: 0.001
+        )
+    }
+
+    func testSupportsUtilityShelfRejectsTooShortViewport() {
+        XCTAssertFalse(
+            GameShellLayoutMetrics.supportsUtilityShelf(
+                availableHeight: 400,
+                spacing: 16
+            )
+        )
+        XCTAssertTrue(
+            GameShellLayoutMetrics.supportsUtilityShelf(
+                availableHeight: 700,
+                spacing: 16
+            )
+        )
+    }
 }

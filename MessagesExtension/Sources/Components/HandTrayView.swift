@@ -3,6 +3,7 @@ import ULS_CoreGame
 
 struct HandTrayView: View {
     let model: GameHandTrayModel
+    let density: ResourceChipDensity
 
     var body: some View {
         Group {
@@ -10,7 +11,7 @@ struct HandTrayView: View {
                 ContentUnavailableView("No visible hand", systemImage: "shippingbox")
                     .frame(maxWidth: .infinity)
             } else {
-                ResourceChipGridView(items: model.chips) { chip in
+                ResourceChipGridView(items: model.chips, density: density) { chip in
                     ResourceCountChipView(
                         resource: chip.resource,
                         label: chip.shortLabel,
@@ -19,13 +20,14 @@ struct HandTrayView: View {
                         isSelected: false,
                         selectionBadge: nil,
                         detailBadge: nil,
+                        density: density,
                         action: nil,
                         accessibilityLabel: "\(chip.shortLabel) \(chip.count)"
                     )
                 }
             }
         }
-        .padding(GameTheme.compactPadding)
+        .padding(density.containerPadding)
         .background(GameTheme.surface.opacity(0.90))
         .overlay(
             RoundedRectangle(cornerRadius: GameTheme.mediumRadius)

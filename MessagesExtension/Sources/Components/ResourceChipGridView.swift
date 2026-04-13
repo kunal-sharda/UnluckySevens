@@ -2,24 +2,161 @@ import SwiftUI
 import ULS_CoreGame
 
 enum ResourceChipLayoutMetrics {
-    static let minHeight: CGFloat = 52
-
-    static var columns: [GridItem] {
+    static func columns(for density: ResourceChipDensity) -> [GridItem] {
         Array(
-            repeating: GridItem(.flexible(minimum: 0), spacing: GameTheme.chipSpacing),
+            repeating: GridItem(.flexible(minimum: 0), spacing: density.gridSpacing),
             count: 5
         )
     }
 }
 
+enum ResourceChipDensity {
+    case regular
+    case compact
+    case tight
+
+    static func resolve(
+        availableWidth: CGFloat,
+        availableHeight: CGFloat
+    ) -> ResourceChipDensity {
+        if availableWidth < 340 || availableHeight < 74 {
+            return .tight
+        }
+        if availableWidth < 400 || availableHeight < 96 {
+            return .compact
+        }
+        return .regular
+    }
+
+    var containerPadding: CGFloat {
+        switch self {
+        case .regular:
+            12
+        case .compact:
+            10
+        case .tight:
+            8
+        }
+    }
+
+    var gridSpacing: CGFloat {
+        switch self {
+        case .regular:
+            GameTheme.chipSpacing
+        case .compact:
+            5
+        case .tight:
+            4
+        }
+    }
+
+    var contentSpacing: CGFloat {
+        switch self {
+        case .regular:
+            4
+        case .compact:
+            3
+        case .tight:
+            2
+        }
+    }
+
+    var chipMinHeight: CGFloat {
+        switch self {
+        case .regular:
+            52
+        case .compact:
+            42
+        case .tight:
+            34
+        }
+    }
+
+    var chipHorizontalPadding: CGFloat {
+        switch self {
+        case .regular:
+            8
+        case .compact:
+            6
+        case .tight:
+            5
+        }
+    }
+
+    var chipVerticalPadding: CGFloat {
+        switch self {
+        case .regular:
+            6
+        case .compact:
+            5
+        case .tight:
+            4
+        }
+    }
+
+    var labelFont: Font {
+        switch self {
+        case .regular:
+            return GameTheme.chipFont
+        case .compact:
+            return .system(size: 12, weight: .bold, design: .rounded)
+        case .tight:
+            return .system(size: 11, weight: .bold, design: .rounded)
+        }
+    }
+
+    var countFont: Font {
+        switch self {
+        case .regular:
+            return GameTheme.headingFont
+        case .compact:
+            return .system(size: 15, weight: .bold, design: .rounded)
+        case .tight:
+            return .system(size: 14, weight: .bold, design: .rounded)
+        }
+    }
+
+    var badgeFont: Font {
+        switch self {
+        case .regular:
+            return .system(size: 10, weight: .bold, design: .rounded)
+        case .compact, .tight:
+            return .system(size: 9, weight: .bold, design: .rounded)
+        }
+    }
+
+    var tradeRowHeight: CGFloat {
+        switch self {
+        case .regular:
+            44
+        case .compact:
+            40
+        case .tight:
+            34
+        }
+    }
+
+    var stackSpacing: CGFloat {
+        switch self {
+        case .regular:
+            GameTheme.inlineSpacing
+        case .compact:
+            6
+        case .tight:
+            5
+        }
+    }
+}
+
 struct ResourceChipGridView<Item: Identifiable, Content: View>: View {
     let items: [Item]
+    let density: ResourceChipDensity
     let content: (Item) -> Content
 
     var body: some View {
         LazyVGrid(
-            columns: ResourceChipLayoutMetrics.columns,
-            spacing: GameTheme.chipSpacing
+            columns: ResourceChipLayoutMetrics.columns(for: density),
+            spacing: density.gridSpacing
         ) {
             ForEach(items) { item in
                 content(item)
@@ -36,6 +173,7 @@ struct ResourceCountChipView: View {
     let isSelected: Bool
     let selectionBadge: String?
     let detailBadge: String?
+    let density: ResourceChipDensity
     let action: (() -> Void)?
     let accessibilityLabel: String
 
@@ -59,18 +197,18 @@ struct ResourceCountChipView: View {
         ZStack(alignment: .topTrailing) {
             VStack(spacing: 4) {
                 Text(label)
-                    .font(GameTheme.chipFont)
+                    .font(density.labelFont)
                     .foregroundStyle(GameTheme.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
 
                 Text("\(count)")
-                    .font(GameTheme.headingFont)
+                    .font(density.countFont)
                     .foregroundStyle(GameTheme.mutedInk)
             }
-            .frame(maxWidth: .infinity, minHeight: ResourceChipLayoutMetrics.minHeight)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, minHeight: density.chipMinHeight)
+            .padding(.horizontal, density.chipHorizontalPadding)
+            .padding(.vertical, density.chipVerticalPadding)
             .background(backgroundColor)
             .overlay(
                 RoundedRectangle(cornerRadius: GameTheme.smallRadius)
@@ -126,7 +264,7 @@ struct ResourceCountChipView: View {
 
     private func badge(text: String, tint: Color) -> some View {
         Text(text)
-            .font(.system(size: 10, weight: .bold, design: .rounded))
+            .font(density.badgeFont)
             .foregroundStyle(.white)
             .lineLimit(1)
             .padding(.horizontal, 5)

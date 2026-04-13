@@ -20,6 +20,10 @@ This document summarizes the player-facing flows the UI must support in the curr
 - The second completed placement grants starting resources from adjacent non-desert tiles.
 - The UI must make placement order and legality legible without inventing setup rules locally.
 - Setup should feel guided and blocking: the player should always know whether the next action is settlement placement or road placement.
+- Setup and build placement should be selection-first rather than one-tap publish:
+  - first tap selects a legal node or edge
+  - the player can confirm from a compact confirm surface or by tapping the same selected target again
+  - tapping a different legal target changes the selection instead of publishing immediately
 
 ## Turn Flow
 
@@ -108,4 +112,5 @@ This document summarizes the player-facing flows the UI must support in the curr
 - Player-facing names in the shell should use deterministic per-game aliases until explicit player naming exists.
 - The main screen should avoid persistent stacked cards; hand, bank, player summaries, build choices, and dev-card inventory should appear through the shared lower shelf instead.
 - The board should not resize when the lower shelf opens. The shelf should slide over the bottom of the board while the board and dock remain fixed.
+- During interactive Messages-host resize, the board should freeze visually, ignore board taps/gestures, and then perform one settled update after the host stops moving.
 - The bubble should support lobby readability as well as in-game readability; joining and host-start should not create avoidable transcript clutter.

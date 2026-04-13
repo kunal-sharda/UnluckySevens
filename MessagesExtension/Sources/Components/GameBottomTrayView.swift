@@ -38,6 +38,8 @@ struct GameBottomTrayView: View {
 
 struct GameLowerShelfContentView: View {
     let activeShelf: GameLowerShelf
+    let availableBodySize: CGSize
+    let boardCommitDraft: GameBoardCommitDraft?
     let handTray: GameHandTrayModel
     let bankTray: GameBankTrayModel
     let opponents: [GameOpponentSummary]
@@ -59,6 +61,8 @@ struct GameLowerShelfContentView: View {
     let onDevCardAction: (GameDevCardActionKind) -> Void
     let onConfirmDevCardDraft: () -> Void
     let onResetDevCardDraft: () -> Void
+    let onConfirmBoardCommit: () -> Void
+    let onCancelBoardCommit: () -> Void
     let onSelectStealVictim: (String) -> Void
 
     var body: some View {
@@ -69,10 +73,14 @@ struct GameLowerShelfContentView: View {
             case .bank:
                 BankTrayView(
                     model: bankTray,
+                    density: bankDensity,
                     onSelect: onSelectBankResource
                 )
             case .players:
-                PlayerSummaryStripView(summaries: opponents)
+                PlayerSummaryStripView(
+                    summaries: opponents,
+                    availableHeight: availableBodySize.height
+                )
             case .build:
                 BuildShelfRegion(
                     items: actionDock.buildShelfItems,
@@ -89,13 +97,16 @@ struct GameLowerShelfContentView: View {
     }
 
     private var handShelf: some View {
-        VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-            HandTrayView(model: handTray)
+        VStack(alignment: .leading, spacing: handDensity.stackSpacing) {
+            HandTrayView(
+                model: handTray,
+                density: handDensity
+            )
 
             if mode == .trade {
                 modalHost(mode: .trade)
             } else if tradePanel != nil {
-                TradeShelfEntryRow {
+                TradeShelfEntryRow(density: handDensity) {
                     onOpenTrade()
                 }
             }
@@ -109,16 +120,41 @@ struct GameLowerShelfContentView: View {
             if mode == .devCardMonopoly || mode == .devCardYearOfPlenty {
                 BankTrayView(
                     model: bankTray,
+                    density: bankDensity,
                     onSelect: onSelectBankResource
                 )
             }
         }
     }
 
+    private var handDensity: ResourceChipDensity {
+        let reservedTradeHeight: CGFloat
+        if mode == .trade {
+            reservedTradeHeight = 0
+        } else if tradePanel != nil {
+            reservedTradeHeight = 40
+        } else {
+            reservedTradeHeight = 0
+        }
+
+        return ResourceChipDensity.resolve(
+            availableWidth: availableBodySize.width,
+            availableHeight: max(availableBodySize.height - reservedTradeHeight, 0)
+        )
+    }
+
+    private var bankDensity: ResourceChipDensity {
+        ResourceChipDensity.resolve(
+            availableWidth: availableBodySize.width,
+            availableHeight: availableBodySize.height
+        )
+    }
+
     private func modalHost(mode: GameMode) -> some View {
         GameModalHostView(
             mode: mode,
             setupInstruction: setupInstruction,
+            boardCommitDraft: boardCommitDraft,
             discardPanel: discardPanel,
             tradePanel: tradePanel,
             devCardPanel: devCardPanel,
@@ -130,6 +166,8 @@ struct GameLowerShelfContentView: View {
             onDevCardAction: onDevCardAction,
             onConfirmDevCardDraft: onConfirmDevCardDraft,
             onResetDevCardDraft: onResetDevCardDraft,
+            onConfirmBoardCommit: onConfirmBoardCommit,
+            onCancelBoardCommit: onCancelBoardCommit,
             onSelectStealVictim: onSelectStealVictim
         )
     }
@@ -203,6 +241,7 @@ private struct BuildShelfRegion: View {
 }
 
 private struct TradeShelfEntryRow: View {
+    let density: ResourceChipDensity
     let action: () -> Void
 
     var body: some View {
@@ -223,8 +262,8 @@ private struct TradeShelfEntryRow: View {
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(GameTheme.mutedInk)
             }
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .padding(.horizontal, GameTheme.compactPadding)
+            .frame(maxWidth: .infinity, minHeight: density.tradeRowHeight, alignment: .leading)
+            .padding(.horizontal, density.containerPadding)
             .background(GameTheme.surfaceRaised.opacity(0.90))
             .overlay(
                 RoundedRectangle(cornerRadius: GameTheme.mediumRadius)

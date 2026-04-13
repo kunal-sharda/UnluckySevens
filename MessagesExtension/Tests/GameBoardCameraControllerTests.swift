@@ -45,7 +45,8 @@ final class GameBoardCameraControllerTests: XCTestCase {
                 renderModel: model,
                 overlayModel: .empty,
                 interactionMode: .idle,
-                viewportSize: viewportSize
+                viewportSize: viewportSize,
+                boardReferenceSize: viewportSize
             ),
             .node(0)
         )
@@ -57,14 +58,20 @@ final class GameBoardCameraControllerTests: XCTestCase {
                 renderModel: model,
                 overlayModel: .empty,
                 interactionMode: .idle,
-                viewportSize: viewportSize
+                viewportSize: viewportSize,
+                boardReferenceSize: viewportSize
             ),
             .tile(0)
         )
 
         let transformedState = GameBoardCameraState(zoom: 1.8, offset: CGSize(width: 28, height: -18))
         let edgeMidpoint = layout.edgeMidpoint(for: 3, topology: model.topology)
-        let transformedMidpoint = transform(edgeMidpoint, state: transformedState, viewportSize: viewportSize)
+        let transformedMidpoint = transform(
+            edgeMidpoint,
+            state: transformedState,
+            viewportSize: viewportSize,
+            boardCenter: layout.boardCenter
+        )
 
         XCTAssertEqual(
             GameBoardCameraController.hitTarget(
@@ -73,9 +80,37 @@ final class GameBoardCameraControllerTests: XCTestCase {
                 renderModel: model,
                 overlayModel: .empty,
                 interactionMode: .idle,
-                viewportSize: viewportSize
+                viewportSize: viewportSize,
+                boardReferenceSize: viewportSize
             ),
             .edge(3)
+        )
+    }
+
+    func testHitTargetUsesReferenceBoardSpaceWhenViewportShrinks() {
+        let model = makeRenderModel()
+        let referenceSize = CGSize(width: 320, height: 240)
+        let viewportSize = CGSize(width: 320, height: 180)
+        let layout = GameBoardLayout(size: referenceSize, geometry: model.geometry)
+        let tileID = 0
+        let tappedPoint = transform(
+            layout.tileCenter(for: tileID),
+            state: GameBoardCameraState(),
+            viewportSize: viewportSize,
+            boardCenter: layout.boardCenter
+        )
+
+        XCTAssertEqual(
+            GameBoardCameraController.hitTarget(
+                at: tappedPoint,
+                state: GameBoardCameraState(),
+                renderModel: model,
+                overlayModel: .empty,
+                interactionMode: .idle,
+                viewportSize: viewportSize,
+                boardReferenceSize: referenceSize
+            ),
+            .tile(tileID)
         )
     }
 
@@ -116,7 +151,8 @@ final class GameBoardCameraControllerTests: XCTestCase {
                     selectedTarget: nil
                 ),
                 interactionMode: .setup,
-                viewportSize: viewportSize
+                viewportSize: viewportSize,
+                boardReferenceSize: viewportSize
             ),
             .edge(edgeID)
         )
@@ -146,7 +182,8 @@ final class GameBoardCameraControllerTests: XCTestCase {
                     selectedTarget: nil
                 ),
                 interactionMode: .buildRoad,
-                viewportSize: viewportSize
+                viewportSize: viewportSize,
+                boardReferenceSize: viewportSize
             ),
             .edge(edgeID)
         )
@@ -164,7 +201,8 @@ final class GameBoardCameraControllerTests: XCTestCase {
                 renderModel: model,
                 overlayModel: .empty,
                 interactionMode: .trade,
-                viewportSize: viewportSize
+                viewportSize: viewportSize,
+                boardReferenceSize: viewportSize
             )
         )
     }
@@ -190,7 +228,8 @@ final class GameBoardCameraControllerTests: XCTestCase {
                     selectedTarget: nil
                 ),
                 interactionMode: .devCardKnightMove,
-                viewportSize: viewportSize
+                viewportSize: viewportSize,
+                boardReferenceSize: viewportSize
             ),
             .tile(tileID)
         )
@@ -208,7 +247,8 @@ final class GameBoardCameraControllerTests: XCTestCase {
                     selectedTarget: nil
                 ),
                 interactionMode: .devCardKnightVictim,
-                viewportSize: viewportSize
+                viewportSize: viewportSize,
+                boardReferenceSize: viewportSize
             ),
             .node(nodeID)
         )
@@ -231,7 +271,8 @@ final class GameBoardCameraControllerTests: XCTestCase {
                     selectedTarget: nil
                 ),
                 interactionMode: .devCardRoadBuildingFirst,
-                viewportSize: viewportSize
+                viewportSize: viewportSize,
+                boardReferenceSize: viewportSize
             ),
             .edge(edgeID)
         )
@@ -243,7 +284,8 @@ final class GameBoardCameraControllerTests: XCTestCase {
                 renderModel: model,
                 overlayModel: .empty,
                 interactionMode: .devCardMonopoly,
-                viewportSize: viewportSize
+                viewportSize: viewportSize,
+                boardReferenceSize: viewportSize
             )
         )
     }
@@ -297,12 +339,13 @@ final class GameBoardCameraControllerTests: XCTestCase {
     private func transform(
         _ point: CGPoint,
         state: GameBoardCameraState,
-        viewportSize: CGSize
+        viewportSize: CGSize,
+        boardCenter: CGPoint
     ) -> CGPoint {
-        let center = CGPoint(x: viewportSize.width * 0.5, y: viewportSize.height * 0.5)
+        let viewportCenter = CGPoint(x: viewportSize.width * 0.5, y: viewportSize.height * 0.5)
         return CGPoint(
-            x: center.x + ((point.x - center.x) * state.zoom) + state.offset.width,
-            y: center.y + ((point.y - center.y) * state.zoom) + state.offset.height
+            x: viewportCenter.x + ((point.x - boardCenter.x) * state.zoom) + state.offset.width,
+            y: viewportCenter.y + ((point.y - boardCenter.y) * state.zoom) + state.offset.height
         )
     }
 

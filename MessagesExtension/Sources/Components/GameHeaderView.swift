@@ -4,18 +4,19 @@ struct GameHeaderView: View {
     let model: GameHeaderModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GameTheme.chipSpacing) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(model.statusLine.title)
-                .font(GameTheme.titleFont)
+                .font(.system(size: 22, weight: .bold, design: .serif))
                 .foregroundStyle(GameTheme.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.9)
 
             if !model.statusLine.subtitle.isEmpty {
                 Text(model.statusLine.subtitle)
-                    .font(GameTheme.bodyFont)
+                    .font(GameTheme.metaFont)
                     .foregroundStyle(GameTheme.mutedInk)
-                    .lineLimit(2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.88)
             }
 
             if !model.metaText.isEmpty {
@@ -26,7 +27,8 @@ struct GameHeaderView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(GameTheme.compactPadding)
+        .padding(.horizontal, GameTheme.compactPadding)
+        .padding(.vertical, 10)
         .background(GameTheme.surface.opacity(0.88))
         .overlay(
             RoundedRectangle(cornerRadius: GameTheme.mediumRadius)

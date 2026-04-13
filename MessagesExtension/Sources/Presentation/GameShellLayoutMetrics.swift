@@ -1,6 +1,11 @@
 import CoreGraphics
 
 struct GameShellLayoutMetrics: Equatable {
+    static let maxPhoneLowerRailWidth: CGFloat = 420
+    static let maxPadLowerRailWidth: CGFloat = 580
+    static let padWidthThreshold: CGFloat = 700
+    static let minimumUtilityShelfContentHeight: CGFloat = 68
+
     struct LowerRailMetrics: Equatable {
         let handleBandHeight: CGFloat
         let dockHeight: CGFloat
@@ -19,6 +24,21 @@ struct GameShellLayoutMetrics: Equatable {
     let trayHeight: CGFloat
     let lowerRail: LowerRailMetrics
     let overlayShelf: OverlayShelfMetrics
+
+    static func lowerRailWidth(for availableWidth: CGFloat) -> CGFloat {
+        let widthCap = availableWidth >= padWidthThreshold
+            ? maxPadLowerRailWidth
+            : maxPhoneLowerRailWidth
+        return min(max(availableWidth, 0), widthCap)
+    }
+
+    static func supportsUtilityShelf(
+        availableHeight: CGFloat,
+        spacing: CGFloat
+    ) -> Bool {
+        let metrics = resolve(availableHeight: availableHeight, spacing: spacing)
+        return metrics.overlayShelf.contentHeight >= minimumUtilityShelfContentHeight
+    }
 
     static func resolve(
         availableHeight: CGFloat,

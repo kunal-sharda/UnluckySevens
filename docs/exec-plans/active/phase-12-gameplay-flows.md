@@ -34,14 +34,14 @@ What exists today:
 - phase 10 established a board-first shell, compact opponent summaries, a hand tray, an action dock, and easy-but-secondary debug surfaces
 - phase 11 replaced placeholder board art with a real SpriteKit board, pan/zoom, typed board hit targets, mode-driven highlights, and snapshot rendering
 - stages 12.1 through 12.6 are now landed: lobby join/start is productized, setup placement is playable from the board, the common turn loop can roll, build, buy, and end turn from the product UI, robber/discard flow is wired through the product shell, trade UX is live in the compact modal/shell surfaces, and dev-card actions are available through the compact product panel
-- stage 12.8 now includes `Buy Dev` under `Build`, staged Knight/Monopoly/Year Of Plenty/Road Building choice flows, winning-only Victory Point reveal visibility, and a board-first shell that collapses hand, bank, player summaries, build actions, and dev-card inventory into a shared lower shelf
+- stage 12.8 now includes `Buy Dev` under `Build`, staged Knight/Monopoly/Year Of Plenty/Road Building choice flows, winning-only Victory Point reveal visibility, a board-first shell that collapses hand, bank, player summaries, build actions, and dev-card inventory into a shared lower shelf, plus interaction hardening for setup/build confirmation and Messages-host resize. The shell now fits the current visible host bounds again, the board keeps one committed world reference size, setup/build placements use selection-first confirm semantics, and interactive host drag freezes the board until one settled post-resize update can be applied
 - `ULS_CoreGame` already owns legality, viewer-safe projections, and default action selection through [CoreGameViewQueriesV1.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/Packages/ULS_CoreGame/Sources/ULS_CoreGame/CoreGameViewQueriesV1.swift)
 - the main integration point is still [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift), which owns transcript context, debug actions, and shell inputs
 
 What is still missing:
 
 - phase 12.7 is closed, but phase 12 still needs the 12.8 product-cohesion device pass before the gameplay phase can be called complete
-- the remaining gate is full-match real-device signoff and any small polish issues that emerge from that pass, not missing core game rules or missing dev-card/bank feature surfaces
+- the remaining gate is full-match real-device signoff and any small polish issues that emerge from that pass, especially Messages-host performance during shelf toggles and panel-collapse gestures, not missing core game rules or missing dev-card/bank feature surfaces
 
 Important constraints already locked in the repo:
 
@@ -304,6 +304,11 @@ Implement:
 - reserve fixed icon and label slots in the dock row so `End Turn` stays legible on iPad and narrow layouts
 - replace the large board HUD with a compact bottom-center in-board hint pill during guided modes
 - shrink guided hints to one-line chips that move upward when the overlay shelf is open
+- size the shell from the current visible host bounds while freezing the board during interactive host drag so partial collapse does not reintroduce severe lag
+- keep board world geometry in a stable reference space so host drag changes viewport/camera behavior without recomputing tile, node, road, or port positions on every intermediate size
+- make setup and build placement selection-first so legal node/edge taps do not publish immediately; confirm through the compact surface or by tapping the same selected target twice
+- auto-collapse utility shelves when the visible host is too short to render a usable utility body instead of letting the shelf overflow or cut off
+- cap lower-rail and overlay-shelf width so hand, bank, and player content keep one intentional reading width across iPhone and iPad instead of stretching with the full host width
 - add any minimal end-of-game clarity needed so a full played match does not feel unfinished at the moment of victory
 
 Key files and likely additions:
@@ -326,6 +331,9 @@ Expected observations:
 - the only allowed overlap is the deliberate shelf-over-board band at the bottom edge; accidental collisions between shell regions are gone
 - hand and bank now read as the same utility surface instead of two different component systems, and the bank no longer looks like a dead pseudo-button grid during normal viewing
 - utility shelves stay compact and content-only instead of spending vertical space on repeated headings or unnecessary scrolling
+- Messages-host drag no longer causes severe hitching, the visible shell still fits the actual current host bounds instead of hanging below the viewport, the board freezes during drag, and the board itself no longer visibly re-lays out from the live host size on every drag step
+- utility shelves now either fit within the visible shelf body or close; they should never render partially offscreen because the host became shorter
+- iPhone and iPad now use width-class lower-rail caps, so hand/bank/player shelves do not balloon into full-width cards on larger hosts
 - trade and dev-card flows are compact, but legible enough that a full match no longer relies on raw participant IDs, invisible timing rules, or hidden default-choice shortcuts
 - a full match can end without the last steps feeling like placeholder UI
 
@@ -343,6 +351,8 @@ swift test --package-path Packages/ULS_Transport
 xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build
 xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test
 ```
+
+Run the validation lane serially. Do not overlap `swift test` and `xcodebuild` commands for this phase; simulator and Messages-host lock contention has already produced false negatives under parallel validation.
 
 Add phase-12-specific tests where practical:
 
@@ -434,7 +444,8 @@ Deferred by design in phase 12:
 - 2026-04-10: Stage 12.8 automated validation is green across the full repo gate after the cohesion pass landed: `bash ./scripts/gen.sh`, `swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals`, `swift test --package-path Packages/ULS_Transport`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test`, with `115` non-eval core tests, `10` eval tests, `44` transport tests, and `111` MessagesExtension tests all green.
 - 2026-04-10: Stage 12.8 shell consolidation removes the always-open hand tray, bank tray, and opponent cards from the default screen. The normal shell is now `Header + Board + Handle Band + Dock`, while build, dev cards, hand, bank, and players all route through one shared lower shelf instead of competing stacked cards.
 - 2026-04-12: the final 12.8 utility cleanup keeps `Hand`, `Bank`, and `Players` content-only and non-scroll, makes the bank reuse the hand chip geometry in normal viewing, places `Trade` as a full-width row inside the hand shelf, and hardens the dock button layout so `End Turn` stays visible on iPad.
-- 2026-04-10: the layout contract is now explicit in code and tests rather than informal view tweaking: collapsed shell targets `12% / 70% / 18%`, expanded shelf targets `10% / 60% / 18% / 12%`, the board clips strictly to its slot, and the board hint sits bottom-center inside the ocean margin rather than as a large translucent HUD.
+- 2026-04-10: the layout contract is now explicit in code and tests rather than informal view tweaking: the shell stays locked to `12% / 70% / 18%`, the lower rail splits into a `6%` handle band and `12%` dock row, the overlay shelf provides the only intentional overlap, the board clips strictly to its slot, and the board hint sits bottom-center inside the ocean margin rather than as a large translucent HUD.
+- 2026-04-12: device feedback showed that freezing the entire shell to a larger host size fixed lag but broke the visible layout contract: shelves could be cut off and the board/shelf boundary could drift when the Messages host became smaller. Stage 12.8 now keeps the shell fitted to the current visible host bounds, leaves the expensive board path on the throttled/no-rebuild resize route, auto-collapses utility shelves that cannot fit a usable body, and still caps the lower-rail width so hand, bank, and player shelves keep a consistent reading width across iPhone and iPad.
 - `MessagesExtensionTests` still emits an Xcode dependency-scan warning because Tuist does not support a direct unit-test dependency on an iMessage extension target in this project shape. The current workaround remains compiling selected extension source files into the test target; capture any future cleanup under the tech-debt tracker rather than forcing a larger restructure into this phase.
 - Real-device validation is expected to drive at least some late-stage UX adjustments; do not treat Simulator-only behavior as sufficient signoff for Messages-hosted gameplay.
 - If setup, trade, or dev-card orchestration starts overwhelming `GameShellView` or `LobbyDriverViewModel`, split it into feature-local helpers rather than growing more shared conditionals.

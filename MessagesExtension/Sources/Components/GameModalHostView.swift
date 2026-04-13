@@ -4,6 +4,7 @@ import ULS_CoreGame
 struct GameModalHostView: View {
     let mode: GameMode
     let setupInstruction: String?
+    let boardCommitDraft: GameBoardCommitDraft?
     let discardPanel: GameDiscardPanelModel?
     let tradePanel: GameTradePanelModel?
     let devCardPanel: GameDevCardPanelModel?
@@ -15,6 +16,8 @@ struct GameModalHostView: View {
     let onDevCardAction: (GameDevCardActionKind) -> Void
     let onConfirmDevCardDraft: () -> Void
     let onResetDevCardDraft: () -> Void
+    let onConfirmBoardCommit: () -> Void
+    let onCancelBoardCommit: () -> Void
     let onSelectStealVictim: (String) -> Void
 
     var body: some View {
@@ -40,6 +43,42 @@ struct GameModalHostView: View {
 
     @ViewBuilder
     private func bodyContent(for mode: GameMode, fallbackMessage: String) -> some View {
+        if let boardCommitDraft {
+            boardCommitContent(boardCommitDraft)
+        } else {
+            legacyBodyContent(for: mode, fallbackMessage: fallbackMessage)
+        }
+    }
+
+    @ViewBuilder
+    private func boardCommitContent(_ draft: GameBoardCommitDraft) -> some View {
+        Text(draft.message)
+            .font(GameTheme.metaFont)
+            .foregroundStyle(GameTheme.mutedInk)
+            .fixedSize(horizontal: false, vertical: true)
+
+        Text(draft.summaryText)
+            .font(GameTheme.metaFont.weight(.semibold))
+            .foregroundStyle(GameTheme.accent)
+            .fixedSize(horizontal: false, vertical: true)
+
+        HStack(spacing: GameTheme.inlineSpacing) {
+            Button("Cancel") {
+                onCancelBoardCommit()
+            }
+            .frame(maxWidth: .infinity)
+            .buttonStyle(.bordered)
+
+            Button(draft.confirmTitle) {
+                onConfirmBoardCommit()
+            }
+            .frame(maxWidth: .infinity)
+            .buttonStyle(.borderedProminent)
+        }
+    }
+
+    @ViewBuilder
+    private func legacyBodyContent(for mode: GameMode, fallbackMessage: String) -> some View {
         switch mode {
         case .discard:
             discardContent(fallbackMessage: fallbackMessage)
@@ -483,6 +522,12 @@ struct GameModalHostView: View {
         case .setup:
             let message = setupInstruction ?? "Tap the highlighted placement to continue setup."
             return ("Setup Placement", message, "house.lodge.fill")
+        case .buildRoad:
+            return ("Build Road", "Select a legal road location on the board.", "road.lanes")
+        case .buildSettlement:
+            return ("Build Settlement", "Select a legal settlement location on the board.", "house.fill")
+        case .buildCity:
+            return ("Build City", "Select one of your highlighted settlements to upgrade.", "building.2.fill")
         case .robberMove:
             return ("Move The Robber", "Tap a highlighted tile to move the robber. If a victim is available, the next step will ask you to pick who to steal from.", "figure.fall")
         case .robberVictim:

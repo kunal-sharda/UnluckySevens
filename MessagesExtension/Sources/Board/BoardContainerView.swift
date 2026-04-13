@@ -8,6 +8,7 @@ struct BoardContainerView: View {
     let selectionText: String?
     let hintBottomInset: CGFloat
     let onInteractionChanged: ((Bool) -> Void)?
+    let onResizeFreezeChanged: ((Bool) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
     private var shouldShowBoardHeader: Bool {
@@ -103,8 +104,10 @@ struct BoardContainerView: View {
                     overlayModel: overlayModel,
                     interactionMode: interactionMode,
                     onInteractionChanged: onInteractionChanged,
+                    onResizeFreezeChanged: onResizeFreezeChanged,
                     onTargetTap: onTargetTap
                 )
+                .equatable()
                 .padding(.horizontal, 4)
                 .padding(.vertical, 6)
             } else {

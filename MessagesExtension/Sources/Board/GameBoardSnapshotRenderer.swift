@@ -9,11 +9,32 @@ enum GameBoardSnapshotRenderer {
         variant: GameBoardSnapshotVariant
     ) -> UIImage? {
         let size = variant.canvasSize
-        let frame = CGRect(origin: .zero, size: size)
+        return render(
+            renderModel: renderModel,
+            overlayModel: overlayModel,
+            referenceSize: size,
+            viewportSize: size,
+            cameraState: .init()
+        )
+    }
 
-        let scene = GameBoardScene(size: size)
+    static func render(
+        renderModel: GameBoardRenderModel,
+        overlayModel: GameBoardOverlayModel = .empty,
+        referenceSize: CGSize,
+        viewportSize: CGSize,
+        cameraState: GameBoardCameraState
+    ) -> UIImage? {
+        let frame = CGRect(origin: .zero, size: viewportSize)
+        let scene = GameBoardScene(size: viewportSize)
         scene.scaleMode = .resizeFill
-        scene.update(renderModel: renderModel, size: size, overlayModel: overlayModel)
+        scene.update(
+            renderModel: renderModel,
+            referenceSize: referenceSize,
+            viewportSize: viewportSize,
+            overlayModel: overlayModel
+        )
+        scene.updateCamera(state: cameraState, viewportSize: viewportSize)
 
         let view = SKView(frame: frame)
         view.allowsTransparency = true
@@ -28,8 +49,8 @@ enum GameBoardSnapshotRenderer {
 
         let cgImage = texture.cgImage()
         let scale = max(
-            CGFloat(cgImage.width) / max(size.width, 1),
-            CGFloat(cgImage.height) / max(size.height, 1),
+            CGFloat(cgImage.width) / max(viewportSize.width, 1),
+            CGFloat(cgImage.height) / max(viewportSize.height, 1),
             1
         )
         return UIImage(cgImage: cgImage, scale: scale, orientation: .up)

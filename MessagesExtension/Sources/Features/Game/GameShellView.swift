@@ -1,18 +1,27 @@
+import Combine
 import SwiftUI
 import ULS_CoreGame
 
 struct GameShellView: View {
-    @ObservedObject var viewModel: LobbyDriverViewModel
+    let viewModel: LobbyDriverViewModel
+    @State private var shellProjection: GameShellProjection
     @State private var currentMode: GameMode = .idle
     @State private var selectedBoardTarget: GameBoardTarget?
+    @State private var boardCommitDraft: GameBoardCommitDraft?
     @State private var boardHintText: String?
     @State private var devCardDraft: GameDevCardDraft?
     @State private var manualShelfPresentation: GameShelfPresentation = .none
     @State private var lastUtilityShelf: GameLowerShelf = .hand
 
+    init(viewModel: LobbyDriverViewModel) {
+        self.viewModel = viewModel
+        _shellProjection = State(initialValue: viewModel.gameplayShellProjection)
+    }
+
     var body: some View {
-        let screenModel = viewModel.gameScreenModel
-        let isGameOver = viewModel.phase == PhaseV1.gameOver.rawValue
+        let projection = shellProjection
+        let screenModel = projection.gameScreenModel
+        let isGameOver = projection.phase == PhaseV1.gameOver.rawValue
         let resolvedMode = GameModeResolver.normalized(
             currentMode: currentMode,
             availability: screenModel.modeAvailability
@@ -43,9 +52,25 @@ struct GameShellView: View {
                 .ignoresSafeArea()
 
             GeometryReader { geometry in
+                let availableHeight = max(geometry.size.height - (GameTheme.shellPadding * 2), 0)
                 let shellLayout = GameShellLayoutMetrics.resolve(
-                    availableHeight: max(geometry.size.height - (GameTheme.shellPadding * 2), 0),
+                    availableHeight: availableHeight,
                     spacing: GameTheme.sectionSpacing
+                )
+                let canPresentUtilityShelf = GameShellLayoutMetrics.supportsUtilityShelf(
+                    availableHeight: availableHeight,
+                    spacing: GameTheme.sectionSpacing
+                )
+                let lowerRailWidth = min(
+                    GameShellLayoutMetrics.lowerRailWidth(
+                        for: max(geometry.size.width - (GameTheme.shellPadding * 2), 0)
+                    ),
+                    max(geometry.size.width - (GameTheme.shellPadding * 2), 0)
+                )
+                let utilityContentInset = GameTheme.inlineSpacing
+                let shelfBodySize = CGSize(
+                    width: max(lowerRailWidth - (utilityContentInset * 2), 0),
+                    height: max(shellLayout.overlayShelf.contentHeight - (utilityContentInset * 2), 0)
                 )
 
                 ZStack(alignment: .bottom) {
@@ -66,6 +91,11 @@ struct GameShellView: View {
                                 ? shellLayout.overlayShelf.overlapIntoBoardHeight + 12
                                 : 18,
                             onInteractionChanged: nil,
+                            onResizeFreezeChanged: { isFrozen in
+                                if isFrozen {
+                                    clearBoardSelection()
+                                }
+                            },
                             onTargetTap: { target in
                                 handleBoardTap(target, mode: resolvedMode)
                             }
@@ -87,10 +117,15 @@ struct GameShellView: View {
                                     )
                                 },
                                 onToggleUtilityShelf: {
-                                    handleUtilityHandleToggle(currentMode: resolvedMode)
+                                    handleUtilityHandleToggle(
+                                        currentMode: resolvedMode,
+                                        canPresentUtilityShelf: canPresentUtilityShelf
+                                    )
                                 }
                             )
                             .frame(height: shellLayout.trayHeight, alignment: .top)
+                            .frame(maxWidth: lowerRailWidth)
+                            .frame(maxWidth: .infinity, alignment: .center)
                         }
                     }
                     .padding(GameTheme.shellPadding)
@@ -110,17 +145,19 @@ struct GameShellView: View {
                         ) {
                             GameLowerShelfContentView(
                                 activeShelf: activeLowerShelf,
+                                availableBodySize: shelfBodySize,
+                                boardCommitDraft: boardCommitDraft,
                                 handTray: screenModel.handTray,
                                 bankTray: bankTrayModel,
                                 opponents: screenModel.opponents,
                                 actionDock: screenModel.actionDock,
                                 selectedBuildKind: resolvedMode.buildShelfKind,
                                 mode: resolvedMode,
-                                setupInstruction: viewModel.setupGuidanceText,
-                                discardPanel: viewModel.discardPanelModel,
-                                tradePanel: viewModel.tradePanelModel,
+                                setupInstruction: projection.setupGuidanceText,
+                                discardPanel: projection.discardPanelModel,
+                                tradePanel: projection.tradePanelModel,
                                 devCardPanel: devCardPanelModel,
-                                robberVictimOptions: viewModel.robberVictimOptions,
+                                robberVictimOptions: projection.robberVictimOptions,
                                 onSelectBuild: { buildKind in
                                     handleBuildShelfSelection(buildKind)
                                 },
@@ -161,20 +198,41 @@ struct GameShellView: View {
                                 onResetDevCardDraft: {
                                     resetDevCardDraft()
                                 },
+                                onConfirmBoardCommit: {
+                                    if let boardCommitDraft {
+                                        publishBoardCommitDraft(boardCommitDraft)
+                                    }
+                                },
+                                onCancelBoardCommit: {
+                                    clearBoardSelection()
+                                },
                                 onSelectStealVictim: { victimPlayer in
                                     guard viewModel.publishRobberVictimState(victimPlayer: victimPlayer) else { return }
                                     currentMode = .idle
-                                    selectedBoardTarget = nil
+                                    clearBoardSelection()
                                 }
                             )
                         }
                         .frame(height: shellLayout.overlayShelf.totalHeight, alignment: .top)
+                        .frame(maxWidth: lowerRailWidth)
                         .padding(.horizontal, GameTheme.shellPadding)
                         .padding(.bottom, GameTheme.shellPadding + shellLayout.lowerRail.dockHeight)
                         .zIndex(1)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .onChange(of: geometry.size) { _, newValue in
+                    enforceVisibleShelfBounds(
+                        observedSize: newValue,
+                        currentMode: resolvedMode
+                    )
+                }
+                .onAppear {
+                    enforceVisibleShelfBounds(
+                        observedSize: geometry.size,
+                        currentMode: resolvedMode
+                    )
+                }
             }
         }
         .onAppear {
@@ -185,10 +243,16 @@ struct GameShellView: View {
                 devCardDraft = nil
             }
         }
+        .onReceive(viewModel.$gameplayShellProjection.removeDuplicates()) { projection in
+            shellProjection = projection
+        }
         .onChange(of: screenModel.modeAvailability) { _, availability in
             synchronizeMode(with: availability)
         }
         .onChange(of: resolvedMode) { _, newMode in
+            if !GameBoardCommitCoordinator.handles(mode: newMode) {
+                boardCommitDraft = nil
+            }
             boardHintText = nil
             synchronizeBoardSelection(mode: newMode)
             if !newMode.isDevCardMode {
@@ -204,6 +268,9 @@ struct GameShellView: View {
     }
 
     private func resolvedShelfPresentation(mode: GameMode) -> GameShelfPresentation {
+        if boardCommitDraft != nil {
+            return .forcedFlow
+        }
         if mode == .discard || mode == .robberVictim {
             return .forcedFlow
         }
@@ -240,7 +307,7 @@ struct GameShellView: View {
         return GameBoardPlaceholderModel(
             title: mode.title,
             subtitle: mode == .setup
-                ? (viewModel.setupGuidanceText ?? mode.subtitle)
+                ? (shellProjection.setupGuidanceText ?? mode.subtitle)
                 : mode.subtitle
         )
     }
@@ -249,6 +316,10 @@ struct GameShellView: View {
         mode: GameMode,
         overlayModel: GameBoardOverlayModel
     ) -> String? {
+        if let boardCommitDraft {
+            return boardCommitDraft.hintText
+        }
+
         if let selectedTarget = overlayModel.selectedTarget {
             return selectedTarget.selectionLabel(for: mode)
         }
@@ -293,14 +364,13 @@ struct GameShellView: View {
     ) {
         if viewModel.publishTurnState(for: actionKind) {
             self.currentMode = .idle
-            self.selectedBoardTarget = nil
-            self.boardHintText = nil
+            clearBoardSelection()
             self.manualShelfPresentation = .none
             self.devCardDraft = nil
             return
         }
 
-        self.boardHintText = nil
+        clearBoardSelection()
         switch actionKind {
         case .build:
             guard !actionDock.buildShelfItems.isEmpty else {
@@ -312,12 +382,10 @@ struct GameShellView: View {
 
             if resolvedShelfPresentation(mode: currentMode) == .action(.build) {
                 self.currentMode = .idle
-                self.selectedBoardTarget = nil
                 self.manualShelfPresentation = .none
                 self.devCardDraft = nil
             } else {
                 self.currentMode = .idle
-                self.selectedBoardTarget = nil
                 self.manualShelfPresentation = .action(.build)
                 self.devCardDraft = nil
             }
@@ -328,23 +396,23 @@ struct GameShellView: View {
                 availability: availability
             )
             self.currentMode = nextMode
-            self.selectedBoardTarget = nil
             self.manualShelfPresentation = .none
             self.devCardDraft = nil
         case .trade:
             self.currentMode = .trade
-            self.selectedBoardTarget = nil
             self.manualShelfPresentation = .utility(.hand)
             self.lastUtilityShelf = .hand
         case .roll, .endTurn:
             self.currentMode = .idle
-            self.selectedBoardTarget = nil
             self.manualShelfPresentation = .none
             self.devCardDraft = nil
         }
     }
 
-    private func handleUtilityHandleToggle(currentMode: GameMode) {
+    private func handleUtilityHandleToggle(
+        currentMode: GameMode,
+        canPresentUtilityShelf: Bool
+    ) {
         let presentation = resolvedShelfPresentation(mode: currentMode)
         if case .utility = presentation {
             if currentMode == .trade {
@@ -352,16 +420,21 @@ struct GameShellView: View {
             }
             self.manualShelfPresentation = .none
         } else {
+            guard canPresentUtilityShelf else {
+                return
+            }
             if currentMode == .trade {
                 self.currentMode = .idle
             }
             self.manualShelfPresentation = .utility(lastUtilityShelf)
         }
-        self.selectedBoardTarget = nil
-        self.boardHintText = nil
+        clearBoardSelection()
     }
 
-    private func handleUtilityShelfSelection(_ shelf: GameLowerShelf, currentMode: GameMode) {
+    private func handleUtilityShelfSelection(
+        _ shelf: GameLowerShelf,
+        currentMode: GameMode
+    ) {
         lastUtilityShelf = shelf
 
         if resolvedShelfPresentation(mode: currentMode) == .utility(shelf) {
@@ -375,8 +448,7 @@ struct GameShellView: View {
             }
             self.manualShelfPresentation = .utility(shelf)
         }
-        self.selectedBoardTarget = nil
-        self.boardHintText = nil
+        clearBoardSelection()
     }
 
     private func handleCloseShelf(currentMode: GameMode) {
@@ -386,16 +458,14 @@ struct GameShellView: View {
                 self.currentMode = .idle
             }
             self.manualShelfPresentation = .none
-            self.selectedBoardTarget = nil
-            self.boardHintText = nil
+            clearBoardSelection()
         case let .action(shelf):
             if shelf == .devCards {
                 dismissDevCardFlow()
             } else {
                 self.currentMode = .idle
                 self.manualShelfPresentation = .none
-                self.selectedBoardTarget = nil
-                self.boardHintText = nil
+                clearBoardSelection()
             }
         case .forcedFlow, .none:
             break
@@ -403,7 +473,7 @@ struct GameShellView: View {
     }
 
     private func handleTradeShelfSelection() {
-        guard viewModel.tradePanelModel != nil else {
+        guard shellProjection.tradePanelModel != nil else {
             return
         }
 
@@ -415,8 +485,7 @@ struct GameShellView: View {
             manualShelfPresentation = .utility(.hand)
             lastUtilityShelf = .hand
         }
-        selectedBoardTarget = nil
-        boardHintText = nil
+        clearBoardSelection()
     }
 
     private func handleBuildShelfSelection(_ buildKind: GameBuildShelfItem.Kind) {
@@ -424,24 +493,20 @@ struct GameShellView: View {
         switch buildKind {
         case .buildRoad:
             currentMode = .buildRoad
-            selectedBoardTarget = nil
-            boardHintText = nil
+            clearBoardSelection()
             devCardDraft = nil
         case .buildSettlement:
             currentMode = .buildSettlement
-            selectedBoardTarget = nil
-            boardHintText = nil
+            clearBoardSelection()
             devCardDraft = nil
         case .buildCity:
             currentMode = .buildCity
-            selectedBoardTarget = nil
-            boardHintText = nil
+            clearBoardSelection()
             devCardDraft = nil
         case .buyDevCard:
             guard viewModel.handleDevCardAction(.buyDevCard) else { return }
             currentMode = .idle
-            selectedBoardTarget = nil
-            boardHintText = nil
+            clearBoardSelection()
             manualShelfPresentation = .none
             devCardDraft = nil
         }
@@ -471,6 +536,7 @@ struct GameShellView: View {
     }
 
     private func handleDevCardSelection(_ action: GameDevCardActionKind) {
+        clearBoardSelection()
         switch action {
         case .buyDevCard, .revealVictoryPoint:
             guard viewModel.handleDevCardAction(action) else { return }
@@ -478,23 +544,15 @@ struct GameShellView: View {
         case .playKnight:
             devCardDraft = .knight(tileID: nil, victimPlayer: nil)
             currentMode = .devCardKnightMove
-            selectedBoardTarget = nil
-            boardHintText = nil
         case .playMonopoly:
             devCardDraft = .monopoly(resource: nil)
             currentMode = .devCardMonopoly
-            selectedBoardTarget = nil
-            boardHintText = nil
         case .playYearOfPlenty:
             devCardDraft = .yearOfPlenty(first: nil, second: nil)
             currentMode = .devCardYearOfPlenty
-            selectedBoardTarget = nil
-            boardHintText = nil
         case .playRoadBuilding:
             devCardDraft = .roadBuilding(firstEdgeID: nil, secondEdgeID: nil)
             currentMode = .devCardRoadBuildingFirst
-            selectedBoardTarget = nil
-            boardHintText = nil
         }
     }
 
@@ -534,15 +592,13 @@ struct GameShellView: View {
     private func resetDevCardDraft() {
         devCardDraft = nil
         currentMode = .playDevCard
-        selectedBoardTarget = nil
-        boardHintText = nil
+        clearBoardSelection()
     }
 
     private func dismissDevCardFlow() {
         devCardDraft = nil
         currentMode = .idle
-        selectedBoardTarget = nil
-        boardHintText = nil
+        clearBoardSelection()
         manualShelfPresentation = .none
     }
 
@@ -550,27 +606,34 @@ struct GameShellView: View {
         let normalizedTarget = normalizedBoardTarget(for: target, mode: mode)
 
         switch mode {
-        case .setup:
-            guard let normalizedTarget else {
-                boardHintText = failureHint(for: mode)
+        case .setup, .buildRoad, .buildSettlement, .buildCity:
+            guard let decision = GameBoardCommitCoordinator.decision(
+                existingDraft: boardCommitDraft,
+                normalizedTarget: normalizedTarget,
+                mode: mode
+            ) else {
+                clearBoardSelection()
                 return
             }
-            if viewModel.publishSetupState(for: normalizedTarget) {
-                selectedBoardTarget = nil
-                boardHintText = nil
-            } else {
-                selectedBoardTarget = normalizedTarget
-                boardHintText = normalizedTarget.selectionLabel(for: mode)
+
+            switch decision {
+            case let .invalid(hint):
+                boardHintText = hint
+            case let .selected(draft):
+                boardCommitDraft = draft
+                selectedBoardTarget = draft.target
+                boardHintText = draft.hintText
+            case let .confirm(draft):
+                publishBoardCommitDraft(draft)
             }
-        case .buildRoad, .buildSettlement, .buildCity, .robberMove, .robberVictim:
+        case .robberMove, .robberVictim:
             guard let normalizedTarget else {
                 boardHintText = failureHint(for: mode)
                 return
             }
             if viewModel.publishTurnState(for: normalizedTarget, mode: mode) {
                 currentMode = .idle
-                selectedBoardTarget = nil
-                boardHintText = nil
+                clearBoardSelection()
                 manualShelfPresentation = .none
             } else {
                 selectedBoardTarget = normalizedTarget
@@ -651,6 +714,9 @@ struct GameShellView: View {
         }
 
         selectedBoardTarget = normalizedTarget
+        if let boardCommitDraft, normalizedTarget != boardCommitDraft.target {
+            self.boardCommitDraft = nil
+        }
         if normalizedTarget == nil, mode != .idle {
             boardHintText = failureHint(for: mode)
         }
@@ -681,6 +747,70 @@ struct GameShellView: View {
         case .idle, .trade, .playDevCard, .devCardMonopoly, .devCardYearOfPlenty, .discard:
             return nil
         }
+    }
+
+    private func enforceVisibleShelfBounds(
+        observedSize: CGSize,
+        currentMode: GameMode
+    ) {
+        let availableHeight = max(observedSize.height - (GameTheme.shellPadding * 2), 0)
+        guard !GameShellLayoutMetrics.supportsUtilityShelf(
+            availableHeight: availableHeight,
+            spacing: GameTheme.sectionSpacing
+        ) else {
+            return
+        }
+
+        if case .utility = resolvedShelfPresentation(mode: currentMode) {
+            if currentMode == .trade {
+                self.currentMode = .idle
+            }
+            self.manualShelfPresentation = .none
+            clearBoardSelection()
+        }
+    }
+
+    private func publishBoardCommitDraft(_ draft: GameBoardCommitDraft) {
+        let didPublish: Bool
+        switch draft.mode {
+        case .setup:
+            didPublish = viewModel.publishSetupState(for: draft.target)
+            if didPublish {
+                clearBoardSelection()
+            }
+        case .buildRoad, .buildSettlement, .buildCity:
+            didPublish = viewModel.publishTurnState(for: draft.target, mode: draft.mode)
+            if didPublish {
+                currentMode = .idle
+                manualShelfPresentation = .none
+                clearBoardSelection()
+            }
+        case .idle,
+             .robberMove,
+             .robberVictim,
+             .trade,
+             .playDevCard,
+             .devCardKnightMove,
+             .devCardKnightVictim,
+             .devCardMonopoly,
+             .devCardYearOfPlenty,
+             .devCardRoadBuildingFirst,
+             .devCardRoadBuildingSecond,
+             .discard:
+            didPublish = false
+        }
+
+        if !didPublish {
+            selectedBoardTarget = draft.target
+            boardHintText = draft.hintText
+            boardCommitDraft = draft
+        }
+    }
+
+    private func clearBoardSelection() {
+        boardCommitDraft = nil
+        selectedBoardTarget = nil
+        boardHintText = nil
     }
 }
 
@@ -781,13 +911,13 @@ private struct GameOverlayShelfView<Content: View>: View {
         if usesScrollContainer {
             ScrollView(.vertical, showsIndicators: false) {
                 content
-                    .padding(GameTheme.compactPadding)
+                    .padding(contentPadding)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollBounceBehavior(.basedOnSize)
         } else {
             content
-                .padding(GameTheme.compactPadding)
+                .padding(contentPadding)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .clipped()
         }
@@ -867,6 +997,15 @@ private struct GameOverlayShelfView<Content: View>: View {
             return true
         case .none:
             return false
+        }
+    }
+
+    private var contentPadding: CGFloat {
+        switch presentation {
+        case .utility:
+            return GameTheme.inlineSpacing
+        case .action, .forcedFlow, .none:
+            return GameTheme.compactPadding
         }
     }
 }

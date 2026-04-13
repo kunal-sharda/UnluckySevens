@@ -10,7 +10,8 @@ final class GameBoardSceneTests: XCTestCase {
 
         scene.update(
             renderModel: renderModel,
-            size: CGSize(width: 320, height: 240),
+            referenceSize: CGSize(width: 320, height: 240),
+            viewportSize: CGSize(width: 320, height: 240),
             overlayModel: .empty
         )
 
@@ -19,7 +20,8 @@ final class GameBoardSceneTests: XCTestCase {
 
         scene.updateOverlay(
             renderModel: renderModel,
-            size: CGSize(width: 320, height: 240),
+            referenceSize: CGSize(width: 320, height: 240),
+            viewportSize: CGSize(width: 320, height: 240),
             overlayModel: GameBoardOverlayModel(
                 legalTileIDs: [],
                 legalNodeIDs: [],
@@ -38,7 +40,7 @@ final class GameBoardSceneTests: XCTestCase {
         let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
         let state = GameBoardCameraState(zoom: 1.8, offset: CGSize(width: 24, height: -18))
 
-        scene.updateCamera(state: state, size: CGSize(width: 320, height: 240))
+        scene.updateCamera(state: state, viewportSize: CGSize(width: 320, height: 240))
 
         XCTAssertEqual(scene.debugCameraState, state)
         XCTAssertEqual(scene.debugCameraNodePosition.x, 160 - (24 / 1.8), accuracy: 0.001)
@@ -51,17 +53,40 @@ final class GameBoardSceneTests: XCTestCase {
 
         scene.update(
             renderModel: renderModel,
-            size: CGSize(width: 320, height: 240),
+            referenceSize: CGSize(width: 320, height: 240),
+            viewportSize: CGSize(width: 320, height: 240),
             overlayModel: .empty
         )
 
         let baseIdentifier = scene.debugBaseNodeIdentifier
         let baseChildCount = scene.debugBaseChildCount
 
-        scene.updateViewport(size: CGSize(width: 320, height: 180))
+        scene.updateViewport(viewportSize: CGSize(width: 320, height: 180))
 
         XCTAssertEqual(scene.debugBaseNodeIdentifier, baseIdentifier)
         XCTAssertEqual(scene.debugBaseChildCount, baseChildCount)
+    }
+
+    func testViewportResizeDoesNotChangeBoardWorldCoordinates() {
+        let renderModel = makeRenderModel()
+        let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
+
+        scene.update(
+            renderModel: renderModel,
+            referenceSize: CGSize(width: 320, height: 240),
+            viewportSize: CGSize(width: 320, height: 240),
+            overlayModel: .empty
+        )
+
+        let baseline = scene.debugScenePoint(forLayoutPoint: CGPoint(x: 40, y: 20))
+
+        scene.updateViewport(viewportSize: CGSize(width: 320, height: 180))
+
+        XCTAssertEqual(
+            scene.debugScenePoint(forLayoutPoint: CGPoint(x: 40, y: 20)),
+            baseline,
+            "Board world coordinates should stay fixed when only the visible viewport changes."
+        )
     }
 
     func testScenePointsUseTopLeftBoardCoordinates() {

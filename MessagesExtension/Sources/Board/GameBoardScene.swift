@@ -6,10 +6,23 @@ final class GameBoardScene: SKScene {
     private let contentRootNode = SKNode()
     private let baseContentNode = SKNode()
     private let overlayContentNode = SKNode()
+    private let backdropContentNode = SKNode()
+    private let tileContentNode = SKNode()
+    private let portContentNode = SKNode()
+    private let roadContentNode = SKNode()
+    private let structureContentNode = SKNode()
     private let cameraNode = SKCameraNode()
     private var currentCameraState = GameBoardCameraState()
+    private var boardWorldSize: CGSize
+    private var cachedBackdropKey: BackdropLayerKey?
+    private var cachedTileKey: TileLayerKey?
+    private var cachedPortKey: PortLayerKey?
+    private var cachedRoadKey: RoadLayerKey?
+    private var cachedStructureKey: StructureLayerKey?
+    private var cachedOverlayKey: OverlayLayerKey?
 
     override init(size: CGSize) {
+        boardWorldSize = size
         super.init(size: size)
         scaleMode = .resizeFill
         backgroundColor = .clear
@@ -17,66 +30,137 @@ final class GameBoardScene: SKScene {
     }
 
     required init?(coder aDecoder: NSCoder) {
+        boardWorldSize = CGSize(width: 320, height: 240)
         super.init(coder: aDecoder)
         scaleMode = .resizeFill
         backgroundColor = .clear
         configureSceneRoots()
     }
 
-    func update(renderModel: GameBoardRenderModel, size: CGSize, overlayModel: GameBoardOverlayModel) {
-        updateBase(renderModel: renderModel, size: size)
-        updateOverlay(renderModel: renderModel, size: size, overlayModel: overlayModel)
+    func update(
+        renderModel: GameBoardRenderModel,
+        referenceSize: CGSize,
+        viewportSize: CGSize,
+        overlayModel: GameBoardOverlayModel
+    ) {
+        updateBase(renderModel: renderModel, referenceSize: referenceSize, viewportSize: viewportSize)
+        updateOverlay(
+            renderModel: renderModel,
+            referenceSize: referenceSize,
+            viewportSize: viewportSize,
+            overlayModel: overlayModel
+        )
     }
 
-    func updateViewport(size: CGSize) {
-        self.size = size
+    func updateViewport(viewportSize: CGSize) {
+        if self.size != viewportSize {
+            self.size = viewportSize
+        }
         applyCameraState()
     }
 
-    func updateBase(renderModel: GameBoardRenderModel, size: CGSize) {
-        self.size = size
+    func updateBase(renderModel: GameBoardRenderModel, referenceSize: CGSize, viewportSize: CGSize) {
+        if self.size != viewportSize {
+            self.size = viewportSize
+        }
+        boardWorldSize = referenceSize
         applyCameraState()
-        baseContentNode.removeAllChildren()
+        let layout = GameBoardLayout(size: referenceSize, geometry: renderModel.geometry)
 
-        let layout = GameBoardLayout(size: size, geometry: renderModel.geometry)
-        baseContentNode.addChild(makeBoardBackdrop(size: size))
-
-        for tile in renderModel.tiles {
-            baseContentNode.addChild(makeTileNode(tile: tile, layout: layout))
+        let backdropKey = BackdropLayerKey(referenceSize: referenceSize)
+        if cachedBackdropKey != backdropKey {
+            cachedBackdropKey = backdropKey
+            backdropContentNode.removeAllChildren()
+            backdropContentNode.addChild(makeBoardBackdrop(size: referenceSize))
         }
 
-        for port in renderModel.ports {
-            baseContentNode.addChild(makePortNode(port: port, layout: layout, topology: renderModel.topology))
+        let tileKey = TileLayerKey(referenceSize: referenceSize, tiles: renderModel.tiles)
+        if cachedTileKey != tileKey {
+            cachedTileKey = tileKey
+            tileContentNode.removeAllChildren()
+            for tile in renderModel.tiles {
+                tileContentNode.addChild(makeTileNode(tile: tile, layout: layout))
+            }
         }
 
-        for road in renderModel.roads {
-            baseContentNode.addChild(
-                makeRoadNode(
-                    road: road,
-                    layout: layout,
-                    topology: renderModel.topology,
-                    playerOrder: renderModel.playerOrder
+        let portKey = PortLayerKey(
+            referenceSize: referenceSize,
+            topology: renderModel.topology,
+            ports: renderModel.ports
+        )
+        if cachedPortKey != portKey {
+            cachedPortKey = portKey
+            portContentNode.removeAllChildren()
+            for port in renderModel.ports {
+                portContentNode.addChild(makePortNode(port: port, layout: layout, topology: renderModel.topology))
+            }
+        }
+
+        let roadKey = RoadLayerKey(
+            referenceSize: referenceSize,
+            topology: renderModel.topology,
+            roads: renderModel.roads,
+            playerOrder: renderModel.playerOrder
+        )
+        if cachedRoadKey != roadKey {
+            cachedRoadKey = roadKey
+            roadContentNode.removeAllChildren()
+            for road in renderModel.roads {
+                roadContentNode.addChild(
+                    makeRoadNode(
+                        road: road,
+                        layout: layout,
+                        topology: renderModel.topology,
+                        playerOrder: renderModel.playerOrder
+                    )
                 )
-            )
+            }
         }
 
-        for structure in renderModel.structures {
-            baseContentNode.addChild(
-                makeStructureNode(
-                    structure: structure,
-                    layout: layout,
-                    playerOrder: renderModel.playerOrder
+        let structureKey = StructureLayerKey(
+            referenceSize: referenceSize,
+            structures: renderModel.structures,
+            playerOrder: renderModel.playerOrder
+        )
+        if cachedStructureKey != structureKey {
+            cachedStructureKey = structureKey
+            structureContentNode.removeAllChildren()
+            for structure in renderModel.structures {
+                structureContentNode.addChild(
+                    makeStructureNode(
+                        structure: structure,
+                        layout: layout,
+                        playerOrder: renderModel.playerOrder
+                    )
                 )
-            )
+            }
         }
     }
 
-    func updateOverlay(renderModel: GameBoardRenderModel, size: CGSize, overlayModel: GameBoardOverlayModel) {
-        self.size = size
+    func updateOverlay(
+        renderModel: GameBoardRenderModel,
+        referenceSize: CGSize,
+        viewportSize: CGSize,
+        overlayModel: GameBoardOverlayModel
+    ) {
+        if self.size != viewportSize {
+            self.size = viewportSize
+        }
+        boardWorldSize = referenceSize
         applyCameraState()
+        let overlayKey = OverlayLayerKey(
+            referenceSize: referenceSize,
+            topology: renderModel.topology,
+            overlayModel: overlayModel
+        )
+        guard cachedOverlayKey != overlayKey else {
+            return
+        }
+
+        cachedOverlayKey = overlayKey
         overlayContentNode.removeAllChildren()
 
-        let layout = GameBoardLayout(size: size, geometry: renderModel.geometry)
+        let layout = GameBoardLayout(size: referenceSize, geometry: renderModel.geometry)
         overlayContentNode.addChild(
             makeOverlayNode(
                 overlayModel: overlayModel,
@@ -110,8 +194,10 @@ final class GameBoardScene: SKScene {
         scenePoint(for: point)
     }
 
-    func updateCamera(state: GameBoardCameraState, size: CGSize) {
-        self.size = size
+    func updateCamera(state: GameBoardCameraState, viewportSize: CGSize) {
+        if self.size != viewportSize {
+            self.size = viewportSize
+        }
         currentCameraState = state
         applyCameraState()
     }
@@ -618,7 +704,7 @@ final class GameBoardScene: SKScene {
     }
 
     private func scenePoint(for point: CGPoint) -> CGPoint {
-        CGPoint(x: point.x, y: size.height - point.y)
+        CGPoint(x: point.x, y: boardWorldSize.height - point.y)
     }
 
     private func structurePath(kind: GameBoardStructureRenderModel.Kind, radius: CGFloat) -> CGPath {
@@ -681,6 +767,26 @@ final class GameBoardScene: SKScene {
             contentRootNode.addChild(baseContentNode)
         }
 
+        if backdropContentNode.parent == nil {
+            baseContentNode.addChild(backdropContentNode)
+        }
+
+        if tileContentNode.parent == nil {
+            baseContentNode.addChild(tileContentNode)
+        }
+
+        if portContentNode.parent == nil {
+            baseContentNode.addChild(portContentNode)
+        }
+
+        if roadContentNode.parent == nil {
+            baseContentNode.addChild(roadContentNode)
+        }
+
+        if structureContentNode.parent == nil {
+            baseContentNode.addChild(structureContentNode)
+        }
+
         if overlayContentNode.parent == nil {
             contentRootNode.addChild(overlayContentNode)
         }
@@ -692,7 +798,7 @@ final class GameBoardScene: SKScene {
 
     private func applyCameraState() {
         let zoom = max(currentCameraState.zoom, 0.001)
-        let center = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
+        let center = CGPoint(x: boardWorldSize.width * 0.5, y: boardWorldSize.height * 0.5)
 
         cameraNode.position = CGPoint(
             x: center.x - (currentCameraState.offset.width / zoom),
@@ -702,5 +808,39 @@ final class GameBoardScene: SKScene {
         )
         cameraNode.xScale = 1 / zoom
         cameraNode.yScale = 1 / zoom
+    }
+
+    private struct BackdropLayerKey: Equatable {
+        let referenceSize: CGSize
+    }
+
+    private struct TileLayerKey: Equatable {
+        let referenceSize: CGSize
+        let tiles: [GameBoardTileRenderModel]
+    }
+
+    private struct PortLayerKey: Equatable {
+        let referenceSize: CGSize
+        let topology: BoardGraphV1
+        let ports: [GameBoardPortRenderModel]
+    }
+
+    private struct RoadLayerKey: Equatable {
+        let referenceSize: CGSize
+        let topology: BoardGraphV1
+        let roads: [GameBoardRoadRenderModel]
+        let playerOrder: [String]
+    }
+
+    private struct StructureLayerKey: Equatable {
+        let referenceSize: CGSize
+        let structures: [GameBoardStructureRenderModel]
+        let playerOrder: [String]
+    }
+
+    private struct OverlayLayerKey: Equatable {
+        let referenceSize: CGSize
+        let topology: BoardGraphV1
+        let overlayModel: GameBoardOverlayModel
     }
 }

@@ -81,10 +81,16 @@ enum GameBoardCameraController {
         renderModel: GameBoardRenderModel,
         overlayModel: GameBoardOverlayModel,
         interactionMode: GameMode,
-        viewportSize: CGSize
+        viewportSize: CGSize,
+        boardReferenceSize: CGSize
     ) -> GameBoardTarget? {
-        let layout = GameBoardLayout(size: viewportSize, geometry: renderModel.geometry)
-        let boardPoint = inverseTransformedPoint(location, state: state, viewportSize: viewportSize)
+        let layout = GameBoardLayout(size: boardReferenceSize, geometry: renderModel.geometry)
+        let boardPoint = inverseTransformedPoint(
+            location,
+            state: state,
+            viewportSize: viewportSize,
+            boardCenter: layout.boardCenter
+        )
         let selectionContext = SelectionContext(
             interactionMode: interactionMode,
             overlayModel: overlayModel
@@ -130,13 +136,14 @@ enum GameBoardCameraController {
     private static func inverseTransformedPoint(
         _ point: CGPoint,
         state: GameBoardCameraState,
-        viewportSize: CGSize
+        viewportSize: CGSize,
+        boardCenter: CGPoint
     ) -> CGPoint {
-        let center = CGPoint(x: viewportSize.width * 0.5, y: viewportSize.height * 0.5)
+        let viewportCenter = CGPoint(x: viewportSize.width * 0.5, y: viewportSize.height * 0.5)
         let offsetPoint = CGPoint(x: point.x - state.offset.width, y: point.y - state.offset.height)
         return CGPoint(
-            x: center.x + ((offsetPoint.x - center.x) / state.zoom),
-            y: center.y + ((offsetPoint.y - center.y) / state.zoom)
+            x: boardCenter.x + ((offsetPoint.x - viewportCenter.x) / state.zoom),
+            y: boardCenter.y + ((offsetPoint.y - viewportCenter.y) / state.zoom)
         )
     }
 

@@ -2,23 +2,43 @@ import SwiftUI
 
 struct PlayerSummaryStripView: View {
     let summaries: [GameOpponentSummary]
+    let availableHeight: CGFloat
 
     var body: some View {
         if summaries.isEmpty {
             EmptyView()
         } else {
-            VStack(spacing: GameTheme.inlineSpacing) {
-                VStack(spacing: GameTheme.inlineSpacing) {
-                    ForEach(summaries) { summary in
-                        PlayerSummaryRow(summary: summary)
+            Group {
+                if needsScroll {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        rows
                     }
+                    .scrollBounceBehavior(.basedOnSize)
+                } else {
+                    rows
                 }
+            }
+        }
+    }
+
+    private var needsScroll: Bool {
+        let totalHeight = (CGFloat(summaries.count) * PlayerSummaryRow.rowHeight)
+            + (CGFloat(max(summaries.count - 1, 0)) * GameTheme.inlineSpacing)
+        return totalHeight > availableHeight
+    }
+
+    private var rows: some View {
+        VStack(spacing: GameTheme.inlineSpacing) {
+            ForEach(summaries) { summary in
+                PlayerSummaryRow(summary: summary)
             }
         }
     }
 }
 
 private struct PlayerSummaryRow: View {
+    static let rowHeight: CGFloat = 42
+
     let summary: GameOpponentSummary
 
     var body: some View {
@@ -54,7 +74,7 @@ private struct PlayerSummaryRow: View {
         }
         .padding(.horizontal, GameTheme.compactPadding)
         .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: Self.rowHeight, alignment: .leading)
         .background(GameTheme.surface.opacity(0.90))
         .overlay(
             RoundedRectangle(cornerRadius: GameTheme.smallRadius)

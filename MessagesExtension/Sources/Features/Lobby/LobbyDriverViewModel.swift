@@ -6,31 +6,7 @@ import ULS_Transport
 
 @MainActor
 final class LobbyDriverViewModel: ObservableObject {
-    @Published var kind: String = "-"
-    @Published var gameId: String = "-"
-    @Published var rev: String = "-"
-    @Published var prevHash: String = "-"
-    @Published var stateHash: String = "-"
-    @Published var roster: String = "-"
-    @Published var currentPlayer: String = "-"
-    @Published var phase: String = "-"
-    @Published var seed: String = "-"
-    @Published var diceRngState: String = "-"
-    @Published var turnStep: String = "-"
-    @Published var lastRoll: String = "-"
-    @Published var pendingDiscardRequirements: String = "-"
-    @Published var submittedDiscardsStatus: String = "-"
-    @Published var robberMoveReadiness: String = "-"
-    @Published var eligibleStealVictims: String = "-"
-    @Published var remainingPieces: String = "-"
-    @Published var activeTradeOffer: String = "-"
-    @Published var pendingTradeAccepts: String = "-"
-    @Published var maritimeTradePreview: String = "-"
-    @Published var largestArmyStatus: String = "-"
-    @Published var longestRoadStatus: String = "-"
-    @Published var victoryPointsSummary: String = "-"
-    @Published var gameOverSummary: String = "-"
-    @Published var lastTurnRecapSummary: String = "-"
+    @Published private(set) var gameplayShellProjection: GameShellProjection = .empty
     @Published var pendingJoiners: String = "[]"
     @Published var selectionStatus: String = "No message selected"
     @Published var selectedTrigger: String = "-"
@@ -59,18 +35,6 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var latestUpdateNotice: String = "-"
     @Published var uiLog: [String] = []
     @Published var boardStrategy: BoardGenStrategyV1
-    @Published var boardHash: String = "-"
-    @Published var boardGenerator: String = "-"
-    @Published var boardRobberTile: String = "-"
-    @Published var boardResourcesByTile: String = "-"
-    @Published var boardNumbersByTile: String = "-"
-    @Published var boardPortsByIndex: String = "-"
-    @Published var visibleHands: String = "-"
-    @Published var bankResources: String = "-"
-    @Published var devDeckRemaining: String = "-"
-    @Published var visibleDevCards: String = "-"
-    @Published var setupPlacement: String = "-"
-    @Published var turnIntent: String = "-"
 
     private let summaryPayloadPrefix = "ulsenv:"
     private let boardStrategyKey = "uls.boardStrategy"
@@ -93,8 +57,12 @@ final class LobbyDriverViewModel: ObservableObject {
     private var activeSource: ActiveContextSource?
     private var stateSessionsByGameId: [String: MSSession] = [:]
     private var lastResolvedSelectionSignature: String?
-    private var cachedGameScreenModelKey: GameScreenModelCacheKey?
-    private var cachedGameScreenModelValue: GameScreenModel?
+    private var cachedBoardOverlayModelKey: BoardOverlayModelCacheKey?
+    private var cachedBoardOverlayModelValue: GameBoardOverlayModel?
+    private var cachedDevCardPanelModelKey: DevCardPanelModelCacheKey?
+    private var cachedDevCardPanelModelValue: GameDevCardPanelModel??
+    private var cachedBankTrayModelKey: BankTrayModelCacheKey?
+    private var cachedBankTrayModelValue: GameBankTrayModel?
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
@@ -104,6 +72,163 @@ final class LobbyDriverViewModel: ObservableObject {
         } else {
             boardStrategy = .randomV1
         }
+    }
+
+    private func mutateGameplayShellProjection(
+        _ mutate: (inout GameShellProjection) -> Void
+    ) {
+        var projection = gameplayShellProjection
+        mutate(&projection)
+        gameplayShellProjection = projection
+    }
+
+    var kind: String {
+        get { gameplayShellProjection.kind }
+        set { mutateGameplayShellProjection { $0.kind = newValue } }
+    }
+    var gameId: String {
+        get { gameplayShellProjection.gameId }
+        set { mutateGameplayShellProjection { $0.gameId = newValue } }
+    }
+    var rev: String {
+        get { gameplayShellProjection.rev }
+        set { mutateGameplayShellProjection { $0.rev = newValue } }
+    }
+    var prevHash: String {
+        get { gameplayShellProjection.prevHash }
+        set { mutateGameplayShellProjection { $0.prevHash = newValue } }
+    }
+    var stateHash: String {
+        get { gameplayShellProjection.stateHash }
+        set { mutateGameplayShellProjection { $0.stateHash = newValue } }
+    }
+    var roster: String {
+        get { gameplayShellProjection.roster }
+        set { mutateGameplayShellProjection { $0.roster = newValue } }
+    }
+    var currentPlayer: String {
+        get { gameplayShellProjection.currentPlayer }
+        set { mutateGameplayShellProjection { $0.currentPlayer = newValue } }
+    }
+    var phase: String {
+        get { gameplayShellProjection.phase }
+        set { mutateGameplayShellProjection { $0.phase = newValue } }
+    }
+    var seed: String {
+        get { gameplayShellProjection.seed }
+        set { mutateGameplayShellProjection { $0.seed = newValue } }
+    }
+    var diceRngState: String {
+        get { gameplayShellProjection.diceRngState }
+        set { mutateGameplayShellProjection { $0.diceRngState = newValue } }
+    }
+    var turnStep: String {
+        get { gameplayShellProjection.turnStep }
+        set { mutateGameplayShellProjection { $0.turnStep = newValue } }
+    }
+    var lastRoll: String {
+        get { gameplayShellProjection.lastRoll }
+        set { mutateGameplayShellProjection { $0.lastRoll = newValue } }
+    }
+    var pendingDiscardRequirements: String {
+        get { gameplayShellProjection.pendingDiscardRequirements }
+        set { mutateGameplayShellProjection { $0.pendingDiscardRequirements = newValue } }
+    }
+    var submittedDiscardsStatus: String {
+        get { gameplayShellProjection.submittedDiscardsStatus }
+        set { mutateGameplayShellProjection { $0.submittedDiscardsStatus = newValue } }
+    }
+    var robberMoveReadiness: String {
+        get { gameplayShellProjection.robberMoveReadiness }
+        set { mutateGameplayShellProjection { $0.robberMoveReadiness = newValue } }
+    }
+    var eligibleStealVictims: String {
+        get { gameplayShellProjection.eligibleStealVictims }
+        set { mutateGameplayShellProjection { $0.eligibleStealVictims = newValue } }
+    }
+    var remainingPieces: String {
+        get { gameplayShellProjection.remainingPieces }
+        set { mutateGameplayShellProjection { $0.remainingPieces = newValue } }
+    }
+    var activeTradeOffer: String {
+        get { gameplayShellProjection.activeTradeOffer }
+        set { mutateGameplayShellProjection { $0.activeTradeOffer = newValue } }
+    }
+    var pendingTradeAccepts: String {
+        get { gameplayShellProjection.pendingTradeAccepts }
+        set { mutateGameplayShellProjection { $0.pendingTradeAccepts = newValue } }
+    }
+    var maritimeTradePreview: String {
+        get { gameplayShellProjection.maritimeTradePreview }
+        set { mutateGameplayShellProjection { $0.maritimeTradePreview = newValue } }
+    }
+    var largestArmyStatus: String {
+        get { gameplayShellProjection.largestArmyStatus }
+        set { mutateGameplayShellProjection { $0.largestArmyStatus = newValue } }
+    }
+    var longestRoadStatus: String {
+        get { gameplayShellProjection.longestRoadStatus }
+        set { mutateGameplayShellProjection { $0.longestRoadStatus = newValue } }
+    }
+    var victoryPointsSummary: String {
+        get { gameplayShellProjection.victoryPointsSummary }
+        set { mutateGameplayShellProjection { $0.victoryPointsSummary = newValue } }
+    }
+    var gameOverSummary: String {
+        get { gameplayShellProjection.gameOverSummary }
+        set { mutateGameplayShellProjection { $0.gameOverSummary = newValue } }
+    }
+    var lastTurnRecapSummary: String {
+        get { gameplayShellProjection.lastTurnRecapSummary }
+        set { mutateGameplayShellProjection { $0.lastTurnRecapSummary = newValue } }
+    }
+    var boardHash: String {
+        get { gameplayShellProjection.boardHash }
+        set { mutateGameplayShellProjection { $0.boardHash = newValue } }
+    }
+    var boardGenerator: String {
+        get { gameplayShellProjection.boardGenerator }
+        set { mutateGameplayShellProjection { $0.boardGenerator = newValue } }
+    }
+    var boardRobberTile: String {
+        get { gameplayShellProjection.boardRobberTile }
+        set { mutateGameplayShellProjection { $0.boardRobberTile = newValue } }
+    }
+    var boardResourcesByTile: String {
+        get { gameplayShellProjection.boardResourcesByTile }
+        set { mutateGameplayShellProjection { $0.boardResourcesByTile = newValue } }
+    }
+    var boardNumbersByTile: String {
+        get { gameplayShellProjection.boardNumbersByTile }
+        set { mutateGameplayShellProjection { $0.boardNumbersByTile = newValue } }
+    }
+    var boardPortsByIndex: String {
+        get { gameplayShellProjection.boardPortsByIndex }
+        set { mutateGameplayShellProjection { $0.boardPortsByIndex = newValue } }
+    }
+    var visibleHands: String {
+        get { gameplayShellProjection.visibleHands }
+        set { mutateGameplayShellProjection { $0.visibleHands = newValue } }
+    }
+    var bankResources: String {
+        get { gameplayShellProjection.bankResources }
+        set { mutateGameplayShellProjection { $0.bankResources = newValue } }
+    }
+    var devDeckRemaining: String {
+        get { gameplayShellProjection.devDeckRemaining }
+        set { mutateGameplayShellProjection { $0.devDeckRemaining = newValue } }
+    }
+    var visibleDevCards: String {
+        get { gameplayShellProjection.visibleDevCards }
+        set { mutateGameplayShellProjection { $0.visibleDevCards = newValue } }
+    }
+    var setupPlacement: String {
+        get { gameplayShellProjection.setupPlacement }
+        set { mutateGameplayShellProjection { $0.setupPlacement = newValue } }
+    }
+    var turnIntent: String {
+        get { gameplayShellProjection.turnIntent }
+        set { mutateGameplayShellProjection { $0.turnIntent = newValue } }
     }
 
     private var allowSummaryPayloadFallback: Bool {
@@ -140,62 +265,23 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     var gameScreenModel: GameScreenModel {
-        let context = GameScreenContext(
-            selectedState: selectedState,
-            actingAs: localActorIdentifier(),
-            contextBanner: activeContextBanner,
-            contextMeta: activeContextMeta,
-            actionAvailability: shellActionAvailability,
-            modeAvailability: shellModeAvailability
-        )
-        let key = GameScreenModelCacheKey(
-            gameId: context.selectedState?.gameId,
-            stateHash: context.selectedState?.stateHash,
-            actor: context.actingAs,
-            contextBanner: context.contextBanner,
-            contextMeta: context.contextMeta,
-            actionAvailability: context.actionAvailability,
-            modeAvailability: context.modeAvailability
-        )
-
-        if let cachedGameScreenModelKey, cachedGameScreenModelKey == key, let cachedGameScreenModelValue {
-            return cachedGameScreenModelValue
-        }
-
-        let model = GameScreenModelBuilder.build(context: context)
-        cachedGameScreenModelKey = key
-        cachedGameScreenModelValue = model
-        return model
+        gameplayShellProjection.gameScreenModel
     }
 
     var setupGuidanceText: String? {
-        SetupInteractionResolver.guidanceText(
-            state: selectedState,
-            actingAs: localActorIdentifier()
-        )
+        gameplayShellProjection.setupGuidanceText
     }
 
     var discardPanelModel: GameDiscardPanelModel? {
-        GameDiscardPanelModelBuilder.build(
-            state: selectedState,
-            actingAs: localActorIdentifier(),
-            selectedTurnIntent: selectedTurnIntent
-        )
+        gameplayShellProjection.discardPanelModel
     }
 
     var robberVictimOptions: [GameRobberVictimOption] {
-        GameRobberVictimOptionBuilder.build(
-            state: selectedState,
-            actingAs: localActorIdentifier()
-        )
+        gameplayShellProjection.robberVictimOptions
     }
 
     var tradePanelModel: GameTradePanelModel? {
-        GameTradePanelModelBuilder.build(
-            state: selectedState,
-            actingAs: localActorIdentifier(),
-            selectedTurnIntent: selectedTurnIntent
-        )
+        gameplayShellProjection.tradePanelModel
     }
 
     func makeBoardOverlayModel(
@@ -203,37 +289,81 @@ final class LobbyDriverViewModel: ObservableObject {
         devCardDraft: GameDevCardDraft? = nil,
         selectedTarget: GameBoardTarget?
     ) -> GameBoardOverlayModel {
-        GameBoardOverlayModelBuilder.build(
+        let key = BoardOverlayModelCacheKey(
+            stateHash: selectedState?.stateHash,
+            actor: localActorIdentifier(),
+            mode: mode,
+            draft: devCardDraft,
+            selectedTarget: selectedTarget
+        )
+        if let cachedBoardOverlayModelKey,
+           cachedBoardOverlayModelKey == key,
+           let cachedBoardOverlayModelValue {
+            return cachedBoardOverlayModelValue
+        }
+
+        let model = GameBoardOverlayModelBuilder.build(
             state: selectedState,
             actingAs: localActorIdentifier(),
             mode: mode,
             devCardDraft: devCardDraft,
             selectedTarget: selectedTarget
         )
+        cachedBoardOverlayModelKey = key
+        cachedBoardOverlayModelValue = model
+        return model
     }
 
     func makeDevCardPanelModel(
         mode: GameMode,
         draft: GameDevCardDraft?
     ) -> GameDevCardPanelModel? {
-        GameDevCardPanelModelBuilder.build(
+        let key = DevCardPanelModelCacheKey(
+            stateHash: selectedState?.stateHash,
+            actor: localActorIdentifier(),
+            mode: mode,
+            draft: draft
+        )
+        if let cachedDevCardPanelModelKey, cachedDevCardPanelModelKey == key {
+            return cachedDevCardPanelModelValue ?? nil
+        }
+
+        let model = GameDevCardPanelModelBuilder.build(
             state: selectedState,
             actingAs: localActorIdentifier(),
             mode: mode,
             draft: draft
         )
+        cachedDevCardPanelModelKey = key
+        cachedDevCardPanelModelValue = .some(model)
+        return model
     }
 
     func makeBankTrayModel(
         mode: GameMode,
         draft: GameDevCardDraft?
     ) -> GameBankTrayModel {
-        GameBankTrayModelBuilder.build(
+        let key = BankTrayModelCacheKey(
+            stateHash: selectedState?.stateHash,
+            actor: localActorIdentifier(),
+            mode: mode,
+            draft: draft
+        )
+        if let cachedBankTrayModelKey,
+           cachedBankTrayModelKey == key,
+           let cachedBankTrayModelValue {
+            return cachedBankTrayModelValue
+        }
+
+        let model = GameBankTrayModelBuilder.build(
             state: selectedState,
             actingAs: localActorIdentifier(),
             mode: mode,
             draft: draft
         )
+        cachedBankTrayModelKey = key
+        cachedBankTrayModelValue = model
+        return model
     }
 
     func legalKnightVictims(for tileID: TileID) -> [String] {
@@ -2529,6 +2659,13 @@ final class LobbyDriverViewModel: ObservableObject {
         latestUpdateNotice = "-"
     }
 
+    private func updateGameplayShellProjection(_ projection: GameShellProjection) {
+        guard gameplayShellProjection != projection else {
+            return
+        }
+        gameplayShellProjection = projection
+    }
+
     private func shortIdentifier(_ value: String) -> String {
         String(value.prefix(8))
     }
@@ -2536,46 +2673,15 @@ final class LobbyDriverViewModel: ObservableObject {
     private func render(state: CoreGameStateV1, source: TranscriptPayloadSource) {
         selectionStatus = "Decoded STATE rev\(state.rev) via \(source.label)"
         selectedDecodeResult = selectionStatus
-        guard diagnosticsEnabled else {
-            return
-        }
-
-        kind = "STATE"
-        gameId = state.gameId
-        rev = String(state.rev)
-        prevHash = state.prevHash ?? "nil"
-        stateHash = state.stateHash
-        roster = state.roster.joined(separator: ", ")
-        currentPlayer = state.currentPlayer
-        phase = state.phase.rawValue
-        seed = state.seed.map(String.init) ?? "nil"
-        diceRngState = state.diceRngState.map(String.init) ?? "nil"
-        turnStep = state.turnState?.step.rawValue ?? "nil"
-        if let lastRollValue = state.turnState?.lastRoll {
-            lastRoll = "\(lastRollValue.d1)+\(lastRollValue.d2)"
-        } else {
-            lastRoll = "nil"
-        }
-        pendingDiscardRequirements = discardRequirementsSummary(for: state.turnState)
-        submittedDiscardsStatus = discardSubmissionSummary(for: state.turnState)
-        robberMoveReadiness = robberReadinessSummary(for: state.turnState)
-        eligibleStealVictims = stealVictimsSummary(for: state.turnState)
-        remainingPieces = remainingPiecesSummary(for: state)
-        activeTradeOffer = activeTradeOfferSummary(for: state)
-        pendingTradeAccepts = pendingTradeAcceptsSummary(for: state)
-        maritimeTradePreview = maritimeTradeSummary(for: state)
-        largestArmyStatus = largestArmySummary(for: state)
-        longestRoadStatus = longestRoadSummary(for: state)
-        victoryPointsSummary = vpSummary(for: state)
-        gameOverSummary = gameOverStateSummary(for: state)
-        lastTurnRecapSummary = recapSummary(for: state)
-        setupPlacement = "-"
-        turnIntent = "-"
-        visibleHands = visibleHandsSummary(for: state)
-        bankResources = resourceHandDescription(state.bankResources)
-        devDeckRemaining = String(state.devDeck.count)
-        visibleDevCards = visibleDevCardsSummary(for: state)
-        render(board: state.board)
+        updateGameplayShellProjection(
+            GameShellProjectionBuilder.build(
+                state: state,
+                actingAs: localActorIdentifier(),
+                selectedTurnIntent: selectedTurnIntent,
+                actionAvailability: shellActionAvailability,
+                modeAvailability: shellModeAvailability
+            )
+        )
         refreshPendingJoiners(for: state.gameId)
     }
 
@@ -2583,42 +2689,7 @@ final class LobbyDriverViewModel: ObservableObject {
         rememberPendingJoiner(joinIntent.actor, for: joinIntent.gameId)
         selectionStatus = "Decoded JOIN intent via \(source.label)"
         selectedDecodeResult = selectionStatus
-        guard diagnosticsEnabled else {
-            return
-        }
-
-        kind = "INTENT(join)"
-        gameId = joinIntent.gameId
-        rev = String(joinIntent.anchorRev)
-        prevHash = "-"
-        stateHash = joinIntent.anchorHash
-        roster = "-"
-        currentPlayer = joinIntent.actor
-        phase = "-"
-        seed = "-"
-        diceRngState = "-"
-        turnStep = "-"
-        lastRoll = "-"
-        pendingDiscardRequirements = "-"
-        submittedDiscardsStatus = "-"
-        robberMoveReadiness = "-"
-        eligibleStealVictims = "-"
-        remainingPieces = "-"
-        activeTradeOffer = "-"
-        pendingTradeAccepts = "-"
-        maritimeTradePreview = "-"
-        largestArmyStatus = "-"
-        longestRoadStatus = "-"
-        victoryPointsSummary = "-"
-        gameOverSummary = "-"
-        lastTurnRecapSummary = "-"
-        setupPlacement = "-"
-        turnIntent = "-"
-        visibleHands = "-"
-        bankResources = "-"
-        devDeckRemaining = "-"
-        visibleDevCards = "-"
-        resetBoardDebugFields()
+        updateGameplayShellProjection(GameShellProjectionBuilder.build(joinIntent: joinIntent))
         refreshPendingJoiners(for: joinIntent.gameId)
         appendLog("Decoded INTENT kind=join actor=\(shortIdentifier(joinIntent.actor))")
     }
@@ -2626,51 +2697,7 @@ final class LobbyDriverViewModel: ObservableObject {
     private func render(setupIntent: SetupPlacementIntentV1, source: TranscriptPayloadSource) {
         selectionStatus = "Decoded \(setupIntent.kind.rawValue) intent via \(source.label)"
         selectedDecodeResult = selectionStatus
-        guard diagnosticsEnabled else {
-            return
-        }
-
-        kind = "INTENT(\(setupIntent.kind.rawValue))"
-        gameId = setupIntent.gameId
-        rev = String(setupIntent.anchorRev)
-        prevHash = "-"
-        stateHash = setupIntent.anchorHash
-        roster = "-"
-        currentPlayer = setupIntent.actor
-        phase = "-"
-        seed = "-"
-        diceRngState = "-"
-        turnStep = "-"
-        lastRoll = "-"
-        pendingDiscardRequirements = "-"
-        submittedDiscardsStatus = "-"
-        robberMoveReadiness = "-"
-        eligibleStealVictims = "-"
-        remainingPieces = "-"
-        activeTradeOffer = "-"
-        pendingTradeAccepts = "-"
-        maritimeTradePreview = "-"
-        largestArmyStatus = "-"
-        longestRoadStatus = "-"
-        victoryPointsSummary = "-"
-        gameOverSummary = "-"
-        lastTurnRecapSummary = "-"
-        turnIntent = "-"
-        visibleHands = "-"
-        bankResources = "-"
-        devDeckRemaining = "-"
-        visibleDevCards = "-"
-        switch setupIntent.kind {
-        case .placeSetupSettlement:
-            setupPlacement = "node: \(setupIntent.node.map(String.init) ?? "-")"
-        case .placeSetupRoad:
-            setupPlacement = "edge: \(setupIntent.edge.map(String.init) ?? "-")"
-        case .placeSetupPair:
-            let node = setupIntent.node.map(String.init) ?? "-"
-            let edge = setupIntent.edge.map(String.init) ?? "-"
-            setupPlacement = "node: \(node), edge: \(edge)"
-        }
-        resetBoardDebugFields()
+        updateGameplayShellProjection(GameShellProjectionBuilder.build(setupIntent: setupIntent))
         refreshPendingJoiners(for: setupIntent.gameId)
         appendLog("Decoded INTENT kind=\(setupIntent.kind.rawValue) actor=\(shortIdentifier(setupIntent.actor))")
     }
@@ -2678,186 +2705,13 @@ final class LobbyDriverViewModel: ObservableObject {
     private func render(turnIntent decodedTurnIntent: ULS_Transport.TurnIntentV1, source: TranscriptPayloadSource) {
         selectionStatus = "Decoded \(decodedTurnIntent.kind.rawValue) intent via \(source.label)"
         selectedDecodeResult = selectionStatus
-        guard diagnosticsEnabled else {
-            return
-        }
-
-        kind = "INTENT(\(decodedTurnIntent.kind.rawValue))"
-        gameId = decodedTurnIntent.gameId
-        rev = String(decodedTurnIntent.anchorRev)
-        prevHash = "-"
-        stateHash = decodedTurnIntent.anchorHash
-        roster = "-"
-        currentPlayer = decodedTurnIntent.actor
-        phase = "-"
-        seed = "-"
-        diceRngState = "-"
-        turnStep = "-"
-        lastRoll = "-"
-        pendingDiscardRequirements = "-"
-        submittedDiscardsStatus = "-"
-        robberMoveReadiness = "-"
-        eligibleStealVictims = "-"
-        remainingPieces = "-"
-        activeTradeOffer = "-"
-        pendingTradeAccepts = "-"
-        maritimeTradePreview = "-"
-        largestArmyStatus = "-"
-        longestRoadStatus = "-"
-        victoryPointsSummary = "-"
-        gameOverSummary = "-"
-        lastTurnRecapSummary = "-"
-        setupPlacement = "-"
-        switch decodedTurnIntent.kind {
-        case .rollDice, .endTurn:
-            turnIntent = "kind: \(decodedTurnIntent.kind.rawValue)"
-        case .submitDiscard:
-            let player = decodedTurnIntent.discardPlayer ?? "-"
-            let hand = decodedTurnIntent.discarded.map(resourceHandDescription) ?? "-"
-            turnIntent = "kind: submitDiscard player: \(player) hand: \(hand)"
-        case .moveRobber:
-            let tile = decodedTurnIntent.robberTileID.map(String.init) ?? "-"
-            turnIntent = "kind: moveRobber tile: \(tile)"
-        case .selectStealVictim:
-            let victim = decodedTurnIntent.stealVictimPlayer ?? "-"
-            turnIntent = "kind: selectStealVictim victim: \(victim)"
-        case .buildRoad:
-            let edge = decodedTurnIntent.buildEdgeID.map(String.init) ?? "-"
-            turnIntent = "kind: buildRoad edge: \(edge)"
-        case .buildSettlement:
-            let node = decodedTurnIntent.buildNodeID.map(String.init) ?? "-"
-            turnIntent = "kind: buildSettlement node: \(node)"
-        case .buildCity:
-            let node = decodedTurnIntent.buildNodeID.map(String.init) ?? "-"
-            turnIntent = "kind: buildCity node: \(node)"
-        case .proposeTrade:
-            let give = decodedTurnIntent.tradeGive.map(resourceHandDescription) ?? "-"
-            let receive = decodedTurnIntent.tradeReceive.map(resourceHandDescription) ?? "-"
-            turnIntent = "kind: proposeTrade give: \(give) receive: \(receive)"
-        case .acceptTrade:
-            let player = decodedTurnIntent.tradeAcceptPlayer ?? "-"
-            let offer = decodedTurnIntent.tradeOfferHash ?? "-"
-            turnIntent = "kind: acceptTrade player: \(player) offer: \(offer)"
-        case .executeTrade:
-            let player = decodedTurnIntent.tradeAcceptPlayer ?? "-"
-            let offer = decodedTurnIntent.tradeOfferHash ?? "-"
-            turnIntent = "kind: executeTrade player: \(player) offer: \(offer)"
-        case .maritimeTrade:
-            let give = decodedTurnIntent.tradeGive.map(resourceHandDescription) ?? "-"
-            let receive = decodedTurnIntent.tradeReceive.map(resourceHandDescription) ?? "-"
-            turnIntent = "kind: maritimeTrade give: \(give) receive: \(receive)"
-        case .buyDevCard:
-            turnIntent = "kind: buyDevCard"
-        case .playDevCard:
-            let playKind = decodedTurnIntent.devCardPlayKind?.rawValue ?? "-"
-            switch decodedTurnIntent.devCardPlayKind {
-            case .knight:
-                let tile = decodedTurnIntent.devCardTileID.map(String.init) ?? "-"
-                let victim = decodedTurnIntent.devCardVictimPlayer ?? "none"
-                turnIntent = "kind: playDevCard card: \(playKind) tile: \(tile) victim: \(victim)"
-            case .monopoly:
-                let resource = decodedTurnIntent.devCardResource?.rawValue ?? "-"
-                turnIntent = "kind: playDevCard card: \(playKind) resource: \(resource)"
-            case .yearOfPlenty:
-                let first = decodedTurnIntent.devCardFirstResource?.rawValue ?? "-"
-                let second = decodedTurnIntent.devCardSecondResource?.rawValue ?? "-"
-                turnIntent = "kind: playDevCard card: \(playKind) first: \(first) second: \(second)"
-            case .roadBuilding:
-                let first = decodedTurnIntent.devCardFirstEdgeID.map(String.init) ?? "-"
-                let second = decodedTurnIntent.devCardSecondEdgeID.map(String.init) ?? "-"
-                turnIntent = "kind: playDevCard card: \(playKind) firstEdge: \(first) secondEdge: \(second)"
-            case .revealVictoryPoint:
-                turnIntent = "kind: playDevCard card: \(playKind)"
-            case .none:
-                turnIntent = "kind: playDevCard card: -"
-            }
-        }
-        visibleHands = "-"
-        bankResources = "-"
-        devDeckRemaining = "-"
-        visibleDevCards = "-"
-        resetBoardDebugFields()
+        updateGameplayShellProjection(GameShellProjectionBuilder.build(turnIntent: decodedTurnIntent))
         refreshPendingJoiners(for: decodedTurnIntent.gameId)
         appendLog("Decoded INTENT kind=\(decodedTurnIntent.kind.rawValue) actor=\(shortIdentifier(decodedTurnIntent.actor))")
     }
 
-    private func render(board: BoardSetupV1?) {
-        guard let board else {
-            resetBoardDebugFields()
-            return
-        }
-
-        boardHash = board.boardHash
-        boardGenerator = board.generator.rawValue
-        boardRobberTile = String(board.robberTile)
-        boardResourcesByTile = board.resourcesByTile.enumerated()
-            .map { "\($0.offset): \($0.element.rawValue)" }
-            .joined(separator: ", ")
-        boardNumbersByTile = board.numbersByTile.enumerated()
-            .map { "\($0.offset): \($0.element.map(String.init) ?? "nil")" }
-            .joined(separator: ", ")
-        boardPortsByIndex = board.portsByIndex.enumerated()
-            .map { "\($0.offset): \(portKindDescription($0.element))" }
-            .joined(separator: ", ")
-    }
-
     private func resetDisplayedFields() {
-        guard diagnosticsEnabled else {
-            return
-        }
-        kind = "-"
-        gameId = "-"
-        rev = "-"
-        prevHash = "-"
-        stateHash = "-"
-        roster = "-"
-        currentPlayer = "-"
-        phase = "-"
-        seed = "-"
-        diceRngState = "-"
-        turnStep = "-"
-        lastRoll = "-"
-        pendingDiscardRequirements = "-"
-        submittedDiscardsStatus = "-"
-        robberMoveReadiness = "-"
-        eligibleStealVictims = "-"
-        remainingPieces = "-"
-        activeTradeOffer = "-"
-        pendingTradeAccepts = "-"
-        maritimeTradePreview = "-"
-        largestArmyStatus = "-"
-        longestRoadStatus = "-"
-        victoryPointsSummary = "-"
-        gameOverSummary = "-"
-        lastTurnRecapSummary = "-"
-        setupPlacement = "-"
-        turnIntent = "-"
-        visibleHands = "-"
-        bankResources = "-"
-        devDeckRemaining = "-"
-        visibleDevCards = "-"
-        resetBoardDebugFields()
-    }
-
-    private func resetBoardDebugFields() {
-        guard diagnosticsEnabled else {
-            return
-        }
-        boardHash = "-"
-        boardGenerator = "-"
-        boardRobberTile = "-"
-        boardResourcesByTile = "-"
-        boardNumbersByTile = "-"
-        boardPortsByIndex = "-"
-    }
-
-    private func portKindDescription(_ kind: PortKindV1) -> String {
-        switch kind {
-        case .threeToOne:
-            return "3:1"
-        case let .twoToOne(resource):
-            return "2:1 \(resource.rawValue)"
-        }
+        updateGameplayShellProjection(.empty)
     }
 
     private func visibleHandsSummary(for state: CoreGameStateV1) -> String {
@@ -3650,14 +3504,26 @@ final class LobbyDriverViewModel: ObservableObject {
         let savedAt: TimeInterval
     }
 
-    private struct GameScreenModelCacheKey: Equatable {
-        let gameId: String?
+    private struct BoardOverlayModelCacheKey: Equatable {
         let stateHash: String?
         let actor: String?
-        let contextBanner: String
-        let contextMeta: String
-        let actionAvailability: GameActionAvailability
-        let modeAvailability: GameModeAvailability
+        let mode: GameMode
+        let draft: GameDevCardDraft?
+        let selectedTarget: GameBoardTarget?
+    }
+
+    private struct DevCardPanelModelCacheKey: Equatable {
+        let stateHash: String?
+        let actor: String?
+        let mode: GameMode
+        let draft: GameDevCardDraft?
+    }
+
+    private struct BankTrayModelCacheKey: Equatable {
+        let stateHash: String?
+        let actor: String?
+        let mode: GameMode
+        let draft: GameDevCardDraft?
     }
 
     private enum SendError: LocalizedError {
