@@ -330,7 +330,8 @@ Implement:
 - shrink guided hints to one-line chips that move upward when the overlay shelf is open
 - size the shell from the current visible host bounds while freezing the board during interactive host drag so partial collapse does not reintroduce severe lag
 - keep board world geometry in a stable reference space so host drag changes viewport/camera behavior without recomputing tile, node, road, or port positions on every intermediate size
-- make setup and build placement selection-first so legal node/edge taps do not publish immediately; confirm through the compact surface or by tapping the same selected target twice
+- make setup and build placement selection-first so legal node/edge taps do not publish immediately; confirm by tapping the same selected target again
+- keep setup/build confirmation from hijacking `Hand` / `Bank` / `Players`; the active lower shelf should stay usable on both iPhone and iPad while a pending selection exists
 - auto-collapse utility shelves when the visible host is too short to render a usable utility body instead of letting the shelf overflow or cut off
 - cap lower-rail and overlay-shelf width so hand, bank, and player content keep one intentional reading width across iPhone and iPad instead of stretching with the full host width
 - add any minimal end-of-game clarity needed so a full played match does not feel unfinished at the moment of victory

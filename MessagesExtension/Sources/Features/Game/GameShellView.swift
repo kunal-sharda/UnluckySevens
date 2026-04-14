@@ -219,6 +219,7 @@ struct GameShellView: View {
                         .padding(.bottom, GameTheme.shellPadding + shellLayout.lowerRail.dockHeight)
                         .zIndex(1)
                     }
+
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .onChange(of: geometry.size) { _, newValue in
@@ -268,9 +269,6 @@ struct GameShellView: View {
     }
 
     private func resolvedShelfPresentation(mode: GameMode) -> GameShelfPresentation {
-        if boardCommitDraft != nil {
-            return .forcedFlow
-        }
         if mode == .discard || mode == .robberVictim {
             return .forcedFlow
         }

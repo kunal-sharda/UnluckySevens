@@ -199,13 +199,12 @@ Run this before calling phase 12 complete.
    - short last-turn recap
    - no dead bottom tray
 26. Open and close `Hand`, `Bank`, `Players`, `Build`, and `Play Dev` repeatedly and confirm the board does not visibly hitch or rebuild while the shelf changes.
-27. In setup and build modes, tap one legal target once and confirm nothing publishes yet. Confirm the target highlights, the compact confirm surface appears, and both publish paths work:
-   - `Confirm`
-   - tapping the same selected target again
-28. After selecting a setup/build target, tap a different legal target and confirm the selection moves without publishing. Tap `Cancel` and confirm the pending selection clears cleanly.
-29. Drag down from the top of the Messages transcript to collapse the host while a live game is open, both with the shelf closed and with a shelf open. Confirm the board freezes visually during host drag, ignores board input while frozen, and only performs one clean final refit after the host settles.
-30. On both iPhone and iPad, confirm the `Hand` and `Bank` shelves keep the same chip sizing and a capped reading width instead of stretching to full host width.
-31. In a visibly constrained host height, confirm a utility shelf closes instead of rendering partially offscreen or leaving unreachable content below the viewport.
+27. In setup and build modes, tap one legal target once and confirm nothing publishes yet. Confirm the target highlights, then tap the same selected target again and confirm it publishes.
+28. After selecting a setup/build target, tap a different legal target and confirm the selection moves without publishing.
+29. On both iPhone and iPad, select a setup/build target while `Hand`, `Bank`, or `Players` is visible and confirm the shelf header tabs remain usable instead of being replaced by a forced-flow panel.
+30. Drag down from the top of the Messages transcript to collapse the host while a live game is open, both with the shelf closed and with a shelf open. Confirm the board freezes visually during host drag, ignores board input while frozen, and only performs one clean final refit after the host settles.
+31. On both iPhone and iPad, confirm the `Hand` and `Bank` shelves keep the same chip sizing and a capped reading width instead of stretching to full host width.
+32. In a visibly constrained host height, confirm a utility shelf closes instead of rendering partially offscreen or leaving unreachable content below the viewport.
 
 ### Real Device UX Hardening
 

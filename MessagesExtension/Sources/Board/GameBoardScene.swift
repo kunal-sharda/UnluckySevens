@@ -25,7 +25,7 @@ final class GameBoardScene: SKScene {
         boardWorldSize = size
         super.init(size: size)
         scaleMode = .resizeFill
-        backgroundColor = .clear
+        backgroundColor = GameBoardPalette.water
         configureSceneRoots()
     }
 
@@ -33,7 +33,7 @@ final class GameBoardScene: SKScene {
         boardWorldSize = CGSize(width: 320, height: 240)
         super.init(coder: aDecoder)
         scaleMode = .resizeFill
-        backgroundColor = .clear
+        backgroundColor = GameBoardPalette.water
         configureSceneRoots()
     }
 

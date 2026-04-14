@@ -11,12 +11,7 @@ struct BoardSceneView: View, Equatable {
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
     @State private var scene = GameBoardScene(size: CGSize(width: 320, height: 240))
-    @State private var cameraState = GameBoardCameraState()
-    @State private var dragBaseState: GameBoardCameraState?
-    @State private var pinchBaseState: GameBoardCameraState?
-    @State private var isDragInteracting: Bool = false
-    @State private var isPinchInteracting: Bool = false
-    @State private var isInteracting: Bool = false
+    @State private var interactionState = BoardInteractionState()
     @State private var stableBoardReferenceSize: CGSize?
     @State private var lastViewportUpdateSize: CGSize?
     @State private var isResizeFrozen: Bool = false
@@ -42,10 +37,7 @@ struct BoardSceneView: View, Equatable {
             let layout = GameBoardLayout(size: referenceSize, geometry: renderModel.geometry)
 
             ZStack {
-                SpriteView(
-                    scene: scene,
-                    options: [.allowsTransparency]
-                )
+                SpriteView(scene: scene)
                 .allowsHitTesting(false)
 
                 if let frozenSnapshot {
@@ -147,14 +139,14 @@ struct BoardSceneView: View, Equatable {
             isResizeFrozen = true
             setInteractionActive(false)
             onResizeFreezeChanged?(true)
-            frozenSnapshot = GameBoardSnapshotRenderer.render(
-                renderModel: renderModel,
-                overlayModel: overlayModel,
-                referenceSize: resolvedReferenceSize(for: lastViewportUpdateSize ?? viewportSize),
-                viewportSize: lastViewportUpdateSize ?? viewportSize,
-                cameraState: cameraState
-            )
-        }
+                    frozenSnapshot = GameBoardSnapshotRenderer.render(
+                        renderModel: renderModel,
+                        overlayModel: overlayModel,
+                        referenceSize: resolvedReferenceSize(for: lastViewportUpdateSize ?? viewportSize),
+                        viewportSize: lastViewportUpdateSize ?? viewportSize,
+                        cameraState: interactionState.cameraState
+                    )
+                }
 
         scheduleResizeFreezeSettle()
     }
@@ -228,16 +220,16 @@ struct BoardSceneView: View, Equatable {
             size: referenceSize,
             geometry: renderModel.geometry
         )
-        cameraState = GameBoardCameraState(
-            zoom: cameraState.zoom,
+        interactionState.cameraState = GameBoardCameraState(
+            zoom: interactionState.cameraState.zoom,
             offset: GameBoardCameraController.clampedOffset(
-                cameraState.offset,
-                zoom: cameraState.zoom,
+                interactionState.cameraState.offset,
+                zoom: interactionState.cameraState.zoom,
                 viewportSize: viewportSize,
                 contentFrame: referenceLayout.contentFrame
             )
         )
-        scene.updateCamera(state: cameraState, viewportSize: viewportSize)
+        scene.updateCamera(state: interactionState.cameraState, viewportSize: viewportSize)
         lastViewportUpdateSize = viewportSize
     }
 
@@ -258,27 +250,27 @@ struct BoardSceneView: View, Equatable {
             viewportSize: viewportSize,
             overlayModel: overlayModel
         )
-        scene.updateCamera(state: cameraState, viewportSize: viewportSize)
+        scene.updateCamera(state: interactionState.cameraState, viewportSize: viewportSize)
     }
 
     private func dragGesture(viewportSize: CGSize, contentFrame: CGRect) -> some Gesture {
         DragGesture(minimumDistance: 4)
             .onChanged { value in
-                let base = dragBaseState ?? cameraState
-                dragBaseState = base
-                isDragInteracting = true
+                let base = interactionState.dragBaseState ?? interactionState.cameraState
+                interactionState.dragBaseState = base
+                interactionState.isDragInteracting = true
                 updateInteractionState()
-                cameraState = GameBoardCameraController.applyingDrag(
+                interactionState.cameraState = GameBoardCameraController.applyingDrag(
                     base: base,
                     translation: value.translation,
                     viewportSize: viewportSize,
                     contentFrame: contentFrame
                 )
-                scene.updateCamera(state: cameraState, viewportSize: viewportSize)
+                scene.updateCamera(state: interactionState.cameraState, viewportSize: viewportSize)
             }
             .onEnded { _ in
-                dragBaseState = nil
-                isDragInteracting = false
+                interactionState.dragBaseState = nil
+                interactionState.isDragInteracting = false
                 updateInteractionState()
             }
     }
@@ -286,21 +278,21 @@ struct BoardSceneView: View, Equatable {
     private func magnificationGesture(viewportSize: CGSize, contentFrame: CGRect) -> some Gesture {
         MagnificationGesture()
             .onChanged { value in
-                let base = pinchBaseState ?? cameraState
-                pinchBaseState = base
-                isPinchInteracting = true
+                let base = interactionState.pinchBaseState ?? interactionState.cameraState
+                interactionState.pinchBaseState = base
+                interactionState.isPinchInteracting = true
                 updateInteractionState()
-                cameraState = GameBoardCameraController.applyingMagnification(
+                interactionState.cameraState = GameBoardCameraController.applyingMagnification(
                     base: base,
                     magnification: value,
                     viewportSize: viewportSize,
                     contentFrame: contentFrame
                 )
-                scene.updateCamera(state: cameraState, viewportSize: viewportSize)
+                scene.updateCamera(state: interactionState.cameraState, viewportSize: viewportSize)
             }
             .onEnded { _ in
-                pinchBaseState = nil
-                isPinchInteracting = false
+                interactionState.pinchBaseState = nil
+                interactionState.isPinchInteracting = false
                 updateInteractionState()
             }
     }
@@ -313,7 +305,7 @@ struct BoardSceneView: View, Equatable {
                 }
                 guard let target = GameBoardCameraController.hitTarget(
                     at: value.location,
-                    state: cameraState,
+                    state: interactionState.cameraState,
                     renderModel: renderModel,
                     overlayModel: overlayModel,
                     interactionMode: interactionMode,
@@ -328,15 +320,17 @@ struct BoardSceneView: View, Equatable {
     }
 
     private func updateInteractionState() {
-        setInteractionActive((isDragInteracting || isPinchInteracting) && !isResizeFrozen)
+        setInteractionActive(
+            (interactionState.isDragInteracting || interactionState.isPinchInteracting) && !isResizeFrozen
+        )
     }
 
     private func setInteractionActive(_ active: Bool) {
-        guard isInteracting != active else {
+        guard interactionState.isInteracting != active else {
             return
         }
 
-        isInteracting = active
+        interactionState.isInteracting = active
         onInteractionChanged?(active)
     }
 
@@ -363,4 +357,13 @@ struct BoardSceneView: View, Equatable {
             height: max(stableBoardReferenceSize.height, viewportSize.height)
         )
     }
+}
+
+private final class BoardInteractionState {
+    var cameraState = GameBoardCameraState()
+    var dragBaseState: GameBoardCameraState?
+    var pinchBaseState: GameBoardCameraState?
+    var isDragInteracting = false
+    var isPinchInteracting = false
+    var isInteracting = false
 }

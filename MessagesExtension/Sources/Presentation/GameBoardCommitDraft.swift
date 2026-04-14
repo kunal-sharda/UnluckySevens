@@ -39,7 +39,7 @@ struct GameBoardCommitDraft: Equatable {
     }
 
     var hintText: String {
-        "Tap again or confirm"
+        "Tap the same target again"
     }
 
     private var actionKind: ActionKind {

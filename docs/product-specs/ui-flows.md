@@ -22,8 +22,9 @@ This document summarizes the player-facing flows the UI must support in the curr
 - Setup should feel guided and blocking: the player should always know whether the next action is settlement placement or road placement.
 - Setup and build placement should be selection-first rather than one-tap publish:
   - first tap selects a legal node or edge
-  - the player can confirm from a compact confirm surface or by tapping the same selected target again
+  - the player confirms by tapping the same selected target again
   - tapping a different legal target changes the selection instead of publishing immediately
+  - setup/build confirmation should not replace the utility shelf header tabs or make `Hand` / `Bank` / `Players` unreachable on larger hosts
 
 ## Turn Flow
 

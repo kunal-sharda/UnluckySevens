@@ -37,8 +37,8 @@ enum GameBoardSnapshotRenderer {
         scene.updateCamera(state: cameraState, viewportSize: viewportSize)
 
         let view = SKView(frame: frame)
-        view.allowsTransparency = true
-        view.isOpaque = false
+        view.allowsTransparency = false
+        view.isOpaque = true
         view.preferredFramesPerSecond = 60
         view.presentScene(scene)
         view.layoutIfNeeded()
