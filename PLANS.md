@@ -27,6 +27,14 @@ An ExecPlan must be:
 - **outcome-oriented**: explain what the work should enable, not just which files change
 - **readable**: define repo-specific terms and avoid unexplained jargon
 
+For host-boundary, platform-contract, or carrier-fidelity work, an ExecPlan must also include an explicit **Assumptions and Evidence Gate**. That gate should list:
+
+- each assumption the phase depends on
+- the primary-source evidence for it, if any
+- how the phase will try to falsify it on real hardware
+- the fallback path if the assumption fails
+- the acceptance rule for promoting a temporary path into canonical behavior
+
 If the plan depends on other docs, link them directly and state which doc is the owner of each concept.
 
 ## Required structure for active ExecPlans
@@ -41,27 +49,31 @@ Every active ExecPlan should contain these sections in order unless a section is
    - What exists today.
    - What is missing or broken.
    - Any important constraints already in the repo.
-3. `Target End State`
+3. `Assumptions and Evidence Gate`
+   - Required when the work depends on external framework behavior, host lifecycle, transport carriers, persistence guarantees, or any other platform contract that has already shown instability in real use.
+   - List assumptions, the evidence behind them, the disproof test, and the fallback if they fail.
+   - Mark undocumented or weakly supported assumptions as provisional rather than canonical.
+4. `Target End State`
    - User-visible result.
    - Code and docs result.
    - Acceptance boundary.
-4. `Implementation Plan`
+5. `Implementation Plan`
    - Ordered steps.
    - Key files or subsystems.
    - Commands to run.
    - Expected observations.
-5. `Validation`
+6. `Validation`
    - Automated tests.
    - Manual checks.
    - Any deferred validation and why it is deferred.
-6. `Progress`
+7. `Progress`
    - Use checkboxes for major milestones.
    - Record the date when a milestone is completed.
    - Record how each milestone was reached and what issues were faced. i.e. where did the agent struggle/need to loop.
-7. `Decisions and Discoveries`
+8. `Decisions and Discoveries`
    - Important decisions taken during execution.
    - Surprises, constraints, or deviations from the original plan.
-8. `Outcome`
+9. `Outcome`
    - What landed.
    - What remains.
    - Follow-on work, if any.

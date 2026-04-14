@@ -9,10 +9,11 @@ This phase exists now because the repo already has the shell, the board surface,
 Success means:
 
 - lobby invite, join, and host-start flow are usable without debug-style transcript bookkeeping
-- a new game can progress through setup from the real UI
+- a new game can progress through snake-order setup from the real UI
 - a normal turn can be completed from the real UI
 - robber and discard flows are playable from the real UI
 - player trade, maritime trade, and dev-card actions are available from the real UI
+- the game ends with a clear winner state and minimal final summary instead of dropping back into debug-era surfaces
 - debug controls become fallback tooling rather than the primary way to advance the game
 
 Owner docs for concepts used here:
@@ -35,22 +36,34 @@ What exists today:
 - phase 11 replaced placeholder board art with a real SpriteKit board, pan/zoom, typed board hit targets, mode-driven highlights, and snapshot rendering
 - stages 12.1 through 12.6 are now landed: lobby join/start is productized, setup placement is playable from the board, the common turn loop can roll, build, buy, and end turn from the product UI, robber/discard flow is wired through the product shell, trade UX is live in the compact modal/shell surfaces, and dev-card actions are available through the compact product panel
 - stage 12.8 now includes `Buy Dev` under `Build`, staged Knight/Monopoly/Year Of Plenty/Road Building choice flows, winning-only Victory Point reveal visibility, a board-first shell that collapses hand, bank, player summaries, build actions, and dev-card inventory into a shared lower shelf, plus interaction hardening for setup/build confirmation and Messages-host resize. The shell now fits the current visible host bounds again, the board keeps one committed world reference size, setup/build placements use selection-first confirm semantics, and interactive host drag freezes the board until one settled post-resize update can be applied
+- phase 12 currently carries a temporary production transport fallback: canonical payloads still prefer `message.url`, but the extension also mirrors a one-line payload fallback into `summaryText` so real-device gameplay stays end-to-end while phase 13 redesigns transcript rehydration
 - `ULS_CoreGame` already owns legality, viewer-safe projections, and default action selection through [CoreGameViewQueriesV1.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/Packages/ULS_CoreGame/Sources/ULS_CoreGame/CoreGameViewQueriesV1.swift)
 - the main integration point is still [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift), which owns transcript context, debug actions, and shell inputs
 
 What is still missing:
 
 - phase 12.7 is closed, but phase 12 still needs the 12.8 product-cohesion device pass before the gameplay phase can be called complete
-- the remaining gate is full-match real-device signoff and any small polish issues that emerge from that pass, especially Messages-host performance during shelf toggles and panel-collapse gestures, not missing core game rules or missing dev-card/bank feature surfaces
+- the remaining gate is full-match real-device signoff and any small product gaps that still prevent a standard base-game Catan match from being played start to finish in Messages
+- the required phase-12 match loop is now explicit:
+  - invite / join / host start
+  - two-settlement snake-order setup with second-settlement starting resources
+  - normal turn play with roll, build, trade, buy/play dev cards, and end turn
+  - robber / discard / steal resolution
+  - immediate win at 10 VP with clear winner state
+- host-stability and transcript-recovery work stay out of the phase-12 success boundary except for the temporary one-line `summaryText` transport bridge needed to keep current gameplay end to end
+- phase 13 prep is now explicit: before host-stability work begins, the next active ExecPlan must challenge carrier, session, selection, and recovery assumptions up front through an `Assumptions and Evidence Gate` instead of inheriting them from debug-first behavior
 
 Important constraints already locked in the repo:
 
 - `MessagesExtension` must not invent legality or hidden-information rules
 - board taps and modal selections must map into canonical intents, not mutate state directly
 - this slice does not change transport or protocol shape; it tightens presentation, choice surfaces, and timing affordances on top of the existing canonical state/intent model
+- the temporary one-line `summaryText` payload mirror is acceptable only as a phase-12 product-reliability bridge; phase 13 owns replacing it with compact-token rehydration
 - the current shell hierarchy remains board-first with compact, progressive disclosure
 - motion should remain restrained and the Messages UI should stay shallow rather than turning into a deep form-based app
 - real-device validation matters more than Simulator-only validation for this phase because the user-visible value is Messages-hosted turn-taking
+- stale PRD wording that mentions GameKit hand-off does not change current scope; [decisions](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/decisions.md) remains the lockfile and still says no GameKit and no backend
+- board-fairness toggles, friendly-robber options, timers, and other house-rule controls are outside the standard-match phase-12 boundary
 
 ## Target End State
 
@@ -60,9 +73,10 @@ User-visible result:
 - setup feels guided and blocking rather than debug-like
 - the common turn loop is compact and legible inside the current shell
 - robber flow is obvious and cannot be bypassed accidentally
-- trade feels coherent and complete enough for a full asynchronous game rather than stopping at default-path shortcuts
+- trade feels coherent and complete enough for a full asynchronous standard match rather than stopping at default-path shortcuts
 - dev-card actions feel like real player choices inside the product UI rather than only a thin wrapper over engine defaults
 - the real UI can carry a live two-device game segment without depending on the debug HUD
+- the game ends with an immediately understandable winner state instead of requiring later recap/history work to explain that the match is over
 
 Code and docs result:
 
@@ -75,8 +89,17 @@ Code and docs result:
 
 Acceptance boundary:
 
-- phase 12 ends when lobby join/start, setup, the common turn loop, robber flow, trade flow, and dev-card flow feel product-complete enough to support a full match from the real UI
+- phase 12 ends when a full standard base-game Catan match can be started, played, and ended from the real Messages UI:
+  - lobby join/start
+  - setup
+  - common turn loop
+  - robber/discard flow
+  - player and maritime trade
+  - dev-card flow
+  - immediate winner state
+- phase 12 does not need transcript recovery, collapse/latest-bubble behavior, or durable rehydration; those move to phase 13
 - phase 12 does not need final recap/history/dispute UX polish; that remains phase 14 after host-stability work
+- phase 12 does not include house-rule controls, board-fairness toggles, friendly-robber configuration, or timers
 - phase 12 does not lock final board art or final bubble-card composition as long as the flow substrate is stable
 
 ## Implementation Plan
@@ -283,7 +306,8 @@ Implement:
 - finish board interaction correctness and feedback so pan, zoom, tap, and placement stay trustworthy across the whole match
 - simplify the shell header to turn ownership plus dice state instead of transport/debug context copy
 - replace raw participant identifiers in player-facing UI with deterministic per-game pseudonyms
-- reorganize the bottom tray around the common action order: `Roll`, `End Turn`, `Build`, `Play Dev`, with `Build` opening a compact shelf for legal build/buy actions and visible bank-aware purchase availability
+- reorganize the bottom tray around the common action order: contextual left slot, `End Turn`, `Build`, `Play Dev`, with `Build` opening a compact shelf for legal build/buy actions and visible bank-aware purchase availability
+- use the left dock slot contextually so it shows `Roll` before the dice and `Trade` after the roll during normal turn play instead of keeping a spent roll button visible
 - suppress idle board-target selection so nodes, edges, and tiles only highlight when the active mode actually uses them
 - clarify the current compact trade protocol with clearer proposer/respondent state, passive-decline language, and execution status without inventing new transport semantics
 - align dev-card timing and shell affordances with the intended turn flow instead of leaving them as post-roll-only product shortcuts by accident

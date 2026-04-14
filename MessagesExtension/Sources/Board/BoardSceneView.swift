@@ -54,15 +54,18 @@ struct BoardSceneView: View, Equatable {
                         .scaledToFill()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .clipped()
+                        .allowsHitTesting(false)
                         .transition(.opacity)
                 }
 
                 Color.clear
                     .contentShape(Rectangle())
                     .allowsHitTesting(!isResizeFrozen)
-                    .gesture(
+                    .highPriorityGesture(
                         dragGesture(viewportSize: geometry.size, contentFrame: layout.contentFrame)
-                            .simultaneously(with: magnificationGesture(viewportSize: geometry.size, contentFrame: layout.contentFrame))
+                    )
+                    .highPriorityGesture(
+                        magnificationGesture(viewportSize: geometry.size, contentFrame: layout.contentFrame)
                     )
                     .simultaneousGesture(tapGesture(viewportSize: geometry.size))
             }
@@ -110,6 +113,11 @@ struct BoardSceneView: View, Equatable {
             }
             .onChange(of: geometry.size) { _, newValue in
                 guard isResizeFrozen || shouldFreezeForResize(to: newValue) else {
+                    commitViewportState(
+                        viewportSize: newValue,
+                        renderModel: renderModel,
+                        overlayModel: overlayModel
+                    )
                     return
                 }
 

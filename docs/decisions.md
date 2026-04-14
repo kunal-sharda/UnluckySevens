@@ -3,7 +3,7 @@
 This file records **locked product + architecture decisions** for the MVP.  
 If a change is desired, update this file **first**, then update code/tests.
 
-**Last updated:** 2026-04-08
+**Last updated:** 2026-04-13
 
 ---
 
@@ -82,12 +82,12 @@ Recommended canonical state cadence per turn:
 - **One `MSSession` per game** for canonical STATE messages (updates collapse / thread clean).
 - **Separate `MSSession` per trade offer** so offers appear as distinct bubbles/cards.
 
-Debug-build decode fallback:
-- Canonical transport source is always message URL query `payload`.
-- `summaryText` is not canonical protocol data.
-- For debug-build reliability, `summaryText` may mirror payload in `DEBUG` builds and be used as explicit fallback when the Messages host does not surface `message.url` back through transcript selection.
-- Sender-side cached last-published state may smooth local reopen/debug UX when transcript selection drops to `nil`, but it is never cross-device authority and must not replace transcript transport.
+Current transition rule:
+- Preferred transport source is always message URL query `payload`.
+- For phase-12 product reliability, `summaryText` may also carry a one-line mirrored payload fallback when the Messages host does not surface `message.url` back through transcript selection.
+- Sender-side cached last-published state may smooth same-device reopen UX when transcript selection drops to `nil`, but it is never cross-device authority and must not replace transcript transport.
 - UI must label payload source (`URL` vs `summary fallback`) during decode so fallback use is visible.
+- Phase 13 owns replacing the temporary mirrored full-payload fallback with a cleaner compact-token plus durable rehydration design.
 
 ---
 

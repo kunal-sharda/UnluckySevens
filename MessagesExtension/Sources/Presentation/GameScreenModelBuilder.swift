@@ -135,14 +135,23 @@ enum GameScreenModelBuilder {
         actionAvailability: GameActionAvailability,
         modeAvailability: GameModeAvailability
     ) -> GameActionDockModel {
-        GameActionDockModel(
+        let shouldShowTradeInPrimarySlot = !actionAvailability.canRoll && (
+            actionAvailability.canTrade
+                || actionAvailability.canEndTurn
+                || actionAvailability.canBuild
+                || actionAvailability.canBuyDevCard
+                || actionAvailability.canPlayDevCards
+        )
+        let leadingPrimaryItem = GameActionDockItem(
+            kind: shouldShowTradeInPrimarySlot ? .trade : .roll,
+            title: shouldShowTradeInPrimarySlot ? "Trade" : "Roll",
+            systemImage: shouldShowTradeInPrimarySlot ? "arrow.left.arrow.right" : "die.face.5",
+            isEnabled: shouldShowTradeInPrimarySlot ? actionAvailability.canTrade : actionAvailability.canRoll
+        )
+
+        return GameActionDockModel(
             primaryItems: [
-                GameActionDockItem(
-                    kind: .roll,
-                    title: "Roll",
-                    systemImage: "die.face.5",
-                    isEnabled: actionAvailability.canRoll
-                ),
+                leadingPrimaryItem,
                 GameActionDockItem(
                     kind: .endTurn,
                     title: "End Turn",

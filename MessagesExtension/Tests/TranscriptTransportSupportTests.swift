@@ -39,7 +39,7 @@ final class TranscriptTransportSupportTests: XCTestCase {
         XCTAssertEqual(builtMessage.summaryText, "INTENT actor=actor-1 kind=join a=r0")
     }
 
-    func testBuildMessageMirrorsPayloadIntoSummaryWhenRequested() throws {
+    func testBuildMessageMirrorsPayloadIntoOneLineSummaryWhenRequested() throws {
         let intent = JoinIntentV1(
             gameId: "game-1",
             anchorRev: 0,
@@ -62,7 +62,7 @@ final class TranscriptTransportSupportTests: XCTestCase {
 
         XCTAssertEqual(
             builtMessage.summaryText,
-            "INTENT actor=actor-1 kind=join a=r0\nulsenv:\(encodedEnvelope)"
+            "INTENT actor=actor-1 kind=join a=r0 ulsenv:\(encodedEnvelope)"
         )
         XCTAssertEqual(builtMessage.mirroredPayloadLength, encodedEnvelope.count)
     }
@@ -93,13 +93,25 @@ final class TranscriptTransportSupportTests: XCTestCase {
 
         let decoded = TranscriptTransportSupport.decodePayload(
             from: url,
-            summaryText: "STATE r0 p=lobby\nulsenv:summary-payload",
+            summaryText: "STATE r0 p=lobby ulsenv:summary-payload",
             summaryPayloadPrefix: "ulsenv:",
             allowSummaryFallback: true
         )
 
         XCTAssertEqual(decoded?.payload, "url-payload")
         XCTAssertEqual(decoded?.source, .url)
+    }
+
+    func testDecodePayloadStillSupportsOlderMultilineSummaryMirror() {
+        let decoded = TranscriptTransportSupport.decodePayload(
+            from: nil,
+            summaryText: "STATE r0 p=lobby\nulsenv:{\"kind\":\"STATE\"}",
+            summaryPayloadPrefix: "ulsenv:",
+            allowSummaryFallback: true
+        )
+
+        XCTAssertEqual(decoded?.payload, "{\"kind\":\"STATE\"}")
+        XCTAssertEqual(decoded?.source, .summaryFallback)
     }
 
     func testResolveSessionPolicyLeavesRequestedPolicyAloneWhenDebugOverrideDisabled() {

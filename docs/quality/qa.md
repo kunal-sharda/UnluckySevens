@@ -227,7 +227,7 @@ Use this only on the disposable debug branch when a selected transcript bubble d
    - `payloadLength: > 0`
    - `decodeSource: URL`
 4. Prefer `url: present` plus `payloadQuery: present`. If they are missing, treat it as a transport publication or host-selection failure rather than a lobby-state bug.
-5. If a debug-only branch is temporarily using a mirrored summary fallback for host investigation, capture that as a host-fidelity defect and do not treat it as canonical product transport.
+5. During the temporary phase-12 product fallback, `decodeSource: summary fallback` is acceptable evidence that the one-line mirrored summary carrier recovered the payload; capture it as a host-fidelity defect and keep phase 13 responsible for removing that fallback.
 6. If lobby `STATE` decodes but `Join Game` is still missing on the receiving device, inspect:
    - `localParticipant`
    - `resolvedActor`
@@ -260,7 +260,7 @@ Use this only on the disposable debug branch when a selected transcript bubble d
 - shared `ULS_CoreGame` view/query helpers for legal default actions and viewer-scoped secrecy-safe projections
 - focused core tests covering the new query/projection surface against reducer legality and secrecy expectations
 - transport diagnostics in the debug HUD so selected-message failures show URL, payload, summary, session, and decode-source facts instead of only the empty-state shell
-- debug-build payload mirroring plus sender-side cached-state recovery so device triage can continue when the Messages host drops `message.url` or transiently clears selection on reopen
+- temporary production one-line summary mirroring plus sender-side cached-state recovery so device triage and phase-12 gameplay can continue when the Messages host drops `message.url` or transiently clears selection on reopen
 
 ## Remaining High-Value Gaps
 

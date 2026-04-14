@@ -24,6 +24,8 @@ Builds the containing app for generic iOS, installs it onto every connected iPho
 and optionally launches it after install.
 
 Options:
+  --debug                        Build/install the Debug configuration. Default.
+  --release                      Build/install the Release configuration.
   --clean                        Remove generated Xcode files and DerivedData first.
   --skip-gen                     Skip workspace generation.
   --launch                       Launch the app after install.
@@ -38,6 +40,14 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --debug)
+      CONFIGURATION="Debug"
+      shift
+      ;;
+    --release)
+      CONFIGURATION="Release"
+      shift
+      ;;
     --clean)
       RUN_CLEAN=1
       shift

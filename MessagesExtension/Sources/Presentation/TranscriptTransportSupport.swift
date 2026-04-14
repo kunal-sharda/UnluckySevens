@@ -130,11 +130,12 @@ enum TranscriptTransportSupport {
         layout.caption = caption
         message.layout = layout
 
-        if includeSummaryPayloadMirror {
-            message.summaryText = "\(summaryLabel)\n\(summaryPayloadPrefix)\(encodedEnvelope)"
-        } else {
-            message.summaryText = summaryLabel
-        }
+        message.summaryText = buildSummaryText(
+            summaryLabel: summaryLabel,
+            encodedEnvelope: encodedEnvelope,
+            summaryPayloadPrefix: summaryPayloadPrefix,
+            includeSummaryPayloadMirror: includeSummaryPayloadMirror
+        )
 
         let mirroredPayloadLength: Int
         if
@@ -251,11 +252,32 @@ enum TranscriptTransportSupport {
         }
 
         let payloadStart = prefixRange.upperBound
-        let payload = String(summaryText[payloadStart...])
-        guard !payload.isEmpty else {
+        let payload = summaryText[payloadStart...]
+            .prefix { !$0.isWhitespace && !$0.isNewline }
+        let payloadString = String(payload)
+        guard !payloadString.isEmpty else {
             return nil
         }
 
-        return payload
+        return payloadString
+    }
+
+    private static func buildSummaryText(
+        summaryLabel: String,
+        encodedEnvelope: String,
+        summaryPayloadPrefix: String,
+        includeSummaryPayloadMirror: Bool
+    ) -> String {
+        guard includeSummaryPayloadMirror else {
+            return summaryLabel
+        }
+
+        guard !summaryLabel.isEmpty else {
+            return "\(summaryPayloadPrefix)\(encodedEnvelope)"
+        }
+
+        // Keep the fallback on one line so transcript fallback paths do not
+        // expand into a multi-line payload block during phase 12.
+        return "\(summaryLabel) \(summaryPayloadPrefix)\(encodedEnvelope)"
     }
 }

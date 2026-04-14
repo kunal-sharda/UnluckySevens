@@ -65,8 +65,8 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 ### TD-006 — Full-state transcript transport still depends on unstable Messages carriers
 
 - Area: transport, Messages host integration
-- Why it matters: the current transcript helper still relies on full payloads surviving in `message.url` and, in debug, `summaryText`, even though real-device selection has already shown carrier loss and delayed metadata.
+- Why it matters: the current transcript helper still relies on full payloads surviving in `message.url` and, during the temporary phase-12 production fallback, a one-line mirrored `summaryText`, even though real-device selection has already shown carrier loss and delayed metadata.
 - Current cost or risk: cross-device state recovery can succeed or fail depending on Messages host behavior rather than only on app logic, making signoff fragile and regressions hard to localize.
 - Proposed fix shape: move toward compact transcript tokens plus durable rehydration, with URL and summary integrity checks during the transition, instead of treating transcript selection as full-fidelity state persistence.
-- When to address: phase 14.
+- When to address: phase 13.
 - Links: [docs/decisions.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/decisions.md), [Phase 12 Plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/active/phase-12-gameplay-flows.md)

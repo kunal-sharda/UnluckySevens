@@ -49,10 +49,11 @@ This document summarizes the player-facing flows the UI must support in the curr
   - visible in lower rail `6%`
   - overlap into the board `12%`
 - The primary dock order should stay shallow and predictable:
-  - `Roll`
-  - `End Turn`
-  - `Build`
-  - `Play Dev`
+  - before rolling: `Roll`, `End Turn`, `Build`, `Play Dev`
+  - after rolling during normal turn play: `Trade`, `End Turn`, `Build`, `Play Dev`
+- The left dock slot is contextual:
+  - it shows `Roll` when the turn still needs dice
+  - it switches to `Trade` once rolling is no longer the relevant action for the turn
 - The collapsed lower rail should show only:
   - a small centered pull-tab / chevron in the handle band
   - the four dock actions in the dock row
@@ -66,7 +67,7 @@ This document summarizes the player-facing flows the UI must support in the curr
 - `Hand`, `Bank`, and `Players` utility shelves should not scroll in the normal case.
 - `Build` opens a compact shelf for legal build/buy actions such as road, settlement, city, and dev-card purchase.
 - `Build` and `Play Dev` should use the same overlay shelf surface as the utility entry path.
-- `Trade` should be entered from the `Hand` shelf, not from the persistent dock.
+- `Trade` should be available from the post-roll left dock slot and from the `Hand` shelf; it should not exist as a permanent always-on dock action.
 - The `Hand` shelf should show the five resource chips first and a full-width `Trade` action row directly below them when trade is currently available.
 - The bank should be quickly accessible rather than always expanded. Its full public counts for wood, brick, sheep, wheat, and ore should live in the `Bank` shelf and become interactive only for Monopoly and Year of Plenty.
 - The bank should reuse the same five-chip visual format as the hand in normal viewing, adding only minimal selection decoration during Monopoly or Year of Plenty.

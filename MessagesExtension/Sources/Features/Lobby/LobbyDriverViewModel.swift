@@ -232,11 +232,9 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private var allowSummaryPayloadFallback: Bool {
-        #if DEBUG
+        // Temporary production fallback so phase 12 gameplay can stay playable
+        // on real devices while phase 13 redesigns transport rehydration.
         true
-        #else
-        false
-        #endif
     }
 
     var canInvite: Bool {

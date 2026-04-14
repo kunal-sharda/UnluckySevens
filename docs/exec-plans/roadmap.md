@@ -14,55 +14,66 @@ Do not put day-to-day execution notes here. If a future phase becomes active, cr
 
 ## Current Execution Gate
 
-### Phase 12.8 — Gameplay Product Cohesion
+### Phase 12.8 — Full Gameplay Experience
 
 - Owner: [Phase 12 Plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/active/phase-12-gameplay-flows.md)
 - Status: active
 - Why it is still the gate:
-  - phase 12.7 closed the authority and severe-lag blockers, but phase 12 still needs one final product-cohesion pass plus device QA before phase 13
-- the game shell now exposes the full turn loop, but the player-facing experience still needs final verification around build/dev-card affordances, consistent player aliases, and simpler turn presentation
-- the game shell has now moved to a fixed board-first overlay-shelf model, so the remaining gate is real-device verification that the new `Header + Board + Dock` hierarchy, pull-tab utility entry, and no-unintended-overlap rule feel coherent on hardware
-  - phase 13 should start only after the current full-match gameplay surface is signed off on hardware, not while phase-12 UX details are still shifting
+  - phase 12.7 closed the authority and severe-lag blockers, but phase 12 still needs one final full-match gameplay pass plus device QA before phase 13
+- phase 12 is only complete when a standard base-game Catan match can be started, played, and ended from the Messages UI:
+  - invite / join / host start
+  - snake-order setup
+  - normal turns
+  - robber / discard
+  - player and maritime trade
+  - dev-card play
+  - clear winner state
+- the board-first overlay-shelf shell is now the gameplay substrate, so the remaining gate is real-device verification that the `Header + Board + Dock` hierarchy, lower-shelf entry, and guided placement/turn affordances hold up for a real match on hardware
+  - phase 13 should start only after the full-match gameplay surface is signed off on hardware, not while core match UX is still shifting
 
 Do not start phase 13 until the current 12.8 slice is signed off on real devices.
 
 ## Sequenced Next Phases
 
-### Phase 12.8 — Gameplay Product Cohesion
+### Phase 12.8 — Full Gameplay Experience
 
 Why this phase exists:
 
-- phase 12 now has broad gameplay rule coverage, but the last player-facing details still need to feel intentional before the gameplay phase can close
+- phase 12 now has broad gameplay rule coverage, but the last player-facing details still need to close the full standard-match experience before the gameplay phase can end
 - the board is the primary interaction surface, so placement trust, idle tap behavior, and turn-shell clarity still matter even when the rules are correct
 - the game currently uses opaque participant IDs from Messages, so phase 12 needs a deterministic player-facing naming layer before the shell reads like a real game
 
 Scope:
 
+- finish any remaining player-facing gaps required to complete a standard base-game Catan match in Messages: lobby, setup, turn loop, robber/discard, trade, dev cards, and a clear win state
 - finish board interaction correctness and feedback so pan, zoom, tap, and placement feel deterministic and trustworthy across the whole match
 - simplify the top-of-shell turn presentation so it shows turn ownership and dice state instead of transport/debug-style context copy
 - replace raw participant identifiers with deterministic per-game pseudonyms so the game remains readable across devices without relying on unavailable Messages display names
-- reorganize the bottom tray around the common action order: `Roll`, `End Turn`, `Build`, and `Play Dev`, with `Build` opening a compact shelf for legal build/buy choices
+- reorganize the bottom tray around the common action order: contextual left slot, `End Turn`, `Build`, and `Play Dev`, with `Build` opening a compact shelf for legal build/buy choices
+- use the left dock slot contextually so it shows `Roll` before the dice and `Trade` after the roll during normal turn play instead of leaving a spent roll button in place
 - keep `Buy Dev` under `Build`, keep bank information quickly accessible through the shared lower shelf, and use the bank shelf as the explicit chooser for Monopoly and Year of Plenty
 - keep dev-card timing aligned with the current standard turn flow: playable before or after rolling, but still not on the turn they were acquired unless a Victory Point reveal immediately wins
 - replace the old default-driven dev-card shortcuts with staged Knight, Monopoly, Year Of Plenty, and Road Building choice flows that feel like authored product interactions
 - keep the current compact trade protocol, but make proposer/respondent state and passive-decline behavior explicit enough that the shell no longer feels like a debug wrapper
-- add any minimal end-of-game clarity needed so a full played match does not feel unfinished at the moment of victory
+- add winner-state and minimal end-of-game clarity so a full played match does not feel unfinished at the moment of victory
 - finish with real-device full-match signoff for the phase-12 gameplay surface
 
 Not this phase:
 
-- transcript durability or compact-token rehydration design
+- transcript durability or compact-token rehydration design beyond the temporary one-line fallback bridge
 - reload / active-game sync and same-bubble recovery
 - transcript collapse / latest-bubble behavior
 - multi-game lifecycle, archive/leave/forfeit, or standalone packaging migration
-- a custom free-form trade composer, counteroffers, or player-configurable display names
+- recap/history/dispute surfaces beyond the minimum winner-state summary
+- board-fairness toggles, friendly-robber options, timers, or other non-standard house-rule controls
+- broad visual polish unrelated to completing the core base-game loop
 
 Entry criteria:
 
 - phase 12.7 real-device authority and responsiveness are good enough that the remaining work is product-cohesion polish rather than basic input triage
 - the core lobby/setup/turn/robber flows can be exercised on real devices without debug-only advancement
 
-### Phase 13 — Messages Host Stability and Recovery
+### Phase 13 — Messages Host Stability and Release Readiness
 
 Why this phase exists:
 
@@ -77,14 +88,16 @@ Scope:
 - turn publication and cross-device responsiveness so normal actions do not feel artificially slow just because each step is waiting on Messages-host round-trip behavior
 - reliable reload / active-game sync and same-bubble recovery
 - transcript readability / collapse behavior and latest-bubble UX
+- replace the temporary phase-12 one-line summary mirror with compact transcript tokens plus durable rehydration once host-fidelity fixes are in place
 - transcript-authoritative multiplayer ledger instead of device-local pending joins
 - compact-token plus durable rehydration direction if full-state carrier fidelity remains unstable
 - explicit multi-game lifecycle UX: identify which game a bubble belongs to, browse active games in the thread, and support leave/archive/forfeit flows instead of assuming one forever-active match
 - operator-assisted Messages host-boundary regression harness
+- release-readiness hardening for outside testers, including TestFlight-oriented device validation and operator runbooks
 
 Not this phase:
 
-- recap/history/dispute UX
+- recap/history/dispute UX beyond what is required to validate release candidates
 - deep test-architecture cleanup
 - broad visual restyling unrelated to host stability
 
@@ -93,16 +106,44 @@ Entry criteria:
 - phase 12 gameplay flows are usable on real devices without relying on debug-first flow advancement
 - the clean branch is product-safe enough that host-stability work can proceed without debug leakage muddying outcomes
 
-### Phase 14 — Recap, History, Dispute, and Trust Surfaces
+Operating rules for this phase:
+
+- The active phase-13 ExecPlan must include an explicit `Assumptions and Evidence Gate` before implementation starts.
+- No transport or host-lifecycle path may be treated as canonical unless it is either:
+  - documented by Apple as supported for the intended use, or
+  - proven on real devices and still labeled provisional until phase acceptance.
+- Every host-boundary assumption must record:
+  - the assumption
+  - the primary-source evidence
+  - the device-lane falsification test
+  - the fallback if the assumption fails
+- Real-device host-lifecycle validation is mandatory before signoff for:
+  - send
+  - receive
+  - bubble selection
+  - collapse / latest-bubble behavior
+  - reopen after extension restart
+  - same-bubble recovery
+- Debug-only fallbacks may assist investigation but must not be the reason a product path appears healthy.
+- Any new transport path must ship redundantly first when feasible:
+  - keep the old path long enough to compare outcomes
+  - only remove the fallback after repeated device evidence is strong
+- Any use of undocumented framework behavior must be called out immediately in the plan and owner docs as experimental, not silently promoted into architecture.
+- Phase 13 should prefer disproving optimistic assumptions early rather than building feature work on top of them.
+
+### Phase 14 — UI Design, Bubble Polish, and Trust Surfaces
 
 Why this phase exists:
 
-- once host stability is in place, the next product slice is recap/history/dispute and clearer trust surfaces
+- once host stability and release-readiness are in place, the next product slice is broader UI/design polish and clearer trust surfaces
 - [docs/decisions.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/decisions.md) already locks the intended audit-log behavior
 - [docs/product-specs/ui-flows.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/product-specs/ui-flows.md) already defines the player-facing recap/history/dispute expectations
 
 Scope:
 
+- transcript bubble presentation polish and board-preview composition
+- broader visual coherence across the shell, lower shelf, and game-over surfaces
+- motion, turn clarity, and board guidance polish once the substrate is stable
 - short last-turn recap in the default UI
 - one-round history without overwhelming the main shell
 - deliberate dispute mode for full audit inspection
@@ -113,7 +154,7 @@ Primary debt links:
 
 - [TD-001](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
 
-### Phase 15 — Extension Decomposition, Test Architecture, and Performance Stabilization
+### Phase 15 — Extension Decomposition, Test Architecture, and Structural Performance
 
 Why this phase exists:
 
@@ -136,6 +177,19 @@ Primary debt links:
 - [TD-004](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
 - [TD-005](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
 - [TD-006](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
+
+### Phase 16 — Optional Beta-Driven Follow-On
+
+Why this phase exists:
+
+- external testing may surface product gaps that are too real to leave as backlog noise but too specific to hard-code before phases 13 through 15 are complete
+
+Scope:
+
+- only the highest-signal follow-on work discovered through real-world release testing
+- backlog items that materially affect MVP completion but cannot be justified until beta evidence exists
+
+Use this phase only if beta feedback makes it necessary. Otherwise skip it and close the milestone after phase 15.
 
 ## Not Yet Phased
 
