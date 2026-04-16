@@ -53,7 +53,7 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
             seed: 6202,
             policyByPlayer: Dictionary(uniqueKeysWithValues: roster.map { ($0, .tradeHeavy) }),
             maxTurns: 300,
-            requiredActions: [.proposeTrade, .acceptTrade, .executeTrade],
+            requiredActions: [.proposeTrade, .acceptTrade],
             requiredAnyActions: [.buildRoad, .buildSettlement],
             expectedWinner: nil
         )
@@ -148,7 +148,7 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
                 "D": .balanced,
             ],
             maxTurns: 320,
-            requiredActions: [.buyDevCard, .proposeTrade, .executeTrade, .maritimeTrade],
+            requiredActions: [.buyDevCard, .proposeTrade, .maritimeTrade],
             requiredAnyActions: [.playKnight, .playMonopoly, .playYearOfPlenty, .revealVictoryPoint, .buildCity],
             expectedWinner: nil
         )
@@ -220,12 +220,12 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
         )
 
         if let plan = firstTradePlan(for: state) {
-            let proposed = TurnIntentV1.proposeTrade(give: plan.give, receive: plan.receive)
+            let proposed = TurnIntentV1.proposeTrade(give: plan.give, receive: plan.receive, recipients: [plan.acceptor])
             try applyTurnIntent(proposed, state: &state)
             try assertRejectedTurnIntent(
                 state: state,
                 intent: .acceptTrade(acceptingPlayer: plan.acceptor, offerHash: "bad-anchor"),
-                actor: actor,
+                actor: plan.acceptor,
                 expected: .tradeOfferAnchorMismatch
             )
         }
@@ -258,7 +258,7 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
                 seed: 6202,
                 policyByPlayer: ["A": .tradeHeavy, "B": .tradeHeavy, "C": .tradeHeavy, "D": .tradeHeavy],
                 maxTurns: 300,
-                requiredActions: [.proposeTrade, .acceptTrade, .executeTrade],
+                requiredActions: [.proposeTrade, .acceptTrade],
                 requiredAnyActions: [.buildRoad, .buildSettlement],
                 expectedWinner: nil
             ),
@@ -308,7 +308,7 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
                 seed: 7707,
                 policyByPlayer: ["A": .devHeavy, "B": .maritimeHeavy, "C": .tradeHeavy, "D": .balanced],
                 maxTurns: 320,
-                requiredActions: [.buyDevCard, .proposeTrade, .executeTrade, .maritimeTrade],
+                requiredActions: [.buyDevCard, .proposeTrade, .maritimeTrade],
                 requiredAnyActions: [.playKnight, .playMonopoly, .playYearOfPlenty, .revealVictoryPoint, .buildCity],
                 expectedWinner: nil
             ),
@@ -516,9 +516,9 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
 
     private func attemptAdvanceTrade(state: inout CoreGameStateV1) throws -> Bool {
         if let offer = state.activeTradeOffer {
-            if state.pendingTradeAccepts.isEmpty {
+            if state.tradeResponses.isEmpty {
                 let acceptors = state.roster
-                    .filter { $0 != state.currentPlayer }
+                    .filter { state.activeTradeOffer?.recipients.contains($0) == true }
                     .sorted()
                 for acceptor in acceptors {
                     let hand = state.resourcesByPlayer[acceptor] ?? .zero
@@ -533,25 +533,12 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
                 }
                 return false
             }
-
-            if let accepted = state.pendingTradeAccepts
-                .sorted(by: { $0.acceptingPlayer < $1.acceptingPlayer })
-                .first
-            {
-                return try tryApplyIfLegal(
-                    .executeTrade(
-                        acceptingPlayer: accepted.acceptingPlayer,
-                        offerHash: accepted.offerHash
-                    ),
-                    state: &state
-                )
-            }
             return false
         }
 
         if let plan = firstTradePlan(for: state) {
             return try tryApplyIfLegal(
-                .proposeTrade(give: plan.give, receive: plan.receive),
+                .proposeTrade(give: plan.give, receive: plan.receive, recipients: [plan.acceptor]),
                 state: &state
             )
         }
@@ -757,7 +744,17 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
 
     private func tryApplyIfLegal(_ intent: TurnIntentV1, state: inout CoreGameStateV1) throws -> Bool {
         let from = state
-        let actor = from.currentPlayer
+        let actor: String
+        switch intent {
+        case let .acceptTrade(acceptingPlayer, _):
+            actor = acceptingPlayer
+        case let .declineTrade(decliningPlayer, _):
+            actor = decliningPlayer
+        case let .counterTrade(counteringPlayer, _, _, _):
+            actor = counteringPlayer
+        default:
+            actor = from.currentPlayer
+        }
         guard let next = try? apply(intent: intent, to: from, actor: actor) else {
             return false
         }
@@ -986,7 +983,7 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
             auditLog: state.auditLog,
             lastTurnRecap: state.lastTurnRecap,
             activeTradeOffer: state.activeTradeOffer,
-            pendingTradeAccepts: state.pendingTradeAccepts,
+            tradeResponses: state.tradeResponses,
             settlementsByNode: state.settlementsByNode,
             citiesByNode: state.citiesByNode,
             roadsByEdge: state.roadsByEdge,

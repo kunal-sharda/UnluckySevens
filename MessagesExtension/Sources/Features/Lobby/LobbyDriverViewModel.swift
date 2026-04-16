@@ -35,13 +35,18 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var latestUpdateNotice: String = "-"
     @Published var uiLog: [String] = []
     @Published var boardStrategy: BoardGenStrategyV1
+    @Published private(set) var transportBadgeModel: TransportBadgeModel = .initial
+    @Published private(set) var hostGestureHierarchySnapshot: HostGestureHierarchySnapshot = .empty
+    @Published private(set) var hostGestureEvents: [HostGestureEvent] = []
+    @Published private(set) var boardDiagnosticsSnapshot: BoardInteractionDiagnosticsSnapshot = .empty
+    @Published private(set) var boardReloadToken: Int = 0
 
     private let summaryPayloadPrefix = "ulsenv:"
     private let boardStrategyKey = "uls.boardStrategy"
     private let lastPublishedStateKey = "uls.lastPublishedState"
     private let lastPublishedStateMaxAge: TimeInterval = 600
     private let userDefaults: UserDefaults
-    private let diagnosticsEnabled = false
+    private let diagnosticsConfig = TemporaryDiagnosticsConfig.live
     private let allowsRuntimeDebugControls = false
     private let allowsCachedPublishedStateRecovery = false
     private let showsLatestUpdateNotices = false
@@ -72,6 +77,10 @@ final class LobbyDriverViewModel: ObservableObject {
         } else {
             boardStrategy = .randomV1
         }
+    }
+
+    private var diagnosticsEnabled: Bool {
+        diagnosticsConfig.isEnabled
     }
 
     private func mutateGameplayShellProjection(
@@ -154,9 +163,9 @@ final class LobbyDriverViewModel: ObservableObject {
         get { gameplayShellProjection.activeTradeOffer }
         set { mutateGameplayShellProjection { $0.activeTradeOffer = newValue } }
     }
-    var pendingTradeAccepts: String {
-        get { gameplayShellProjection.pendingTradeAccepts }
-        set { mutateGameplayShellProjection { $0.pendingTradeAccepts = newValue } }
+    var tradeResponses: String {
+        get { gameplayShellProjection.tradeResponses }
+        set { mutateGameplayShellProjection { $0.tradeResponses = newValue } }
     }
     var maritimeTradePreview: String {
         get { gameplayShellProjection.maritimeTradePreview }
@@ -390,7 +399,7 @@ final class LobbyDriverViewModel: ObservableObject {
         GameActionAvailability(
             canRoll: canSendRollDiceIntentDebug,
             canBuild: canSendBuildRoadIntentDebug || canSendBuildSettlementIntentDebug || canSendBuildCityIntentDebug,
-            canTrade: canSendProposeTradeIntentDebug || canSendAcceptTradeIntentDebug || canSendExecuteTradeIntentDebug || canSendMaritimeTradeIntentDebug,
+            canTrade: canOpenTradePanel,
             canBuyDevCard: canSendBuyDevCardIntentDebug,
             canPlayDevCards: canSendPlayKnightIntentDebug
                 || canSendPlayMonopolyIntentDebug
@@ -418,13 +427,26 @@ final class LobbyDriverViewModel: ObservableObject {
                 && state.turnState?.step == .needsRobberSteal
                 && isCurrentActor
                 && !stealVictimOptions.isEmpty,
-            canTrade: canSendProposeTradeIntentDebug
-                || canSendAcceptTradeIntentDebug
-                || canSendExecuteTradeIntentDebug
-                || canSendMaritimeTradeIntentDebug,
+            canTrade: canOpenTradePanel,
             canPlayDevCard: shellActionAvailability.canPlayDevCards,
             canDiscard: state.phase == .turn && state.turnState?.step == .pendingDiscards
         )
+    }
+
+    private var canOpenTradePanel: Bool {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            state.turnState?.step == .afterRoll
+        else {
+            return false
+        }
+
+        if state.activeTradeOffer != nil {
+            return true
+        }
+
+        return localActorIdentifier() == state.currentPlayer
     }
 
     var actingAsOptions: [String] {
@@ -436,6 +458,22 @@ final class LobbyDriverViewModel: ObservableObject {
 
     var shouldShowDebugHUD: Bool {
         diagnosticsEnabled
+    }
+
+    var hostGestureSummaryLines: [String] {
+        let lines = hostGestureHierarchySnapshot.summaryLines
+        return lines.isEmpty ? ["-"] : lines
+    }
+
+    var hostGestureEventSummaryLines: [String] {
+        if hostGestureEvents.isEmpty {
+            return ["-"]
+        }
+        return hostGestureEvents.map(\.summaryLine)
+    }
+
+    var boardDiagnosticsSummaryLines: [String] {
+        boardDiagnosticsSnapshot.summaryLines
     }
 
     var hasActiveContext: Bool {
@@ -609,12 +647,20 @@ final class LobbyDriverViewModel: ObservableObject {
             let state = selectedState,
             state.phase == .turn,
             state.turnState?.step == .afterRoll,
-            state.activeTradeOffer != nil,
-            let actor = localActorIdentifier()
+            let offer = state.activeTradeOffer,
+            let actor = localActorIdentifier(),
+            actor != state.currentPlayer,
+            offer.recipients.contains(actor),
+            !state.tradeResponses.contains(where: { $0.respondingPlayer == actor && $0.offerHash == offer.offerHash })
         else {
             return false
         }
-        return actor != state.currentPlayer
+        let hand = state.resourcesByPlayer[actor] ?? .zero
+        return hand.wood >= offer.receive.wood
+            && hand.brick >= offer.receive.brick
+            && hand.sheep >= offer.receive.sheep
+            && hand.wheat >= offer.receive.wheat
+            && hand.ore >= offer.receive.ore
     }
 
     var canSendExecuteTradeIntentDebug: Bool {
@@ -622,13 +668,15 @@ final class LobbyDriverViewModel: ObservableObject {
             let state = selectedState,
             state.phase == .turn,
             state.turnState?.step == .afterRoll,
-            state.activeTradeOffer != nil,
-            !state.pendingTradeAccepts.isEmpty,
+            let offer = state.activeTradeOffer,
             let actor = localActorIdentifier()
         else {
             return false
         }
         return actor == state.currentPlayer
+            && state.tradeResponses.contains {
+                $0.offerHash == offer.offerHash && $0.kind == .accept
+            }
     }
 
     var canSendMaritimeTradeIntentDebug: Bool {
@@ -1445,10 +1493,18 @@ final class LobbyDriverViewModel: ObservableObject {
             setLastError("No valid default trade proposal available.")
             return
         }
+        let recipients = state.roster
+            .filter { $0 != actor }
+            .sorted()
+        guard !recipients.isEmpty else {
+            setLastError("No eligible trade recipients are available.")
+            return
+        }
 
         let intent = ULS_Transport.TurnIntentV1(
             proposeTradeGive: proposal.give,
             receive: proposal.receive,
+            targetPlayers: recipients,
             gameId: state.gameId,
             anchorRev: state.rev,
             anchorHash: state.stateHash,
@@ -1481,6 +1537,14 @@ final class LobbyDriverViewModel: ObservableObject {
         }
         guard let actor = localActorIdentifier(), actor != state.currentPlayer else {
             setLastError("Only non-current players can send accept trade intent.")
+            return
+        }
+        guard offer.recipients.contains(actor) else {
+            setLastError("Only targeted recipients can accept a trade.")
+            return
+        }
+        guard !state.tradeResponses.contains(where: { $0.respondingPlayer == actor && $0.offerHash == offer.offerHash }) else {
+            setLastError("You already responded to this trade.")
             return
         }
 
@@ -1521,9 +1585,10 @@ final class LobbyDriverViewModel: ObservableObject {
             setLastError("Only current player can execute a trade accept.")
             return
         }
-        guard let acceptPlayer = state.pendingTradeAccepts
-            .sorted(by: { $0.acceptingPlayer < $1.acceptingPlayer })
-            .first?.acceptingPlayer
+        guard let acceptPlayer = state.tradeResponses
+            .filter({ $0.offerHash == offer.offerHash && $0.kind == .accept })
+            .sorted(by: { $0.respondingPlayer < $1.respondingPlayer })
+            .first?.respondingPlayer
         else {
             setLastError("No pending trade accepts to execute.")
             return
@@ -2018,78 +2083,119 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     @discardableResult
-    func handleTradeAction(_ action: GameTradeActionKind) -> Bool {
-        switch action {
-        case .publishSuggestedOffer:
-            guard let intent = TradeInteractionResolver.draftSuggestedTradeOfferIntent(
-                state: selectedState,
-                actingAs: localActorIdentifier()
-            ) else {
-                setLastError("No legal suggested player trade is available.")
-                return false
-            }
-            do {
-                try applyAndPublishTurnIntent(intent, successStatus: "Published trade offer")
-                return true
-            } catch {
-                setLastError("Trade offer failed: \(error.localizedDescription)")
-                return false
-            }
-        case .publishSuggestedMaritime:
-            guard let intent = TradeInteractionResolver.draftSuggestedMaritimeTradeIntent(
-                state: selectedState,
-                actingAs: localActorIdentifier()
-            ) else {
-                setLastError("No legal maritime trade is available.")
-                return false
-            }
-            do {
-                try applyAndPublishTurnIntent(intent, successStatus: "Published maritime trade")
-                return true
-            } catch {
-                setLastError("Maritime trade failed: \(error.localizedDescription)")
-                return false
-            }
-        case .sendAcceptOffer:
-            guard let intent = TradeInteractionResolver.draftAcceptTradeIntent(
-                state: selectedState,
-                actingAs: localActorIdentifier()
-            ) else {
-                setLastError("No legal trade accept is available.")
-                return false
-            }
-            do {
-                try sendTurnIntentEnvelope(
-                    intent,
-                    caption: "ULS INTENT acceptTrade",
-                    successStatus: "Accept trade intent sent"
-                )
-                return true
-            } catch {
-                setLastError("Accept trade failed: \(error.localizedDescription)")
-                return false
-            }
-        case .applySelectedAccept:
-            return publishSelectedTurnIntentState()
-        }
-    }
-
-    @discardableResult
-    func publishTradeExecution(acceptingPlayer: String) -> Bool {
-        guard let intent = TradeInteractionResolver.draftExecuteTradeIntent(
+    func publishTradeOffer(
+        give: ResourceHandV1,
+        receive: ResourceHandV1,
+        targetPlayers: [String]
+    ) -> Bool {
+        guard let intent = TradeInteractionResolver.draftTradeOfferIntent(
             state: selectedState,
             actingAs: localActorIdentifier(),
-            acceptingPlayer: acceptingPlayer
+            give: give,
+            receive: receive,
+            targetPlayers: targetPlayers
         ) else {
-            setLastError("Selected trade execution is not legal.")
+            setLastError("Selected trade offer is not legal.")
             return false
         }
 
         do {
-            try applyAndPublishTurnIntent(intent, successStatus: "Published trade execution")
+            try applyAndPublishTurnIntent(intent, successStatus: "Published trade offer")
             return true
         } catch {
-            setLastError("Trade execution failed: \(error.localizedDescription)")
+            setLastError("Trade offer failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    @discardableResult
+    func publishMaritimeTrade(give: ResourceHandV1, receive: ResourceHandV1) -> Bool {
+        guard let intent = TradeInteractionResolver.draftMaritimeTradeIntent(
+            state: selectedState,
+            actingAs: localActorIdentifier(),
+            give: give,
+            receive: receive
+        ) else {
+            setLastError("Selected maritime trade is not legal.")
+            return false
+        }
+
+        do {
+            try applyAndPublishTurnIntent(intent, successStatus: "Published maritime trade")
+            return true
+        } catch {
+            setLastError("Maritime trade failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    @discardableResult
+    func sendAcceptTradeIntent() -> Bool {
+        guard let intent = TradeInteractionResolver.draftAcceptTradeIntent(
+            state: selectedState,
+            actingAs: localActorIdentifier()
+        ) else {
+            setLastError("No legal trade accept is available.")
+            return false
+        }
+
+        do {
+            try sendTurnIntentEnvelope(
+                intent,
+                caption: "ULS INTENT acceptTrade",
+                successStatus: "Accept trade intent sent"
+            )
+            return true
+        } catch {
+            setLastError("Accept trade failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    @discardableResult
+    func sendDeclineTradeIntent() -> Bool {
+        guard let intent = TradeInteractionResolver.draftDeclineTradeIntent(
+            state: selectedState,
+            actingAs: localActorIdentifier()
+        ) else {
+            setLastError("No legal trade decline is available.")
+            return false
+        }
+
+        do {
+            try sendTurnIntentEnvelope(
+                intent,
+                caption: "ULS INTENT declineTrade",
+                successStatus: "Decline trade intent sent"
+            )
+            return true
+        } catch {
+            setLastError("Decline trade failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    @discardableResult
+    func sendCounterTradeIntent(give: ResourceHandV1, receive: ResourceHandV1) -> Bool {
+        guard let intent = TradeInteractionResolver.draftCounterTradeIntent(
+            state: selectedState,
+            actingAs: localActorIdentifier(),
+            give: give,
+            receive: receive
+        ) else {
+            setLastError("No legal counter trade is available.")
+            return false
+        }
+
+        do {
+            try sendTurnIntentEnvelope(
+                intent,
+                caption: "ULS INTENT counterTrade",
+                successStatus: "Counter trade intent sent"
+            )
+            return true
+        } catch {
+            setLastError("Counter trade failed: \(error.localizedDescription)")
             return false
         }
     }
@@ -2546,6 +2652,10 @@ final class LobbyDriverViewModel: ObservableObject {
         selectedLayoutCaption = snapshot.layoutCaption
         selectedSessionPresence = snapshot.sessionPresence
         selectedDecodeSource = snapshot.decodeSource
+        transportBadgeModel = TransportBadgeModel.build(
+            triggerLabel: trigger.label,
+            snapshot: snapshot
+        )
     }
 
     private func refreshParticipantIdentityDebug() {
@@ -2576,9 +2686,44 @@ final class LobbyDriverViewModel: ObservableObject {
             return
         }
         uiLog.append(message)
-        if uiLog.count > 20 {
-            uiLog.removeFirst(uiLog.count - 20)
+        if uiLog.count > 40 {
+            uiLog.removeFirst(uiLog.count - 40)
         }
+    }
+
+    func recordHostGestureHierarchySnapshot(_ snapshot: HostGestureHierarchySnapshot) {
+        guard diagnosticsEnabled else {
+            return
+        }
+        guard hostGestureHierarchySnapshot != snapshot else {
+            return
+        }
+        hostGestureHierarchySnapshot = snapshot
+    }
+
+    func recordHostGestureEvent(_ event: HostGestureEvent) {
+        guard diagnosticsEnabled else {
+            return
+        }
+        hostGestureEvents.append(event)
+        if hostGestureEvents.count > 24 {
+            hostGestureEvents.removeFirst(hostGestureEvents.count - 24)
+        }
+        appendLog("Gesture \(event.summaryLine)")
+    }
+
+    func recordBoardDiagnosticsSnapshot(_ snapshot: BoardInteractionDiagnosticsSnapshot) {
+        guard diagnosticsEnabled else {
+            return
+        }
+        boardDiagnosticsSnapshot = snapshot
+    }
+
+    func requestBoardReload() {
+        boardReloadToken &+= 1
+        recordHostGestureEvent(
+            HostGestureEvent(kind: .boardSurfaceReloaded, detail: "manual token=\(boardReloadToken)")
+        )
     }
 
     private func restoreCachedPublishedStateIfAvailable(
@@ -2814,13 +2959,18 @@ final class LobbyDriverViewModel: ObservableObject {
         return "\(offer.proposer) \(resourceHandDescription(offer.give)) -> \(resourceHandDescription(offer.receive)) [\(shortHash)]"
     }
 
-    private func pendingTradeAcceptsSummary(for state: CoreGameStateV1) -> String {
-        if state.pendingTradeAccepts.isEmpty {
+    private func tradeResponsesSummary(for state: CoreGameStateV1) -> String {
+        if state.tradeResponses.isEmpty {
             return "none"
         }
-        return state.pendingTradeAccepts
-            .sorted { $0.acceptingPlayer < $1.acceptingPlayer }
-            .map(\.acceptingPlayer)
+        return state.tradeResponses
+            .sorted { lhs, rhs in
+                if lhs.respondingPlayer == rhs.respondingPlayer {
+                    return lhs.kind.rawValue < rhs.kind.rawValue
+                }
+                return lhs.respondingPlayer < rhs.respondingPlayer
+            }
+            .map { "\($0.respondingPlayer):\($0.kind.rawValue)" }
             .joined(separator: ", ")
     }
 
@@ -3148,15 +3298,43 @@ final class LobbyDriverViewModel: ObservableObject {
             }
             return .buildCity(nodeID: nodeID)
         case .proposeTrade:
-            guard let give = intent.tradeGive, let receive = intent.tradeReceive else {
+            guard
+                let give = intent.tradeGive,
+                let receive = intent.tradeReceive,
+                let recipients = intent.tradeTargetPlayers
+            else {
                 throw SendError.invalidIntentPayload
             }
-            return .proposeTrade(give: resourceHand(from: give), receive: resourceHand(from: receive))
+            return .proposeTrade(
+                give: resourceHand(from: give),
+                receive: resourceHand(from: receive),
+                recipients: recipients
+            )
         case .acceptTrade:
             guard let acceptingPlayer = intent.tradeAcceptPlayer, let offerHash = intent.tradeOfferHash else {
                 throw SendError.invalidIntentPayload
             }
             return .acceptTrade(acceptingPlayer: acceptingPlayer, offerHash: offerHash)
+        case .declineTrade:
+            guard let decliningPlayer = intent.tradeAcceptPlayer, let offerHash = intent.tradeOfferHash else {
+                throw SendError.invalidIntentPayload
+            }
+            return .declineTrade(decliningPlayer: decliningPlayer, offerHash: offerHash)
+        case .counterTrade:
+            guard
+                let counteringPlayer = intent.tradeAcceptPlayer,
+                let offerHash = intent.tradeOfferHash,
+                let give = intent.tradeGive,
+                let receive = intent.tradeReceive
+            else {
+                throw SendError.invalidIntentPayload
+            }
+            return .counterTrade(
+                counteringPlayer: counteringPlayer,
+                offerHash: offerHash,
+                give: resourceHand(from: give),
+                receive: resourceHand(from: receive)
+            )
         case .executeTrade:
             guard let acceptingPlayer = intent.tradeAcceptPlayer, let offerHash = intent.tradeOfferHash else {
                 throw SendError.invalidIntentPayload
@@ -3437,6 +3615,10 @@ final class LobbyDriverViewModel: ObservableObject {
             return "Published trade offer"
         case .acceptTrade:
             return "Applied trade accept"
+        case .declineTrade:
+            return "Applied trade decline"
+        case .counterTrade:
+            return "Applied trade counter"
         case .executeTrade:
             return "Published trade execution"
         case .maritimeTrade:

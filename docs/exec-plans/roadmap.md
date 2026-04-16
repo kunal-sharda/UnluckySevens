@@ -88,9 +88,8 @@ Scope:
 - turn publication and cross-device responsiveness so normal actions do not feel artificially slow just because each step is waiting on Messages-host round-trip behavior
 - reliable reload / active-game sync and same-bubble recovery
 - transcript readability / collapse behavior and latest-bubble UX
-- replace the temporary phase-12 one-line summary mirror with compact transcript tokens plus durable rehydration once host-fidelity fixes are in place
+- execute the [2026-04-13 transport reliability plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-13-transport-reliability.md) in order — measure, compact board, local cache, delta-encoded STATE, CBOR codec, delete the `summaryText` fallback, and the SMS-fallback resync UX — so `MSMessage.url` is the only data channel and the phase-12 summary mirror can be retired without regressing gameplay
 - transcript-authoritative multiplayer ledger instead of device-local pending joins
-- compact-token plus durable rehydration direction if full-state carrier fidelity remains unstable
 - explicit multi-game lifecycle UX: identify which game a bubble belongs to, browse active games in the thread, and support leave/archive/forfeit flows instead of assuming one forever-active match
 - operator-assisted Messages host-boundary regression harness
 - release-readiness hardening for outside testers, including TestFlight-oriented device validation and operator runbooks
@@ -105,6 +104,12 @@ Entry criteria:
 
 - phase 12 gameplay flows are usable on real devices without relying on debug-first flow advancement
 - the clean branch is product-safe enough that host-stability work can proceed without debug leakage muddying outcomes
+
+Primary debt links:
+
+- [TD-006](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
+- [TD-008](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
+- [2026-04-13 transport reliability plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-13-transport-reliability.md)
 
 Operating rules for this phase:
 
@@ -153,6 +158,7 @@ Scope:
 Primary debt links:
 
 - [TD-001](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
+- [TD-005](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
 
 ### Phase 15 — Extension Decomposition, Test Architecture, and Structural Performance
 
@@ -175,8 +181,8 @@ Primary debt links:
 - [TD-002](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
 - [TD-003](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
 - [TD-004](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
-- [TD-005](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
-- [TD-006](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
+- [TD-007](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
+- [2026-04-12 render/perf audit](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-12-render-performance.md)
 
 ### Phase 16 — Optional Beta-Driven Follow-On
 

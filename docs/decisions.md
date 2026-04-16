@@ -3,7 +3,7 @@
 This file records **locked product + architecture decisions** for the MVP.  
 If a change is desired, update this file **first**, then update code/tests.
 
-**Last updated:** 2026-04-13
+**Last updated:** 2026-04-15
 
 ---
 
@@ -42,9 +42,14 @@ If a change is desired, update this file **first**, then update code/tests.
 
 - Only the **current player** can:
   - Propose trades.
-  - Execute/accept trades (by incorporating them into a STATE update).
-- Other players may only send **Accept** intents to a current-player offer.
-- Counteroffers are handled in chat (group conversation), not in-game UI.
+  - Replace or withdraw the current live player-trade offer.
+  - Incorporate responder trade intents into canonical STATE updates.
+- Player-trade offers may target any non-empty subset of opponents.
+- Other players may send **Accept**, **Decline**, or **Counter** intents to a targeted current-player offer.
+- Non-targeted players may still inspect the live offer read-only in the group thread and shell.
+- The first applied **Accept** from a targeted player resolves the trade atomically and closes the offer.
+- If every targeted player **Declines**, the offer closes without a trade.
+- **Counter** responses stay visible to the current player but do not auto-execute the original offer.
 - Trade offers **expire at end of the current player’s turn.**
 - Default: **only one active offer at a time** (current player can cancel/replace).
 

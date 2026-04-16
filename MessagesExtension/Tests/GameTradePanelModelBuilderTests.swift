@@ -4,7 +4,7 @@ import XCTest
 @testable import MessagesExtension
 
 final class GameTradePanelModelBuilderTests: XCTestCase {
-    func testBuildIdlePanelForCurrentPlayerShowsSuggestedOffer() throws {
+    func testBuildIdlePanelForCurrentPlayerShowsTradeDesk() throws {
         let state = makeState(
             currentPlayer: "A",
             resourcesByPlayer: [
@@ -23,16 +23,17 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
 
         XCTAssertNil(panel.activeOffer)
         XCTAssertEqual(panel.roleTitle, "Trade Desk")
-        XCTAssertTrue(panel.actions.contains(where: { $0.kind == .publishSuggestedOffer }))
-        XCTAssertFalse(panel.footnotes.isEmpty)
+        XCTAssertNil(panel.responderActions)
+        XCTAssertFalse(panel.message.isEmpty)
     }
 
-    func testBuildActiveOfferForNonCurrentPlayerShowsAcceptAction() throws {
+    func testBuildActiveOfferForTargetedResponderShowsResponderActions() throws {
         let offer = TradeOfferV1(
             offerHash: "offer-1",
             proposer: "A",
             give: ResourceHandV1(wood: 1),
             receive: ResourceHandV1(brick: 1),
+            recipients: ["B"],
             createdRev: 8
         )
         let state = makeState(
@@ -49,31 +50,44 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
             )
         )
 
+        XCTAssertEqual(panel.roleTitle, "Incoming Offer")
+        XCTAssertEqual(panel.responderActions, GameTradeResponderActions(canAccept: true, canDecline: true, canCounter: true))
+        XCTAssertEqual(panel.participantStatuses.first?.state, .waiting)
         XCTAssertEqual(
             panel.activeOffer?.proposerDisplay,
             PlayerPseudonymResolver.displayName(for: "A", gameID: state.gameId, roster: state.roster)
         )
-        XCTAssertEqual(panel.actions.map(\.kind), [.sendAcceptOffer])
-        XCTAssertEqual(panel.roleTitle, "Incoming Offer")
-        XCTAssertTrue(panel.footnotes.contains { $0.contains("Decline is passive") })
     }
 
-    func testBuildActiveOfferForCurrentPlayerShowsApplySelectedAccept() throws {
+    func testBuildActiveOfferForCurrentPlayerShowsSelectedCounterAndParticipantStates() throws {
         let offer = TradeOfferV1(
             offerHash: "offer-1",
             proposer: "A",
             give: ResourceHandV1(wood: 1),
             receive: ResourceHandV1(brick: 1),
+            recipients: ["B", "C"],
             createdRev: 8
         )
         let state = makeState(
             currentPlayer: "A",
-            resourcesByPlayer: ["A": .zero, "B": .zero],
-            activeTradeOffer: offer
+            resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(brick: 1), "C": ResourceHandV1(brick: 2)],
+            activeTradeOffer: offer,
+            tradeResponses: [
+                TradeResponseV1(
+                    respondingPlayer: "B",
+                    offerHash: offer.offerHash,
+                    kind: .counter,
+                    respondedAtRev: 9,
+                    counterGive: ResourceHandV1(brick: 1),
+                    counterReceive: ResourceHandV1(ore: 1)
+                )
+            ]
         )
         let selectedIntent = ULS_Transport.TurnIntentV1(
-            acceptTradePlayer: "B",
+            counterTradePlayer: "B",
             offerHash: offer.offerHash,
+            counterGive: TransportResourceHandV1(brick: 1),
+            receive: TransportResourceHandV1(ore: 1),
             gameId: state.gameId,
             anchorRev: state.rev,
             anchorHash: state.stateHash,
@@ -88,62 +102,49 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(panel.actions.map(\.kind), [.applySelectedAccept])
-        XCTAssertEqual(
-            panel.participantStatuses.first(where: { $0.playerID == "B" })?.detailText,
-            "Selected bubble"
-        )
+        XCTAssertEqual(panel.roleTitle, "Your Offer")
+        XCTAssertEqual(panel.selectedResponse?.kind, .counter)
+        XCTAssertEqual(panel.selectedResponse?.playerID, "B")
+        XCTAssertEqual(panel.participantStatuses.first(where: { $0.playerID == "B" })?.state, .countered)
+        XCTAssertEqual(panel.participantStatuses.first(where: { $0.playerID == "C" })?.state, .waiting)
+        XCTAssertTrue(panel.canReplaceOffer)
     }
 
-    func testBuildActiveOfferForCurrentPlayerShowsExecuteOptions() throws {
+    func testBuildActiveOfferForTableWatcherShowsTableOffer() throws {
         let offer = TradeOfferV1(
             offerHash: "offer-1",
             proposer: "A",
             give: ResourceHandV1(wood: 1),
             receive: ResourceHandV1(brick: 1),
+            recipients: ["B"],
             createdRev: 8
         )
         let state = makeState(
             currentPlayer: "A",
-            resourcesByPlayer: ["A": .zero, "B": .zero, "C": .zero],
-            activeTradeOffer: offer,
-            pendingTradeAccepts: [
-                TradeAcceptV1(acceptingPlayer: "C", offerHash: offer.offerHash, acceptedAtRev: 9),
-                TradeAcceptV1(acceptingPlayer: "B", offerHash: offer.offerHash, acceptedAtRev: 10),
-            ]
+            resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(brick: 1), "C": .zero],
+            activeTradeOffer: offer
         )
 
         let panel = try XCTUnwrap(
             GameTradePanelModelBuilder.build(
                 state: state,
-                actingAs: "A",
+                actingAs: "C",
                 selectedTurnIntent: nil
             )
         )
 
-        XCTAssertEqual(
-            panel.executeOptions.map(\.displayName),
-            [
-                PlayerPseudonymResolver.displayName(for: "B", gameID: state.gameId, roster: state.roster),
-                PlayerPseudonymResolver.displayName(for: "C", gameID: state.gameId, roster: state.roster),
-            ]
-        )
-        XCTAssertEqual(
-            panel.acceptedPlayers,
-            [
-                PlayerPseudonymResolver.displayName(for: "B", gameID: state.gameId, roster: state.roster),
-                PlayerPseudonymResolver.displayName(for: "C", gameID: state.gameId, roster: state.roster),
-            ]
-        )
-        XCTAssertTrue(panel.footnotes.contains { $0.contains("end the turn") })
+        XCTAssertEqual(panel.roleTitle, "Table Offer")
+        XCTAssertNil(panel.responderActions)
+        XCTAssertTrue(panel.message.contains("not sent to you"))
     }
 
-    func testBuildActiveOfferForResponderWithoutRequiredCardsShowsNoAcceptAction() throws {
+    func testBuildActiveOfferForResponderWithoutRequiredCardsDisablesAccept() throws {
         let offer = TradeOfferV1(
             offerHash: "offer-1",
             proposer: "A",
             give: ResourceHandV1(wood: 1),
             receive: ResourceHandV1(brick: 2),
+            recipients: ["B"],
             createdRev: 8
         )
         let state = makeState(
@@ -160,7 +161,9 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
             )
         )
 
-        XCTAssertTrue(panel.actions.isEmpty)
+        XCTAssertEqual(panel.responderActions?.canAccept, false)
+        XCTAssertEqual(panel.responderActions?.canDecline, true)
+        XCTAssertEqual(panel.responderActions?.canCounter, true)
         XCTAssertTrue(panel.message.contains("cannot accept"))
     }
 
@@ -168,7 +171,7 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
         currentPlayer: String,
         resourcesByPlayer: [String: ResourceHandV1],
         activeTradeOffer: TradeOfferV1? = nil,
-        pendingTradeAccepts: [TradeAcceptV1] = []
+        tradeResponses: [TradeResponseV1] = []
     ) -> CoreGameStateV1 {
         CoreGameStateV1(
             gameId: "trade-panel",
@@ -183,7 +186,7 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
             robberRngState: 3,
             resourcesByPlayer: resourcesByPlayer,
             activeTradeOffer: activeTradeOffer,
-            pendingTradeAccepts: pendingTradeAccepts,
+            tradeResponses: tradeResponses,
             turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 4))
         ).rehashed()
     }

@@ -107,6 +107,22 @@ struct LobbyDriverView: View {
                     .font(.system(.caption, design: .monospaced))
                 }
 
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Host Gesture Debug")
+                        .font(.subheadline)
+
+                    Group {
+                        ForEach(Array(viewModel.boardDiagnosticsSummaryLines.enumerated()), id: \.offset) { _, line in
+                            Text(line)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                    .font(.system(.caption, design: .monospaced))
+
+                    debugLinesSection("Hierarchy", lines: viewModel.hostGestureSummaryLines)
+                    debugLinesSection("Recent Events", lines: viewModel.hostGestureEventSummaryLines)
+                }
+
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Board Strategy")
                         .font(.subheadline)
@@ -142,7 +158,7 @@ struct LobbyDriverView: View {
                     field("stealVictims", viewModel.eligibleStealVictims)
                     field("remainingPieces", viewModel.remainingPieces)
                     field("activeTrade", viewModel.activeTradeOffer)
-                    field("tradeAccepts", viewModel.pendingTradeAccepts)
+                    field("tradeResponses", viewModel.tradeResponses)
                     field("maritimeTrade", viewModel.maritimeTradePreview)
                     field("largestArmy", viewModel.largestArmyStatus)
                     field("longestRoad", viewModel.longestRoadStatus)
@@ -436,6 +452,19 @@ struct LobbyDriverView: View {
     private func field(_ key: String, _ value: String) -> some View {
         Text("\(key): \(value)")
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func debugLinesSection(_ title: String, lines: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                Text(line)
+                    .font(.system(.caption, design: .monospaced))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
     }
 
     private func actionButton(

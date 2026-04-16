@@ -4,10 +4,15 @@ import UIKit
 
 final class MessagesViewController: MSMessagesAppViewController {
     private let viewModel = LobbyDriverViewModel()
+    private let hostResizeShield = MessagesHostResizeShield()
     private var selectionPollingToken: Int = 0
 
     override func viewDidLoad() {
         super.viewDidLoad()
+
+        hostResizeShield.onEvent = { [weak self] event in
+            self?.viewModel.recordHostGestureEvent(event)
+        }
 
         let rootView = MessagesRootView(viewModel: viewModel)
         let hostingController = UIHostingController(rootView: rootView)
@@ -31,6 +36,17 @@ final class MessagesViewController: MSMessagesAppViewController {
                 trigger: .viewDidLoad
             )
         }
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        hostResizeShield.attach(
+            to: view,
+            topExclusionHeight: resizeGrabberExclusionHeight
+        )
+        viewModel.recordHostGestureHierarchySnapshot(
+            HostGestureHierarchySnapshot.capture(from: view)
+        )
     }
 
     override func willBecomeActive(with conversation: MSConversation) {
@@ -131,5 +147,9 @@ final class MessagesViewController: MSMessagesAppViewController {
         }
 
         requestPresentationStyle(.expanded)
+    }
+
+    private var resizeGrabberExclusionHeight: CGFloat {
+        max(36, view.safeAreaInsets.top + 12)
     }
 }

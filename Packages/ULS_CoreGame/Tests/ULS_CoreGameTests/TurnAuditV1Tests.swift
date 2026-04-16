@@ -138,7 +138,7 @@ final class TurnAuditV1Tests: XCTestCase {
             auditLog: auditLog,
             lastTurnRecap: recap,
             activeTradeOffer: state.activeTradeOffer,
-            pendingTradeAccepts: state.pendingTradeAccepts,
+            tradeResponses: state.tradeResponses,
             settlementsByNode: state.settlementsByNode,
             citiesByNode: state.citiesByNode,
             roadsByEdge: state.roadsByEdge,

@@ -252,14 +252,14 @@ enum TranscriptTransportSupport {
         }
 
         let payloadStart = prefixRange.upperBound
-        let payload = summaryText[payloadStart...]
-            .prefix { !$0.isWhitespace && !$0.isNewline }
-        let payloadString = String(payload)
-        guard !payloadString.isEmpty else {
+        let payloadCandidate = normalizedMirroredPayloadCandidate(
+            from: summaryText[payloadStart...]
+        )
+        guard !payloadCandidate.isEmpty else {
             return nil
         }
 
-        return payloadString
+        return recoverDecodableEnvelopePrefix(from: payloadCandidate)
     }
 
     private static func buildSummaryText(
@@ -277,7 +277,61 @@ enum TranscriptTransportSupport {
         }
 
         // Keep the fallback on one line so transcript fallback paths do not
-        // expand into a multi-line payload block during phase 12.
-        return "\(summaryLabel) \(summaryPayloadPrefix)\(encodedEnvelope)"
+        // expand into a multi-line payload block during phase 12. Put the
+        // mirrored payload first so truncation is more likely to preserve it.
+        return "\(summaryPayloadPrefix)\(encodedEnvelope) \(summaryLabel)"
+    }
+
+    private static func normalizedMirroredPayloadCandidate(
+        from suffix: Substring
+    ) -> String {
+        let allowedCharacters = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
+        var scalars: [UnicodeScalar] = []
+        var encounteredPayloadCharacter = false
+
+        for scalar in suffix.unicodeScalars {
+            if CharacterSet.whitespacesAndNewlines.contains(scalar) {
+                continue
+            }
+
+            if allowedCharacters.contains(scalar) {
+                scalars.append(scalar)
+                encounteredPayloadCharacter = true
+                continue
+            }
+
+            if encounteredPayloadCharacter {
+                break
+            }
+        }
+
+        return String(String.UnicodeScalarView(scalars))
+    }
+
+    private static func recoverDecodableEnvelopePrefix(
+        from candidate: String
+    ) -> String? {
+        guard !candidate.isEmpty else {
+            return nil
+        }
+
+        if isDecodableEnvelope(candidate) {
+            return candidate
+        }
+
+        var endIndex = candidate.endIndex
+        while endIndex > candidate.startIndex {
+            endIndex = candidate.index(before: endIndex)
+            let prefix = String(candidate[..<endIndex])
+            if isDecodableEnvelope(prefix) {
+                return prefix
+            }
+        }
+
+        return nil
+    }
+
+    private static func isDecodableEnvelope(_ candidate: String) -> Bool {
+        (try? decode(candidate)) != nil
     }
 }

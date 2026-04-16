@@ -3,6 +3,20 @@ import SwiftUI
 struct PlayerSummaryStripView: View {
     let summaries: [GameOpponentSummary]
     let availableHeight: CGFloat
+    let selectedPlayerIDs: Set<String>
+    let onSelectPlayer: ((String) -> Void)?
+
+    init(
+        summaries: [GameOpponentSummary],
+        availableHeight: CGFloat,
+        selectedPlayerIDs: Set<String> = [],
+        onSelectPlayer: ((String) -> Void)? = nil
+    ) {
+        self.summaries = summaries
+        self.availableHeight = availableHeight
+        self.selectedPlayerIDs = selectedPlayerIDs
+        self.onSelectPlayer = onSelectPlayer
+    }
 
     var body: some View {
         if summaries.isEmpty {
@@ -30,7 +44,13 @@ struct PlayerSummaryStripView: View {
     private var rows: some View {
         VStack(spacing: GameTheme.inlineSpacing) {
             ForEach(summaries) { summary in
-                PlayerSummaryRow(summary: summary)
+                PlayerSummaryRow(
+                    summary: summary,
+                    isSelected: selectedPlayerIDs.contains(summary.id),
+                    action: onSelectPlayer.map { callback in
+                        { callback(summary.id) }
+                    }
+                )
             }
         }
     }
@@ -40,8 +60,24 @@ private struct PlayerSummaryRow: View {
     static let rowHeight: CGFloat = 42
 
     let summary: GameOpponentSummary
+    let isSelected: Bool
+    let action: (() -> Void)?
 
     var body: some View {
+        Group {
+            if let action {
+                Button(action: action) {
+                    rowBody
+                }
+                .buttonStyle(.plain)
+            } else {
+                rowBody
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var rowBody: some View {
         HStack(alignment: .center, spacing: GameTheme.inlineSpacing) {
             Circle()
                 .fill(summary.isCurrentPlayer ? GameTheme.accent : GameTheme.outline.opacity(0.35))
@@ -62,7 +98,15 @@ private struct PlayerSummaryRow: View {
             .font(GameTheme.metaFont)
             .foregroundStyle(GameTheme.mutedInk)
 
-            if summary.isCurrentPlayer {
+            if isSelected {
+                Text("Targeted")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(GameTheme.accent)
+                    .clipShape(Capsule())
+            } else if summary.isCurrentPlayer {
                 Text("Current")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
@@ -75,12 +119,11 @@ private struct PlayerSummaryRow: View {
         .padding(.horizontal, GameTheme.compactPadding)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, minHeight: Self.rowHeight, alignment: .leading)
-        .background(GameTheme.surface.opacity(0.90))
+        .background(isSelected ? GameTheme.surfaceRaised.opacity(0.34) : GameTheme.surface.opacity(0.90))
         .overlay(
             RoundedRectangle(cornerRadius: GameTheme.smallRadius)
-                .stroke(GameTheme.outline.opacity(0.15), lineWidth: 1)
+                .stroke(isSelected ? GameTheme.accent.opacity(0.45) : GameTheme.outline.opacity(0.15), lineWidth: isSelected ? 2 : 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: GameTheme.smallRadius))
-        .accessibilityElement(children: .combine)
     }
 }

@@ -382,6 +382,7 @@ final class EnvelopeV1TransportTests: XCTestCase {
         let intent = TurnIntentV1(
             proposeTradeGive: TransportResourceHandV1(wood: 1),
             receive: TransportResourceHandV1(brick: 1),
+            targetPlayers: ["player-2"],
             gameId: "game-123",
             anchorRev: 12,
             anchorHash: "hash-12",
@@ -428,7 +429,7 @@ final class EnvelopeV1TransportTests: XCTestCase {
 
     func testTurnProposeTradeDecodeFailsWithoutTradeHands() {
         let invalidJSON = """
-        {"kind":"proposeTrade","gameId":"game-123","anchorRev":12,"anchorHash":"hash-12","actor":"player-1"}
+        {"kind":"proposeTrade","gameId":"game-123","anchorRev":12,"anchorHash":"hash-12","actor":"player-1","tradeTargetPlayers":["player-2"]}
         """
 
         XCTAssertThrowsError(try JSONDecoder().decode(TurnIntentV1.self, from: Data(invalidJSON.utf8)))

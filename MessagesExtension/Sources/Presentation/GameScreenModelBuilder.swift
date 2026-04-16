@@ -253,6 +253,10 @@ enum GameScreenModelBuilder {
             return "offered trade"
         case .acceptTrade:
             return "accepted trade"
+        case .declineTrade:
+            return "declined trade"
+        case .counterTrade:
+            return "countered trade"
         case .executeTrade:
             return "executed trade"
         case .maritimeTrade:

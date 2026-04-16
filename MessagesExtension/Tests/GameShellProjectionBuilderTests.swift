@@ -32,28 +32,38 @@ final class GameShellProjectionBuilderTests: XCTestCase {
         XCTAssertNil(projection.setupGuidanceText)
         XCTAssertNil(projection.discardPanelModel)
         XCTAssertTrue(projection.robberVictimOptions.isEmpty)
-        XCTAssertEqual(projection.tradePanelModel?.actions.first?.kind, .publishSuggestedOffer)
+        XCTAssertEqual(projection.tradePanelModel?.roleTitle, "Trade Desk")
         XCTAssertEqual(projection.boardHash, state.board?.boardHash)
         XCTAssertEqual(projection.visibleHands, "A: w:2, b:1, s:1, wh:1, o:1 | B: 0")
     }
 
-    func testBuildStateProjectionSurfacesDiscardAndTradeSelections() throws {
+    func testBuildStateProjectionSurfacesSelectedTradeResponseAndDiscardIntent() throws {
         let tradeOffer = TradeOfferV1(
             offerHash: "offer-1",
             proposer: "A",
             give: ResourceHandV1(wood: 1),
             receive: ResourceHandV1(brick: 1),
+            recipients: ["B"],
             createdRev: 6
         )
         let tradeState = makeTurnState(
             activeTradeOffer: tradeOffer,
-            pendingTradeAccepts: [
-                TradeAcceptV1(acceptingPlayer: "B", offerHash: tradeOffer.offerHash, acceptedAtRev: 7)
+            tradeResponses: [
+                TradeResponseV1(
+                    respondingPlayer: "B",
+                    offerHash: tradeOffer.offerHash,
+                    kind: .counter,
+                    respondedAtRev: 7,
+                    counterGive: ResourceHandV1(brick: 1),
+                    counterReceive: ResourceHandV1(ore: 1)
+                )
             ]
         )
-        let selectedAcceptIntent = TurnIntentV1(
-            acceptTradePlayer: "B",
+        let selectedCounterIntent = TurnIntentV1(
+            counterTradePlayer: "B",
             offerHash: tradeOffer.offerHash,
+            counterGive: TransportResourceHandV1(brick: 1),
+            receive: TransportResourceHandV1(ore: 1),
             gameId: tradeState.gameId,
             anchorRev: tradeState.rev,
             anchorHash: tradeState.stateHash,
@@ -63,10 +73,11 @@ final class GameShellProjectionBuilderTests: XCTestCase {
         let tradeProjection = GameShellProjectionBuilder.build(
             state: tradeState,
             actingAs: "A",
-            selectedTurnIntent: selectedAcceptIntent
+            selectedTurnIntent: selectedCounterIntent
         )
 
-        XCTAssertEqual(tradeProjection.tradePanelModel?.actions.first?.kind, .applySelectedAccept)
+        XCTAssertEqual(tradeProjection.tradePanelModel?.selectedResponse?.playerID, "B")
+        XCTAssertEqual(tradeProjection.tradePanelModel?.selectedResponse?.kind, .counter)
 
         let discardState = makeTurnState(
             currentPlayer: "A",
@@ -135,7 +146,7 @@ final class GameShellProjectionBuilderTests: XCTestCase {
         ],
         devCardsByPlayer: [String: DevCardInventoryV1] = [:],
         activeTradeOffer: TradeOfferV1? = nil,
-        pendingTradeAccepts: [TradeAcceptV1] = [],
+        tradeResponses: [TradeResponseV1] = [],
         settlementsByNode: [NodeID: String] = [:],
         roadsByEdge: [EdgeID: String] = [:],
         turnState: TurnStateV1 = TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 4, d2: 3))
@@ -163,7 +174,7 @@ final class GameShellProjectionBuilderTests: XCTestCase {
             resourcesByPlayer: resourcesByPlayer,
             devCardsByPlayer: devCardsByPlayer,
             activeTradeOffer: activeTradeOffer,
-            pendingTradeAccepts: pendingTradeAccepts,
+            tradeResponses: tradeResponses,
             settlementsByNode: settlementsByNode,
             roadsByEdge: roadsByEdge,
             boardRules: BoardRulesV1(strategy: .randomV1),

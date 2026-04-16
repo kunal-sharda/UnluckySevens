@@ -160,51 +160,57 @@ Run this before calling phase 12 complete.
    - `Play Dev`
 5. Confirm the collapsed lower rail shows only the pull-tab and the dock row; utility cards should not be visible until the pull-tab is opened.
 6. Confirm the full island and all ports are visible at default zoom, with a small ocean margin and slightly more water below the island than above. Confirm you can zoom out only slightly beyond default and zoom in much further than the fit overview.
-7. Confirm the overlay shelf overlaps the board intentionally only at the bottom edge. No utility/header/dock content should collide or wrap into neighboring regions.
-8. Open `Build` and verify the shelf only shows legal actions from:
+7. Confirm pan, pinch, and board taps remain responsive on first open on both iPhone and iPad; they should not require reloading the game view before working.
+8. Drag the Messages host smaller and larger. Confirm the shell freezes against the last settled frame during the drag, ignores interaction while frozen, and reliably recovers after the drag ends without getting stranded in a permanently frozen state if the host jitters.
+9. At the normal fully-extended gameplay height, confirm the board remains live and never enters resize-freeze while panning, pinching, or interacting normally.
+10. On iPad, open `Hand`, tap a legal setup/build target, then switch between `Hand`, `Bank`, and `Players`. Confirm the lower shelf stays fully visible and tappable and the board does not steal those taps.
+11. Confirm the overlay shelf overlaps the board intentionally only at the bottom edge. No utility/header/dock content should collide or wrap into neighboring regions.
+12. On both iPhone and iPad, drag on the board, lower shelf, and dock. Confirm those drags stay inside the game surface and do not start resizing the Messages host. Only the narrow top grabber strip should be able to collapse or expand the host.
+13. On iPad, with the Messages host at its normal gameplay height, open `Hand`, `Bank`, and `Players`. Confirm the lower shelf uses the compact vertical layout when needed rather than clipping or disabling utility shelves because the width is wide.
+13. Open `Build` and verify the shelf only shows legal actions from:
    - `Road`
    - `Settlement`
    - `City`
    - `Buy Dev`
-9. Tap the pull-tab, then `Hand`, `Bank`, and `Players`, and confirm only one shelf opens at a time.
-10. Close each shelf through both:
+14. Tap the pull-tab, then `Hand`, `Bank`, and `Players`, and confirm only one shelf opens at a time.
+15. Close each shelf through both:
    - the close chevron
    - tapping the selected utility tab again
-11. Open the `Hand` shelf and confirm trade is entered from there instead of from a persistent dock button.
-12. Confirm the `Hand` shelf shows the five resource chips first, with a full-width `Trade` row underneath when trade is currently available.
-13. Open the `Bank` shelf and confirm it shows public remaining counts for wood, brick, sheep, wheat, and ore using the same chip sizing and spacing as the `Hand` shelf. Verify it only becomes interactive during Monopoly or Year of Plenty selection.
-14. Open the `Players` shelf and confirm each opponent row only shows:
+15. Open the `Hand` shelf and confirm trade is entered from there instead of from a persistent dock button.
+16. Confirm the `Hand` shelf shows the five resource chips first, with a full-width `Trade` row underneath when trade is currently available.
+17. Open the `Bank` shelf and confirm it shows public remaining counts for wood, brick, sheep, wheat, and ore using the same chip sizing and spacing as the `Hand` shelf. Verify it only becomes interactive during Monopoly or Year of Plenty selection.
+18. Open the `Players` shelf and confirm each opponent row only shows:
    - alias
    - current-turn indicator
    - public VP
    - public hand count
-15. Confirm `Hand`, `Bank`, and `Players` do not add inner titles or subtitles and do not scroll in the normal case.
-16. Tap random nodes, edges, and tiles while idle. Confirm nothing highlights or remains selected unless the active mode actually uses that board target class.
-17. Open the dev-card panel and confirm the legal actions are choice-driven, not just default labels:
+19. Confirm `Hand`, `Bank`, and `Players` do not add inner titles or subtitles and do not scroll in the normal case except when the host is too constrained to fit the utility body without scrolling.
+20. Tap random nodes, edges, and tiles while idle. Confirm nothing highlights or remains selected unless the active mode actually uses that board target class.
+21. Open the dev-card panel and confirm the legal actions are choice-driven, not just default labels:
    - Knight
    - Monopoly
    - Year of Plenty
    - Road Building
    Verify each option only appears when legal for the current turn state.
-18. Play Knight and confirm the robber moves to the selected tile. If the chosen tile has multiple legal victims, verify the victim selection step becomes explicit; if it has one or zero legal victims, verify the flow resolves without an unnecessary extra picker.
-19. Play Monopoly and confirm the chosen resource is the one collected from opponents.
-20. Play Year of Plenty and confirm the selected two resources are taken from the bank and added to the player.
-21. Play Road Building and confirm the selected two edges are placed without resource cost.
-22. If a Victory Point card is present, confirm it is only surfaced when revealing it would immediately win the game.
-23. Open the trade panel as proposer and responder. Confirm the compact panel explains accepted, waiting, passive-decline, and execute/end-turn expiry behavior without leaking raw IDs or debug text.
-24. Enter setup, build, robber, Knight, and Road Building flows and confirm the in-board hint chip is small, single-line, and shifted above the overlay shelf when the shelf is open.
-25. Finish a game-over state or load one from transcript and confirm the shell shows:
+22. Play Knight and confirm the robber moves to the selected tile. If the chosen tile has multiple legal victims, verify the victim selection step becomes explicit; if it has one or zero legal victims, verify the flow resolves without an unnecessary extra picker.
+23. Play Monopoly and confirm the chosen resource is the one collected from opponents.
+24. Play Year of Plenty and confirm the selected two resources are taken from the bank and added to the player.
+25. Play Road Building and confirm the selected two edges are placed without resource cost.
+26. If a Victory Point card is present, confirm it is only surfaced when revealing it would immediately win the game.
+27. Open the trade panel as proposer and responder. Confirm the compact panel explains accepted, waiting, passive-decline, and execute/end-turn expiry behavior without leaking raw IDs or debug text.
+28. Enter setup, build, robber, Knight, and Road Building flows and confirm the in-board hint chip is small, single-line, and shifted above the overlay shelf when the shelf is open.
+29. Finish a game-over state or load one from transcript and confirm the shell shows:
    - winner clearly
    - compact final score
    - short last-turn recap
    - no dead bottom tray
-26. Open and close `Hand`, `Bank`, `Players`, `Build`, and `Play Dev` repeatedly and confirm the board does not visibly hitch or rebuild while the shelf changes.
-27. In setup and build modes, tap one legal target once and confirm nothing publishes yet. Confirm the target highlights, then tap the same selected target again and confirm it publishes.
-28. After selecting a setup/build target, tap a different legal target and confirm the selection moves without publishing.
-29. On both iPhone and iPad, select a setup/build target while `Hand`, `Bank`, or `Players` is visible and confirm the shelf header tabs remain usable instead of being replaced by a forced-flow panel.
-30. Drag down from the top of the Messages transcript to collapse the host while a live game is open, both with the shelf closed and with a shelf open. Confirm the board freezes visually during host drag, ignores board input while frozen, and only performs one clean final refit after the host settles.
-31. On both iPhone and iPad, confirm the `Hand` and `Bank` shelves keep the same chip sizing and a capped reading width instead of stretching to full host width.
-32. In a visibly constrained host height, confirm a utility shelf closes instead of rendering partially offscreen or leaving unreachable content below the viewport.
+30. Open and close `Hand`, `Bank`, `Players`, `Build`, and `Play Dev` repeatedly and confirm the board does not visibly hitch or rebuild while the shelf changes.
+31. In setup and build modes, tap one legal target once and confirm nothing publishes yet. Confirm the target highlights, then tap the same selected target again and confirm it publishes.
+32. After selecting a setup/build target, tap a different legal target and confirm the selection moves without publishing.
+33. On both iPhone and iPad, select a setup/build target while `Hand`, `Bank`, or `Players` is visible and confirm the shelf header tabs remain usable instead of being replaced by a forced-flow panel.
+34. Drag down from the top of the Messages transcript to collapse the host while a live game is open, both with the shelf closed and with a shelf open. Confirm the board freezes visually during host drag, ignores board input while frozen, only performs one clean final refit after the host settles, and never stays frozen indefinitely if the host keeps sending noisy size updates.
+35. On both iPhone and iPad, confirm the `Hand` and `Bank` shelves keep the same chip sizing and a capped reading width instead of stretching to full host width.
+36. In a visibly constrained host height, confirm a utility shelf closes instead of rendering partially offscreen or leaving unreachable content below the viewport.
 
 ### Real Device UX Hardening
 
@@ -227,14 +233,15 @@ Use this only on the disposable debug branch when a selected transcript bubble d
    - `decodeSource: URL`
 4. Prefer `url: present` plus `payloadQuery: present`. If they are missing, treat it as a transport publication or host-selection failure rather than a lobby-state bug.
 5. During the temporary phase-12 product fallback, `decodeSource: summary fallback` is acceptable evidence that the one-line mirrored summary carrier recovered the payload; capture it as a host-fidelity defect and keep phase 13 responsible for removing that fallback.
-6. If lobby `STATE` decodes but `Join Game` is still missing on the receiving device, inspect:
+6. While the temporary in-app diagnostics slice is active, the gameplay route may expose a `Reload Board` control in the top-right overlay. Use it only as a local recovery/debug aid when host-resize cycles leave the SpriteKit board non-responsive.
+7. If lobby `STATE` decodes but `Join Game` is still missing on the receiving device, inspect:
    - `localParticipant`
    - `resolvedActor`
    - `localInRoster`
    - `localPendingJoin`
    - `canJoin`
    - `isInviter`
-7. Capture the debug HUD state as the primary repro artifact before retrying with a new bubble or escalating the issue into the stability phase.
+8. Capture the debug HUD state as the primary repro artifact before retrying with a new bubble or escalating the issue into the stability phase.
 
 ## What Is Already Covered Well
 

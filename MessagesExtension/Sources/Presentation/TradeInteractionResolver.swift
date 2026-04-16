@@ -2,25 +2,27 @@ import ULS_CoreGame
 import ULS_Transport
 
 enum TradeInteractionResolver {
-    static func draftSuggestedTradeOfferIntent(
+    static func draftTradeOfferIntent(
         state: CoreGameStateV1?,
-        actingAs: String?
+        actingAs: String?,
+        give: ResourceHandV1,
+        receive: ResourceHandV1,
+        targetPlayers: [String]
     ) -> ULS_Transport.TurnIntentV1? {
         guard
             let state,
             state.phase == .turn,
             state.turnState?.step == .afterRoll,
-            state.activeTradeOffer == nil,
             let actingAs,
-            actingAs == state.currentPlayer,
-            let proposal = state.defaultTradeProposal(for: actingAs)
+            actingAs == state.currentPlayer
         else {
             return nil
         }
 
         return ULS_Transport.TurnIntentV1(
-            proposeTradeGive: transportHand(from: proposal.give),
-            receive: transportHand(from: proposal.receive),
+            proposeTradeGive: transportHand(from: give),
+            receive: transportHand(from: receive),
+            targetPlayers: targetPlayers.sorted(),
             gameId: state.gameId,
             anchorRev: state.rev,
             anchorHash: state.stateHash,
@@ -28,24 +30,25 @@ enum TradeInteractionResolver {
         )
     }
 
-    static func draftSuggestedMaritimeTradeIntent(
+    static func draftMaritimeTradeIntent(
         state: CoreGameStateV1?,
-        actingAs: String?
+        actingAs: String?,
+        give: ResourceHandV1,
+        receive: ResourceHandV1
     ) -> ULS_Transport.TurnIntentV1? {
         guard
             let state,
             state.phase == .turn,
             state.turnState?.step == .afterRoll,
             let actingAs,
-            actingAs == state.currentPlayer,
-            let maritime = state.defaultMaritimeTrade(for: actingAs)
+            actingAs == state.currentPlayer
         else {
             return nil
         }
 
         return ULS_Transport.TurnIntentV1(
-            maritimeTradeGive: transportHand(from: maritime.give),
-            receive: transportHand(from: maritime.receive),
+            maritimeTradeGive: transportHand(from: give),
+            receive: transportHand(from: receive),
             gameId: state.gameId,
             anchorRev: state.rev,
             anchorHash: state.stateHash,
@@ -64,7 +67,8 @@ enum TradeInteractionResolver {
             let offer = state.activeTradeOffer,
             let actingAs,
             actingAs != state.currentPlayer,
-            !state.pendingTradeAccepts.contains(where: { $0.acceptingPlayer == actingAs }),
+            offer.recipients.contains(actingAs),
+            !state.tradeResponses.contains(where: { $0.respondingPlayer == actingAs && $0.offerHash == offer.offerHash }),
             canAfford(hand: state.resourcesByPlayer[actingAs] ?? .zero, cost: offer.receive)
         else {
             return nil
@@ -80,10 +84,9 @@ enum TradeInteractionResolver {
         )
     }
 
-    static func draftExecuteTradeIntent(
+    static func draftDeclineTradeIntent(
         state: CoreGameStateV1?,
-        actingAs: String?,
-        acceptingPlayer: String
+        actingAs: String?
     ) -> ULS_Transport.TurnIntentV1? {
         guard
             let state,
@@ -91,15 +94,47 @@ enum TradeInteractionResolver {
             state.turnState?.step == .afterRoll,
             let offer = state.activeTradeOffer,
             let actingAs,
-            actingAs == state.currentPlayer,
-            state.pendingTradeAccepts.contains(where: { $0.acceptingPlayer == acceptingPlayer && $0.offerHash == offer.offerHash })
+            actingAs != state.currentPlayer,
+            offer.recipients.contains(actingAs),
+            !state.tradeResponses.contains(where: { $0.respondingPlayer == actingAs && $0.offerHash == offer.offerHash })
         else {
             return nil
         }
 
         return ULS_Transport.TurnIntentV1(
-            executeTradePlayer: acceptingPlayer,
+            declineTradePlayer: actingAs,
             offerHash: offer.offerHash,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: actingAs
+        )
+    }
+
+    static func draftCounterTradeIntent(
+        state: CoreGameStateV1?,
+        actingAs: String?,
+        give: ResourceHandV1,
+        receive: ResourceHandV1
+    ) -> ULS_Transport.TurnIntentV1? {
+        guard
+            let state,
+            state.phase == .turn,
+            state.turnState?.step == .afterRoll,
+            let offer = state.activeTradeOffer,
+            let actingAs,
+            actingAs != state.currentPlayer,
+            offer.recipients.contains(actingAs),
+            !state.tradeResponses.contains(where: { $0.respondingPlayer == actingAs && $0.offerHash == offer.offerHash })
+        else {
+            return nil
+        }
+
+        return ULS_Transport.TurnIntentV1(
+            counterTradePlayer: actingAs,
+            offerHash: offer.offerHash,
+            counterGive: transportHand(from: give),
+            receive: transportHand(from: receive),
             gameId: state.gameId,
             anchorRev: state.rev,
             anchorHash: state.stateHash,

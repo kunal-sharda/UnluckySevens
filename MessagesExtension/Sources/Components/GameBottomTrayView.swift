@@ -33,6 +33,7 @@ struct GameBottomTrayView: View {
                 .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius))
+        .contentShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius))
     }
 }
 
@@ -48,16 +49,16 @@ struct GameLowerShelfContentView: View {
     let mode: GameMode
     let setupInstruction: String?
     let discardPanel: GameDiscardPanelModel?
-    let tradePanel: GameTradePanelModel?
     let devCardPanel: GameDevCardPanelModel?
     let robberVictimOptions: [GameRobberVictimOption]
+    let selectedHandCounts: [ResourceV1: Int]
+    let onSelectHandResource: ((ResourceV1) -> Void)?
+    let selectedRecipients: Set<String>
+    let onSelectRecipient: ((String) -> Void)?
     let onSelectBuild: (GameBuildShelfItem.Kind) -> Void
     let onSelectBankResource: (ResourceV1) -> Void
-    let onOpenTrade: () -> Void
     let onDiscardAction: () -> Void
-    let onTradeAction: (GameTradeActionKind) -> Void
     let onApplySelectedTurnIntent: () -> Void
-    let onExecuteTrade: (String) -> Void
     let onDevCardAction: (GameDevCardActionKind) -> Void
     let onConfirmDevCardDraft: () -> Void
     let onResetDevCardDraft: () -> Void
@@ -79,7 +80,9 @@ struct GameLowerShelfContentView: View {
             case .players:
                 PlayerSummaryStripView(
                     summaries: opponents,
-                    availableHeight: availableBodySize.height
+                    availableHeight: availableBodySize.height,
+                    selectedPlayerIDs: selectedRecipients,
+                    onSelectPlayer: onSelectRecipient
                 )
             case .build:
                 BuildShelfRegion(
@@ -94,23 +97,16 @@ struct GameLowerShelfContentView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
     }
 
     private var handShelf: some View {
-        VStack(alignment: .leading, spacing: handDensity.stackSpacing) {
-            HandTrayView(
-                model: handTray,
-                density: handDensity
-            )
-
-            if mode == .trade {
-                modalHost(mode: .trade)
-            } else if tradePanel != nil {
-                TradeShelfEntryRow(density: handDensity) {
-                    onOpenTrade()
-                }
-            }
-        }
+        HandTrayView(
+            model: handTray,
+            density: handDensity,
+            selectedCountsByResource: selectedHandCounts,
+            onSelectResource: onSelectHandResource
+        )
     }
 
     private var devCardsShelf: some View {
@@ -128,18 +124,9 @@ struct GameLowerShelfContentView: View {
     }
 
     private var handDensity: ResourceChipDensity {
-        let reservedTradeHeight: CGFloat
-        if mode == .trade {
-            reservedTradeHeight = 0
-        } else if tradePanel != nil {
-            reservedTradeHeight = 40
-        } else {
-            reservedTradeHeight = 0
-        }
-
         return ResourceChipDensity.resolve(
             availableWidth: availableBodySize.width,
-            availableHeight: max(availableBodySize.height - reservedTradeHeight, 0)
+            availableHeight: availableBodySize.height
         )
     }
 
@@ -156,13 +143,10 @@ struct GameLowerShelfContentView: View {
             setupInstruction: setupInstruction,
             boardCommitDraft: boardCommitDraft,
             discardPanel: discardPanel,
-            tradePanel: tradePanel,
             devCardPanel: devCardPanel,
             robberVictimOptions: robberVictimOptions,
             onDiscardAction: onDiscardAction,
-            onTradeAction: onTradeAction,
             onApplySelectedTurnIntent: onApplySelectedTurnIntent,
-            onExecuteTrade: onExecuteTrade,
             onDevCardAction: onDevCardAction,
             onConfirmDevCardDraft: onConfirmDevCardDraft,
             onResetDevCardDraft: onResetDevCardDraft,
@@ -237,41 +221,6 @@ private struct BuildShelfRegion: View {
                 .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: GameTheme.mediumRadius))
-    }
-}
-
-private struct TradeShelfEntryRow: View {
-    let density: ResourceChipDensity
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: "arrow.left.arrow.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(GameTheme.accent)
-                    .frame(width: 18, height: 18)
-
-                Text("Trade")
-                    .font(GameTheme.metaFont.weight(.semibold))
-                    .foregroundStyle(GameTheme.ink)
-
-                Spacer(minLength: 0)
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(GameTheme.mutedInk)
-            }
-            .frame(maxWidth: .infinity, minHeight: density.tradeRowHeight, alignment: .leading)
-            .padding(.horizontal, density.containerPadding)
-            .background(GameTheme.surfaceRaised.opacity(0.90))
-            .overlay(
-                RoundedRectangle(cornerRadius: GameTheme.mediumRadius)
-                    .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: GameTheme.mediumRadius))
-        }
-        .buttonStyle(.plain)
     }
 }
 

@@ -6,13 +6,10 @@ struct GameModalHostView: View {
     let setupInstruction: String?
     let boardCommitDraft: GameBoardCommitDraft?
     let discardPanel: GameDiscardPanelModel?
-    let tradePanel: GameTradePanelModel?
     let devCardPanel: GameDevCardPanelModel?
     let robberVictimOptions: [GameRobberVictimOption]
     let onDiscardAction: () -> Void
-    let onTradeAction: (GameTradeActionKind) -> Void
     let onApplySelectedTurnIntent: () -> Void
-    let onExecuteTrade: (String) -> Void
     let onDevCardAction: (GameDevCardActionKind) -> Void
     let onConfirmDevCardDraft: () -> Void
     let onResetDevCardDraft: () -> Void
@@ -82,8 +79,6 @@ struct GameModalHostView: View {
         switch mode {
         case .discard:
             discardContent(fallbackMessage: fallbackMessage)
-        case .trade:
-            tradeContent(fallbackMessage: fallbackMessage)
         case .playDevCard,
              .devCardKnightMove,
              .devCardKnightVictim,
@@ -155,107 +150,6 @@ struct GameModalHostView: View {
                 }
                 .buttonStyle(.bordered)
             }
-        }
-    }
-
-    @ViewBuilder
-    private func tradeContent(fallbackMessage: String) -> some View {
-        if let tradePanel {
-            Label(tradePanel.roleTitle, systemImage: "arrow.left.arrow.right.circle.fill")
-                .font(GameTheme.metaFont.weight(.semibold))
-                .foregroundStyle(GameTheme.ink)
-
-            Text(tradePanel.message)
-                .font(GameTheme.metaFont)
-                .foregroundStyle(GameTheme.mutedInk)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if let activeOffer = tradePanel.activeOffer {
-                tradeOfferSection(activeOffer)
-            }
-
-            if !tradePanel.participantStatuses.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Responses")
-                        .font(GameTheme.metaFont.weight(.semibold))
-                        .foregroundStyle(GameTheme.ink)
-
-                    ForEach(tradePanel.participantStatuses) { status in
-                        tradeParticipantStatusRow(status)
-                    }
-                }
-            }
-
-            ForEach(tradePanel.actions) { action in
-                VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-                    Label(action.title, systemImage: action.systemImage)
-                        .font(GameTheme.metaFont.weight(.semibold))
-                        .foregroundStyle(GameTheme.ink)
-
-                    Text(action.detail)
-                        .font(GameTheme.metaFont)
-                        .foregroundStyle(GameTheme.mutedInk)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    tradeResourceSection(
-                        label: action.giveLabel,
-                        chips: action.give
-                    )
-                    tradeResourceSection(
-                        label: action.receiveLabel,
-                        chips: action.receive
-                    )
-
-                    Button {
-                        onTradeAction(action.kind)
-                    } label: {
-                        Label(action.title, systemImage: action.systemImage)
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-                .padding(.top, 4)
-            }
-
-            if !tradePanel.executeOptions.isEmpty {
-                VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-                    Text("Execute With")
-                        .font(GameTheme.metaFont.weight(.semibold))
-                        .foregroundStyle(GameTheme.ink)
-
-                    ForEach(tradePanel.executeOptions) { option in
-                        Button {
-                            onExecuteTrade(option.playerID)
-                        } label: {
-                            HStack {
-                                Text(option.displayName)
-                                Spacer()
-                                Text("Execute")
-                                    .font(GameTheme.metaFont)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                }
-            }
-
-            if !tradePanel.footnotes.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(Array(tradePanel.footnotes.enumerated()), id: \.offset) { _, note in
-                        Text(note)
-                            .font(GameTheme.metaFont)
-                            .foregroundStyle(GameTheme.mutedInk)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .padding(.top, 4)
-            }
-        } else {
-            Text(fallbackMessage)
-                .font(GameTheme.metaFont)
-                .foregroundStyle(GameTheme.mutedInk)
-                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -364,55 +258,6 @@ struct GameModalHostView: View {
                     }
                 }
             }
-        }
-    }
-
-    @ViewBuilder
-    private func tradeOfferSection(_ offer: GameTradeOfferSummary) -> some View {
-        VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-            Text("Offer")
-                .font(GameTheme.metaFont.weight(.semibold))
-                .foregroundStyle(GameTheme.ink)
-
-            tradeResourceSection(label: offer.giveLabel, chips: offer.give)
-            tradeResourceSection(label: offer.receiveLabel, chips: offer.receive)
-        }
-    }
-
-    @ViewBuilder
-    private func tradeResourceSection(label: String, chips: [GameHandChip]) -> some View {
-        if !chips.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(label)
-                    .font(GameTheme.metaFont.weight(.semibold))
-                    .foregroundStyle(GameTheme.ink)
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: GameTheme.chipSpacing) {
-                        ForEach(chips) { chip in
-                            chipView(chip)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func tradeParticipantStatusRow(_ status: GameTradeParticipantStatus) -> some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(status.isPositive ? GameTheme.accent : GameTheme.outline.opacity(0.35))
-                .frame(width: 8, height: 8)
-
-            Text(status.displayName)
-                .foregroundStyle(GameTheme.ink)
-
-            Spacer()
-
-            Text(status.detailText)
-                .font(GameTheme.metaFont)
-                .foregroundStyle(status.isEmphasized ? GameTheme.accent : GameTheme.mutedInk)
         }
     }
 
@@ -532,8 +377,6 @@ struct GameModalHostView: View {
             return ("Move The Robber", "Tap a highlighted tile to move the robber. If a victim is available, the next step will ask you to pick who to steal from.", "figure.fall")
         case .robberVictim:
             return ("Steal A Card", "Choose one eligible victim. Only players adjacent to the robber's new tile and holding cards are shown.", "person.crop.circle.badge.questionmark")
-        case .trade:
-            return ("Trade", "Player and maritime trade actions now flow through compact suggested actions instead of the debug controls.", "arrow.left.arrow.right.circle.fill")
         case .playDevCard:
             return ("Dev Cards", "Choose a development card to play, then complete the required board or bank selections.", "sparkles.rectangle.stack.fill")
         case .devCardKnightMove:

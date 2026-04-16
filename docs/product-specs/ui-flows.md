@@ -68,8 +68,9 @@ This document summarizes the player-facing flows the UI must support in the curr
 - `Hand`, `Bank`, and `Players` utility shelves should not scroll in the normal case.
 - `Build` opens a compact shelf for legal build/buy actions such as road, settlement, city, and dev-card purchase.
 - `Build` and `Play Dev` should use the same overlay shelf surface as the utility entry path.
-- `Trade` should be available from the post-roll left dock slot and from the `Hand` shelf; it should not exist as a permanent always-on dock action.
-- The `Hand` shelf should show the five resource chips first and a full-width `Trade` action row directly below them when trade is currently available.
+- `Trade` should be available from the post-roll left dock slot, and a live-offer banner above the lower shelf should reopen the trade panel while an offer is pending. It should not exist as a permanent always-on dock action.
+- Trade should render in its own panel above the lower shelf rather than inside `Hand`.
+- The lower shelf should remain visible and interactive while the trade panel is open.
 - The bank should be quickly accessible rather than always expanded. Its full public counts for wood, brick, sheep, wheat, and ore should live in the `Bank` shelf and become interactive only for Monopoly and Year of Plenty.
 - The bank should reuse the same five-chip visual format as the hand in normal viewing, adding only minimal selection decoration during Monopoly or Year of Plenty.
 - Opponent summaries should be shelf-only rather than always visible in the main shell.
@@ -83,10 +84,22 @@ This document summarizes the player-facing flows the UI must support in the curr
 
 ## Trade Flow
 
-- The current player enters trade from the `Hand` shelf.
-- The current player sees a compact trade surface with suggested player-trade and maritime-trade actions.
-- Other players can respond through accept-style intent bubbles.
-- The current player can apply a selected accept-intent bubble and execute with the accepted players before end turn.
+- The current player enters trade from the dock `Trade` button or from the pending-offer banner.
+- The trade panel opens above the lower shelf and starts on a chooser surface with:
+  - `Player Trade`
+  - `Maritime / Bank Trade`
+- `Player Trade` should use a breadcrumb-style composer:
+  - choose `You Give` from the current player’s actual hand
+  - advance to `You Want` and choose requested resource types even when the player does not hold them
+  - advance to recipient selection by opening the `Players` shelf and toggling one or more opponents
+  - place the final `Send` action on the last breadcrumb step inside the trade panel rather than on a separate review screen
+- After send, the trade panel should close and the pending-offer banner should become the primary reopen affordance.
+- `Maritime / Bank Trade` should show a single mixed list of legal precomputed quick trades rather than a manual composer.
+- Targeted recipients can respond with `Accept`, `Decline`, or `Counter`.
+- `Counter` should use the same composer flow, but it is addressed only back to the current player.
+- The first applied targeted `Accept` should resolve the trade and close the live offer.
+- If every targeted player declines, the live offer should close.
+- Non-targeted players should still be able to inspect the live trade state so the table can follow what is happening.
 - Bank and port trades should feel distinct from player-to-player trade offers.
 - Pending trade state should stay legible from the shell and later bubble copy rather than disappearing into a deep modal.
 - The shell should keep trade status visible while the offer is pending.
@@ -114,5 +127,8 @@ This document summarizes the player-facing flows the UI must support in the curr
 - Player-facing names in the shell should use deterministic per-game aliases until explicit player naming exists.
 - The main screen should avoid persistent stacked cards; hand, bank, player summaries, build choices, and dev-card inventory should appear through the shared lower shelf instead.
 - The board should not resize when the lower shelf opens. The shelf should slide over the bottom of the board while the board and dock remain fixed.
-- During interactive Messages-host resize, the board should freeze visually, ignore board taps/gestures, and then perform one settled update after the host stops moving.
+- During interactive Messages-host resize, the shell should freeze visually against the last settled game frame, ignore board taps/gestures, and then perform one settled update after the host stops moving. Host-size jitter must not be able to strand the board in a permanently frozen state.
+- At the normal fully-extended gameplay height, the live board should stay interactive and should not enter resize-freeze mode. Freeze is only for collapsed or in-between host sizes during host drag.
+- Outside the narrow top grabber strip, drags should stay inside the game. Board drags should pan/zoom the board, shelf drags should stay local to the shelf, and only the top strip should be able to hand off to Messages-host resize.
+- On iPad-sized but vertically short Messages hosts, the lower shelf should fall back to the compact vertical layout instead of using oversized pad minima that clip or disable `Hand`, `Bank`, and `Players`.
 - The bubble should support lobby readability as well as in-game readability; joining and host-start should not create avoidable transcript clutter.

@@ -36,7 +36,7 @@ public struct CoreGameStateV1: Codable, Equatable {
     public let auditLog: [AuditEntryV1]
     public let lastTurnRecap: TurnRecapV1?
     public let activeTradeOffer: TradeOfferV1?
-    public let pendingTradeAccepts: [TradeAcceptV1]
+    public let tradeResponses: [TradeResponseV1]
     public let settlementsByNode: [NodeID: String]
     public let citiesByNode: [NodeID: String]
     public let roadsByEdge: [EdgeID: String]
@@ -73,7 +73,7 @@ public struct CoreGameStateV1: Codable, Equatable {
         auditLog: [AuditEntryV1] = [],
         lastTurnRecap: TurnRecapV1? = nil,
         activeTradeOffer: TradeOfferV1? = nil,
-        pendingTradeAccepts: [TradeAcceptV1] = [],
+        tradeResponses: [TradeResponseV1] = [],
         settlementsByNode: [NodeID: String] = [:],
         citiesByNode: [NodeID: String] = [:],
         roadsByEdge: [EdgeID: String] = [:],
@@ -113,7 +113,9 @@ public struct CoreGameStateV1: Codable, Equatable {
         self.auditLog = auditLog
         self.lastTurnRecap = lastTurnRecap
         self.activeTradeOffer = activeTradeOffer
-        self.pendingTradeAccepts = pendingTradeAccepts
+        self.tradeResponses = tradeResponses.sorted { lhs, rhs in
+            lhs.respondingPlayer < rhs.respondingPlayer
+        }
         self.settlementsByNode = settlementsByNode
         self.citiesByNode = citiesByNode
         self.roadsByEdge = roadsByEdge
@@ -152,7 +154,7 @@ public struct CoreGameStateV1: Codable, Equatable {
             auditLog: auditLog,
             lastTurnRecap: lastTurnRecap,
             activeTradeOffer: activeTradeOffer,
-            pendingTradeAccepts: pendingTradeAccepts,
+            tradeResponses: tradeResponses,
             settlementsByNode: settlementsByNode,
             citiesByNode: citiesByNode,
             roadsByEdge: roadsByEdge,
@@ -202,7 +204,7 @@ public struct CoreGameStateV1: Codable, Equatable {
             "auditLog": auditLog.map { $0.canonicalJSONValue() },
             "lastTurnRecap": lastTurnRecap?.canonicalJSONValue() ?? NSNull(),
             "activeTradeOffer": activeTradeOffer?.canonicalJSONValue() ?? NSNull(),
-            "pendingTradeAccepts": pendingTradeAccepts.map { $0.canonicalJSONValue() },
+            "tradeResponses": tradeResponses.map { $0.canonicalJSONValue() },
             "settlementsByNode": canonicalOwnershipMap(settlementsByNode),
             "citiesByNode": canonicalOwnershipMap(citiesByNode),
             "roadsByEdge": canonicalOwnershipMap(roadsByEdge),

@@ -6,6 +6,7 @@ public struct TradeOfferV1: Codable, Equatable {
     public let proposer: String
     public let give: ResourceHandV1
     public let receive: ResourceHandV1
+    public let recipients: [String]
     public let createdRev: Int
 
     public init(
@@ -13,12 +14,14 @@ public struct TradeOfferV1: Codable, Equatable {
         proposer: String,
         give: ResourceHandV1,
         receive: ResourceHandV1,
+        recipients: [String],
         createdRev: Int
     ) {
         self.offerHash = offerHash
         self.proposer = proposer
         self.give = give
         self.receive = receive
+        self.recipients = Array(Set(recipients)).sorted()
         self.createdRev = createdRev
     }
 
@@ -28,31 +31,50 @@ public struct TradeOfferV1: Codable, Equatable {
             "proposer": proposer,
             "give": give.canonicalJSONValue(),
             "receive": receive.canonicalJSONValue(),
+            "recipients": recipients,
             "createdRev": createdRev,
         ]
     }
 }
 
-public struct TradeAcceptV1: Codable, Equatable {
-    public let acceptingPlayer: String
+public enum TradeResponseKindV1: String, Codable, Equatable {
+    case accept
+    case decline
+    case counter
+}
+
+public struct TradeResponseV1: Codable, Equatable {
+    public let respondingPlayer: String
     public let offerHash: String
-    public let acceptedAtRev: Int
+    public let kind: TradeResponseKindV1
+    public let respondedAtRev: Int
+    public let counterGive: ResourceHandV1?
+    public let counterReceive: ResourceHandV1?
 
     public init(
-        acceptingPlayer: String,
+        respondingPlayer: String,
         offerHash: String,
-        acceptedAtRev: Int
+        kind: TradeResponseKindV1,
+        respondedAtRev: Int,
+        counterGive: ResourceHandV1? = nil,
+        counterReceive: ResourceHandV1? = nil
     ) {
-        self.acceptingPlayer = acceptingPlayer
+        self.respondingPlayer = respondingPlayer
         self.offerHash = offerHash
-        self.acceptedAtRev = acceptedAtRev
+        self.kind = kind
+        self.respondedAtRev = respondedAtRev
+        self.counterGive = counterGive
+        self.counterReceive = counterReceive
     }
 
     internal func canonicalJSONValue() -> [String: Any] {
         [
-            "acceptingPlayer": acceptingPlayer,
+            "respondingPlayer": respondingPlayer,
             "offerHash": offerHash,
-            "acceptedAtRev": acceptedAtRev,
+            "kind": kind.rawValue,
+            "respondedAtRev": respondedAtRev,
+            "counterGive": counterGive?.canonicalJSONValue() ?? NSNull(),
+            "counterReceive": counterReceive?.canonicalJSONValue() ?? NSNull(),
         ]
     }
 }
@@ -62,6 +84,7 @@ internal func deterministicTradeOfferHash(
     proposer: String,
     give: ResourceHandV1,
     receive: ResourceHandV1,
+    recipients: [String],
     anchorRev: Int,
     anchorHash: String
 ) -> String {
@@ -70,6 +93,7 @@ internal func deterministicTradeOfferHash(
         "proposer": proposer,
         "give": give.canonicalJSONValue(),
         "receive": receive.canonicalJSONValue(),
+        "recipients": Array(Set(recipients)).sorted(),
         "anchorRev": anchorRev,
         "anchorHash": anchorHash,
     ]

@@ -15,32 +15,37 @@ enum GameTradePanelModelBuilder {
             return nil
         }
 
-        if let offer = state.activeTradeOffer {
-            return buildActiveOfferPanel(
-                state: state,
-                offer: offer,
-                actingAs: actingAs,
-                selectedTurnIntent: selectedTurnIntent
-            )
+        let maritimeOptions = availableMaritimeOptions(state: state, actingAs: actingAs)
+
+        guard let offer = state.activeTradeOffer else {
+            return buildIdlePanel(state: state, actingAs: actingAs, maritimeOptions: maritimeOptions)
         }
 
-        return buildIdleTradePanel(state: state, actingAs: actingAs)
+        return buildActiveOfferPanel(
+            state: state,
+            offer: offer,
+            actingAs: actingAs,
+            selectedTurnIntent: selectedTurnIntent,
+            maritimeOptions: maritimeOptions
+        )
     }
 
-    private static func buildIdleTradePanel(
+    private static func buildIdlePanel(
         state: CoreGameStateV1,
-        actingAs: String?
+        actingAs: String?,
+        maritimeOptions: [GameTradeMaritimeOption]
     ) -> GameTradePanelModel {
         guard let actingAs else {
             return GameTradePanelModel(
                 roleTitle: "Trade Desk",
                 message: "Trade actions need your joined local Messages identity before they can be authored from this device.",
                 activeOffer: nil,
-                actions: [],
-                acceptedPlayers: [],
-                executeOptions: [],
                 participantStatuses: [],
-                footnotes: []
+                responderActions: nil,
+                selectedResponse: nil,
+                maritimeOptions: [],
+                pendingBannerText: nil,
+                canReplaceOffer: false
             )
         }
 
@@ -49,68 +54,32 @@ enum GameTradePanelModelBuilder {
                 roleTitle: "Waiting For Offer",
                 message: "Only \(playerName(state.currentPlayer, in: state)) can open a new trade on this turn.",
                 activeOffer: nil,
-                actions: [],
-                acceptedPlayers: [],
-                executeOptions: [],
                 participantStatuses: [],
-                footnotes: [
-                    "When a player offer is live, accept and execution status will appear here."
-                ]
-            )
-        }
-
-        var actions: [GameTradeAction] = []
-        var footnotes: [String] = []
-
-        if let proposal = state.defaultTradeProposal(for: actingAs) {
-            actions.append(
-                GameTradeAction(
-                    kind: .publishSuggestedOffer,
-                    title: "Offer Player Trade",
-                    detail: "Publish the current best player-to-player offer from core queries.",
-                    systemImage: "person.2.fill",
-                    giveLabel: "You give",
-                    give: handChips(from: proposal.give),
-                    receiveLabel: "You want",
-                    receive: handChips(from: proposal.receive)
-                )
-            )
-        }
-
-        if let maritime = state.defaultMaritimeTrade(for: actingAs) {
-            actions.append(
-                GameTradeAction(
-                    kind: .publishSuggestedMaritime,
-                    title: "Take Maritime Trade",
-                    detail: "Resolve immediately using the best current \(maritime.ratio):1 quote from your ports or the bank.",
-                    systemImage: "ferry.fill",
-                    giveLabel: "You give",
-                    give: handChips(from: maritime.give),
-                    receiveLabel: "You get",
-                    receive: handChips(from: maritime.receive)
-                )
+                responderActions: nil,
+                selectedResponse: nil,
+                maritimeOptions: [],
+                pendingBannerText: nil,
+                canReplaceOffer: false
             )
         }
 
         let message: String
-        if actions.isEmpty {
-            message = "No legal player or maritime trade is available from your current hand, ports, and bank state."
+        if maritimeOptions.isEmpty {
+            message = "Start a player trade from the chooser, or take a maritime trade later if your hand or ports unlock one."
         } else {
-            message = "Choose a player offer or an immediate maritime trade. Player offers stay open until you execute one accepted response or end the turn."
-            footnotes.append(
-                "There is no explicit cancel or decline bubble in the current protocol; unanswered player offers simply stay pending until you execute one accepted response or end the turn."
-            )
+            message = "Choose a player trade or pick one of the legal maritime / bank quick trades."
         }
 
         return GameTradePanelModel(
             roleTitle: "Trade Desk",
             message: message,
             activeOffer: nil,
-            actions: actions,
-            acceptedPlayers: [],
-            executeOptions: [],
             participantStatuses: [],
-            footnotes: footnotes
+            responderActions: nil,
+            selectedResponse: nil,
+            maritimeOptions: maritimeOptions,
+            pendingBannerText: nil,
+            canReplaceOffer: false
         )
     }
 
@@ -118,181 +87,198 @@ enum GameTradePanelModelBuilder {
         state: CoreGameStateV1,
         offer: TradeOfferV1,
         actingAs: String?,
-        selectedTurnIntent: ULS_Transport.TurnIntentV1?
+        selectedTurnIntent: ULS_Transport.TurnIntentV1?,
+        maritimeOptions: [GameTradeMaritimeOption]
     ) -> GameTradePanelModel {
         let proposerDisplay = playerName(offer.proposer, in: state)
+        let recipientNames = offer.recipients.map { playerName($0, in: state) }
         let isCurrentPlayer = actingAs == state.currentPlayer
-        let activeOffer = GameTradeOfferSummary(
-            proposerDisplay: proposerDisplay,
-            giveLabel: isCurrentPlayer ? "You give" : "\(proposerDisplay) gives",
-            give: handChips(from: offer.give),
-            receiveLabel: isCurrentPlayer ? "You want" : "\(proposerDisplay) wants",
-            receive: handChips(from: offer.receive)
+        let isTargetedResponder = actingAs.map { offer.recipients.contains($0) } ?? false
+        let responseByPlayer = Dictionary(
+            uniqueKeysWithValues: state.tradeResponses
+                .filter { $0.offerHash == offer.offerHash }
+                .map { ($0.respondingPlayer, $0) }
         )
 
-        let acceptedPlayers = state.pendingTradeAccepts
-            .map(\.acceptingPlayer)
+        let participantStatuses = state.roster
+            .filter { $0 != state.currentPlayer }
             .sorted()
-            .map { playerName($0, in: state) }
-        let selectedAcceptPlayer = selectedAcceptPlayer(from: selectedTurnIntent, state: state, offer: offer)
-
-        var actions: [GameTradeAction] = []
-        var executeOptions: [GameTradeExecuteOption] = []
-        var participantStatuses: [GameTradeParticipantStatus] = []
-        var footnotes: [String] = []
-        let roleTitle = isCurrentPlayer ? "Your Offer" : "Incoming Offer"
-        var message = "Trade is waiting on responses."
-
-        if let actingAs, actingAs != state.currentPlayer {
-            let alreadyAccepted = state.pendingTradeAccepts.contains { $0.acceptingPlayer == actingAs }
-            let canAffordResponse = canAfford(hand: state.resourcesByPlayer[actingAs] ?? .zero, cost: offer.receive)
-            if alreadyAccepted {
-                message = "You already accepted this offer. Waiting for \(playerName(state.currentPlayer, in: state)) to execute it or end the turn."
-                footnotes.append("With the current protocol, a sent accept cannot be withdrawn.")
-            } else if !canAffordResponse {
-                message = "You cannot accept this offer right now because you do not have the requested cards."
-                footnotes.append("There is no explicit decline bubble yet; leaving the offer unanswered is the only decline path.")
-            } else {
-                actions.append(
-                    GameTradeAction(
-                        kind: .sendAcceptOffer,
-                        title: "Accept Offer",
-                        detail: "Send an accept bubble for this exact offer so the proposer can choose you.",
-                        systemImage: "checkmark.circle.fill",
-                        giveLabel: "\(proposerDisplay) gives",
-                        give: handChips(from: offer.give),
-                        receiveLabel: "\(proposerDisplay) wants",
-                        receive: handChips(from: offer.receive)
-                    )
+            .map { playerID in
+                let response = responseByPlayer[playerID]
+                let isTargeted = offer.recipients.contains(playerID)
+                let stateValue: GameTradeParticipantResponseState
+                let detailText: String
+                switch response?.kind {
+                case .accept:
+                    stateValue = .accepted
+                    detailText = "Accepted"
+                case .decline:
+                    stateValue = .declined
+                    detailText = "Declined"
+                case .counter:
+                    stateValue = .countered
+                    detailText = "Countered"
+                case nil:
+                    stateValue = isTargeted ? .waiting : .watching
+                    detailText = isTargeted ? "Waiting" : "Watching"
+                }
+                return GameTradeParticipantStatus(
+                    playerID: playerID,
+                    displayName: playerName(playerID, in: state),
+                    state: stateValue,
+                    detailText: detailText,
+                    isTargeted: isTargeted,
+                    counterGive: handChips(from: response?.counterGive ?? .zero),
+                    counterReceive: handChips(from: response?.counterReceive ?? .zero)
                 )
-                message = "Review the offer and accept it if you want \(proposerDisplay) to choose you."
-                footnotes.append("Decline is passive right now: leave the offer unanswered and wait for the proposer to execute or end the turn.")
             }
-        }
 
-        if let actingAs, actingAs == state.currentPlayer {
-            if let tradeAcceptPlayer = selectedAcceptPlayer {
-                actions.append(
-                    GameTradeAction(
-                        kind: .applySelectedAccept,
-                        title: "Apply Selected Accept",
-                        detail: "Apply the selected accept bubble from \(playerName(tradeAcceptPlayer, in: state)) into canonical state before execution.",
-                        systemImage: "square.and.arrow.down.fill",
-                        giveLabel: "You give",
-                        give: handChips(from: offer.give),
-                        receiveLabel: "You get",
-                        receive: handChips(from: offer.receive)
-                    )
-                )
-                message = "Apply the selected accept from \(playerName(tradeAcceptPlayer, in: state)), then choose Execute."
-            } else if !state.pendingTradeAccepts.isEmpty {
-                executeOptions = state.pendingTradeAccepts
-                    .sorted { $0.acceptingPlayer < $1.acceptingPlayer }
-                    .map {
-                        GameTradeExecuteOption(
-                            playerID: $0.acceptingPlayer,
-                            displayName: playerName($0.acceptingPlayer, in: state)
-                        )
-                    }
-                message = "Choose one accepted player to execute. The offer stays open to everyone else until you execute or end the turn."
-            } else {
-                message = "Waiting for another player to accept this offer."
-            }
-            footnotes.append("There is no explicit cancel bubble yet. To clear the offer without trading, end the turn.")
-        }
+        let selectedResponse = selectedTradeResponse(
+            selectedTurnIntent: selectedTurnIntent,
+            state: state,
+            offer: offer
+        )
 
-        if isCurrentPlayer {
-            participantStatuses = participantStatusesForProposer(
-                state: state,
-                offer: offer,
-                selectedAcceptPlayer: selectedAcceptPlayer
+        let responderActions: GameTradeResponderActions?
+        if
+            let actingAs,
+            actingAs != state.currentPlayer,
+            offer.recipients.contains(actingAs),
+            responseByPlayer[actingAs] == nil
+        {
+            responderActions = GameTradeResponderActions(
+                canAccept: canAfford(hand: state.resourcesByPlayer[actingAs] ?? .zero, cost: offer.receive),
+                canDecline: true,
+                canCounter: true
             )
         } else {
-            participantStatuses = participantStatusesForResponder(
-                state: state,
-                actingAs: actingAs,
-                offer: offer
-            )
+            responderActions = nil
+        }
+
+        let roleTitle: String
+        let message: String
+        if isCurrentPlayer {
+            roleTitle = "Your Offer"
+            if let selectedResponse {
+                message = "Apply the selected \(selectedResponse.kind.rawValue) from \(selectedResponse.displayName)."
+            } else if participantStatuses.contains(where: { $0.state == .countered }) {
+                message = "Counters are visible below. Replace the live offer if you want to answer one."
+            } else {
+                message = "Trade is waiting on targeted player responses."
+            }
+        } else if isTargetedResponder {
+            roleTitle = "Incoming Offer"
+            if let response = responseByPlayer[actingAs ?? ""] {
+                switch response.kind {
+                case .accept:
+                    message = "You already accepted this offer."
+                case .decline:
+                    message = "You declined this offer."
+                case .counter:
+                    message = "You sent a counteroffer back to \(proposerDisplay)."
+                }
+            } else if responderActions?.canAccept == false {
+                message = "You can decline or counter this offer, but you cannot accept it with your current hidden hand."
+            } else {
+                message = "Accept, decline, or counter this offer."
+            }
+        } else {
+            roleTitle = "Table Offer"
+            message = "This trade is visible to the table, but it was not sent to you."
         }
 
         return GameTradePanelModel(
             roleTitle: roleTitle,
             message: message,
-            activeOffer: activeOffer,
-            actions: actions,
-            acceptedPlayers: acceptedPlayers,
-            executeOptions: executeOptions,
+            activeOffer: GameTradeOfferSummary(
+                proposerPlayerID: offer.proposer,
+                proposerDisplay: proposerDisplay,
+                giveLabel: isCurrentPlayer ? "You give" : "\(proposerDisplay) gives",
+                give: handChips(from: offer.give),
+                receiveLabel: isCurrentPlayer ? "You want" : "\(proposerDisplay) wants",
+                receive: handChips(from: offer.receive),
+                recipientPlayerIDs: offer.recipients,
+                recipientsLabel: recipientNames.isEmpty ? "No recipients" : "To " + recipientNames.joined(separator: ", ")
+            ),
             participantStatuses: participantStatuses,
-            footnotes: footnotes
+            responderActions: responderActions,
+            selectedResponse: selectedResponse,
+            maritimeOptions: maritimeOptions,
+            pendingBannerText: pendingBannerText(for: offer, proposerDisplay: proposerDisplay, recipients: recipientNames),
+            canReplaceOffer: isCurrentPlayer
         )
     }
 
-    private static func participantStatusesForProposer(
-        state: CoreGameStateV1,
-        offer: TradeOfferV1,
-        selectedAcceptPlayer: String?
-    ) -> [GameTradeParticipantStatus] {
-        state.roster
-            .filter { $0 != state.currentPlayer }
-            .sorted()
-            .map { player in
-                let accepted = state.pendingTradeAccepts.contains {
-                    $0.acceptingPlayer == player && $0.offerHash == offer.offerHash
-                }
-                let isSelected = player == selectedAcceptPlayer
-                let detailText: String
-                if isSelected {
-                    detailText = "Selected bubble"
-                } else if accepted {
-                    detailText = "Accepted"
-                } else {
-                    detailText = "Waiting"
-                }
-                return GameTradeParticipantStatus(
-                    playerID: player,
-                    displayName: playerName(player, in: state),
-                    detailText: detailText,
-                    isPositive: accepted || isSelected,
-                    isEmphasized: isSelected
-                )
-            }
-    }
-
-    private static func participantStatusesForResponder(
-        state: CoreGameStateV1,
-        actingAs: String?,
-        offer: TradeOfferV1
-    ) -> [GameTradeParticipantStatus] {
-        state.pendingTradeAccepts
-            .sorted { $0.acceptingPlayer < $1.acceptingPlayer }
-            .map { accept in
-                let isLocal = accept.acceptingPlayer == actingAs
-                return GameTradeParticipantStatus(
-                    playerID: accept.acceptingPlayer,
-                    displayName: playerName(accept.acceptingPlayer, in: state),
-                    detailText: isLocal ? "You accepted" : "Accepted",
-                    isPositive: true,
-                    isEmphasized: isLocal
-                )
-            }
-    }
-
-    private static func selectedAcceptPlayer(
-        from selectedTurnIntent: ULS_Transport.TurnIntentV1?,
+    private static func selectedTradeResponse(
+        selectedTurnIntent: ULS_Transport.TurnIntentV1?,
         state: CoreGameStateV1,
         offer: TradeOfferV1
-    ) -> String? {
+    ) -> GameTradeSelectedResponseSummary? {
         guard let selectedTurnIntent,
-              selectedTurnIntent.kind == .acceptTrade,
               selectedTurnIntent.gameId == state.gameId,
               selectedTurnIntent.anchorRev == state.rev,
               selectedTurnIntent.anchorHash == state.stateHash,
-              selectedTurnIntent.tradeOfferHash == offer.offerHash
+              selectedTurnIntent.tradeOfferHash == offer.offerHash,
+              let playerID = selectedTurnIntent.tradeAcceptPlayer
         else {
             return nil
         }
 
-        return selectedTurnIntent.tradeAcceptPlayer
+        let kind: GameTradeResponseIntentKind
+        switch selectedTurnIntent.kind {
+        case .acceptTrade:
+            kind = .accept
+        case .declineTrade:
+            kind = .decline
+        case .counterTrade:
+            kind = .counter
+        default:
+            return nil
+        }
+
+        return GameTradeSelectedResponseSummary(
+            playerID: playerID,
+            displayName: playerName(playerID, in: state),
+            kind: kind
+        )
+    }
+
+    private static func availableMaritimeOptions(
+        state: CoreGameStateV1,
+        actingAs: String?
+    ) -> [GameTradeMaritimeOption] {
+        guard let actingAs, actingAs == state.currentPlayer else {
+            return []
+        }
+        return state.maritimeTradeQuotes(for: actingAs).map {
+            GameTradeMaritimeOption(
+                give: handChips(from: $0.give),
+                receive: handChips(from: $0.receive),
+                ratio: $0.ratio
+            )
+        }
+    }
+
+    private static func pendingBannerText(
+        for offer: TradeOfferV1,
+        proposerDisplay: String,
+        recipients: [String]
+    ) -> String {
+        let give = compactHandDescription(offer.give)
+        let receive = compactHandDescription(offer.receive)
+        let recipientLabel: String
+        if recipients.count == 1, let recipient = recipients.first {
+            recipientLabel = recipient
+        } else {
+            recipientLabel = "\(recipients.count) players"
+        }
+        return "\(proposerDisplay): \(give) for \(receive) to \(recipientLabel)"
+    }
+
+    private static func compactHandDescription(_ hand: ResourceHandV1) -> String {
+        handChips(from: hand)
+            .map { "\($0.count) \($0.shortLabel.lowercased())" }
+            .joined(separator: ", ")
     }
 
     private static func canAfford(hand: ResourceHandV1, cost: ResourceHandV1) -> Bool {

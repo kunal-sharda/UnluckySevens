@@ -62,13 +62,14 @@ final class TranscriptTransportSupportTests: XCTestCase {
 
         XCTAssertEqual(
             builtMessage.summaryText,
-            "INTENT actor=actor-1 kind=join a=r0 ulsenv:\(encodedEnvelope)"
+            "ulsenv:\(encodedEnvelope) INTENT actor=actor-1 kind=join a=r0"
         )
         XCTAssertEqual(builtMessage.mirroredPayloadLength, encodedEnvelope.count)
     }
 
     func testDecodePayloadOnlyUsesSummaryFallbackWhenExplicitlyAllowed() {
-        let summaryText = "STATE r0 p=lobby\nulsenv:{\"kind\":\"STATE\"}"
+        let encodedEnvelope = try! encodedJoinEnvelope()
+        let summaryText = "ulsenv:\(encodedEnvelope) INTENT actor=actor-1 kind=join a=r0"
 
         let disabledFallback = TranscriptTransportSupport.decodePayload(
             from: nil,
@@ -84,7 +85,7 @@ final class TranscriptTransportSupportTests: XCTestCase {
         )
 
         XCTAssertNil(disabledFallback)
-        XCTAssertEqual(enabledFallback?.payload, "{\"kind\":\"STATE\"}")
+        XCTAssertEqual(enabledFallback?.payload, encodedEnvelope)
         XCTAssertEqual(enabledFallback?.source, .summaryFallback)
     }
 
@@ -103,14 +104,53 @@ final class TranscriptTransportSupportTests: XCTestCase {
     }
 
     func testDecodePayloadStillSupportsOlderMultilineSummaryMirror() {
+        let encodedEnvelope = try! encodedJoinEnvelope()
         let decoded = TranscriptTransportSupport.decodePayload(
             from: nil,
-            summaryText: "STATE r0 p=lobby\nulsenv:{\"kind\":\"STATE\"}",
+            summaryText: "STATE r0 p=lobby\nulsenv:\(encodedEnvelope)",
             summaryPayloadPrefix: "ulsenv:",
             allowSummaryFallback: true
         )
 
-        XCTAssertEqual(decoded?.payload, "{\"kind\":\"STATE\"}")
+        XCTAssertEqual(decoded?.payload, encodedEnvelope)
+        XCTAssertEqual(decoded?.source, .summaryFallback)
+    }
+
+    func testDecodePayloadTrimsAppendedSummaryLabelFromMirroredPayload() throws {
+        let encodedEnvelope = try encodedJoinEnvelope()
+
+        let decoded = TranscriptTransportSupport.decodePayload(
+            from: nil,
+            summaryText: "ulsenv:\(encodedEnvelope) INTENT actor=actor-1 kind=join a=r0",
+            summaryPayloadPrefix: "ulsenv:",
+            allowSummaryFallback: true
+        )
+
+        XCTAssertEqual(decoded?.payload, encodedEnvelope)
+        XCTAssertEqual(decoded?.source, .summaryFallback)
+    }
+
+    func testDecodePayloadIgnoresWhitespaceInsertedIntoMirroredSummaryPayload() throws {
+        let intent = JoinIntentV1(
+            gameId: "game-1",
+            anchorRev: 0,
+            anchorHash: "hash-0",
+            actor: "actor-1"
+        )
+        let payload = try jsonString(intent)
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+        let encodedEnvelope = try encode(envelope)
+        let midpoint = encodedEnvelope.index(encodedEnvelope.startIndex, offsetBy: encodedEnvelope.count / 2)
+        let spacedPayload = String(encodedEnvelope[..<midpoint]) + " \n" + String(encodedEnvelope[midpoint...])
+
+        let decoded = TranscriptTransportSupport.decodePayload(
+            from: nil,
+            summaryText: "ulsenv:\(spacedPayload) INTENT actor=actor-1 kind=join a=r0",
+            summaryPayloadPrefix: "ulsenv:",
+            allowSummaryFallback: true
+        )
+
+        XCTAssertEqual(decoded?.payload, encodedEnvelope)
         XCTAssertEqual(decoded?.source, .summaryFallback)
     }
 
@@ -132,6 +172,18 @@ final class TranscriptTransportSupportTests: XCTestCase {
             throw TestError.invalidJSONString
         }
         return string
+    }
+
+    private func encodedJoinEnvelope() throws -> String {
+        let intent = JoinIntentV1(
+            gameId: "game-1",
+            anchorRev: 0,
+            anchorHash: "hash-0",
+            actor: "actor-1"
+        )
+        let payload = try jsonString(intent)
+        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+        return try encode(envelope)
     }
 
     private enum TestError: Error {

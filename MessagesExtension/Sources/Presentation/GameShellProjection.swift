@@ -20,7 +20,7 @@ struct GameShellProjection: Equatable {
     var eligibleStealVictims: String
     var remainingPieces: String
     var activeTradeOffer: String
-    var pendingTradeAccepts: String
+    var tradeResponses: String
     var maritimeTradePreview: String
     var largestArmyStatus: String
     var longestRoadStatus: String
@@ -64,7 +64,7 @@ struct GameShellProjection: Equatable {
         eligibleStealVictims: "-",
         remainingPieces: "-",
         activeTradeOffer: "-",
-        pendingTradeAccepts: "-",
+        tradeResponses: "-",
         maritimeTradePreview: "-",
         largestArmyStatus: "-",
         longestRoadStatus: "-",
@@ -141,7 +141,7 @@ enum GameShellProjectionBuilder {
                 eligibleStealVictims: "-",
                 remainingPieces: "-",
                 activeTradeOffer: "-",
-                pendingTradeAccepts: "-",
+                tradeResponses: "-",
                 maritimeTradePreview: "-",
                 largestArmyStatus: "-",
                 longestRoadStatus: "-",
@@ -187,7 +187,7 @@ enum GameShellProjectionBuilder {
             eligibleStealVictims: stealVictimsSummary(for: state.turnState),
             remainingPieces: remainingPiecesSummary(for: state),
             activeTradeOffer: activeTradeOfferSummary(for: state),
-            pendingTradeAccepts: pendingTradeAcceptsSummary(for: state),
+            tradeResponses: tradeResponsesSummary(for: state),
             maritimeTradePreview: maritimeTradeSummary(for: state, actingAs: actingAs),
             largestArmyStatus: largestArmySummary(for: state),
             longestRoadStatus: longestRoadSummary(for: state),
@@ -265,7 +265,7 @@ enum GameShellProjectionBuilder {
             eligibleStealVictims: "-",
             remainingPieces: "-",
             activeTradeOffer: "-",
-            pendingTradeAccepts: "-",
+                tradeResponses: "-",
             maritimeTradePreview: "-",
             largestArmyStatus: "-",
             longestRoadStatus: "-",
@@ -323,7 +323,7 @@ enum GameShellProjectionBuilder {
             eligibleStealVictims: "-",
             remainingPieces: "-",
             activeTradeOffer: "-",
-            pendingTradeAccepts: "-",
+                tradeResponses: "-",
             maritimeTradePreview: "-",
             largestArmyStatus: "-",
             longestRoadStatus: "-",
@@ -381,7 +381,7 @@ enum GameShellProjectionBuilder {
             eligibleStealVictims: "-",
             remainingPieces: "-",
             activeTradeOffer: "-",
-            pendingTradeAccepts: "-",
+            tradeResponses: "-",
             maritimeTradePreview: "-",
             largestArmyStatus: "-",
             longestRoadStatus: "-",
@@ -529,16 +529,28 @@ enum GameShellProjectionBuilder {
             return "none"
         }
         let shortHash = String(offer.offerHash.prefix(8))
-        return "\(offer.proposer) \(resourceHandDescription(offer.give)) -> \(resourceHandDescription(offer.receive)) [\(shortHash)]"
+        let recipients = offer.recipients.joined(separator: ",")
+        return "\(offer.proposer) \(resourceHandDescription(offer.give)) -> \(resourceHandDescription(offer.receive)) to [\(recipients)] [\(shortHash)]"
     }
 
-    private static func pendingTradeAcceptsSummary(for state: CoreGameStateV1) -> String {
-        if state.pendingTradeAccepts.isEmpty {
+    private static func tradeResponsesSummary(for state: CoreGameStateV1) -> String {
+        if state.tradeResponses.isEmpty {
             return "none"
         }
-        return state.pendingTradeAccepts
-            .sorted { $0.acceptingPlayer < $1.acceptingPlayer }
-            .map(\.acceptingPlayer)
+        return state.tradeResponses
+            .sorted { lhs, rhs in
+                if lhs.respondingPlayer == rhs.respondingPlayer {
+                    return lhs.kind.rawValue < rhs.kind.rawValue
+                }
+                return lhs.respondingPlayer < rhs.respondingPlayer
+            }
+            .map { response in
+                let base = "\(response.respondingPlayer):\(response.kind.rawValue)"
+                guard response.kind == .counter else {
+                    return base
+                }
+                return "\(base)(\(resourceHandDescription(response.counterGive ?? .zero))->\(resourceHandDescription(response.counterReceive ?? .zero)))"
+            }
             .joined(separator: ", ")
     }
 
@@ -623,11 +635,22 @@ enum GameShellProjectionBuilder {
         case .proposeTrade:
             let give = intent.tradeGive.map(resourceHandDescription) ?? "-"
             let receive = intent.tradeReceive.map(resourceHandDescription) ?? "-"
-            return "kind: proposeTrade give: \(give) receive: \(receive)"
+            let targets = intent.tradeTargetPlayers?.joined(separator: ",") ?? "-"
+            return "kind: proposeTrade give: \(give) receive: \(receive) targets: \(targets)"
         case .acceptTrade:
             let player = intent.tradeAcceptPlayer ?? "-"
             let offer = intent.tradeOfferHash ?? "-"
             return "kind: acceptTrade player: \(player) offer: \(offer)"
+        case .declineTrade:
+            let player = intent.tradeAcceptPlayer ?? "-"
+            let offer = intent.tradeOfferHash ?? "-"
+            return "kind: declineTrade player: \(player) offer: \(offer)"
+        case .counterTrade:
+            let player = intent.tradeAcceptPlayer ?? "-"
+            let offer = intent.tradeOfferHash ?? "-"
+            let give = intent.tradeGive.map(resourceHandDescription) ?? "-"
+            let receive = intent.tradeReceive.map(resourceHandDescription) ?? "-"
+            return "kind: counterTrade player: \(player) offer: \(offer) give: \(give) receive: \(receive)"
         case .executeTrade:
             let player = intent.tradeAcceptPlayer ?? "-"
             let offer = intent.tradeOfferHash ?? "-"

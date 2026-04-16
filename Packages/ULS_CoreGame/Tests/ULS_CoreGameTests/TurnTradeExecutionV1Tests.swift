@@ -2,7 +2,7 @@ import XCTest
 @testable import ULS_CoreGame
 
 final class TurnTradeExecutionV1Tests: XCTestCase {
-    func testExecuteTradeTransfersResourcesAtomically() throws {
+    func testAcceptTradeTransfersResourcesAtomicallyOnFirstAcceptance() throws {
         let state = makeStateWithOffer(
             proposerHand: ResourceHandV1(wood: 2, brick: 1),
             acceptorHand: ResourceHandV1(brick: 2, sheep: 1),
@@ -12,39 +12,90 @@ final class TurnTradeExecutionV1Tests: XCTestCase {
         let offerHash = try XCTUnwrap(state.activeTradeOffer?.offerHash)
 
         let executed = try apply(
-            intent: .executeTrade(acceptingPlayer: "B", offerHash: offerHash),
+            intent: .acceptTrade(acceptingPlayer: "B", offerHash: offerHash),
             to: state,
-            actor: "A"
+            actor: "B"
         )
 
         XCTAssertEqual(executed.resourcesByPlayer["A"], ResourceHandV1(wood: 1, brick: 2))
         XCTAssertEqual(executed.resourcesByPlayer["B"], ResourceHandV1(wood: 1, brick: 1, sheep: 1))
         XCTAssertEqual(executed.bankResources, state.bankResources)
         XCTAssertNil(executed.activeTradeOffer)
-        XCTAssertTrue(executed.pendingTradeAccepts.isEmpty)
-        XCTAssertNoThrow(try validateTransition(from: state, to: executed, actor: "A"))
+        XCTAssertEqual(executed.tradeResponses.map(\.kind), [.accept])
+        XCTAssertEqual(executed.tradeResponses.map(\.respondingPlayer), ["B"])
+        XCTAssertNoThrow(try validateTransition(from: state, to: executed, actor: "B"))
     }
 
-    func testExecuteTradeRejectsWhenResourcesChangedAndInsufficient() {
+    func testAcceptTradeRejectsWhenResponderHasInsufficientResources() {
         let state = makeStateWithOffer(
             proposerHand: ResourceHandV1(wood: 2, brick: 1),
             acceptorHand: ResourceHandV1(brick: 0, sheep: 1),
             offerGive: ResourceHandV1(wood: 1),
             offerReceive: ResourceHandV1(brick: 1)
         )
-        let snapshot = state
         let offerHash = state.activeTradeOffer?.offerHash ?? "missing"
 
         XCTAssertThrowsError(
             try apply(
-                intent: .executeTrade(acceptingPlayer: "B", offerHash: offerHash),
+                intent: .acceptTrade(acceptingPlayer: "B", offerHash: offerHash),
                 to: state,
-                actor: "A"
+                actor: "B"
             )
         ) { error in
             XCTAssertEqual(error as? CoreGameError, .tradeExecutionInsufficientResources)
         }
-        XCTAssertEqual(state, snapshot)
+    }
+
+    func testLegacyExecuteTradeStillSupportsAcceptedResponses() throws {
+        let state = makeStateWithOffer(
+            proposerHand: ResourceHandV1(wood: 2, brick: 1),
+            acceptorHand: ResourceHandV1(brick: 2, sheep: 1),
+            offerGive: ResourceHandV1(wood: 1),
+            offerReceive: ResourceHandV1(brick: 1),
+            tradeResponses: [
+                TradeResponseV1(
+                    respondingPlayer: "B",
+                    offerHash: "legacy-offer-placeholder",
+                    kind: .accept,
+                    respondedAtRev: 52
+                )
+            ]
+        )
+        let offerHash = try XCTUnwrap(state.activeTradeOffer?.offerHash)
+        let replayable = CoreGameStateV1(
+            gameId: state.gameId,
+            rev: state.rev,
+            prevHash: state.prevHash,
+            stateHash: "",
+            roster: state.roster,
+            currentPlayer: state.currentPlayer,
+            phase: state.phase,
+            seed: state.seed,
+            diceRngState: state.diceRngState,
+            robberRngState: state.robberRngState,
+            resourcesByPlayer: state.resourcesByPlayer,
+            bankResources: state.bankResources,
+            activeTradeOffer: state.activeTradeOffer,
+            tradeResponses: [
+                TradeResponseV1(
+                    respondingPlayer: "B",
+                    offerHash: offerHash,
+                    kind: .accept,
+                    respondedAtRev: state.rev + 2
+                )
+            ],
+            turnState: state.turnState
+        ).rehashed()
+
+        let executed = try apply(
+            intent: .executeTrade(acceptingPlayer: "B", offerHash: offerHash),
+            to: replayable,
+            actor: "A"
+        )
+
+        XCTAssertNil(executed.activeTradeOffer)
+        XCTAssertEqual(executed.tradeResponses.map(\.kind), [.accept])
+        XCTAssertEqual(executed.tradeResponses.map(\.respondingPlayer), ["B"])
     }
 
     func testExecuteTradeRejectsWhenOfferExpired() {
@@ -85,7 +136,8 @@ final class TurnTradeExecutionV1Tests: XCTestCase {
         proposerHand: ResourceHandV1,
         acceptorHand: ResourceHandV1,
         offerGive: ResourceHandV1,
-        offerReceive: ResourceHandV1
+        offerReceive: ResourceHandV1,
+        tradeResponses: [TradeResponseV1] = []
     ) -> CoreGameStateV1 {
         let base = CoreGameStateV1(
             gameId: "game-trade-exec",
@@ -114,14 +166,28 @@ final class TurnTradeExecutionV1Tests: XCTestCase {
             proposer: "A",
             give: offerGive,
             receive: offerReceive,
+            recipients: ["B"],
             anchorRev: base.rev,
             anchorHash: base.stateHash
         )
+        let normalizedResponses = tradeResponses.isEmpty
+            ? []
+            : tradeResponses.map {
+                TradeResponseV1(
+                    respondingPlayer: $0.respondingPlayer,
+                    offerHash: offerHash,
+                    kind: $0.kind,
+                    respondedAtRev: $0.respondedAtRev,
+                    counterGive: $0.counterGive,
+                    counterReceive: $0.counterReceive
+                )
+            }
         let offer = TradeOfferV1(
             offerHash: offerHash,
             proposer: "A",
             give: offerGive,
             receive: offerReceive,
+            recipients: ["B"],
             createdRev: base.rev + 1
         )
 
@@ -139,9 +205,7 @@ final class TurnTradeExecutionV1Tests: XCTestCase {
             resourcesByPlayer: base.resourcesByPlayer,
             bankResources: base.bankResources,
             activeTradeOffer: offer,
-            pendingTradeAccepts: [
-                TradeAcceptV1(acceptingPlayer: "B", offerHash: offerHash, acceptedAtRev: base.rev + 2),
-            ],
+            tradeResponses: normalizedResponses,
             settlementsByNode: base.settlementsByNode,
             citiesByNode: base.citiesByNode,
             roadsByEdge: base.roadsByEdge,

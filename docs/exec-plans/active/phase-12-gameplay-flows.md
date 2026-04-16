@@ -35,8 +35,9 @@ What exists today:
 - phase 10 established a board-first shell, compact opponent summaries, a hand tray, an action dock, and easy-but-secondary debug surfaces
 - phase 11 replaced placeholder board art with a real SpriteKit board, pan/zoom, typed board hit targets, mode-driven highlights, and snapshot rendering
 - stages 12.1 through 12.6 are now landed: lobby join/start is productized, setup placement is playable from the board, the common turn loop can roll, build, buy, and end turn from the product UI, robber/discard flow is wired through the product shell, trade UX is live in the compact modal/shell surfaces, and dev-card actions are available through the compact product panel
-- stage 12.8 now includes `Buy Dev` under `Build`, staged Knight/Monopoly/Year Of Plenty/Road Building choice flows, winning-only Victory Point reveal visibility, a board-first shell that collapses hand, bank, player summaries, build actions, and dev-card inventory into a shared lower shelf, plus interaction hardening for setup/build confirmation and Messages-host resize. The shell now fits the current visible host bounds again, the board keeps one committed world reference size, setup/build placements use selection-first confirm semantics, and interactive host drag freezes the board until one settled post-resize update can be applied
+- stage 12.8 now includes `Buy Dev` under `Build`, staged Knight/Monopoly/Year Of Plenty/Road Building choice flows, winning-only Victory Point reveal visibility, a board-first shell that collapses hand, bank, player summaries, build actions, and dev-card inventory into a shared lower shelf, plus interaction hardening for setup/build confirmation and Messages-host resize. The shell now fits the current visible host bounds again, the board keeps one committed world reference size, setup/build placements use selection-first confirm semantics, the board pan/pinch/tap path runs through a narrow `SKView` host instead of a SwiftUI gesture shield, interactive host drag freezes against a captured shell snapshot with watchdog recovery until one settled post-resize update can be applied, the Messages root now reserves a narrow top-only host-resize strip while the main game content lives inside a drag-capturing container, wide-but-short iPad hosts fall back to compact vertical shelf metrics instead of oversized pad minima, and the board stays live whenever the host has returned to its largest settled gameplay extent instead of freezing at the normal fully-extended height
 - phase 12 currently carries a temporary production transport fallback: canonical payloads still prefer `message.url`, but the extension also mirrors a one-line payload fallback into `summaryText` so real-device gameplay stays end-to-end while phase 13 redesigns transcript rehydration
+- the temporary in-app diagnostics slice also includes a `Reload Board` operator control while host-resize recovery is being hardened; this remains phase-12/13-only instrumentation and should be removed or gated down during release-readiness cleanup
 - `ULS_CoreGame` already owns legality, viewer-safe projections, and default action selection through [CoreGameViewQueriesV1.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/Packages/ULS_CoreGame/Sources/ULS_CoreGame/CoreGameViewQueriesV1.swift)
 - the main integration point is still [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift), which owns transcript context, debug actions, and shell inputs
 
@@ -52,12 +53,13 @@ What is still missing:
   - immediate win at 10 VP with clear winner state
 - host-stability and transcript-recovery work stay out of the phase-12 success boundary except for the temporary one-line `summaryText` transport bridge needed to keep current gameplay end to end
 - phase 13 prep is now explicit: before host-stability work begins, the next active ExecPlan must challenge carrier, session, selection, and recovery assumptions up front through an `Assumptions and Evidence Gate` instead of inheriting them from debug-first behavior
+- the current in-app transport badge and host-gesture probe are temporary phase-12/13 diagnostics only; phase-13 release-readiness cleanup owns gating them down or removing them before production distribution
 
 Important constraints already locked in the repo:
 
 - `MessagesExtension` must not invent legality or hidden-information rules
 - board taps and modal selections must map into canonical intents, not mutate state directly
-- this slice does not change transport or protocol shape; it tightens presentation, choice surfaces, and timing affordances on top of the existing canonical state/intent model
+- this slice now does change the trade protocol/state shape in a bounded way so the product shell can support targeted recipients, visible decline/counter state, and first-accept execution without inventing a second rules engine in `MessagesExtension`
 - the temporary one-line `summaryText` payload mirror is acceptable only as a phase-12 product-reliability bridge; phase 13 owns replacing it with compact-token rehydration
 - the current shell hierarchy remains board-first with compact, progressive disclosure
 - motion should remain restrained and the Messages UI should stay shallow rather than turning into a deep form-based app
@@ -221,25 +223,32 @@ Goal:
 
 Implement:
 
-- a compact trade modal that suggests player-trade and maritime-trade actions for the current player
-- accept-intent entry points for non-current players
-- selected accept-intent application and execute flow for the current player
-- trade status that stays visible in the shell while the offer is pending
-- expiry behavior that feels explicit rather than silently disappearing
+- a separate trade panel above the lower shelf, with dock-entry and pending-banner reopen paths
+- a chooser-first trade flow for `Player Trade` vs `Maritime / Bank Trade`
+- a breadcrumb player-trade composer that builds `You Give`, `You Want`, and targeted recipients without burying the flow in a deep modal stack
+- recipient selection that reuses the interactive `Players` shelf while the trade panel stays open above it
+- canonical targeted-recipient response state for `Accept`, `Decline`, and `Counter`
+- first-accept execution so the proposer no longer has a separate execute step in the product UX
+- a pending trade banner that keeps live-offer state legible after send
+- expiry and all-decline closure behavior that feels explicit rather than silently disappearing
 
 Key files and likely additions:
 
 - [GameModalHostView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Components/GameModalHostView.swift)
-- [HandTrayView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Components/HandTrayView.swift)
+- [GameBottomTrayView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Components/GameBottomTrayView.swift)
+- [GameShellView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Game/GameShellView.swift)
 - [GameScreenModelBuilder.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/GameScreenModelBuilder.swift)
+- [TurnIntentV1.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/Packages/ULS_Transport/Sources/ULS_Transport/TurnIntentV1.swift)
+- [TradeStateV1.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/Packages/ULS_CoreGame/Sources/ULS_CoreGame/TradeStateV1.swift)
+- [TurnReducerV1.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/Packages/ULS_CoreGame/Sources/ULS_CoreGame/TurnReducerV1.swift)
 - new files under `MessagesExtension/Sources/Features/Trade/`
 
 Expected observations:
 
-- a player trade can be proposed, responded to, executed, or expired from the real UI
+- a player trade can be composed manually, targeted to a subset of opponents, responded to, and resolved from the real UI
 - maritime trade feels distinct from player trade rather than like the same form with different wording
-- shell status remains readable while a trade is pending
-- current-player trade suggestions stay compact inside the modal and shell rather than expanding into a dense form
+- shell status remains readable while a trade is pending, even after the panel auto-closes
+- current-player trade UX stays panel-driven and shallow rather than falling back to a hand-embedded row or a dense modal form
 
 ### Stage 12.6 — Dev Card UX
 
@@ -471,6 +480,9 @@ Deferred by design in phase 12:
 - 2026-04-12: the final 12.8 utility cleanup keeps `Hand`, `Bank`, and `Players` content-only and non-scroll, makes the bank reuse the hand chip geometry in normal viewing, places `Trade` as a full-width row inside the hand shelf, and hardens the dock button layout so `End Turn` stays visible on iPad.
 - 2026-04-10: the layout contract is now explicit in code and tests rather than informal view tweaking: the shell stays locked to `12% / 70% / 18%`, the lower rail splits into a `6%` handle band and `12%` dock row, the overlay shelf provides the only intentional overlap, the board clips strictly to its slot, and the board hint sits bottom-center inside the ocean margin rather than as a large translucent HUD.
 - 2026-04-12: device feedback showed that freezing the entire shell to a larger host size fixed lag but broke the visible layout contract: shelves could be cut off and the board/shelf boundary could drift when the Messages host became smaller. Stage 12.8 now keeps the shell fitted to the current visible host bounds, leaves the expensive board path on the throttled/no-rebuild resize route, auto-collapses utility shelves that cannot fit a usable body, and still caps the lower-rail width so hand, bank, and player shelves keep a consistent reading width across iPhone and iPad.
+- 2026-04-14: Stage 12.8 now moves board pan/pinch/tap off the SwiftUI gesture overlay and into a dedicated `SKView` host wrapper, keeps the live board host unmounted while resize freeze is active, adds a shell-side freeze watchdog so hostile host resize sequences cannot strand the UI in a frozen state, replaces pure percentage lower-rail sizing with bounded phone/iPad metrics, and falls back from expanded pad vertical minima when the iPad Messages host is wide but short so `Hand`, `Bank`, and `Players` stay readable and tappable on iPad.
+- 2026-04-14: two audit artifacts now live alongside the phase-12 plan and track follow-on work that is deliberately out of scope for phase 12.8 but should not be lost. [2026-04-12 render/perf audit](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-12-render-performance.md) lists 21 findings against the board/shell render stack (`StandardBoardTopologyV1`, `GameBoardLayout`, `GameBoardRenderModelBuilder`, `GameShellProjection`, `LobbyDriverViewModel`) and is tracked as [TD-007](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md) scheduled for phase 15 with F1 available as an opportunistic pull-forward if 12.8 device feel is still chunky after the current freeze/shield hardening. [2026-04-13 transport reliability plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-13-transport-reliability.md) replaces the previous vague "compact-token rehydration" phase-13 scope bullet with a concrete seven-phase plan (measure → compact board → local cache → delta → CBOR → delete `summaryText` fallback → SMS resync UX) and is tracked as [TD-008](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md) scheduled for phase 13. Neither audit has shipped code yet; they are now the working pre-plans for their respective phases.
+- 2026-04-14: post-12.8b validation and full-match real-device signoff are still pending. The last recorded full-repo automated run is the 2026-04-10 12.8 cohesion pass; the subsequent 12.8b slices (choice-driven dev cards, board-first shell consolidation, utility cleanup, freeze overlay, SKView host wrap, top-only host-resize strip, and bounded iPad metrics) need a new automated run and a fresh pass through the QA `Real Device Gameplay Cohesion` checklist plus the `Real Device Shell Smoke`, `Real Device UX Hardening`, and `Real Device Turn-Taking Smoke` lanes before stage 12.8 can be closed.
 - `MessagesExtensionTests` still emits an Xcode dependency-scan warning because Tuist does not support a direct unit-test dependency on an iMessage extension target in this project shape. The current workaround remains compiling selected extension source files into the test target; capture any future cleanup under the tech-debt tracker rather than forcing a larger restructure into this phase.
 - Real-device validation is expected to drive at least some late-stage UX adjustments; do not treat Simulator-only behavior as sufficient signoff for Messages-hosted gameplay.
 - If setup, trade, or dev-card orchestration starts overwhelming `GameShellView` or `LobbyDriverViewModel`, split it into feature-local helpers rather than growing more shared conditionals.

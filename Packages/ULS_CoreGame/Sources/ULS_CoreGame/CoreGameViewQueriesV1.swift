@@ -529,11 +529,16 @@ public extension CoreGameStateV1 {
     }
 
     func defaultMaritimeTrade(for actor: String) -> MaritimeTradeQuoteV1? {
+        maritimeTradeQuotes(for: actor).first
+    }
+
+    func maritimeTradeQuotes(for actor: String) -> [MaritimeTradeQuoteV1] {
         guard let board else {
-            return nil
+            return []
         }
 
         let hand = resourcesByPlayer[actor] ?? .zero
+        var quotes: [MaritimeTradeQuoteV1] = []
         for giveResource in Self.tradeableResources {
             let ratio = bestMaritimeTradeRatio(for: actor, giveResource: giveResource, board: board)
             guard hand.count(for: giveResource) >= ratio else {
@@ -544,15 +549,17 @@ public extension CoreGameStateV1 {
                 guard bankResources.count(for: receiveResource) >= 1 else {
                     continue
                 }
-                return MaritimeTradeQuoteV1(
-                    give: ResourceHandV1.zero.adding(ratio, for: giveResource),
-                    receive: ResourceHandV1.zero.adding(1, for: receiveResource),
-                    ratio: ratio
+                quotes.append(
+                    MaritimeTradeQuoteV1(
+                        give: ResourceHandV1.zero.adding(ratio, for: giveResource),
+                        receive: ResourceHandV1.zero.adding(1, for: receiveResource),
+                        ratio: ratio
+                    )
                 )
             }
         }
 
-        return nil
+        return quotes
     }
 
     private static var tradeableResources: [ResourceV1] {

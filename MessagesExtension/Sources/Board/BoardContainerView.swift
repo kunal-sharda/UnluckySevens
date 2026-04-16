@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct BoardContainerView: View {
     let model: GameBoardPlaceholderModel
@@ -7,8 +8,12 @@ struct BoardContainerView: View {
     let interactionMode: GameMode
     let selectionText: String?
     let hintBottomInset: CGFloat
+    let frozenBoardImage: UIImage?
+    let reloadToken: Int
     let onInteractionChanged: ((Bool) -> Void)?
-    let onResizeFreezeChanged: ((Bool) -> Void)?
+    let onDiagnosticsChanged: ((BoardInteractionDiagnosticsSnapshot) -> Void)?
+    let onGestureEvent: ((HostGestureEvent) -> Void)?
+    let onResizeFreezeChanged: ((BoardResizeFreezeState) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
     private var shouldShowBoardHeader: Bool {
@@ -99,17 +104,28 @@ struct BoardContainerView: View {
                 )
 
             if let renderModel {
-                BoardSceneView(
-                    renderModel: renderModel,
-                    overlayModel: overlayModel,
-                    interactionMode: interactionMode,
-                    onInteractionChanged: onInteractionChanged,
-                    onResizeFreezeChanged: onResizeFreezeChanged,
-                    onTargetTap: onTargetTap
-                )
-                .equatable()
-                .padding(.horizontal, 4)
-                .padding(.vertical, 6)
+                if let frozenBoardImage {
+                    Image(uiImage: frozenBoardImage)
+                        .resizable()
+                        .scaledToFill()
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 6)
+                } else {
+                    BoardSceneView(
+                        renderModel: renderModel,
+                        overlayModel: overlayModel,
+                        interactionMode: interactionMode,
+                        reloadToken: reloadToken,
+                        onInteractionChanged: onInteractionChanged,
+                        onDiagnosticsChanged: onDiagnosticsChanged,
+                        onGestureEvent: onGestureEvent,
+                        onResizeFreezeChanged: onResizeFreezeChanged,
+                        onTargetTap: onTargetTap
+                    )
+                    .equatable()
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 6)
+                }
             } else {
                 BoardPlaceholderArtView()
                     .padding(.horizontal, 8)

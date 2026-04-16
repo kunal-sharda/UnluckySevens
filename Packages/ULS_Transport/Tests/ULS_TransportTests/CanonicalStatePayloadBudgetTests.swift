@@ -109,6 +109,7 @@ final class CanonicalStatePayloadBudgetTests: XCTestCase {
             proposer: "A",
             give: ResourceHandV1(wood: 2),
             receive: ResourceHandV1(ore: 1),
+            recipients: ["B", "D"],
             anchorRev: rev - 1,
             anchorHash: String(repeating: "a", count: 64)
         )
@@ -117,11 +118,12 @@ final class CanonicalStatePayloadBudgetTests: XCTestCase {
             proposer: "A",
             give: ResourceHandV1(wood: 2),
             receive: ResourceHandV1(ore: 1),
+            recipients: ["B", "D"],
             createdRev: rev
         )
-        let pendingTradeAccepts = [
-            TradeAcceptV1(acceptingPlayer: "B", offerHash: offerHash, acceptedAtRev: rev),
-            TradeAcceptV1(acceptingPlayer: "D", offerHash: offerHash, acceptedAtRev: rev),
+        let tradeResponses = [
+            TradeResponseV1(respondingPlayer: "B", offerHash: offerHash, kind: .accept, respondedAtRev: rev),
+            TradeResponseV1(respondingPlayer: "D", offerHash: offerHash, kind: .accept, respondedAtRev: rev),
         ]
 
         return CoreGameStateV1(
@@ -152,7 +154,7 @@ final class CanonicalStatePayloadBudgetTests: XCTestCase {
             auditLog: auditLog,
             lastTurnRecap: computeLastTurnRecap(from: auditLog),
             activeTradeOffer: activeTradeOffer,
-            pendingTradeAccepts: pendingTradeAccepts,
+            tradeResponses: tradeResponses,
             settlementsByNode: settlementsByNode,
             citiesByNode: citiesByNode,
             roadsByEdge: roadsByEdge,

@@ -19,7 +19,7 @@ final class CoreGameKernelV1Tests: XCTestCase {
         )
 
         let hash = state.rehashed().stateHash
-        XCTAssertEqual(hash, "26f1e4f42ea9864021399452bde4ddfdd089fef782bf6e94fd7834cec49ab443")
+        XCTAssertEqual(hash, "0cd98ce6427fb0555abc167e8cbb7b11311568649daffd6bb76c46489f63bffc")
     }
 
     func testHashChangesWhenSeedChanges() {
@@ -323,7 +323,7 @@ final class CoreGameKernelV1Tests: XCTestCase {
             auditLog: validNext.auditLog,
             lastTurnRecap: validNext.lastTurnRecap,
             activeTradeOffer: validNext.activeTradeOffer,
-            pendingTradeAccepts: validNext.pendingTradeAccepts,
+            tradeResponses: validNext.tradeResponses,
             settlementsByNode: validNext.settlementsByNode,
             citiesByNode: validNext.citiesByNode,
             roadsByEdge: validNext.roadsByEdge,
@@ -462,7 +462,7 @@ final class CoreGameKernelV1Tests: XCTestCase {
             auditLog: to.auditLog,
             lastTurnRecap: to.lastTurnRecap,
             activeTradeOffer: to.activeTradeOffer,
-            pendingTradeAccepts: to.pendingTradeAccepts,
+            tradeResponses: to.tradeResponses,
             settlementsByNode: to.settlementsByNode,
             citiesByNode: to.citiesByNode,
             roadsByEdge: to.roadsByEdge,
