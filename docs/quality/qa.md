@@ -568,7 +568,7 @@ Use this only on the disposable debug branch when a selected transcript bubble d
    - `decodeSource: URL`
 4. Prefer `url: present` plus `payloadQuery: present`. If they are missing, treat it as a transport publication or host-selection failure rather than a lobby-state bug.
 5. During the temporary phase-12 product fallback, `decodeSource: summary fallback` is acceptable evidence that the one-line mirrored summary carrier recovered the payload; capture it as a host-fidelity defect and keep phase 13 responsible for removing that fallback.
-6. While the temporary in-app diagnostics slice is active, the gameplay route may expose a `Reload Board` control in the top-right overlay. Use it only as a local debug aid; normal host-resize cycles should not require it.
+6. The temporary in-app diagnostics slice is now gated off by default. Re-enable it only on a troubleshooting branch; normal release-readiness validation should not depend on a visible `Reload Board` control or transport badge.
 7. If lobby `STATE` decodes but `Join Game` is still missing on the receiving device, inspect:
    - `localParticipant`
    - `resolvedActor`
@@ -667,3 +667,31 @@ Use the current product shell for one smoke pass and three targeted checks. Keep
 2. Record whether the simulator shell resolves to the latest known game state, stays on stale context, or fails to recover.
 3. Confirm a non-joined participant remains read-only and only sees count-only hidden-information summaries.
 4. Confirm the joined local participant sees only their own hidden detail while opponent information remains count-only.
+
+## Phase 13 Hardware Handoff
+
+These are the remaining device checks after the 2026-04-16 simulator/practical gate pass. Do them on real hardware before calling phase 13 fully done.
+
+1. Two-device join:
+   - keep the inviter bubble open
+   - accept/join from the second device
+   - confirm the inviter shell updates through surfaced join handling without raw join-intent UI
+2. Two-device trade response:
+   - proposer creates a targeted trade
+   - responder accepts, declines, and counters in separate runs
+   - confirm the proposer shell auto-recovers the right game state when the response bubble is surfaced and does not require manual “intent bookkeeping”
+3. Stale bubble reopen:
+   - create a newer canonical `STATE`
+   - reopen an older bubble for the same game
+   - confirm the app prefers the latest recovered state for that game
+4. Active-games recovery:
+   - with no useful selected state bubble open, use the in-app `Game/Games` recovery chip
+   - confirm the latest known canonical state for the intended game reopens correctly
+5. Full standard-match pass:
+   - run a complete real-device match from lobby through victory
+   - verify setup, roll/production, trade, dev cards, robber/discard, end-turn progression, and winner-state summary on the corrected substrate
+6. If any of the above fail, capture:
+   - exact transcript bubble selected
+   - whether a newer bubble existed
+   - whether the active-games chip was available
+   - screenshots of the visible shell state

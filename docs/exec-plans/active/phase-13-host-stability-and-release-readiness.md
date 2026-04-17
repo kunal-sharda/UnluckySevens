@@ -23,6 +23,7 @@ Owner docs for concepts used here:
 - [2026-04-13 transport reliability plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-13-transport-reliability.md)
 - [2026-04-16 phase boundary audit](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-16-phase-boundary-audit.md)
 - [2026-04-16 base Catan feature matrix](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-16-base-catan-feature-matrix.md)
+- [2026-04-16 phase 13 validation audit](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-16-phase-13-validation-audit.md)
 - [Phase 12 Plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/active/phase-12-gameplay-flows.md)
 
 ## Current State
@@ -208,6 +209,29 @@ Add and maintain focused tests for:
 - multi-game thread selection
 - full standard-match pass after stage 13.5
 
+### 2026-04-16 Validation Snapshot
+
+Automated lanes completed:
+
+- `bash ./scripts/gen.sh`
+- `swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals`
+- `swift test --package-path Packages/ULS_Transport`
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test`
+
+Automated lane still unresolved in this environment:
+
+- `swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals`
+  - the lane builds immediately, then hangs without producing eval progress
+  - do not call this green yet; treat it as an environment/test-harness issue that still needs separate investigation
+
+Manual signoff still required before phase exit:
+
+- real two-device join progression without bubble hopping
+- real two-device trade accept/decline/counter progression on surfaced response bubbles
+- stale-bubble reopen and active-games recovery on hardware
+- full standard-match pass on real devices after the host/transport overhaul
+
 ## Progress
 
 - [x] Stage 13.1 — Per-Game Ledger and Active-Context Recovery
@@ -227,6 +251,7 @@ Add and maintain focused tests for:
 - 2026-04-16: stage 13.3 completed its first shippable transport cut. `CompactStateTransport` now uses the `compactStateV2` wrapper, the worst-case canonical STATE stress test stays under the URL budget without summary mirroring, and fresh publishes now emit plain human `summaryText` while incoming legacy mirrored summaries still decode for backward compatibility.
 - 2026-04-16: stage 13.4 started with an in-app active-games recovery surface. Recoverable games now have a user-facing reopen path backed by the per-game ledger instead of depending entirely on the selected transcript bubble.
 - 2026-04-16: stage 13.4 completed its release-readiness gating pass. The active-games recovery surface remains visible, but the temporary transport badge, host-gesture HUD, and manual `Reload Board` control are now gated off from the default root shell so normal play no longer exposes operator-only diagnostics.
+- 2026-04-16: stage 13.5 simulator/practical-gate validation is green except for the `ULS_CoreGameEvals` lane, which still hangs after the build phase in this environment. Hardware/two-device QA remains the honest exit gate for the phase.
 
 ## Outcome
 
