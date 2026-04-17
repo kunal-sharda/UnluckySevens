@@ -93,6 +93,26 @@ enum TurnIntentContextResolver {
             && anchorMatched.state.roster.contains(localParticipant)
     }
 
+    static func shouldPreferRecoveredState(
+        _ turnIntent: ULS_Transport.TurnIntentV1,
+        resolution: TurnIntentContextResolution,
+        localParticipant: String?
+    ) -> Bool {
+        guard
+            isTradeResponse(turnIntent.kind),
+            let recovered = resolution.bestAvailable,
+            recovered.state.gameId == turnIntent.gameId
+        else {
+            return false
+        }
+
+        return !shouldAutoApply(
+            turnIntent,
+            resolution: resolution,
+            localParticipant: localParticipant
+        )
+    }
+
     static func isTradeResponse(_ kind: ULS_Transport.TurnIntentV1.Kind) -> Bool {
         switch kind {
         case .acceptTrade, .declineTrade, .counterTrade:

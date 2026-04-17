@@ -95,6 +95,41 @@ final class TurnIntentContextResolverTests: XCTestCase {
                 localParticipant: "B"
             )
         )
+        XCTAssertTrue(
+            TurnIntentContextResolver.shouldPreferRecoveredState(
+                tradeIntent,
+                resolution: resolution,
+                localParticipant: "B"
+            )
+        )
+    }
+
+    func testShouldPreferRecoveredStateForTradeResponsesWhenRecoveredStateExists() {
+        let anchorState = makeState(rev: 7, currentPlayer: "A")
+        let laterState = makeState(rev: 8, currentPlayer: "B")
+        let tradeIntent = ULS_Transport.TurnIntentV1(
+            acceptTradePlayer: "B",
+            offerHash: "offer-1",
+            gameId: anchorState.gameId,
+            anchorRev: anchorState.rev,
+            anchorHash: anchorState.stateHash,
+            actor: "B"
+        )
+
+        let resolution = TurnIntentContextResolver.resolve(
+            turnIntent: tradeIntent,
+            selectedState: laterState,
+            latestKnownStatesByGameId: [laterState.gameId: laterState],
+            cachedPublishedState: anchorState
+        )
+
+        XCTAssertTrue(
+            TurnIntentContextResolver.shouldPreferRecoveredState(
+                tradeIntent,
+                resolution: resolution,
+                localParticipant: "C"
+            )
+        )
     }
 
     func testGenericResolveUsesOnlyMatchingGameContext() {

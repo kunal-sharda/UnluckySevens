@@ -2842,7 +2842,15 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func cachedPublishedStateForIntentContext(gameId: String) -> CoreGameStateV1? {
-        gameLedgerStore.latestState(for: gameId)
+        if let latestState = gameLedgerStore.latestState(for: gameId) {
+            return latestState
+        }
+
+        guard let fallback = cachedPublishedState(), fallback.gameId == gameId else {
+            return nil
+        }
+
+        return fallback
     }
 
     private func showLatestUpdateNotice(_ message: String) {
@@ -2941,21 +2949,15 @@ final class LobbyDriverViewModel: ObservableObject {
         source: TranscriptPayloadSource,
         trigger: TranscriptSelectionTrigger
     ) -> Bool {
-        let resolution = TurnIntentContextResolver.resolve(
-            gameId: joinIntent.gameId,
-            anchorRev: joinIntent.anchorRev,
-            anchorHash: joinIntent.anchorHash,
+        let decision = JoinIntentContextResolver.resolve(
+            joinIntent: joinIntent,
             selectedState: selectedState,
             latestKnownStatesByGameId: latestKnownStatesByGameId,
-            cachedPublishedState: cachedPublishedStateForIntentContext(gameId: joinIntent.gameId)
+            cachedPublishedState: cachedPublishedStateForIntentContext(gameId: joinIntent.gameId),
+            localParticipant: localParticipantIdentifier()
         )
 
-        guard
-            let recovered = resolution.anchorMatched ?? resolution.bestAvailable,
-            recovered.state.phase == .lobby,
-            let localParticipant = localParticipantIdentifier(),
-            recovered.state.roster.first == localParticipant
-        else {
+        guard let recovered = decision.recoveredContext else {
             return false
         }
 
@@ -2963,16 +2965,26 @@ final class LobbyDriverViewModel: ObservableObject {
             setActiveContext(recovered.state, source: resolvedActiveContextSource(for: recovered.source))
         }
 
-        rememberPendingJoiner(joinIntent.actor, for: joinIntent.gameId)
-        refreshPendingJoiners(for: joinIntent.gameId)
         selectedJoinIntent = nil
         selectedSetupIntent = nil
         selectedTurnIntent = nil
-        selectionStatus = "Updated lobby from join via \(source.label)"
+
+        if decision.shouldRecordJoiner {
+            rememberPendingJoiner(joinIntent.actor, for: joinIntent.gameId)
+            refreshPendingJoiners(for: joinIntent.gameId)
+            selectionStatus = "Updated lobby from join via \(source.label)"
+            appendLog(
+                "Selection \(trigger.label): bridged join actor=\(shortIdentifier(joinIntent.actor)) rev=\(recovered.state.rev) via \(source.label)"
+            )
+        } else {
+            refreshPendingJoiners(for: recovered.state.gameId)
+            selectionStatus = "Opened latest STATE rev\(recovered.state.rev) via \(source.label)"
+            appendLog(
+                "Selection \(trigger.label): recovered state for join actor=\(shortIdentifier(joinIntent.actor)) rev=\(recovered.state.rev) via \(source.label)"
+            )
+        }
+
         selectedDecodeResult = selectionStatus
-        appendLog(
-            "Selection \(trigger.label): bridged join actor=\(shortIdentifier(joinIntent.actor)) rev=\(recovered.state.rev) via \(source.label)"
-        )
         setLastError(nil)
         return true
     }
@@ -3034,15 +3046,11 @@ final class LobbyDriverViewModel: ObservableObject {
         for turnIntent: ULS_Transport.TurnIntentV1,
         resolution: TurnIntentContextResolution
     ) -> Bool {
-        guard
-            TurnIntentContextResolver.isTradeResponse(turnIntent.kind),
-            let recovered = resolution.bestAvailable
-        else {
-            return false
-        }
-
-        return recovered.state.gameId == turnIntent.gameId
-            && recovered.state.rev > turnIntent.anchorRev
+        TurnIntentContextResolver.shouldPreferRecoveredState(
+            turnIntent,
+            resolution: resolution,
+            localParticipant: localParticipantIdentifier()
+        )
     }
 
     private func resetDisplayedFields() {

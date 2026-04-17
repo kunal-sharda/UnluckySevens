@@ -36,6 +36,8 @@ What exists today:
 - same-device cached published-state recovery now uses per-game keys instead of one global record
 - a per-game local ledger now persists the latest known canonical `STATE`, observed joiners, and last active game identity instead of splitting those concerns across one global cached-state record plus device-local pending-join arrays
 - active-context recovery and intent-context resolution now read from the same per-game ledger path rather than one global last-published-state record
+- join intents now recover back into the best available canonical state for the same game instead of dropping into a raw join-intent route whenever recoverable state exists
+- trade-response selection now prefers recovered canonical state for the same game whenever the surfaced response cannot be auto-applied cleanly
 - compact envelope framing now removes the extra outer JSON-envelope overhead for fresh transport sends while keeping backward decode support for the older JSON-wrapped format
 - compact canonical state transport now uses the `compactStateV2` wrapper, keeps the worst-case stress payload under the URL budget in tests, and publishes plain `summaryText` labels on fresh sends instead of mirrored payloads
 - the shell now exposes a lightweight active-games recovery surface so the app can reopen the latest canonical state for a known game even when the currently selected bubble is stale or missing
@@ -43,9 +45,7 @@ What exists today:
 What is still broken or incomplete:
 
 - separate response/join messages still need to be surfaced to the extension before they can be processed
-- active-game recovery still leans too heavily on selected bubble plus opportunistic cache recovery
 - transport still depends on unstable `message.url`, and legacy summary-fallback decode remains in place for already-sent mirrored bubbles until real-device evidence is strong enough to delete that compatibility path
-- recoverable cases can still fall into raw-intent/open-game fallback shells when the product should prefer canonical state
 - temporary diagnostics and `Reload Board` are still present and need a release-readiness retirement path
 
 What is explicitly deferred to the tail of this phase:
@@ -210,7 +210,7 @@ Add and maintain focused tests for:
 ## Progress
 
 - [x] Stage 13.1 — Per-Game Ledger and Active-Context Recovery
-- [ ] Stage 13.2 — Join and Trade Response Bridge
+- [x] Stage 13.2 — Join and Trade Response Bridge
 - [x] Stage 13.3 — Transport Reliability Program
 - [ ] Stage 13.4 — Multi-Game and Release-Readiness Surfaces
 - [ ] Stage 13.5 — Tail Phase-12 Gameplay Signoff
@@ -221,6 +221,7 @@ Add and maintain focused tests for:
 - 2026-04-16: the remaining unfinished phase-12 work is now explicitly treated as the tail of phase 13 rather than the current execution gate.
 - 2026-04-16: stage 13.1 landed as a real per-game local ledger. Latest canonical state, observed joiners, and last-active-game recovery now come from the same ledger instead of separate pendingJoiners arrays and one global cached published-state record.
 - 2026-04-16: stage 13.2 no longer exposes a proposer-side "Apply Selected Response" gameplay path. Trade-response intents are still an internal authority primitive, but normal trade UI should either auto-resolve them into canonical `STATE` or stay on the state-driven trade surface.
+- 2026-04-16: stage 13.2 completed its recovery-bridge hardening. Join intents now recover into the best available canonical state for the same game whenever possible, cached published-state recovery falls back per game rather than globally, and surfaced trade responses now prefer recovered state when auto-apply cannot happen cleanly instead of dropping into raw intent/open-game shells.
 - 2026-04-16: stage 13.3 started with compact envelope framing in `ULS_Transport`. Fresh sends now use a smaller binary-framed base64url envelope while decode remains backward-compatible with the older JSON-wrapped transport payloads.
 - 2026-04-16: stage 13.3 completed its first shippable transport cut. `CompactStateTransport` now uses the `compactStateV2` wrapper, the worst-case canonical STATE stress test stays under the URL budget without summary mirroring, and fresh publishes now emit plain human `summaryText` while incoming legacy mirrored summaries still decode for backward compatibility.
 - 2026-04-16: stage 13.4 started with an in-app active-games recovery surface. Recoverable games now have a user-facing reopen path backed by the per-game ledger instead of depending entirely on the selected transcript bubble.

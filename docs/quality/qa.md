@@ -199,6 +199,24 @@ Current repo answer:
 - Active-context recovery and intent-context resolution now consult that ledger instead of a separate global cached-state bridge.
 - Device-local pending joins are no longer the canonical lobby assembly surface.
 
+### 7a. Join intent handling should recover state before it thinks about join UI
+
+What went wrong:
+
+- Join-intent selection could still land in a raw join/open-game path even when the app already had recoverable canonical state for that game.
+- That made lobby progression feel like bubble management instead of game recovery.
+
+What we learned:
+
+- Join intents should be treated as a recovery trigger first, not as a player-facing surface.
+- If the app can recover canonical state for the same game, it should reopen that state and only preserve join-specific behavior where the local participant is actually the lobby host.
+
+Current repo answer:
+
+- Join intent handling now resolves against the same per-game recovery context as trade responses.
+- Recoverable join selections reopen the best available canonical state for that game.
+- Joiner recording only happens on the host+lobby path instead of every recovered join selection.
+
 ### 8. Active-game recovery needs a player-visible affordance, not only invisible cache logic
 
 What went wrong:
