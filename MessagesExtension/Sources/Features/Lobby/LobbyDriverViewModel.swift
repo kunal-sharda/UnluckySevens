@@ -40,6 +40,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published private(set) var hostGestureEvents: [HostGestureEvent] = []
     @Published private(set) var boardDiagnosticsSnapshot: BoardInteractionDiagnosticsSnapshot = .empty
     @Published private(set) var boardReloadToken: Int = 0
+    @Published private(set) var recoveredGames: [ActiveGameRecoverySummary] = []
 
     private let summaryPayloadPrefix = "ulsenv:"
     private let boardStrategyKey = "uls.boardStrategy"
@@ -77,7 +78,9 @@ final class LobbyDriverViewModel: ObservableObject {
         } else {
             boardStrategy = .randomV1
         }
-        latestKnownStatesByGameId = gameLedgerStore.bootstrapSnapshot().latestKnownStatesByGameId
+        let ledgerSnapshot = gameLedgerStore.bootstrapSnapshot()
+        latestKnownStatesByGameId = ledgerSnapshot.latestKnownStatesByGameId
+        refreshRecoveredGames()
     }
 
     private var diagnosticsEnabled: Bool {
@@ -253,6 +256,10 @@ final class LobbyDriverViewModel: ObservableObject {
 
     var rootRoute: MessagesRootRoute {
         MessagesRootRoute.resolve(phase: selectedState?.phase)
+    }
+
+    var hasRecoveredGames: Bool {
+        !recoveredGames.isEmpty
     }
 
     var lobbyScreenModel: LobbyScreenModel {
@@ -899,6 +906,7 @@ final class LobbyDriverViewModel: ObservableObject {
         staleContextWarning = "-"
         clearLatestUpdateNotice()
         gameLedgerStore.markActiveGame(nil)
+        refreshRecoveredGames()
         if selectedTurnIntent == nil, selectedSetupIntent == nil, selectedJoinIntent == nil {
             resetDisplayedFields()
         }
@@ -1074,6 +1082,7 @@ final class LobbyDriverViewModel: ObservableObject {
                 sessionPolicy: .state(gameId: toState.gameId)
             )
             gameLedgerStore.clearObservedJoiners(for: toState.gameId)
+            refreshRecoveredGames()
             refreshPendingJoiners(for: toState.gameId)
             setActiveContext(toState, source: .lastSentState)
             selectionStatus = "Start sent: setup rev1"
@@ -1094,6 +1103,7 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         gameLedgerStore.clearObservedJoiners(for: gameId)
+        refreshRecoveredGames()
         refreshPendingJoiners(for: gameId)
         selectionStatus = "Cleared pending joins for \(gameId)"
         setLastError(nil)
@@ -2614,6 +2624,7 @@ final class LobbyDriverViewModel: ObservableObject {
         activeSource = source
         activeUpdatedAt = Date()
         gameLedgerStore.markActiveGame(state.gameId)
+        refreshRecoveredGames()
         syncActingAs(with: state)
         refreshActiveContextMetadata()
         refreshStaleContextWarning()
@@ -2764,6 +2775,23 @@ final class LobbyDriverViewModel: ObservableObject {
         )
     }
 
+    func resumeRecoveredGame(_ gameId: String) {
+        guard let recoveredState = gameLedgerStore.latestState(for: gameId) else {
+            setLastError("No locally recovered state for \(gameId).")
+            return
+        }
+
+        selectedJoinIntent = nil
+        selectedSetupIntent = nil
+        selectedTurnIntent = nil
+        setActiveContext(recoveredState, source: .cachedPublishedState)
+        selectionStatus = "Recovered latest STATE rev\(recoveredState.rev)"
+        selectedDecodeSource = TranscriptPayloadSource.localCache.label
+        selectedDecodeResult = selectionStatus
+        appendLog("Recovered game \(shortIdentifier(gameId)) rev=\(recoveredState.rev) from local ledger")
+        setLastError(nil)
+    }
+
     private func restoreCachedPublishedStateIfAvailable(
         trigger: TranscriptSelectionTrigger
     ) -> Bool {
@@ -2796,6 +2824,7 @@ final class LobbyDriverViewModel: ObservableObject {
             return
         }
         gameLedgerStore.record(state: state, payload: cached.payload)
+        refreshRecoveredGames()
     }
 
     private func cachedPublishedState() -> CoreGameStateV1? {
@@ -3684,6 +3713,17 @@ final class LobbyDriverViewModel: ObservableObject {
 
     private func rememberPendingJoiner(_ joiner: String, for gameId: String) {
         gameLedgerStore.recordJoin(actor: joiner, gameId: gameId)
+        refreshRecoveredGames()
+    }
+
+    private func refreshRecoveredGames() {
+        recoveredGames = gameLedgerStore.recoveredStates().map { recovered in
+            ActiveGameRecoveryModelBuilder.build(
+                from: recovered.state,
+                isLastActive: recovered.isLastActive,
+                isCurrentSelection: recovered.state.gameId == selectedState?.gameId
+            )
+        }
     }
 
     private func applyAndPublishTurnIntent(

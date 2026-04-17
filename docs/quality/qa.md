@@ -83,6 +83,7 @@ Current repo answer:
 - Canonical payload still prefers `message.url`.
 - Phase 12 temporarily mirrors a one-line fallback into `summaryText` so gameplay can continue when transcript readback drops the URL.
 - The temporary transport badge and debug surfaces expose which source actually decoded.
+- Compact envelope framing now removes the extra outer JSON-envelope overhead for fresh sends, but the repo still keeps backward decode compatibility while the summary fallback remains in place.
 
 Still temporary:
 
@@ -198,7 +199,24 @@ Current repo answer:
 - Active-context recovery and intent-context resolution now consult that ledger instead of a separate global cached-state bridge.
 - Device-local pending joins are no longer the canonical lobby assembly surface.
 
-### 8. Messages layout classes are not enough; iPad host height is a separate constraint
+### 8. Active-game recovery needs a player-visible affordance, not only invisible cache logic
+
+What went wrong:
+
+- Even after the repo gained a per-game ledger, recoverable games could still feel "missing" if the currently selected transcript bubble was stale or unrelated.
+- Recovery that exists only as internal cache logic is not enough if the player has no obvious way to tell the app which known game to reopen.
+
+What we learned:
+
+- Messages-hosted recovery needs both substrate and surface.
+- Once the app knows about multiple recoverable games, it should expose a compact in-app recovery affordance rather than forcing transcript archaeology.
+
+Current repo answer:
+
+- The shell now exposes a compact `Game` / `Games` recovery chip backed by the per-game ledger.
+- Recovering a game from that chip restores the latest known canonical state for that game and updates active context without requiring a fresh state bubble selection.
+
+### 9. Messages layout classes are not enough; iPad host height is a separate constraint
 
 What went wrong:
 
@@ -216,7 +234,7 @@ Current repo answer:
 - Utility shelves stay compact and content-only.
 - Wide-but-short iPad hosts fall back to compact vertical metrics instead of oversized pad minima.
 
-### 9. Overlapping shell modes create dead-end UI state quickly
+### 10. Overlapping shell modes create dead-end UI state quickly
 
 What went wrong:
 
@@ -234,7 +252,7 @@ Current repo answer:
 - Direct switching is allowed between peer actions.
 - `End Turn` clears transient build-selection state instead of blocking on it.
 
-### 10. Trade cannot depend on tapping controls underneath an overlay
+### 11. Trade cannot depend on tapping controls underneath an overlay
 
 What went wrong:
 
@@ -252,7 +270,7 @@ Current repo answer:
 - The lower shelf is hidden/disabled while trade is open.
 - `You Give`, `You Want`, and `Recipients` live inside the trade panel, and switching away discards the draft immediately.
 
-### 11. Dev-card UX needs card inventory, not long instructional text
+### 12. Dev-card UX needs card inventory, not long instructional text
 
 What went wrong:
 
@@ -269,7 +287,7 @@ Current repo answer:
 - Knight, Monopoly, Year of Plenty, and Road Building stay action-driven from that card surface.
 - Victory Point cards are visible to the owning player and only become revealable when they would immediately win.
 
-### 12. Temporary diagnostics are justified for iMessage-host work, but they must stay temporary
+### 13. Temporary diagnostics are justified for iMessage-host work, but they must stay temporary
 
 What went wrong:
 
@@ -289,7 +307,7 @@ Removal expectation:
 
 - Phase 13 release-readiness cleanup owns gating down or deleting these temporary diagnostics once the host behavior is stable enough.
 
-### 13. Simulator confidence is not enough for Messages-hosted UI work
+### 14. Simulator confidence is not enough for Messages-hosted UI work
 
 What went wrong:
 
@@ -306,7 +324,7 @@ Current repo answer:
 - Real-device checklists remain part of the live QA gate.
 - Phase conclusions and major UI claims should not rely on Simulator-only confidence.
 
-### 14. Board-first shells need strict surface ownership
+### 15. Board-first shells need strict surface ownership
 
 What went wrong:
 
@@ -389,7 +407,8 @@ Run this after shell, layout, presentation, or mode-system changes.
 11. Confirm the iPhone layout remains readable in compact extension sizing and that the shell continues to fit the visible host bounds while the board stays responsive.
 12. Confirm the iPad layout remains readable, does not over-expand low-priority UI, and caps the lower-rail content width instead of stretching hand/bank/player content across the full host width.
 13. Verify opponent information is still count-only and does not leak composition.
-14. Confirm the shell remains product-focused and no debug UI is required to advance the normal game flow.
+14. If the thread has recoverable canonical state for one or more games, confirm the compact `Game` / `Games` chip appears in the top-left and opens a recoverable game list without disturbing the normal shell.
+15. Confirm the shell remains product-focused and no debug UI is required to advance the normal game flow.
 
 ### Real Device Lobby Smoke
 
@@ -403,6 +422,7 @@ Run this after any lobby join/start UX change.
 6. From device A (host), confirm the lobby UI reflects both the host and the joined guest before trying to start.
 7. Confirm `Start Game` stays unavailable until at least two players appear in the host lobby, then start from device A.
 8. From device B, open the start `STATE` and confirm the extension resolves the new setup context cleanly.
+9. On both devices, if the thread now contains more than one recoverable game or stale lobby context, confirm the compact `Game` / `Games` recovery chip opens the correct latest known lobby or game context without requiring transcript hunting.
 
 ### Real Device Messages Lifecycle
 
@@ -413,7 +433,8 @@ Run this after phase-13 stability work or when explicitly validating Messages ho
 3. Switch away from Messages and return.
 4. Reopen the same bubble and confirm the shell still resolves the correct context.
 5. Select an older bubble after a newer one exists and record whether the host keeps you on stale context, upgrades to the latest known state, or fails to recover.
-6. Force-close and relaunch Messages, then record whether context can still be recovered from the selected bubble.
+6. If the selected bubble is stale or unrelated but the game is known locally, use the compact `Game` / `Games` recovery chip and confirm the shell restores the latest known canonical state for the intended game.
+7. Force-close and relaunch Messages, then record whether context can still be recovered from the selected bubble or from the active-games recovery chip.
 
 ### Real Device Turn-Taking Smoke
 

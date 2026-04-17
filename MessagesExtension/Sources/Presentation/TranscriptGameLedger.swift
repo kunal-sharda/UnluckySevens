@@ -15,6 +15,12 @@ struct TranscriptGameLedgerSnapshot {
     let lastActiveGameId: String?
 }
 
+struct TranscriptGameLedgerRecoveredState {
+    let state: CoreGameStateV1
+    let updatedAt: TimeInterval
+    let isLastActive: Bool
+}
+
 struct TranscriptGameLedgerStore {
     private let userDefaults: UserDefaults
     private let entryPrefix = "uls.gameLedger."
@@ -70,6 +76,35 @@ struct TranscriptGameLedgerStore {
                 return lhs.1 < rhs.1
             }?
             .0
+    }
+
+    func recoveredStates() -> [TranscriptGameLedgerRecoveredState] {
+        let lastActiveGameId = lastActiveGameId()
+
+        return indexedGameIds()
+            .compactMap { gameId -> TranscriptGameLedgerRecoveredState? in
+                guard
+                    let entry = entry(for: gameId),
+                    let state = latestState(for: gameId)
+                else {
+                    return nil
+                }
+
+                return TranscriptGameLedgerRecoveredState(
+                    state: state,
+                    updatedAt: entry.updatedAt,
+                    isLastActive: gameId == lastActiveGameId
+                )
+            }
+            .sorted { lhs, rhs in
+                if lhs.isLastActive != rhs.isLastActive {
+                    return lhs.isLastActive && !rhs.isLastActive
+                }
+                if lhs.updatedAt != rhs.updatedAt {
+                    return lhs.updatedAt > rhs.updatedAt
+                }
+                return lhs.state.rev > rhs.state.rev
+            }
     }
 
     func observedJoiners(for gameId: String) -> [String] {

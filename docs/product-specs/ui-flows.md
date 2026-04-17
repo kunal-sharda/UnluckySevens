@@ -137,4 +137,5 @@ This document summarizes the player-facing flows the UI must support in the curr
 - At the normal fully-extended gameplay height, the live board should stay interactive throughout host drag. Normal resize should not enter a board freeze mode or require a board reload to recover.
 - Outside the narrow top grabber strip, drags should stay inside the game. Board drags should pan/zoom the board, shelf drags should stay local to the shelf, and only the top strip should be able to hand off to Messages-host resize.
 - On iPad-sized but vertically short Messages hosts, the lower shelf should fall back to the compact vertical layout instead of using oversized pad minima that clip or disable `Hand`, `Bank`, and `Players`.
+- When the app has recoverable canonical state for one or more games, the shell should expose a compact `Game` / `Games` recovery affordance that can reopen the latest known state for that game without forcing the user to hunt for the right transcript bubble first.
 - The bubble should support lobby readability as well as in-game readability; joining and host-start should not create avoidable transcript clutter.

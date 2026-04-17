@@ -36,12 +36,14 @@ What exists today:
 - same-device cached published-state recovery now uses per-game keys instead of one global record
 - a per-game local ledger now persists the latest known canonical `STATE`, observed joiners, and last active game identity instead of splitting those concerns across one global cached-state record plus device-local pending-join arrays
 - active-context recovery and intent-context resolution now read from the same per-game ledger path rather than one global last-published-state record
+- compact envelope framing now removes the extra outer JSON-envelope overhead for fresh transport sends while keeping backward decode support for the older JSON-wrapped format
+- the shell now exposes a lightweight active-games recovery surface so the app can reopen the latest canonical state for a known game even when the currently selected bubble is stale or missing
 
 What is still broken or incomplete:
 
 - separate response/join messages still need to be surfaced to the extension before they can be processed
 - active-game recovery still leans too heavily on selected bubble plus opportunistic cache recovery
-- transport still depends on unstable `message.url` plus a temporary `summaryText` mirror bridge
+- transport still depends on unstable `message.url` plus a temporary `summaryText` mirror bridge even though the compact envelope framing has reduced payload overhead
 - recoverable cases can still fall into raw-intent/open-game fallback shells when the product should prefer canonical state
 - temporary diagnostics and `Reload Board` are still present and need a release-readiness retirement path
 
@@ -192,12 +194,14 @@ Add and maintain focused tests for:
 - trade-response auto progression
 - stale surfaced response handling
 - transport payload budgeting and decoding
+- active-games overlay recovery summaries
 
 ### Manual
 
 - two-device join while inviter bubble stays open
 - two-device trade accept/decline/counter while proposer bubble stays open
 - stale bubble reopen after newer state exists
+- active-games recovery using only the local per-game ledger and no currently selected canonical state bubble
 - extension reopen and same-game recovery
 - multi-game thread selection
 - full standard-match pass after stage 13.5
@@ -216,6 +220,8 @@ Add and maintain focused tests for:
 - 2026-04-16: the remaining unfinished phase-12 work is now explicitly treated as the tail of phase 13 rather than the current execution gate.
 - 2026-04-16: stage 13.1 landed as a real per-game local ledger. Latest canonical state, observed joiners, and last-active-game recovery now come from the same ledger instead of separate pendingJoiners arrays and one global cached published-state record.
 - 2026-04-16: stage 13.2 no longer exposes a proposer-side "Apply Selected Response" gameplay path. Trade-response intents are still an internal authority primitive, but normal trade UI should either auto-resolve them into canonical `STATE` or stay on the state-driven trade surface.
+- 2026-04-16: stage 13.3 started with compact envelope framing in `ULS_Transport`. Fresh sends now use a smaller binary-framed base64url envelope while decode remains backward-compatible with the older JSON-wrapped transport payloads.
+- 2026-04-16: stage 13.4 started with an in-app active-games recovery surface. Recoverable games now have a user-facing reopen path backed by the per-game ledger instead of depending entirely on the selected transcript bubble.
 
 ## Outcome
 

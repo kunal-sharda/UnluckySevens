@@ -15,6 +15,9 @@ struct MessagesRootView: View {
                 GameShellView(viewModel: viewModel)
             }
         }
+        .overlay(alignment: .topLeading) {
+            ActiveGamesOverlayView(viewModel: viewModel)
+        }
         .overlay(alignment: .topTrailing) {
             TemporaryDiagnosticsOverlayView(viewModel: viewModel)
         }

@@ -56,6 +56,22 @@ final class TranscriptGameLedgerTests: XCTestCase {
         XCTAssertEqual(store.mostRecentState()?.rev, 4)
     }
 
+    func testRecoveredStatesPrioritizeLastActiveGameThenNewestUpdate() {
+        let userDefaults = makeUserDefaults()
+        let store = TranscriptGameLedgerStore(userDefaults: userDefaults)
+        let older = makeLobbyState(gameId: "game-1", rev: 2, roster: ["host", "guest-a"])
+        let newer = makeLobbyState(gameId: "game-2", rev: 5, roster: ["host", "guest-b"])
+
+        store.record(state: older, payload: try! encode(older))
+        store.record(state: newer, payload: try! encode(newer))
+        store.markActiveGame("game-1")
+
+        let recovered = store.recoveredStates()
+
+        XCTAssertEqual(recovered.map(\.state.gameId), ["game-1", "game-2"])
+        XCTAssertTrue(recovered.first?.isLastActive == true)
+    }
+
     private func makeUserDefaults() -> UserDefaults {
         let suiteName = "TranscriptGameLedgerTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
