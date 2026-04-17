@@ -318,12 +318,12 @@ What we learned:
 
 Current repo answer:
 
-- The app currently exposes a compact transport badge and debug drill-down for host gestures and payload source.
-- `Reload Board` exists only as a temporary operator control while host-resize behavior is being hardened.
+- The probe code still exists, but the temporary transport badge, host-gesture HUD, and manual `Reload Board` control are now gated off in the default root shell.
+- Active game recovery remains product-visible; operator-only diagnostics do not.
 
 Removal expectation:
 
-- Phase 13 release-readiness cleanup owns gating down or deleting these temporary diagnostics once the host behavior is stable enough.
+- Phase 13 release-readiness cleanup owns keeping these diagnostics gated down unless a future troubleshooting slice explicitly re-enables them.
 
 ### 14. Simulator confidence is not enough for Messages-hosted UI work
 

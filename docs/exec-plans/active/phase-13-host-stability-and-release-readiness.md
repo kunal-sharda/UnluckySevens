@@ -41,12 +41,13 @@ What exists today:
 - compact envelope framing now removes the extra outer JSON-envelope overhead for fresh transport sends while keeping backward decode support for the older JSON-wrapped format
 - compact canonical state transport now uses the `compactStateV2` wrapper, keeps the worst-case stress payload under the URL budget in tests, and publishes plain `summaryText` labels on fresh sends instead of mirrored payloads
 - the shell now exposes a lightweight active-games recovery surface so the app can reopen the latest canonical state for a known game even when the currently selected bubble is stale or missing
+- the temporary transport badge, manual `Reload Board`, and host-gesture HUD are now gated off in the default root shell rather than always visible during normal play
 
 What is still broken or incomplete:
 
 - separate response/join messages still need to be surfaced to the extension before they can be processed
 - transport still depends on unstable `message.url`, and legacy summary-fallback decode remains in place for already-sent mirrored bubbles until real-device evidence is strong enough to delete that compatibility path
-- temporary diagnostics and `Reload Board` are still present and need a release-readiness retirement path
+- the underlying diagnostics/probe code still exists for future troubleshooting, but it is no longer part of the default player-facing shell
 
 What is explicitly deferred to the tail of this phase:
 
@@ -212,7 +213,7 @@ Add and maintain focused tests for:
 - [x] Stage 13.1 — Per-Game Ledger and Active-Context Recovery
 - [x] Stage 13.2 — Join and Trade Response Bridge
 - [x] Stage 13.3 — Transport Reliability Program
-- [ ] Stage 13.4 — Multi-Game and Release-Readiness Surfaces
+- [x] Stage 13.4 — Multi-Game and Release-Readiness Surfaces
 - [ ] Stage 13.5 — Tail Phase-12 Gameplay Signoff
 
 ## Decisions and Discoveries
@@ -225,6 +226,7 @@ Add and maintain focused tests for:
 - 2026-04-16: stage 13.3 started with compact envelope framing in `ULS_Transport`. Fresh sends now use a smaller binary-framed base64url envelope while decode remains backward-compatible with the older JSON-wrapped transport payloads.
 - 2026-04-16: stage 13.3 completed its first shippable transport cut. `CompactStateTransport` now uses the `compactStateV2` wrapper, the worst-case canonical STATE stress test stays under the URL budget without summary mirroring, and fresh publishes now emit plain human `summaryText` while incoming legacy mirrored summaries still decode for backward compatibility.
 - 2026-04-16: stage 13.4 started with an in-app active-games recovery surface. Recoverable games now have a user-facing reopen path backed by the per-game ledger instead of depending entirely on the selected transcript bubble.
+- 2026-04-16: stage 13.4 completed its release-readiness gating pass. The active-games recovery surface remains visible, but the temporary transport badge, host-gesture HUD, and manual `Reload Board` control are now gated off from the default root shell so normal play no longer exposes operator-only diagnostics.
 
 ## Outcome
 

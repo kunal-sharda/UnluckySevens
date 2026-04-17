@@ -472,6 +472,10 @@ final class LobbyDriverViewModel: ObservableObject {
         diagnosticsEnabled
     }
 
+    var shouldShowTemporaryDiagnosticsOverlay: Bool {
+        diagnosticsEnabled
+    }
+
     var hostGestureSummaryLines: [String] {
         let lines = hostGestureHierarchySnapshot.summaryLines
         return lines.isEmpty ? ["-"] : lines
