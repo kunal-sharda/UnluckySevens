@@ -39,7 +39,7 @@ final class TranscriptTransportSupportTests: XCTestCase {
         XCTAssertEqual(builtMessage.summaryText, "INTENT actor=actor-1 kind=join a=r0")
     }
 
-    func testBuildMessageMirrorsPayloadIntoOneLineSummaryWhenRequested() throws {
+    func testBuildMessageMirrorsPayloadIntoMultilineSummaryWhenRequested() throws {
         let intent = JoinIntentV1(
             gameId: "game-1",
             anchorRev: 0,
@@ -62,7 +62,7 @@ final class TranscriptTransportSupportTests: XCTestCase {
 
         XCTAssertEqual(
             builtMessage.summaryText,
-            "ulsenv:\(encodedEnvelope) INTENT actor=actor-1 kind=join a=r0"
+            "INTENT actor=actor-1 kind=join a=r0\nulsenv:\(encodedEnvelope)"
         )
         XCTAssertEqual(builtMessage.mirroredPayloadLength, encodedEnvelope.count)
     }

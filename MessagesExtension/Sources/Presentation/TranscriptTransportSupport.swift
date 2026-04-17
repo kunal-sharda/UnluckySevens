@@ -268,10 +268,9 @@ enum TranscriptTransportSupport {
             return "\(summaryPayloadPrefix)\(encodedEnvelope)"
         }
 
-        // Keep the fallback on one line so transcript fallback paths do not
-        // expand into a multi-line payload block during phase 12. Put the
-        // mirrored payload first so truncation is more likely to preserve it.
-        return "\(summaryPayloadPrefix)\(encodedEnvelope) \(summaryLabel)"
+        // Keep the human summary first so transcript snippets remain readable,
+        // then append the mirrored payload on a second line for fallback decode.
+        return "\(summaryLabel)\n\(summaryPayloadPrefix)\(encodedEnvelope)"
     }
 
     private static func mirroredPayloadCandidate(

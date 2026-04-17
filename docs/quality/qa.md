@@ -81,13 +81,13 @@ What we learned:
 Current repo answer:
 
 - Canonical payload still prefers `message.url`.
-- Fresh sends now publish plain human `summaryText` labels; they no longer mirror payload bytes into the visible summary field.
+- Fresh sends now publish a readable multiline `summaryText` fallback: the first line stays human-readable and the mirrored payload sits on a second line for transcript recovery.
 - The temporary transport badge and debug surfaces expose which source actually decoded.
-- Compact envelope framing plus `compactStateV2` now keep the worst-case canonical STATE stress path under the URL budget in tests, and the repo keeps backward decode compatibility for already-sent mirrored summaries.
+- Compact envelope framing plus `compactStateV2` now keep the worst-case canonical STATE stress path under the URL budget in tests, and the repo keeps summary-fallback decode compatibility because real-device first-open selection can still drop `message.url`.
 
 Still temporary:
 
-- Incoming `summary fallback` decode is still a bridge path for legacy transcript bubbles. Phase 13 still owns deleting that compatibility path after repeated device validation shows URL-only publication is stable enough.
+- Incoming `summary fallback` decode remains a bridge path for both legacy transcript bubbles and fresh multiline mirrored publishes. Phase 13 still owns deleting that compatibility path after repeated device validation shows URL-only publication is stable enough.
 
 ### 2. Messages host resize must be treated as a hostile gesture boundary
 
@@ -567,7 +567,7 @@ Use this only on the disposable debug branch when a selected transcript bubble d
    - `payloadLength: > 0`
    - `decodeSource: URL`
 4. Prefer `url: present` plus `payloadQuery: present`. If they are missing, treat it as a transport publication or host-selection failure rather than a lobby-state bug.
-5. During the temporary phase-12 product fallback, `decodeSource: summary fallback` is acceptable evidence that the one-line mirrored summary carrier recovered the payload; capture it as a host-fidelity defect and keep phase 13 responsible for removing that fallback.
+5. During the temporary transport fallback, `decodeSource: summary fallback` is acceptable evidence that the mirrored summary carrier recovered the payload; capture it as a host-fidelity defect and keep phase 13 responsible for removing that fallback.
 6. The temporary in-app diagnostics slice is now gated off by default. Re-enable it only on a troubleshooting branch; normal release-readiness validation should not depend on a visible `Reload Board` control or transport badge.
 7. If lobby `STATE` decodes but `Join Game` is still missing on the receiving device, inspect:
    - `localParticipant`

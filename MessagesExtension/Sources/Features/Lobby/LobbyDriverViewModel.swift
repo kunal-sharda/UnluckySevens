@@ -251,7 +251,9 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private var includeOutgoingSummaryPayloadMirror: Bool {
-        false
+        // Fresh sends still need a cross-device transcript fallback because
+        // real-device selection can drop `message.url` on first open.
+        true
     }
 
     var canInvite: Bool {
