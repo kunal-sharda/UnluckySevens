@@ -1,9 +1,3 @@
-enum GameTradeResponseIntentKind: String, Equatable {
-    case accept
-    case decline
-    case counter
-}
-
 enum GameTradeParticipantResponseState: Equatable {
     case watching
     case waiting
@@ -35,12 +29,6 @@ struct GameTradeParticipantStatus: Identifiable, Equatable {
     var id: String { playerID }
 }
 
-struct GameTradeSelectedResponseSummary: Equatable {
-    let playerID: String
-    let displayName: String
-    let kind: GameTradeResponseIntentKind
-}
-
 struct GameTradeResponderActions: Equatable {
     let canAccept: Bool
     let canDecline: Bool
@@ -63,7 +51,6 @@ struct GameTradePanelModel: Equatable {
     let activeOffer: GameTradeOfferSummary?
     let participantStatuses: [GameTradeParticipantStatus]
     let responderActions: GameTradeResponderActions?
-    let selectedResponse: GameTradeSelectedResponseSummary?
     let maritimeOptions: [GameTradeMaritimeOption]
     let pendingBannerText: String?
     let canReplaceOffer: Bool

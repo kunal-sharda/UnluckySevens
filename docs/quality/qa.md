@@ -56,6 +56,294 @@ Run these validation commands serially. Do not run `swift test` or `xcodebuild` 
   - run the full Practical Gate
   - run at least one full two-device smoke pass end to end
 
+## Lessons
+
+This is the running list for durable implementation lessons that should survive the current phase.
+
+Use this section for repo knowledge that was learned the hard way and should influence future work even after the active ExecPlan is archived. ExecPlans can still record phase-local rationale and chronology, but once a lesson becomes durable, normalize it here.
+
+### iMessage Host and Shell
+
+These are the main iMessage-specific complexities we have already paid for in this repo. Treat them as working constraints, not trivia. If a future change touches any of these surfaces, reread this section before changing the code.
+
+### 1. Transcript transport is not perfectly faithful on selection and reopen
+
+What went wrong:
+
+- `MSMessage` transcript selection and reopen flows did not always give the extension a clean `message.url` payload path back on device.
+- Relying on the canonical URL path alone made lobby and game reopen behavior fail in real use even when the original bubble had been sent correctly.
+
+What we learned:
+
+- Transport publication and transcript re-selection are not the same reliability boundary inside Messages.
+- We need to distinguish `URL`, `summary fallback`, and `missing` payload sources during triage instead of assuming one decode path.
+
+Current repo answer:
+
+- Canonical payload still prefers `message.url`.
+- Phase 12 temporarily mirrors a one-line fallback into `summaryText` so gameplay can continue when transcript readback drops the URL.
+- The temporary transport badge and debug surfaces expose which source actually decoded.
+
+Still temporary:
+
+- The mirrored `summaryText` fallback is phase-12/13 bridge behavior only. Phase 13 should replace it with a cleaner compact-token plus rehydration design.
+
+### 2. Messages host resize must be treated as a hostile gesture boundary
+
+What went wrong:
+
+- Passive drags on the board, shelf, or dock could leak upward and start collapsing or expanding the Messages host.
+- The leak was worse when parts of the UI became passive or when the board interaction path failed to claim the gesture strongly enough.
+
+What we learned:
+
+- Messages host resize is not limited to the visible grabber unless the app claims drags aggressively inside its own surfaces.
+- A game surface that is only visually interactive is not enough; it must own the drag path.
+
+Current repo answer:
+
+- The app reserves a narrow top-only host-resize strip.
+- Board, shelf, and dock drags are meant to stay local to the game.
+- The board now uses a dedicated `SKView` host with UIKit recognizers rather than a SwiftUI gesture overlay.
+
+### 3. Bubble folding and transcript collapse are separate from payload transport
+
+What went wrong:
+
+- It was easy to conflate “the bubble collapses cleanly in Messages” with “the app can reliably recover state from that bubble later.”
+- In practice, grouping/collapse behavior, selected-bubble recovery, and payload readback were related but not the same problem.
+
+What we learned:
+
+- `MSSession` is primarily a grouping/collapse mechanism for transcript UX, not a durable payload store.
+- Reusing one `MSSession` per game helps produce the expected turn-based folded thread behavior, but it does not guarantee that selecting or reopening a bubble later will yield a fully faithful `MSMessage`.
+- Collapse/latest-bubble behavior, same-bubble recovery, and payload transport should be reasoned about separately even when they share the same transcript surface.
+
+Current repo answer:
+
+- Canonical game `STATE` messages reuse one `MSSession` per game.
+- Trade offers use separate sessions so they appear as distinct offer bubbles.
+- Folding/collapse behavior is treated as a phase-13 host-stability concern, not proof that transcript recovery is already solved.
+
+### 4. SpriteKit board interaction should not run through a hot SwiftUI gesture loop
+
+What went wrong:
+
+- Pan/pinch/tap routed through SwiftUI gesture layers caused lag and made gesture arbitration with Messages harder.
+- Two-finger and mixed pan/pinch cases were especially fragile.
+
+What we learned:
+
+- SwiftUI is acceptable for the shell, but the board camera/input loop needs a narrower UIKit/SpriteKit boundary.
+- For this app, `SKView` + recognizers is the right interaction surface even though the rest of the shell remains SwiftUI.
+
+Current repo answer:
+
+- Board pan/pinch/tap run through `BoardSceneHostView` and a dedicated `SKView`.
+- Camera state lives in the board interaction controller rather than being driven per-frame through SwiftUI gesture state.
+
+### 5. Snapshot-freeze/remount is not a stable default resize strategy
+
+What went wrong:
+
+- Freezing the board to a snapshot during host drag avoided some lag, but it also introduced dead-board states, manual reload dependence, and camera jumps after thaw/remount.
+- The more we hardened freeze recovery, the more obvious it became that remounting the board was the disruptive part.
+
+What we learned:
+
+- The right fix for normal gameplay-height resize is not “better thaw.”
+- The right fix is to keep the board mounted, do only cheap viewport/camera work during drag, and defer the heavier board redraw to a short debounced settle step.
+
+### 6. Internal trade-response intents must not leak into product UX
+
+What went wrong:
+
+- The current authority model keeps non-current-player trade responses as intents, but the shell exposed that directly.
+- Responders could send `Accept`, `Decline`, or `Counter`, then the current-player side still behaved like it had to manually view and apply that response.
+- That made trade acceptance feel like transcript bookkeeping instead of one coherent game action.
+
+What we learned:
+
+- `INTENT` can remain an internal transport/authority concept without becoming a player-facing step.
+- The current-player device should auto-apply matching targeted trade-response intents into canonical state as soon as it has the right anchored state.
+- When an incoming trade response references a stale anchor, the shell should recover the best latest state for that game instead of dropping into an intent-only surface.
+- Same-device cached last-published state is an acceptable temporary recovery bridge for the current-player device when the extension reopens without an active state already in memory, but it must be keyed per game rather than as one global record.
+- `MSConversation.selectedMessage` is the currently selected transcript bubble, not a live-updating pointer to the latest game update. If a new response message is never surfaced through `didReceive` while the extension is active, the app cannot silently process it from an older selected bubble.
+
+Current repo answer:
+
+- The current-player device auto-applies matching targeted trade responses into canonical state as soon as the response message is surfaced and the anchored state can be recovered.
+- Same-device cached published-state recovery now stores a per-game bridge for reopen/response selection paths instead of relying on one global last-published state.
+- Trade-response copy no longer exposes `INTENT` as a player-facing term, even though intents remain the internal transport primitive under the current authority model.
+
+### 7. Per-game recovery beats one global cached-state bridge
+
+What went wrong:
+
+- The repo previously mixed three separate recovery ideas:
+  - `latestKnownStatesByGameId` in memory
+  - one global last-published-state cache
+  - device-local `pendingJoiners`
+- That split made join/start recovery and reopen behavior brittle because the app could recover state for one game and joiners for another, or regress to the wrong recovery source after a reopen.
+
+What we learned:
+
+- Recovery has to be per game.
+- The latest canonical state, observed joiners, and last active game identity should come from one ledger surface rather than from unrelated caches.
+- A global "last published state" record is too coarse for an app that can have multiple active games in one thread history.
+
+Current repo answer:
+
+- The app now keeps a per-game local ledger for latest known `STATE`, observed joiners, and last active game identity.
+- Active-context recovery and intent-context resolution now consult that ledger instead of a separate global cached-state bridge.
+- Device-local pending joins are no longer the canonical lobby assembly surface.
+
+### 8. Messages layout classes are not enough; iPad host height is a separate constraint
+
+What went wrong:
+
+- iPad Messages hosts can be wide but vertically short.
+- Percentage-only lower-area sizing and generic overlay heights made `Hand`, `Bank`, and `Players` clip, over-expand, or become hard to tap.
+
+What we learned:
+
+- Width class is not enough.
+- Utility shelves, build/dev shelves, and trade panels need content-class sizing, and wide-but-short iPad hosts need a compact vertical fallback.
+
+Current repo answer:
+
+- Lower rail and overlay shelf use bounded sizing rather than pure percentages.
+- Utility shelves stay compact and content-only.
+- Wide-but-short iPad hosts fall back to compact vertical metrics instead of oversized pad minima.
+
+### 9. Overlapping shell modes create dead-end UI state quickly
+
+What went wrong:
+
+- `Build`, utility shelves, trade state, and dev-card state previously overlapped.
+- That caused “can’t close,” “must back out first,” and “button froze until reopen” behavior because more than one piece of shell state could be active at once.
+
+What we learned:
+
+- `Build`, utility shelves, `Trade`, and `Play Dev` must be peer routes, not overlapping modes.
+- End-turn and action switching need one consistent “cancel transient state and switch” rule.
+
+Current repo answer:
+
+- The shell now treats utility shelves, `Build`, `Trade`, and `Play Dev` as peer routes.
+- Direct switching is allowed between peer actions.
+- `End Turn` clears transient build-selection state instead of blocking on it.
+
+### 10. Trade cannot depend on tapping controls underneath an overlay
+
+What went wrong:
+
+- A trade panel layered above the lower shelf while still telling the user to tap `Hand` or `Players` below was unreliable on both hit-testing and layout.
+- Close/resume behavior was brittle because trade state and shelf state were split.
+
+What we learned:
+
+- Trade must own its own interaction surface.
+- Reusing visual components is fine; reusing the shelf interaction model underneath an overlay is not.
+
+Current repo answer:
+
+- Trade is now a dedicated self-contained panel.
+- The lower shelf is hidden/disabled while trade is open.
+- `You Give`, `You Want`, and `Recipients` live inside the trade panel, and switching away discards the draft immediately.
+
+### 11. Dev-card UX needs card inventory, not long instructional text
+
+What went wrong:
+
+- The earlier dev-card surface was text-heavy and made ownership/actionability hard to read, especially for VP cards.
+
+What we learned:
+
+- The player needs to see dev-card inventory as cards first, then move into the minimal next choice for the selected card.
+- Visibility and actionability are separate concerns: VP cards should be visible to the owner without always being playable.
+
+Current repo answer:
+
+- `Play Dev` now opens a card-oriented dev shelf.
+- Knight, Monopoly, Year of Plenty, and Road Building stay action-driven from that card surface.
+- Victory Point cards are visible to the owning player and only become revealable when they would immediately win.
+
+### 12. Temporary diagnostics are justified for iMessage-host work, but they must stay temporary
+
+What went wrong:
+
+- Without visible source diagnostics and host-gesture probes, device debugging became guesswork.
+
+What we learned:
+
+- For iMessage-host problems, compact in-app instrumentation is often the fastest way to prove what the host is actually doing.
+- But this instrumentation must stay clearly temporary so it does not silently become product UI.
+
+Current repo answer:
+
+- The app currently exposes a compact transport badge and debug drill-down for host gestures and payload source.
+- `Reload Board` exists only as a temporary operator control while host-resize behavior is being hardened.
+
+Removal expectation:
+
+- Phase 13 release-readiness cleanup owns gating down or deleting these temporary diagnostics once the host behavior is stable enough.
+
+### 13. Simulator confidence is not enough for Messages-hosted UI work
+
+What went wrong:
+
+- Several flows looked acceptable in Simulator or Debug builds but broke on real devices, especially around transcript selection, host resize, and interaction responsiveness.
+- This created false confidence and delayed the discovery of the actual host-boundary problems.
+
+What we learned:
+
+- Messages-hosted UI behavior must be judged on hardware.
+- Simulator remains the fast build/layout loop, but host lifecycle, transcript fidelity, resize behavior, and overall turn-taking confidence need device validation before the flow is considered real.
+
+Current repo answer:
+
+- Real-device checklists remain part of the live QA gate.
+- Phase conclusions and major UI claims should not rely on Simulator-only confidence.
+
+### 14. Board-first shells need strict surface ownership
+
+What went wrong:
+
+- When too many surfaces were allowed to compete for the same space or interaction band, the shell became hard to reason about: shelves clipped, controls overlapped, the board resized unexpectedly, and interaction felt inconsistent.
+
+What we learned:
+
+- In a Messages-hosted game, each region needs one clear job:
+  - board owns pan/zoom/tap
+  - lower shelf owns utility/detail content
+  - dock owns primary turn actions
+  - top strip owns host resize
+- Utility/detail surfaces should overlay the board intentionally instead of forcing the board to resize whenever the lower UI changes.
+
+Current repo answer:
+
+- The board remains visually stable while shelves and panels move over the lower portion of the shell.
+- Trade owns its own panel.
+- Utility shelves stay compact and content-scoped instead of becoming a second full-screen app layout.
+
+### 15. When async feature bugs cluster around bubble surfacing, stop patching the feature layer first
+
+What went wrong:
+
+- Join progression, trade-response progression, active-game recovery, and stale-bubble reopen all kept presenting as separate feature bugs.
+- In practice they were all hitting the same selected-bubble, surfaced-message, and local-ledger boundary in Messages.
+
+What we learned:
+
+- Once multiple player-facing bugs reduce to the same host/transport/recovery limitation, they are no longer ordinary phase-local feature work.
+- At that point, continuing feature-by-feature patching is usually lower leverage than pulling the architecture slice forward.
+
+Current repo answer:
+
+- The 2026-04-16 audit moved phase 13 to the front of the queue.
+- The remaining unfinished phase-12 gameplay/signoff work now rides at the tail of phase 13 instead of pretending gameplay can finish cleanly on top of an unstable host substrate.
+
 ## Real Device Lane
 
 Use real devices as the source of truth for Messages-hosted behavior. Simulator remains the fast build and layout loop, but transcript state, bubble selection, context persistence, and general extension stability should be verified on hardware.
@@ -161,56 +449,64 @@ Run this before calling phase 12 complete.
 5. Confirm the collapsed lower rail shows only the pull-tab and the dock row; utility cards should not be visible until the pull-tab is opened.
 6. Confirm the full island and all ports are visible at default zoom, with a small ocean margin and slightly more water below the island than above. Confirm you can zoom out only slightly beyond default and zoom in much further than the fit overview.
 7. Confirm pan, pinch, and board taps remain responsive on first open on both iPhone and iPad; they should not require reloading the game view before working.
-8. Drag the Messages host smaller and larger. Confirm the shell freezes against the last settled frame during the drag, ignores interaction while frozen, and reliably recovers after the drag ends without getting stranded in a permanently frozen state if the host jitters.
-9. At the normal fully-extended gameplay height, confirm the board remains live and never enters resize-freeze while panning, pinching, or interacting normally.
+8. Drag the Messages host smaller and larger. Confirm the shell remains fitted to the visible host bounds during the drag, the board stays interactive at gameplay height, and one settled redraw completes after the host stops moving without requiring manual board reload.
+9. At the normal fully-extended gameplay height, confirm the board remains live throughout host drag, panning, pinching, and normal interaction.
 10. On iPad, open `Hand`, tap a legal setup/build target, then switch between `Hand`, `Bank`, and `Players`. Confirm the lower shelf stays fully visible and tappable and the board does not steal those taps.
 11. Confirm the overlay shelf overlaps the board intentionally only at the bottom edge. No utility/header/dock content should collide or wrap into neighboring regions.
 12. On both iPhone and iPad, drag on the board, lower shelf, and dock. Confirm those drags stay inside the game surface and do not start resizing the Messages host. Only the narrow top grabber strip should be able to collapse or expand the host.
 13. On iPad, with the Messages host at its normal gameplay height, open `Hand`, `Bank`, and `Players`. Confirm the lower shelf uses the compact vertical layout when needed rather than clipping or disabling utility shelves because the width is wide.
-13. Open `Build` and verify the shelf only shows legal actions from:
+14. Open `Build` and verify the shelf only shows legal actions from:
    - `Road`
    - `Settlement`
    - `City`
    - `Buy Dev`
-14. Tap the pull-tab, then `Hand`, `Bank`, and `Players`, and confirm only one shelf opens at a time.
-15. Close each shelf through both:
+15. While `Build` is open, tap `Hand`, `Bank`, and `Players` and confirm the shell switches directly to the requested utility shelf instead of forcing a manual build close first.
+16. Tap the pull-tab, then `Hand`, `Bank`, and `Players`, and confirm only one shelf opens at a time.
+17. Close each shelf through both:
    - the close chevron
    - tapping the selected utility tab again
-15. Open the `Hand` shelf and confirm trade is entered from there instead of from a persistent dock button.
-16. Confirm the `Hand` shelf shows the five resource chips first, with a full-width `Trade` row underneath when trade is currently available.
-17. Open the `Bank` shelf and confirm it shows public remaining counts for wood, brick, sheep, wheat, and ore using the same chip sizing and spacing as the `Hand` shelf. Verify it only becomes interactive during Monopoly or Year of Plenty selection.
-18. Open the `Players` shelf and confirm each opponent row only shows:
+18. Confirm the `Trade` dock action appears only after rolling and opens a dedicated trade panel rather than a `Hand` shelf row.
+19. While trade is open, confirm the lower shelf is hidden/disabled and the trade panel fully owns interaction until the draft is sent or cancelled.
+20. As proposer, confirm the player-trade composer is vertically stacked as:
+   - `You Give`
+   - `You Want`
+   - `Recipients`
+   and that only the recipient section scrolls.
+21. Confirm `You Want` shows both the five resource types and the remaining public bank counts.
+22. Switch away from trade by opening another peer route and confirm the trade draft is discarded immediately rather than leaving stale shell state behind.
+23. Open the `Bank` shelf and confirm it shows public remaining counts for wood, brick, sheep, wheat, and ore using the same chip sizing and spacing as the `Hand` shelf. Verify it only becomes interactive during Monopoly or Year of Plenty selection.
+24. Open the `Players` shelf and confirm each opponent row only shows:
    - alias
    - current-turn indicator
    - public VP
    - public hand count
-19. Confirm `Hand`, `Bank`, and `Players` do not add inner titles or subtitles and do not scroll in the normal case except when the host is too constrained to fit the utility body without scrolling.
-20. Tap random nodes, edges, and tiles while idle. Confirm nothing highlights or remains selected unless the active mode actually uses that board target class.
-21. Open the dev-card panel and confirm the legal actions are choice-driven, not just default labels:
+25. Confirm `Hand`, `Bank`, and `Players` do not add inner titles or subtitles and do not scroll in the normal case except when the host is too constrained to fit the utility body without scrolling.
+26. Tap random nodes, edges, and tiles while idle. Confirm nothing highlights or remains selected unless the active mode actually uses that board target class.
+27. Open the dev-card panel and confirm it renders as visible card inventory rather than a long text list. The owning player should be able to see held dev cards, including Victory Point cards.
+28. Confirm only legal dev-card plays are actionable from that card shelf:
    - Knight
    - Monopoly
    - Year of Plenty
    - Road Building
-   Verify each option only appears when legal for the current turn state.
-22. Play Knight and confirm the robber moves to the selected tile. If the chosen tile has multiple legal victims, verify the victim selection step becomes explicit; if it has one or zero legal victims, verify the flow resolves without an unnecessary extra picker.
-23. Play Monopoly and confirm the chosen resource is the one collected from opponents.
-24. Play Year of Plenty and confirm the selected two resources are taken from the bank and added to the player.
-25. Play Road Building and confirm the selected two edges are placed without resource cost.
-26. If a Victory Point card is present, confirm it is only surfaced when revealing it would immediately win the game.
-27. Open the trade panel as proposer and responder. Confirm the compact panel explains accepted, waiting, passive-decline, and execute/end-turn expiry behavior without leaking raw IDs or debug text.
-28. Enter setup, build, robber, Knight, and Road Building flows and confirm the in-board hint chip is small, single-line, and shifted above the overlay shelf when the shelf is open.
-29. Finish a game-over state or load one from transcript and confirm the shell shows:
+29. Play Knight and confirm the robber moves to the selected tile. If the chosen tile has multiple legal victims, verify the board highlight victim step becomes explicit; if it has one or zero legal victims, verify the flow resolves without an unnecessary extra picker.
+30. Play Monopoly and confirm the chosen resource is the one collected from opponents.
+31. Play Year of Plenty and confirm the selected two resources are taken from the bank and added to the player.
+32. Play Road Building and confirm the selected two edges are placed without resource cost.
+33. If a Victory Point card is present, confirm it is visible in the owner card shelf but only becomes revealable when it would immediately win the game.
+34. Open the trade panel as proposer and responder. Confirm the compact panel explains accepted, waiting, passive-decline, and execute/end-turn expiry behavior without leaking raw IDs or debug text.
+35. Enter setup, build, robber, Knight, and Road Building flows and confirm the in-board hint chip is small, single-line, and shifted above the overlay shelf when the shelf is open.
+36. Finish a game-over state or load one from transcript and confirm the shell shows:
    - winner clearly
    - compact final score
    - short last-turn recap
    - no dead bottom tray
-30. Open and close `Hand`, `Bank`, `Players`, `Build`, and `Play Dev` repeatedly and confirm the board does not visibly hitch or rebuild while the shelf changes.
-31. In setup and build modes, tap one legal target once and confirm nothing publishes yet. Confirm the target highlights, then tap the same selected target again and confirm it publishes.
-32. After selecting a setup/build target, tap a different legal target and confirm the selection moves without publishing.
-33. On both iPhone and iPad, select a setup/build target while `Hand`, `Bank`, or `Players` is visible and confirm the shelf header tabs remain usable instead of being replaced by a forced-flow panel.
-34. Drag down from the top of the Messages transcript to collapse the host while a live game is open, both with the shelf closed and with a shelf open. Confirm the board freezes visually during host drag, ignores board input while frozen, only performs one clean final refit after the host settles, and never stays frozen indefinitely if the host keeps sending noisy size updates.
-35. On both iPhone and iPad, confirm the `Hand` and `Bank` shelves keep the same chip sizing and a capped reading width instead of stretching to full host width.
-36. In a visibly constrained host height, confirm a utility shelf closes instead of rendering partially offscreen or leaving unreachable content below the viewport.
+37. Open and close `Hand`, `Bank`, `Players`, `Build`, and `Play Dev` repeatedly and confirm the board does not visibly hitch or rebuild while the shelf changes.
+38. In setup and build modes, tap one legal target once and confirm nothing publishes yet. Confirm the target highlights, then tap the same selected target again and confirm it publishes.
+39. After selecting a setup/build target, tap a different legal target and confirm the selection moves without publishing.
+40. On both iPhone and iPad, select a setup/build target while `Hand`, `Bank`, or `Players` is visible and confirm the shelf header tabs remain usable instead of being replaced by a forced-flow panel.
+41. Drag down from the top of the Messages transcript to collapse the host while a live game is open, both with the shelf closed and with a shelf open. Confirm the board stays mounted and responsive at gameplay height during the drag, then performs one clean final refit after the host settles without camera jumps or manual reload.
+42. On both iPhone and iPad, confirm the `Hand` and `Bank` shelves keep the same chip sizing and a capped reading width instead of stretching to full host width.
+43. In a visibly constrained host height, confirm a utility shelf closes instead of rendering partially offscreen or leaving unreachable content below the viewport.
 
 ### Real Device UX Hardening
 
@@ -233,7 +529,7 @@ Use this only on the disposable debug branch when a selected transcript bubble d
    - `decodeSource: URL`
 4. Prefer `url: present` plus `payloadQuery: present`. If they are missing, treat it as a transport publication or host-selection failure rather than a lobby-state bug.
 5. During the temporary phase-12 product fallback, `decodeSource: summary fallback` is acceptable evidence that the one-line mirrored summary carrier recovered the payload; capture it as a host-fidelity defect and keep phase 13 responsible for removing that fallback.
-6. While the temporary in-app diagnostics slice is active, the gameplay route may expose a `Reload Board` control in the top-right overlay. Use it only as a local recovery/debug aid when host-resize cycles leave the SpriteKit board non-responsive.
+6. While the temporary in-app diagnostics slice is active, the gameplay route may expose a `Reload Board` control in the top-right overlay. Use it only as a local debug aid; normal host-resize cycles should not require it.
 7. If lobby `STATE` decodes but `Join Game` is still missing on the receiving device, inspect:
    - `localParticipant`
    - `resolvedActor`
@@ -322,7 +618,7 @@ Use the current product shell for one smoke pass and three targeted checks. Keep
 1. From an `afterRoll` state, open the compact trade modal as the current player.
 2. Verify suggested player-trade and maritime-trade actions are visible.
 3. Switch acting actor and send one or more accept intents.
-4. Switch back to the current player and apply one selected accept into canonical state, then execute with the accepted players.
+4. Return to the current-player device and confirm the accepted response auto-resolves into canonical state without a manual "apply selected response" step.
 5. Verify resource transfer is atomic and the offer clears.
 6. Repeat a turn where the offer is not executed and confirm `End Turn` expires it.
 

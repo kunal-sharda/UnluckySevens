@@ -43,12 +43,11 @@ final class LobbyDriverViewModel: ObservableObject {
 
     private let summaryPayloadPrefix = "ulsenv:"
     private let boardStrategyKey = "uls.boardStrategy"
-    private let lastPublishedStateKey = "uls.lastPublishedState"
-    private let lastPublishedStateMaxAge: TimeInterval = 600
     private let userDefaults: UserDefaults
+    private let gameLedgerStore: TranscriptGameLedgerStore
     private let diagnosticsConfig = TemporaryDiagnosticsConfig.live
     private let allowsRuntimeDebugControls = false
-    private let allowsCachedPublishedStateRecovery = false
+    private let allowsCachedPublishedStateRecovery = true
     private let showsLatestUpdateNotices = false
 
     private weak var activeConversation: MSConversation?
@@ -71,12 +70,14 @@ final class LobbyDriverViewModel: ObservableObject {
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
+        gameLedgerStore = TranscriptGameLedgerStore(userDefaults: userDefaults)
         if let rawValue = userDefaults.string(forKey: boardStrategyKey),
            let parsed = BoardGenStrategyV1(rawValue: rawValue) {
             boardStrategy = parsed
         } else {
             boardStrategy = .randomV1
         }
+        latestKnownStatesByGameId = gameLedgerStore.bootstrapSnapshot().latestKnownStatesByGameId
     }
 
     private var diagnosticsEnabled: Bool {
@@ -897,7 +898,7 @@ final class LobbyDriverViewModel: ObservableObject {
         activeContextUpdatedAgo = "-"
         staleContextWarning = "-"
         clearLatestUpdateNotice()
-        userDefaults.removeObject(forKey: lastPublishedStateKey)
+        gameLedgerStore.markActiveGame(nil)
         if selectedTurnIntent == nil, selectedSetupIntent == nil, selectedJoinIntent == nil {
             resetDisplayedFields()
         }
@@ -994,12 +995,7 @@ final class LobbyDriverViewModel: ObservableObject {
             return
         }
 
-        var joiners = loadPendingJoiners(for: intent.gameId)
-        if !joiners.contains(intent.actor) {
-            joiners.append(intent.actor)
-            savePendingJoiners(joiners, for: intent.gameId)
-        }
-
+        rememberPendingJoiner(intent.actor, for: intent.gameId)
         refreshPendingJoiners(for: intent.gameId)
         selectionStatus = "Recorded join actor: \(intent.actor)"
         setLastError(nil)
@@ -1028,7 +1024,7 @@ final class LobbyDriverViewModel: ObservableObject {
 
         let finalRoster = LobbyMembershipResolver.finalRoster(
             state: fromState,
-            pendingJoiners: loadPendingJoiners(for: fromState.gameId)
+            pendingJoiners: currentPendingJoiners(for: fromState.gameId)
         )
 
         guard finalRoster.count >= 2 else {
@@ -1077,7 +1073,7 @@ final class LobbyDriverViewModel: ObservableObject {
                 caption: "ULS STATE rev1",
                 sessionPolicy: .state(gameId: toState.gameId)
             )
-            userDefaults.removeObject(forKey: pendingJoinersKey(for: toState.gameId))
+            gameLedgerStore.clearObservedJoiners(for: toState.gameId)
             refreshPendingJoiners(for: toState.gameId)
             setActiveContext(toState, source: .lastSentState)
             selectionStatus = "Start sent: setup rev1"
@@ -1097,7 +1093,7 @@ final class LobbyDriverViewModel: ObservableObject {
             return
         }
 
-        userDefaults.removeObject(forKey: pendingJoinersKey(for: gameId))
+        gameLedgerStore.clearObservedJoiners(for: gameId)
         refreshPendingJoiners(for: gameId)
         selectionStatus = "Cleared pending joins for \(gameId)"
         setLastError(nil)
@@ -2142,8 +2138,8 @@ final class LobbyDriverViewModel: ObservableObject {
         do {
             try sendTurnIntentEnvelope(
                 intent,
-                caption: "ULS INTENT acceptTrade",
-                successStatus: "Accept trade intent sent"
+                caption: "ULS TRADE RESPONSE accept",
+                successStatus: "Sent trade accept"
             )
             return true
         } catch {
@@ -2165,8 +2161,8 @@ final class LobbyDriverViewModel: ObservableObject {
         do {
             try sendTurnIntentEnvelope(
                 intent,
-                caption: "ULS INTENT declineTrade",
-                successStatus: "Decline trade intent sent"
+                caption: "ULS TRADE RESPONSE decline",
+                successStatus: "Sent trade decline"
             )
             return true
         } catch {
@@ -2190,8 +2186,8 @@ final class LobbyDriverViewModel: ObservableObject {
         do {
             try sendTurnIntentEnvelope(
                 intent,
-                caption: "ULS INTENT counterTrade",
-                successStatus: "Counter trade intent sent"
+                caption: "ULS TRADE RESPONSE counter",
+                successStatus: "Sent trade counter"
             )
             return true
         } catch {
@@ -2553,6 +2549,40 @@ final class LobbyDriverViewModel: ObservableObject {
             }
 
             if let turnIntent = try? decodePayload(ULS_Transport.TurnIntentV1.self, from: payload) {
+                let contextResolution = TurnIntentContextResolver.resolve(
+                    turnIntent: turnIntent,
+                    selectedState: selectedState,
+                    latestKnownStatesByGameId: latestKnownStatesByGameId,
+                    cachedPublishedState: cachedPublishedStateForIntentContext(gameId: turnIntent.gameId)
+                )
+                recoverActiveContextIfNeeded(for: turnIntent, resolution: contextResolution)
+
+                if autoApplyTurnIntentIfPossible(
+                    turnIntent,
+                    resolution: contextResolution,
+                    source: source,
+                    trigger: trigger
+                ) {
+                    return
+                }
+
+                if shouldPreferRecoveredState(
+                    for: turnIntent,
+                    resolution: contextResolution
+                ) {
+                    selectedTurnIntent = nil
+                    selectedSetupIntent = nil
+                    selectedJoinIntent = nil
+                    let recoveredRev = contextResolution.bestAvailable?.state.rev ?? turnIntent.anchorRev
+                    selectionStatus = "Opened latest STATE rev\(recoveredRev) via \(source.label)"
+                    selectedDecodeResult = selectionStatus
+                    appendLog(
+                        "Ignored stale \(turnIntent.kind.rawValue) response anchorRev=\(turnIntent.anchorRev) latestRev=\(recoveredRev)"
+                    )
+                    refreshPendingJoiners(for: turnIntent.gameId)
+                    return
+                }
+
                 selectedTurnIntent = turnIntent
                 selectedSetupIntent = nil
                 selectedJoinIntent = nil
@@ -2561,6 +2591,13 @@ final class LobbyDriverViewModel: ObservableObject {
             }
 
             let intent = try decodePayload(JoinIntentV1.self, from: payload)
+            if bridgeJoinIntentIfPossible(
+                intent,
+                source: source,
+                trigger: trigger
+            ) {
+                return
+            }
             selectedJoinIntent = intent
             selectedSetupIntent = nil
             selectedTurnIntent = nil
@@ -2576,6 +2613,7 @@ final class LobbyDriverViewModel: ObservableObject {
         selectedState = state
         activeSource = source
         activeUpdatedAt = Date()
+        gameLedgerStore.markActiveGame(state.gameId)
         syncActingAs(with: state)
         refreshActiveContextMetadata()
         refreshStaleContextWarning()
@@ -2719,10 +2757,10 @@ final class LobbyDriverViewModel: ObservableObject {
         boardDiagnosticsSnapshot = snapshot
     }
 
-    func requestBoardReload() {
+    func requestBoardReload(detail: String = "manual") {
         boardReloadToken &+= 1
         recordHostGestureEvent(
-            HostGestureEvent(kind: .boardSurfaceReloaded, detail: "manual token=\(boardReloadToken)")
+            HostGestureEvent(kind: .boardSurfaceReloaded, detail: "\(detail) token=\(boardReloadToken)")
         )
     }
 
@@ -2749,31 +2787,29 @@ final class LobbyDriverViewModel: ObservableObject {
         guard allowsCachedPublishedStateRecovery else {
             return
         }
-        userDefaults.set(data, forKey: lastPublishedStateKey)
+        guard
+            let cached = try? JSONDecoder().decode(CachedPublishedState.self, from: data),
+            let gameId = cached.gameId,
+            let state = try? decodePayload(CoreGameStateV1.self, from: cached.payload),
+            state.gameId == gameId
+        else {
+            return
+        }
+        gameLedgerStore.record(state: state, payload: cached.payload)
     }
 
     private func cachedPublishedState() -> CoreGameStateV1? {
         guard allowsCachedPublishedStateRecovery else {
             return nil
         }
-        guard
-            let data = userDefaults.data(forKey: lastPublishedStateKey),
-            let cached = try? JSONDecoder().decode(CachedPublishedState.self, from: data)
-        else {
-            return nil
+        if let lastActiveGameId = currentGameId() ?? gameLedgerStore.lastActiveGameId() {
+            return gameLedgerStore.latestState(for: lastActiveGameId)
         }
+        return gameLedgerStore.mostRecentState()
+    }
 
-        guard Date().timeIntervalSince1970 - cached.savedAt <= lastPublishedStateMaxAge else {
-            userDefaults.removeObject(forKey: lastPublishedStateKey)
-            return nil
-        }
-
-        guard let state = try? decodePayload(CoreGameStateV1.self, from: cached.payload) else {
-            userDefaults.removeObject(forKey: lastPublishedStateKey)
-            return nil
-        }
-
-        return state
+    private func cachedPublishedStateForIntentContext(gameId: String) -> CoreGameStateV1? {
+        gameLedgerStore.latestState(for: gameId)
     }
 
     private func showLatestUpdateNotice(_ message: String) {
@@ -2848,9 +2884,132 @@ final class LobbyDriverViewModel: ObservableObject {
     private func render(turnIntent decodedTurnIntent: ULS_Transport.TurnIntentV1, source: TranscriptPayloadSource) {
         selectionStatus = "Decoded \(decodedTurnIntent.kind.rawValue) intent via \(source.label)"
         selectedDecodeResult = selectionStatus
-        updateGameplayShellProjection(GameShellProjectionBuilder.build(turnIntent: decodedTurnIntent))
+        if let selectedState, selectedState.gameId == decodedTurnIntent.gameId {
+            updateGameplayShellProjection(
+                GameShellProjectionBuilder.build(
+                    state: selectedState,
+                    actingAs: localActorIdentifier(),
+                    selectedTurnIntent: decodedTurnIntent,
+                    actionAvailability: shellActionAvailability,
+                    modeAvailability: shellModeAvailability,
+                    contextBanner: activeContextBanner,
+                    contextMeta: activeContextMeta
+                )
+            )
+        } else {
+            updateGameplayShellProjection(GameShellProjectionBuilder.build(turnIntent: decodedTurnIntent))
+        }
         refreshPendingJoiners(for: decodedTurnIntent.gameId)
         appendLog("Decoded INTENT kind=\(decodedTurnIntent.kind.rawValue) actor=\(shortIdentifier(decodedTurnIntent.actor))")
+    }
+
+    private func bridgeJoinIntentIfPossible(
+        _ joinIntent: JoinIntentV1,
+        source: TranscriptPayloadSource,
+        trigger: TranscriptSelectionTrigger
+    ) -> Bool {
+        let resolution = TurnIntentContextResolver.resolve(
+            gameId: joinIntent.gameId,
+            anchorRev: joinIntent.anchorRev,
+            anchorHash: joinIntent.anchorHash,
+            selectedState: selectedState,
+            latestKnownStatesByGameId: latestKnownStatesByGameId,
+            cachedPublishedState: cachedPublishedStateForIntentContext(gameId: joinIntent.gameId)
+        )
+
+        guard
+            let recovered = resolution.anchorMatched ?? resolution.bestAvailable,
+            recovered.state.phase == .lobby,
+            let localParticipant = localParticipantIdentifier(),
+            recovered.state.roster.first == localParticipant
+        else {
+            return false
+        }
+
+        if shouldRecoverActiveContext(to: recovered.state) {
+            setActiveContext(recovered.state, source: resolvedActiveContextSource(for: recovered.source))
+        }
+
+        rememberPendingJoiner(joinIntent.actor, for: joinIntent.gameId)
+        refreshPendingJoiners(for: joinIntent.gameId)
+        selectedJoinIntent = nil
+        selectedSetupIntent = nil
+        selectedTurnIntent = nil
+        selectionStatus = "Updated lobby from join via \(source.label)"
+        selectedDecodeResult = selectionStatus
+        appendLog(
+            "Selection \(trigger.label): bridged join actor=\(shortIdentifier(joinIntent.actor)) rev=\(recovered.state.rev) via \(source.label)"
+        )
+        setLastError(nil)
+        return true
+    }
+
+    private func recoverActiveContextIfNeeded(
+        for turnIntent: ULS_Transport.TurnIntentV1,
+        resolution: TurnIntentContextResolution
+    ) {
+        guard let recovered = resolution.bestAvailable else {
+            return
+        }
+        guard shouldRecoverActiveContext(to: recovered.state) else {
+            return
+        }
+
+        setActiveContext(recovered.state, source: resolvedActiveContextSource(for: recovered.source))
+        appendLog(
+            "Recovered context for \(turnIntent.kind.rawValue) rev=\(recovered.state.rev) source=\(recovered.source)"
+        )
+    }
+
+    private func autoApplyTurnIntentIfPossible(
+        _ turnIntent: ULS_Transport.TurnIntentV1,
+        resolution: TurnIntentContextResolution,
+        source: TranscriptPayloadSource,
+        trigger: TranscriptSelectionTrigger
+    ) -> Bool {
+        guard
+            TurnIntentContextResolver.shouldAutoApply(
+                turnIntent,
+                resolution: resolution,
+                localParticipant: localParticipantIdentifier()
+            ),
+            let matchedContext = resolution.anchorMatched
+        else {
+            return false
+        }
+
+        if shouldRecoverActiveContext(to: matchedContext.state) {
+            setActiveContext(matchedContext.state, source: resolvedActiveContextSource(for: matchedContext.source))
+        }
+
+        do {
+            try applyAndPublishTurnIntent(turnIntent, successStatus: successStatus(for: turnIntent.kind))
+            appendLog(
+                "Selection \(trigger.label): auto-applied \(turnIntent.kind.rawValue) via \(source.label)"
+            )
+            return true
+        } catch {
+            appendLog(
+                "Auto-apply failed kind=\(turnIntent.kind.rawValue) error=\(error.localizedDescription)"
+            )
+            setLastError("Automatic trade response apply failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    private func shouldPreferRecoveredState(
+        for turnIntent: ULS_Transport.TurnIntentV1,
+        resolution: TurnIntentContextResolution
+    ) -> Bool {
+        guard
+            TurnIntentContextResolver.isTradeResponse(turnIntent.kind),
+            let recovered = resolution.bestAvailable
+        else {
+            return false
+        }
+
+        return recovered.state.gameId == turnIntent.gameId
+            && recovered.state.rev > turnIntent.anchorRev
     }
 
     private func resetDisplayedFields() {
@@ -3216,8 +3375,14 @@ final class LobbyDriverViewModel: ObservableObject {
             return nil
         }
 
+        let state = try? decodePayload(CoreGameStateV1.self, from: payload)
+
         return try? JSONEncoder().encode(
-            CachedPublishedState(payload: payload, savedAt: Date().timeIntervalSince1970)
+            CachedPublishedState(
+                gameId: state?.gameId,
+                payload: payload,
+                savedAt: Date().timeIntervalSince1970
+            )
         )
     }
 
@@ -3231,6 +3396,9 @@ final class LobbyDriverViewModel: ObservableObject {
             return "STATE"
         case let .intent(payload):
             if let turnIntent = try? decodePayload(ULS_Transport.TurnIntentV1.self, from: payload) {
+                if TurnIntentContextResolver.isTradeResponse(turnIntent.kind) {
+                    return "TRADE_RESPONSE actor=\(shortIdentifier(turnIntent.actor)) kind=\(turnIntent.kind.rawValue) a=r\(turnIntent.anchorRev)"
+                }
                 return "INTENT actor=\(shortIdentifier(turnIntent.actor)) kind=\(turnIntent.kind.rawValue) a=r\(turnIntent.anchorRev)"
             }
             if let setupIntent = try? decodePayload(SetupPlacementIntentV1.self, from: payload) {
@@ -3438,6 +3606,29 @@ final class LobbyDriverViewModel: ObservableObject {
         )
     }
 
+    private func shouldRecoverActiveContext(to state: CoreGameStateV1) -> Bool {
+        guard let selectedState else {
+            return true
+        }
+
+        return selectedState.gameId != state.gameId
+            || selectedState.rev != state.rev
+            || selectedState.stateHash != state.stateHash
+    }
+
+    private func resolvedActiveContextSource(
+        for source: TurnIntentContextCandidateSource
+    ) -> ActiveContextSource {
+        switch source {
+        case .selectedState:
+            return activeSource ?? .selectedBubble
+        case .latestKnownState:
+            return .selectedBubble
+        case .cachedPublishedState:
+            return .cachedPublishedState
+        }
+    }
+
     private func debugActorIdentifier() -> String? {
         if let state = selectedState, state.roster.contains(actingAs) {
             return actingAs
@@ -3475,29 +3666,24 @@ final class LobbyDriverViewModel: ObservableObject {
             return
         }
 
-        let joiners = loadPendingJoiners(for: gameId)
+        let joiners = currentPendingJoiners(for: gameId)
         pendingJoiners = joiners.isEmpty ? "[]" : joiners.joined(separator: ", ")
         refreshParticipantIdentityDebug()
-    }
-
-    private func loadPendingJoiners(for gameId: String) -> [String] {
-        userDefaults.stringArray(forKey: pendingJoinersKey(for: gameId)) ?? []
     }
 
     private func currentPendingJoiners() -> [String] {
         guard let gameId = currentGameId() else {
             return []
         }
-        return loadPendingJoiners(for: gameId)
+        return currentPendingJoiners(for: gameId)
+    }
+
+    private func currentPendingJoiners(for gameId: String) -> [String] {
+        gameLedgerStore.observedJoiners(for: gameId)
     }
 
     private func rememberPendingJoiner(_ joiner: String, for gameId: String) {
-        var joiners = loadPendingJoiners(for: gameId)
-        guard !joiners.contains(joiner) else {
-            return
-        }
-        joiners.append(joiner)
-        savePendingJoiners(joiners, for: gameId)
+        gameLedgerStore.recordJoin(actor: joiner, gameId: gameId)
     }
 
     private func applyAndPublishTurnIntent(
@@ -3632,14 +3818,6 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
-    private func savePendingJoiners(_ joiners: [String], for gameId: String) {
-        userDefaults.set(joiners, forKey: pendingJoinersKey(for: gameId))
-    }
-
-    private func pendingJoinersKey(for gameId: String) -> String {
-        "uls.pendingJoiners.\(gameId)"
-    }
-
     private func setLastError(_ message: String?) {
         lastError = message ?? "-"
         if let message {
@@ -3680,6 +3858,7 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private struct CachedPublishedState: Codable {
+        let gameId: String?
         let payload: String
         let savedAt: TimeInterval
     }

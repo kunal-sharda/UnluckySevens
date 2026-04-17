@@ -37,7 +37,7 @@ final class GameShellProjectionBuilderTests: XCTestCase {
         XCTAssertEqual(projection.visibleHands, "A: w:2, b:1, s:1, wh:1, o:1 | B: 0")
     }
 
-    func testBuildStateProjectionSurfacesSelectedTradeResponseAndDiscardIntent() throws {
+    func testBuildStateProjectionKeepsTradePanelStateDrivenAndSurfacesSelectedDiscardIntent() throws {
         let tradeOffer = TradeOfferV1(
             offerHash: "offer-1",
             proposer: "A",
@@ -59,25 +59,14 @@ final class GameShellProjectionBuilderTests: XCTestCase {
                 )
             ]
         )
-        let selectedCounterIntent = TurnIntentV1(
-            counterTradePlayer: "B",
-            offerHash: tradeOffer.offerHash,
-            counterGive: TransportResourceHandV1(brick: 1),
-            receive: TransportResourceHandV1(ore: 1),
-            gameId: tradeState.gameId,
-            anchorRev: tradeState.rev,
-            anchorHash: tradeState.stateHash,
-            actor: "B"
-        )
-
         let tradeProjection = GameShellProjectionBuilder.build(
             state: tradeState,
-            actingAs: "A",
-            selectedTurnIntent: selectedCounterIntent
+            actingAs: "A"
         )
 
-        XCTAssertEqual(tradeProjection.tradePanelModel?.selectedResponse?.playerID, "B")
-        XCTAssertEqual(tradeProjection.tradePanelModel?.selectedResponse?.kind, .counter)
+        XCTAssertEqual(tradeProjection.tradePanelModel?.participantStatuses.first?.playerID, "B")
+        XCTAssertEqual(tradeProjection.tradePanelModel?.participantStatuses.first?.state, .countered)
+        XCTAssertTrue(tradeProjection.tradePanelModel?.message.contains("Counters are visible") == true)
 
         let discardState = makeTurnState(
             currentPlayer: "A",

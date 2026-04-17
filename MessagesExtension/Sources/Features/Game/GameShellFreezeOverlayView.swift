@@ -63,6 +63,7 @@ struct GameShellFreezeOverlayView: View {
                     onDiagnosticsChanged: nil,
                     onGestureEvent: nil,
                     onResizeFreezeChanged: nil,
+                    onFreezeRecoveryReloadRequested: nil,
                     onTargetTap: nil
                 )
                 .frame(height: snapshot.layout.boardHeight, alignment: .top)
@@ -97,7 +98,7 @@ struct GameShellFreezeOverlayView: View {
             }
 
             if !snapshot.isGameOver,
-               snapshot.mode != .trade,
+               snapshot.tradeOverlayRoute == nil,
                let pendingTradeBannerText = snapshot.pendingTradeBannerText {
                 GameTradePendingBannerView(text: pendingTradeBannerText) {}
                     .frame(maxWidth: snapshot.lowerRailWidth)
@@ -112,10 +113,15 @@ struct GameShellFreezeOverlayView: View {
             }
 
             if !snapshot.isGameOver,
-               snapshot.mode == .trade,
                let tradeOverlayRoute = snapshot.tradeOverlayRoute {
                 FrozenTradeOverlayCard(snapshot: snapshot, route: tradeOverlayRoute)
-                    .frame(height: GameTradeOverlayLayout.panelHeight(for: snapshot.lowerRailWidth), alignment: .top)
+                    .frame(
+                        height: GameTradeOverlayLayout.panelHeight(
+                            for: snapshot.lowerRailWidth,
+                            route: tradeOverlayRoute
+                        ),
+                        alignment: .top
+                    )
                     .frame(maxWidth: snapshot.lowerRailWidth)
                     .padding(.horizontal, GameTheme.shellPadding)
                     .padding(
@@ -255,20 +261,21 @@ private struct FrozenTradeOverlayCard: View {
                 route: route,
                 panelModel: panelModel,
                 availableWidth: snapshot.lowerRailWidth,
+                bankChips: snapshot.bankTray.chips,
+                handChips: snapshot.handTray.chips,
                 recipientSummaries: snapshot.opponents,
                 onClose: {},
                 onChoosePlayerTrade: {},
                 onChooseMaritimeTrade: {},
                 onReplaceOffer: {},
                 onStartCounterDraft: {},
-                onApplySelectedResponse: {},
                 onSendDraft: {},
                 onBackDraftStep: {},
-                onNextDraftStep: {},
                 onAddGiveResource: { _ in },
                 onRemoveGiveResource: { _ in },
                 onAddWantResource: { _ in },
                 onRemoveWantResource: { _ in },
+                onToggleRecipient: { _ in },
                 onAcceptOffer: {},
                 onDeclineOffer: {},
                 onSendMaritimeTrade: { _ in }

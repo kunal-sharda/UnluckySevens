@@ -12,8 +12,7 @@ struct GameShellView: View {
     @State private var boardCommitDraft: GameBoardCommitDraft?
     @State private var boardHintText: String?
     @State private var devCardDraft: GameDevCardDraft?
-    @State private var tradeOverlayRoute: GameTradeOverlayRoute?
-    @State private var manualShelfPresentation: GameShelfPresentation = .none
+    @State private var shellRoute: GameShellRoute = .none
     @State private var lastUtilityShelf: GameLowerShelf = .hand
     @State private var shellResizeFreezeSnapshot: GameShellFreezeSnapshot?
     @State private var shellResizeFreezeEpoch: Int = 0
@@ -35,6 +34,7 @@ struct GameShellView: View {
         let shelfPresentation = resolvedShelfPresentation(mode: resolvedMode)
         let activeLowerShelf = shelfPresentation.activeShelf
         let isShelfPresented = activeLowerShelf != nil && !isGameOver
+        let activeTradeRoute = shellRoute.tradeOverlayRoute
         let bankTrayModel = viewModel.makeBankTrayModel(
             mode: resolvedMode,
             draft: devCardDraft
@@ -61,9 +61,9 @@ struct GameShellView: View {
             for: shelfPresentation,
             currentMode: resolvedMode
         )
-        let selectedDockKind = resolvedMode == .trade ? GameActionDockItem.Kind.trade : shelfPresentation.selectedDockKind
-        let selectedHandCounts = tradeSelectedHandCounts(route: tradeOverlayRoute)
-        let selectedRecipients = tradeSelectedRecipients(route: tradeOverlayRoute)
+        let selectedDockKind = shellRoute.selectedDockKind ?? shelfPresentation.selectedDockKind
+        let selectedHandCounts = tradeSelectedHandCounts(route: activeTradeRoute)
+        let selectedRecipients = tradeSelectedRecipients(route: activeTradeRoute)
 
         ZStack {
             GameTheme.appBackground
@@ -73,7 +73,8 @@ struct GameShellView: View {
                 let shellSize = geometry.size
                 let shellLayout = GameShellLayoutMetrics.resolve(
                     availableSize: shellSize,
-                    spacing: GameTheme.sectionSpacing
+                    spacing: GameTheme.sectionSpacing,
+                    overlayKind: overlayShelfKind(for: shelfPresentation)
                 )
                 let canPresentUtilityShelf = GameShellLayoutMetrics.supportsUtilityShelf(
                     availableSize: shellSize,
@@ -90,10 +91,12 @@ struct GameShellView: View {
                     width: max(lowerRailWidth - (utilityContentInset * 2), 0),
                     height: max(shellLayout.overlayShelf.contentHeight - (utilityContentInset * 2), 0)
                 )
-                let tradePanelHeight = GameTradeOverlayLayout.panelHeight(for: lowerRailWidth)
-                let isTradePanelPresented = resolvedMode == .trade
-                    && projection.tradePanelModel != nil
-                    && tradeOverlayRoute != nil
+                let tradePanelHeight = GameTradeOverlayLayout.panelHeight(
+                    for: lowerRailWidth,
+                    route: activeTradeRoute
+                )
+                let isTradePanelPresented = projection.tradePanelModel != nil
+                    && activeTradeRoute != nil
                 let shouldShowPendingTradeBanner = !isTradePanelPresented
                     && projection.tradePanelModel?.pendingBannerText != nil
                 let boardHintBottomInset = resolvedBoardHintBottomInset(
@@ -160,13 +163,16 @@ struct GameShellView: View {
                                                 tradePanelModel: projection.tradePanelModel,
                                                 devCardPanel: devCardPanelModel,
                                                 robberVictimOptions: projection.robberVictimOptions,
-                                                tradeOverlayRoute: tradeOverlayRoute,
+                                                tradeOverlayRoute: activeTradeRoute,
                                                 tradeSelectedHandCounts: selectedHandCounts,
                                                 tradeSelectedRecipients: selectedRecipients,
                                                 pendingTradeBannerText: projection.tradePanelModel?.pendingBannerText
                                             )
                                         }
                                     )
+                                },
+                                onFreezeRecoveryReloadRequested: { detail in
+                                    viewModel.requestBoardReload(detail: detail)
                                 },
                                 onTargetTap: { target in
                                     handleBoardTap(target, mode: resolvedMode)
@@ -189,10 +195,7 @@ struct GameShellView: View {
                                         )
                                     },
                                     onToggleUtilityShelf: {
-                                        handleUtilityHandleToggle(
-                                            currentMode: resolvedMode,
-                                            canPresentUtilityShelf: canPresentUtilityShelf
-                                        )
+                                        handleUtilityHandleToggle(canPresentUtilityShelf: canPresentUtilityShelf)
                                     }
                                 )
                                 .frame(height: shellLayout.trayHeight, alignment: .top)
@@ -210,10 +213,10 @@ struct GameShellView: View {
                                 presentation: shelfPresentation,
                                 currentMode: resolvedMode,
                                 onSelectUtilityShelf: { shelf in
-                                    handleUtilityShelfSelection(shelf, currentMode: resolvedMode)
+                                    handleUtilityShelfSelection(shelf)
                                 },
                                 onClose: {
-                                    handleCloseShelf(currentMode: resolvedMode)
+                                    handleCloseShelf()
                                 }
                             ) {
                                 GameLowerShelfContentView(
@@ -231,9 +234,9 @@ struct GameShellView: View {
                                     devCardPanel: devCardPanelModel,
                                     robberVictimOptions: projection.robberVictimOptions,
                                     selectedHandCounts: selectedHandCounts,
-                                    onSelectHandResource: tradeHandResourceSelectionAction(route: tradeOverlayRoute),
+                                    onSelectHandResource: nil,
                                     selectedRecipients: selectedRecipients,
-                                    onSelectRecipient: tradeRecipientSelectionAction(route: tradeOverlayRoute),
+                                    onSelectRecipient: nil,
                                     onSelectBuild: { buildKind in
                                         handleBuildShelfSelection(buildKind)
                                     },
@@ -298,12 +301,14 @@ struct GameShellView: View {
 
                         if !isGameOver,
                            let tradePanelModel = projection.tradePanelModel,
-                           let tradeOverlayRoute,
+                           let tradeOverlayRoute = activeTradeRoute,
                            isTradePanelPresented {
                             GameTradeOverlayView(
                                 route: tradeOverlayRoute,
                                 panelModel: tradePanelModel,
                                 availableWidth: lowerRailWidth,
+                                bankChips: bankTrayModel.chips,
+                                handChips: screenModel.handTray.chips,
                                 recipientSummaries: screenModel.opponents,
                                 onClose: {
                                     closeTradePanel(resetDraft: true)
@@ -320,19 +325,11 @@ struct GameShellView: View {
                                 onStartCounterDraft: {
                                     startCounterTradeDraft(using: tradePanelModel)
                                 },
-                                onApplySelectedResponse: {
-                                    guard viewModel.publishSelectedTurnIntentState() else { return }
-                                    closeTradePanel(resetDraft: true)
-                                    selectedBoardTarget = nil
-                                },
                                 onSendDraft: {
                                     submitTradeDraft()
                                 },
                                 onBackDraftStep: {
                                     stepBackTradeDraft()
-                                },
-                                onNextDraftStep: {
-                                    advanceTradeDraft()
                                 },
                                 onAddGiveResource: { resource in
                                     addGiveResource(resource)
@@ -345,6 +342,9 @@ struct GameShellView: View {
                                 },
                                 onRemoveWantResource: { resource in
                                     removeWantResource(resource)
+                                },
+                                onToggleRecipient: { playerID in
+                                    toggleTradeRecipient(playerID)
                                 },
                                 onAcceptOffer: {
                                     guard viewModel.sendAcceptTradeIntent() else { return }
@@ -426,10 +426,7 @@ struct GameShellView: View {
                 devCardDraft = nil
             }
             if newMode.isForcedBoardMode {
-                manualShelfPresentation = .none
-            }
-            if newMode != .trade {
-                tradeOverlayRoute = nil
+                shellRoute = .none
             }
         }
         .onChange(of: screenModel.boardRenderModel) { _, _ in
@@ -444,29 +441,14 @@ struct GameShellView: View {
         if mode == .discard || mode == .robberVictim {
             return .forcedFlow
         }
-        if mode.isDevCardMode {
-            return .action(.devCards)
-        }
-        if mode.isBuildMode {
-            return .action(.build)
-        }
-        if mode == .trade {
-            switch manualShelfPresentation {
-            case let .utility(shelf):
-                return .utility(shelf)
-            default:
-                return .utility(lastUtilityShelf)
-            }
-        }
-
-        switch manualShelfPresentation {
+        switch shellRoute {
         case let .utility(shelf):
             return .utility(shelf)
-        case let .action(shelf):
-            return .action(shelf)
-        case .forcedFlow:
-            return .forcedFlow
-        case .none:
+        case .build:
+            return .action(.build)
+        case .devCards:
+            return .action(.devCards)
+        case .trade, .none:
             return .none
         }
     }
@@ -537,10 +519,14 @@ struct GameShellView: View {
         availability: GameModeAvailability,
         actionDock: GameActionDockModel
     ) {
+        if actionKind == .roll || actionKind == .endTurn {
+            clearBoardSelection()
+        }
+
         if viewModel.publishTurnState(for: actionKind) {
             self.currentMode = .idle
+            self.shellRoute = .none
             clearBoardSelection()
-            self.manualShelfPresentation = .none
             self.devCardDraft = nil
             return
         }
@@ -550,111 +536,87 @@ struct GameShellView: View {
         case .build:
             guard !actionDock.buildShelfItems.isEmpty else {
                 self.currentMode = .idle
-                self.manualShelfPresentation = .none
+                self.shellRoute = .none
                 self.devCardDraft = nil
                 return
             }
 
-            if resolvedShelfPresentation(mode: currentMode) == .action(.build) {
+            if shellRoute == .build {
                 self.currentMode = .idle
-                self.manualShelfPresentation = .none
+                self.shellRoute = .none
                 self.devCardDraft = nil
             } else {
                 self.currentMode = .idle
-                self.manualShelfPresentation = .action(.build)
+                self.shellRoute = .build
                 self.devCardDraft = nil
             }
         case .devCards:
+            if shellRoute == .devCards {
+                dismissDevCardFlow()
+                return
+            }
             let nextMode = GameModeResolver.nextMode(
                 for: actionKind,
                 currentMode: currentMode,
                 availability: availability
             )
             self.currentMode = nextMode
-            self.manualShelfPresentation = .none
             self.devCardDraft = nil
+            self.shellRoute = nextMode.isDevCardMode ? .devCards : .none
         case .trade:
-            if currentMode == .trade {
+            if case .trade = shellRoute {
                 closeTradePanel(resetDraft: true)
             } else {
                 openTradePanel()
             }
         case .roll, .endTurn:
             self.currentMode = .idle
-            self.manualShelfPresentation = .none
+            self.shellRoute = .none
             self.devCardDraft = nil
         }
     }
 
-    private func handleUtilityHandleToggle(
-        currentMode: GameMode,
-        canPresentUtilityShelf: Bool
-    ) {
-        if currentMode == .trade {
-            guard canPresentUtilityShelf else {
-                closeTradePanel(resetDraft: true)
-                return
-            }
-            manualShelfPresentation = .utility(lastUtilityShelf)
-            clearBoardSelection()
+    private func handleUtilityHandleToggle(canPresentUtilityShelf: Bool) {
+        if case .trade = shellRoute {
             return
         }
 
-        let presentation = resolvedShelfPresentation(mode: currentMode)
-        if case .utility = presentation {
-            self.manualShelfPresentation = .none
+        if case .utility = shellRoute {
+            shellRoute = .none
         } else {
             guard canPresentUtilityShelf else {
                 return
             }
-            self.manualShelfPresentation = .utility(lastUtilityShelf)
+            switchToUtilityShelf(lastUtilityShelf)
         }
         clearBoardSelection()
     }
 
-    private func handleUtilityShelfSelection(
-        _ shelf: GameLowerShelf,
-        currentMode: GameMode
-    ) {
+    private func handleUtilityShelfSelection(_ shelf: GameLowerShelf) {
         lastUtilityShelf = shelf
-
-        if currentMode == .trade {
-            self.manualShelfPresentation = .utility(shelf)
-        } else if resolvedShelfPresentation(mode: currentMode) == .utility(shelf) {
-            self.manualShelfPresentation = .none
+        if shellRoute.utilityShelf == shelf {
+            shellRoute = .none
         } else {
-            self.manualShelfPresentation = .utility(shelf)
+            switchToUtilityShelf(shelf)
         }
         clearBoardSelection()
     }
 
-    private func handleCloseShelf(currentMode: GameMode) {
-        switch resolvedShelfPresentation(mode: currentMode) {
+    private func handleCloseShelf() {
+        switch shellRoute {
         case .utility:
-            if currentMode == .trade {
-                closeTradePanel(resetDraft: true)
-            } else {
-                self.manualShelfPresentation = .none
-            }
+            self.shellRoute = .none
             clearBoardSelection()
-        case let .action(shelf):
-            if shelf == .devCards {
-                dismissDevCardFlow()
-            } else {
-                self.currentMode = .idle
-                self.manualShelfPresentation = .none
-                clearBoardSelection()
-            }
-        case .forcedFlow, .none:
-            break
-        }
-    }
-
-    private func handleTradeShelfSelection() {
-        if currentMode == .trade {
+        case .build:
+            self.currentMode = .idle
+            self.shellRoute = .none
+            clearBoardSelection()
+        case .devCards:
+            dismissDevCardFlow()
+        case .trade:
             closeTradePanel(resetDraft: true)
-        } else {
-            openTradePanel()
+        case .none:
+            break
         }
     }
 
@@ -663,18 +625,12 @@ struct GameShellView: View {
             return
         }
 
-        currentMode = .trade
-        if case .utility = manualShelfPresentation {
-            // Preserve the visible shelf.
-        } else {
-            lastUtilityShelf = .hand
-            manualShelfPresentation = .utility(.hand)
-        }
-
+        currentMode = .idle
+        devCardDraft = nil
         if shellProjection.tradePanelModel?.activeOffer != nil {
-            tradeOverlayRoute = .liveOffer
+            shellRoute = .trade(.liveOffer)
         } else {
-            tradeOverlayRoute = .chooser
+            shellRoute = .trade(.chooser)
         }
         clearBoardSelection()
     }
@@ -682,23 +638,20 @@ struct GameShellView: View {
     private func closeTradePanel(resetDraft: Bool) {
         currentMode = .idle
         if resetDraft {
-            tradeOverlayRoute = nil
+            shellRoute = .none
         }
         clearBoardSelection()
     }
 
     private func startPlayerTradeDraft() {
-        tradeOverlayRoute = .playerDraft(
+        shellRoute = .trade(.playerDraft(
             GameTradeDraft(
                 kind: .offer,
-                step: .give,
                 give: .zero,
                 receive: .zero,
                 recipients: []
             )
-        )
-        lastUtilityShelf = .hand
-        manualShelfPresentation = .utility(.hand)
+        ))
         clearBoardSelection()
     }
 
@@ -707,72 +660,30 @@ struct GameShellView: View {
             return
         }
 
-        tradeOverlayRoute = .playerDraft(
+        shellRoute = .trade(.playerDraft(
             GameTradeDraft(
                 kind: .counter(originalProposerID: offer.proposerPlayerID),
-                step: .give,
                 give: .zero,
                 receive: .zero,
                 recipients: [offer.proposerPlayerID]
             )
-        )
-        lastUtilityShelf = .hand
-        manualShelfPresentation = .utility(.hand)
+        ))
         clearBoardSelection()
     }
 
     private func startMaritimeTrade() {
-        tradeOverlayRoute = .maritime
-        clearBoardSelection()
-    }
-
-    private func advanceTradeDraft() {
-        guard case let .playerDraft(draft)? = tradeOverlayRoute else {
-            return
-        }
-
-        var nextDraft = draft
-        switch draft.step {
-        case .give:
-            guard !draft.give.isZero else { return }
-            nextDraft.step = .want
-            lastUtilityShelf = .hand
-            manualShelfPresentation = .utility(.hand)
-        case .want:
-            guard !draft.receive.isZero else { return }
-            nextDraft.step = .recipients
-            lastUtilityShelf = .players
-            manualShelfPresentation = .utility(.players)
-        case .recipients:
-            submitTradeDraft()
-            return
-        }
-        tradeOverlayRoute = .playerDraft(nextDraft)
+        shellRoute = .trade(.maritime)
         clearBoardSelection()
     }
 
     private func stepBackTradeDraft() {
-        switch tradeOverlayRoute {
+        switch shellRoute.tradeOverlayRoute {
         case .chooser, nil:
             closeTradePanel(resetDraft: true)
         case .maritime:
-            tradeOverlayRoute = .chooser
-        case let .playerDraft(draft):
-            var previousDraft = draft
-            switch draft.step {
-            case .give:
-                closeTradePanel(resetDraft: true)
-                return
-            case .want:
-                previousDraft.step = .give
-                lastUtilityShelf = .hand
-                manualShelfPresentation = .utility(.hand)
-            case .recipients:
-                previousDraft.step = .want
-                lastUtilityShelf = .hand
-                manualShelfPresentation = .utility(.hand)
-            }
-            tradeOverlayRoute = .playerDraft(previousDraft)
+            shellRoute = .trade(.chooser)
+        case .playerDraft:
+            closeTradePanel(resetDraft: true)
         case .liveOffer:
             closeTradePanel(resetDraft: true)
         }
@@ -780,7 +691,7 @@ struct GameShellView: View {
     }
 
     private func submitTradeDraft() {
-        guard case let .playerDraft(draft)? = tradeOverlayRoute else {
+        guard case let .trade(.playerDraft(draft)) = shellRoute else {
             return
         }
 
@@ -808,7 +719,7 @@ struct GameShellView: View {
     }
 
     private func addGiveResource(_ resource: ResourceV1) {
-        guard case let .playerDraft(draft)? = tradeOverlayRoute, draft.step == .give else {
+        guard case let .trade(.playerDraft(draft)) = shellRoute else {
             return
         }
         let available = tradeResourceCount(resource, in: shellProjection.gameScreenModel.handTray.chips)
@@ -841,52 +752,44 @@ struct GameShellView: View {
     }
 
     private func mutateTradeDraft(_ mutate: (inout GameTradeDraft) -> Void) {
-        guard case let .playerDraft(draft)? = tradeOverlayRoute else {
+        guard case let .trade(.playerDraft(draft)) = shellRoute else {
             return
         }
 
         var nextDraft = draft
         mutate(&nextDraft)
-        tradeOverlayRoute = .playerDraft(nextDraft)
+        shellRoute = .trade(.playerDraft(nextDraft))
     }
 
-    private func tradeHandResourceSelectionAction(route: GameTradeOverlayRoute?) -> ((ResourceV1) -> Void)? {
-        guard case let .playerDraft(draft)? = route, draft.step == .give else {
-            return nil
-        }
-        return { resource in
-            addGiveResource(resource)
-        }
-    }
-
-    private func tradeRecipientSelectionAction(route: GameTradeOverlayRoute?) -> ((String) -> Void)? {
-        guard case let .playerDraft(draft)? = route, draft.step == .recipients else {
-            return nil
-        }
-        if draft.isCounter {
-            return nil
-        }
-        return { playerID in
-            mutateTradeDraft { draft in
-                if let existingIndex = draft.recipients.firstIndex(of: playerID) {
-                    draft.recipients.remove(at: existingIndex)
-                } else {
-                    draft.recipients.append(playerID)
-                    draft.recipients.sort()
-                }
+    private func toggleTradeRecipient(_ playerID: String) {
+        mutateTradeDraft { draft in
+            guard !draft.isCounter else {
+                return
+            }
+            if let existingIndex = draft.recipients.firstIndex(of: playerID) {
+                draft.recipients.remove(at: existingIndex)
+            } else {
+                draft.recipients.append(playerID)
+                draft.recipients.sort()
             }
         }
     }
 
+    private func switchToUtilityShelf(_ shelf: GameLowerShelf) {
+        currentMode = .idle
+        devCardDraft = nil
+        shellRoute = .utility(shelf)
+    }
+
     private func tradeSelectedHandCounts(route: GameTradeOverlayRoute?) -> [ResourceV1: Int] {
-        guard case let .playerDraft(draft)? = route, draft.step == .give else {
+        guard case let .playerDraft(draft)? = route else {
             return [:]
         }
         return tradeCountMap(for: draft.give)
     }
 
     private func tradeSelectedRecipients(route: GameTradeOverlayRoute?) -> Set<String> {
-        guard case let .playerDraft(draft)? = route, draft.step == .recipients else {
+        guard case let .playerDraft(draft)? = route else {
             return []
         }
         return Set(draft.recipients)
@@ -951,21 +854,18 @@ struct GameShellView: View {
     }
 
     private func synchronizeTradeOverlay(with projection: GameShellProjection) {
-        guard currentMode == .trade else {
+        guard case let .trade(route) = shellRoute else {
             return
         }
 
         guard let tradePanelModel = projection.tradePanelModel else {
-            tradeOverlayRoute = nil
-            currentMode = .idle
+            shellRoute = .none
             return
         }
 
-        switch tradeOverlayRoute {
-        case .none:
-            tradeOverlayRoute = tradePanelModel.activeOffer != nil ? .liveOffer : .chooser
+        switch route {
         case .liveOffer where tradePanelModel.activeOffer == nil:
-            tradeOverlayRoute = .chooser
+            shellRoute = .trade(.chooser)
         default:
             break
         }
@@ -1007,8 +907,19 @@ struct GameShellView: View {
         return GameTheme.shellPadding + shelfOffset + GameTradeOverlayLayout.verticalSpacing
     }
 
+    private func overlayShelfKind(for presentation: GameShelfPresentation) -> GameShellLayoutMetrics.OverlayShelfKind {
+        switch presentation {
+        case .utility, .none:
+            return .utility
+        case let .action(shelf):
+            return shelf == .devCards ? .devCards : .build
+        case .forcedFlow:
+            return .forcedFlow
+        }
+    }
+
     private func handleBuildShelfSelection(_ buildKind: GameBuildShelfItem.Kind) {
-        manualShelfPresentation = .action(.build)
+        shellRoute = .build
         switch buildKind {
         case .buildRoad:
             currentMode = .buildRoad
@@ -1026,7 +937,7 @@ struct GameShellView: View {
             guard viewModel.handleDevCardAction(.buyDevCard) else { return }
             currentMode = .idle
             clearBoardSelection()
-            manualShelfPresentation = .none
+            shellRoute = .none
             devCardDraft = nil
         }
     }
@@ -1056,6 +967,7 @@ struct GameShellView: View {
 
     private func handleDevCardSelection(_ action: GameDevCardActionKind) {
         clearBoardSelection()
+        shellRoute = .devCards
         switch action {
         case .buyDevCard, .revealVictoryPoint:
             guard viewModel.handleDevCardAction(action) else { return }
@@ -1111,14 +1023,15 @@ struct GameShellView: View {
     private func resetDevCardDraft() {
         devCardDraft = nil
         currentMode = .playDevCard
+        shellRoute = .devCards
         clearBoardSelection()
     }
 
     private func dismissDevCardFlow() {
         devCardDraft = nil
         currentMode = .idle
+        shellRoute = .none
         clearBoardSelection()
-        manualShelfPresentation = .none
     }
 
     private func handleBoardTap(_ target: GameBoardTarget, mode: GameMode) {
@@ -1152,8 +1065,8 @@ struct GameShellView: View {
             }
             if viewModel.publishTurnState(for: normalizedTarget, mode: mode) {
                 currentMode = .idle
+                shellRoute = .none
                 clearBoardSelection()
-                manualShelfPresentation = .none
             } else {
                 selectedBoardTarget = normalizedTarget
                 boardHintText = normalizedTarget.selectionLabel(for: mode)
@@ -1280,11 +1193,7 @@ struct GameShellView: View {
         }
 
         if case .utility = resolvedShelfPresentation(mode: currentMode) {
-            if currentMode == .trade {
-                closeTradePanel(resetDraft: true)
-            } else {
-                self.manualShelfPresentation = .none
-            }
+            self.shellRoute = .none
             clearBoardSelection()
         }
     }
@@ -1301,7 +1210,7 @@ struct GameShellView: View {
             didPublish = viewModel.publishTurnState(for: draft.target, mode: draft.mode)
             if didPublish {
                 currentMode = .idle
-                manualShelfPresentation = .none
+                shellRoute = .none
                 clearBoardSelection()
             }
         case .idle,
@@ -1555,7 +1464,7 @@ private struct GameOverlayShelfView<Content: View>: View {
     private var usesScrollContainer: Bool {
         switch presentation {
         case .utility:
-            return currentMode == .trade || layout.contentHeight < GameShellLayoutMetrics.minimumUtilityShelfScrollHeight
+            return layout.contentHeight < GameShellLayoutMetrics.minimumUtilityShelfScrollHeight
         case let .action(shelf):
             return shelf == .devCards
         case .forcedFlow:
@@ -1610,65 +1519,46 @@ private struct UtilityHeaderTabButton: View {
 }
 
 enum GameTradeOverlayLayout {
-    static func panelHeight(for availableWidth: CGFloat) -> CGFloat {
-        availableWidth >= 520 ? 252 : 224
+    static func panelHeight(
+        for availableWidth: CGFloat,
+        route: GameTradeOverlayRoute?
+    ) -> CGFloat {
+        let isWide = availableWidth >= 520
+        switch route {
+        case .chooser, nil:
+            return isWide ? 220 : 236
+        case .maritime:
+            return isWide ? 264 : 292
+        case .liveOffer:
+            return isWide ? 300 : 336
+        case .playerDraft:
+            return isWide ? 364 : 408
+        }
     }
 
     static let bannerHeight: CGFloat = 44
     static let verticalSpacing: CGFloat = 10
 }
 
-enum GameTradeOverlayRoute: Equatable {
-    case chooser
-    case playerDraft(GameTradeDraft)
-    case maritime
-    case liveOffer
-}
-
-struct GameTradeDraft: Equatable {
-    enum Kind: Equatable {
-        case offer
-        case counter(originalProposerID: String)
-    }
-
-    enum Step: Int, CaseIterable, Equatable {
-        case give
-        case want
-        case recipients
-    }
-
-    var kind: Kind
-    var step: Step
-    var give: ResourceHandV1
-    var receive: ResourceHandV1
-    var recipients: [String]
-
-    var isCounter: Bool {
-        if case .counter = kind {
-            return true
-        }
-        return false
-    }
-}
-
 struct GameTradeOverlayView: View {
     let route: GameTradeOverlayRoute
     let panelModel: GameTradePanelModel
     let availableWidth: CGFloat
+    let bankChips: [GameBankChip]
+    let handChips: [GameHandChip]
     let recipientSummaries: [GameOpponentSummary]
     let onClose: () -> Void
     let onChoosePlayerTrade: () -> Void
     let onChooseMaritimeTrade: () -> Void
     let onReplaceOffer: () -> Void
     let onStartCounterDraft: () -> Void
-    let onApplySelectedResponse: () -> Void
     let onSendDraft: () -> Void
     let onBackDraftStep: () -> Void
-    let onNextDraftStep: () -> Void
     let onAddGiveResource: (ResourceV1) -> Void
     let onRemoveGiveResource: (ResourceV1) -> Void
     let onAddWantResource: (ResourceV1) -> Void
     let onRemoveWantResource: (ResourceV1) -> Void
+    let onToggleRecipient: (String) -> Void
     let onAcceptOffer: () -> Void
     let onDeclineOffer: () -> Void
     let onSendMaritimeTrade: (GameTradeMaritimeOption) -> Void
@@ -1767,73 +1657,25 @@ struct GameTradeOverlayView: View {
         density: ResourceChipDensity
     ) -> some View {
         VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-            breadcrumbRow(for: draft)
-
-            switch draft.step {
-            case .give:
+            ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-                    Text("Tap resources in your hand below to add them to the offer.")
-                        .font(GameTheme.metaFont)
-                        .foregroundStyle(GameTheme.mutedInk)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    editableResourceSection(
-                        title: "You Give",
-                        hand: draft.give,
-                        density: density,
-                        action: onRemoveGiveResource
-                    )
+                    giveComposerSection(draft: draft, density: density)
+                    wantComposerSection(draft: draft, density: density)
+                    recipientsComposerSection(draft: draft)
                 }
-            case .want:
-                VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-                    Text("Ask for any resource type, even if you do not hold one right now.")
-                        .font(GameTheme.metaFont)
-                        .foregroundStyle(GameTheme.mutedInk)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    resourcePickerRow(
-                        title: "You Want",
-                        selection: draft.receive,
-                        density: density,
-                        onAdd: onAddWantResource
-                    )
-
-                    editableResourceSection(
-                        title: "Requested",
-                        hand: draft.receive,
-                        density: density,
-                        action: onRemoveWantResource
-                    )
-                }
-            case .recipients:
-                VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-                    Text(recipientCopy(for: draft))
-                        .font(GameTheme.metaFont)
-                        .foregroundStyle(GameTheme.mutedInk)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    recipientSummaryRow(draft.recipients)
-                    draftSummary(draft: draft)
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-
-            if draft.step != .recipients {
-                draftSummary(draft: draft)
-            }
+            .scrollBounceBehavior(.basedOnSize)
 
             HStack(spacing: GameTheme.inlineSpacing) {
-                Button(draft.step == .give ? "Cancel" : "Back") {
+                Button("Cancel") {
                     onBackDraftStep()
                 }
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.bordered)
 
                 Button(primaryDraftButtonTitle(for: draft)) {
-                    if draft.step == .recipients {
-                        onSendDraft()
-                    } else {
-                        onNextDraftStep()
-                    }
+                    onSendDraft()
                 }
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.borderedProminent)
@@ -1878,36 +1720,30 @@ struct GameTradeOverlayView: View {
 
     private var liveOfferBody: some View {
         VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-            if let activeOffer = panelModel.activeOffer {
-                offerCard(activeOffer)
-            }
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+                    if let activeOffer = panelModel.activeOffer {
+                        offerCard(activeOffer)
+                    }
 
-            if let selectedResponse = panelModel.selectedResponse {
-                selectedResponseCard(selectedResponse)
-            }
+                    if !panelModel.participantStatuses.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Responses")
+                                .font(GameTheme.metaFont.weight(.semibold))
+                                .foregroundStyle(GameTheme.ink)
 
-            if !panelModel.participantStatuses.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Responses")
-                        .font(GameTheme.metaFont.weight(.semibold))
-                        .foregroundStyle(GameTheme.ink)
-
-                    ForEach(panelModel.participantStatuses) { status in
-                        participantStatusRow(status)
+                            ForEach(panelModel.participantStatuses) { status in
+                                participantStatusRow(status)
+                            }
+                        }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .scrollBounceBehavior(.basedOnSize)
 
             if let responderActions = panelModel.responderActions {
                 responderActionRow(responderActions)
-            }
-
-            if panelModel.selectedResponse != nil {
-                Button("Apply Selected Response") {
-                    onApplySelectedResponse()
-                }
-                .frame(maxWidth: .infinity)
-                .buttonStyle(.borderedProminent)
             } else if panelModel.canReplaceOffer {
                 Button("Replace Offer") {
                     onReplaceOffer()
@@ -1971,29 +1807,102 @@ struct GameTradeOverlayView: View {
         .opacity(isDisabled ? 0.68 : 1)
     }
 
-    private func breadcrumbRow(for draft: GameTradeDraft) -> some View {
-        HStack(spacing: 6) {
-            ForEach(Array(GameTradeDraft.Step.allCases.enumerated()), id: \.offset) { _, step in
-                let isCurrent = step == draft.step
-                Text(stepLabel(step, for: draft))
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(isCurrent ? .white : GameTheme.mutedInk)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(isCurrent ? GameTheme.accent : GameTheme.surface.opacity(0.9))
-                    .overlay(
-                        Capsule()
-                            .stroke(isCurrent ? GameTheme.accent : GameTheme.outline.opacity(0.14), lineWidth: 1)
-                    )
-                    .clipShape(Capsule())
+    private func giveComposerSection(
+        draft: GameTradeDraft,
+        density: ResourceChipDensity
+    ) -> some View {
+        tradeComposerSection(title: "You Give", detail: "Tap your hand to add cards to the offer.") {
+            if handChips.isEmpty {
+                Text("No resources in hand.")
+                    .font(GameTheme.metaFont)
+                    .foregroundStyle(GameTheme.mutedInk)
+            } else {
+                ResourceChipGridView(items: handChips, density: density) { chip in
+                    giveResourceChip(chip, draft: draft, density: density)
+                }
+            }
+
+            selectedResourceSection(
+                title: "Selected",
+                hand: draft.give,
+                density: density,
+                emptyText: "Nothing selected yet.",
+                action: onRemoveGiveResource
+            )
+        }
+    }
+
+    private func wantComposerSection(
+        draft: GameTradeDraft,
+        density: ResourceChipDensity
+    ) -> some View {
+        tradeComposerSection(title: "You Want", detail: "Bank counts stay visible while you build the ask.") {
+            ResourceChipGridView(items: bankChips, density: density) { chip in
+                wantResourceChip(chip, draft: draft, density: density)
+            }
+
+            selectedResourceSection(
+                title: "Requested",
+                hand: draft.receive,
+                density: density,
+                emptyText: "Nothing requested yet.",
+                action: onRemoveWantResource
+            )
+        }
+    }
+
+    private func recipientsComposerSection(draft: GameTradeDraft) -> some View {
+        tradeComposerSection(title: "Recipients", detail: recipientCopy(for: draft)) {
+            if draft.isCounter {
+                recipientLockup(for: draft.recipients)
+            } else {
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(recipientSummaries) { summary in
+                            recipientToggleRow(
+                                summary: summary,
+                                isSelected: draft.recipients.contains(summary.id)
+                            )
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: 104)
             }
         }
     }
 
-    private func editableResourceSection(
+    private func tradeComposerSection<Content: View>(
+        title: String,
+        detail: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(GameTheme.metaFont.weight(.semibold))
+                .foregroundStyle(GameTheme.ink)
+
+            Text(detail)
+                .font(GameTheme.metaFont)
+                .foregroundStyle(GameTheme.mutedInk)
+                .fixedSize(horizontal: false, vertical: true)
+
+            content()
+        }
+        .padding(GameTheme.compactPadding)
+        .background(GameTheme.surface.opacity(0.92))
+        .overlay(
+            RoundedRectangle(cornerRadius: GameTheme.mediumRadius)
+                .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: GameTheme.mediumRadius))
+    }
+
+    private func selectedResourceSection(
         title: String,
         hand: ResourceHandV1,
         density: ResourceChipDensity,
+        emptyText: String,
         action: @escaping (ResourceV1) -> Void
     ) -> some View {
         let chips = chips(from: hand)
@@ -2004,7 +1913,7 @@ struct GameTradeOverlayView: View {
                 .foregroundStyle(GameTheme.ink)
 
             if chips.isEmpty {
-                Text("Nothing selected yet.")
+                Text(emptyText)
                     .font(GameTheme.metaFont)
                     .foregroundStyle(GameTheme.mutedInk)
             } else {
@@ -2021,59 +1930,105 @@ struct GameTradeOverlayView: View {
                         action: {
                             action(chip.resource)
                         },
-                        accessibilityLabel: "\(chip.shortLabel) \(chip.count)"
+                        accessibilityLabel: "\(chip.shortLabel), remove one from selection"
                     )
                 }
             }
         }
     }
 
-    private func resourcePickerRow(
-        title: String,
-        selection: ResourceHandV1,
-        density: ResourceChipDensity,
-        onAdd: @escaping (ResourceV1) -> Void
+    private func giveResourceChip(
+        _ chip: GameHandChip,
+        draft: GameTradeDraft,
+        density: ResourceChipDensity
     ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(GameTheme.metaFont.weight(.semibold))
-                .foregroundStyle(GameTheme.ink)
+        let selected = count(for: chip.resource, in: draft.give)
+        let canAdd = selected < chip.count
+        return ResourceCountChipView(
+            resource: chip.resource,
+            label: chip.shortLabel,
+            count: chip.count,
+            isEnabled: canAdd,
+            isSelected: selected > 0,
+            selectionBadge: selected > 0 ? String(selected) : nil,
+            detailBadge: canAdd ? "+" : nil,
+            density: density,
+            action: canAdd ? {
+                onAddGiveResource(chip.resource)
+            } : nil,
+            accessibilityLabel: "\(chip.shortLabel), \(chip.count) in hand, \(selected) selected"
+        )
+    }
 
-            ResourceChipGridView(
-                items: tradeableResources.map { GameHandChip(resource: $0, count: count(for: $0, in: selection)) },
-                density: density
-            ) { chip in
-                ResourceCountChipView(
-                    resource: chip.resource,
-                    label: chip.shortLabel,
-                    count: chip.count,
-                    isEnabled: true,
-                    isSelected: chip.count > 0,
-                    selectionBadge: nil,
-                    detailBadge: "+",
-                    density: density,
-                    action: {
-                        onAdd(chip.resource)
-                    },
-                    accessibilityLabel: "\(chip.shortLabel) \(chip.count)"
-                )
+    private func wantResourceChip(
+        _ chip: GameBankChip,
+        draft: GameTradeDraft,
+        density: ResourceChipDensity
+    ) -> some View {
+        let selected = count(for: chip.resource, in: draft.receive)
+        let canAdd = selected < chip.count
+        return ResourceCountChipView(
+            resource: chip.resource,
+            label: chip.resource.shortLabel,
+            count: chip.count,
+            isEnabled: canAdd,
+            isSelected: selected > 0,
+            selectionBadge: selected > 0 ? String(selected) : nil,
+            detailBadge: canAdd ? "+" : nil,
+            density: density,
+            action: canAdd ? {
+                onAddWantResource(chip.resource)
+            } : nil,
+            accessibilityLabel: "\(chip.resource.shortLabel), \(chip.count) left in bank, \(selected) requested"
+        )
+    }
+
+    private func recipientLockup(for recipients: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(recipients, id: \.self) { recipientID in
+                Text(displayName(for: recipientID))
+                    .font(GameTheme.metaFont.weight(.semibold))
+                    .foregroundStyle(GameTheme.ink)
             }
         }
     }
 
-    private func draftSummary(draft: GameTradeDraft) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            summaryLine(title: "Give", value: compactHandDescription(draft.give))
-            summaryLine(title: "Want", value: compactHandDescription(draft.receive))
-            summaryLine(title: "To", value: recipientSummaryText(draft.recipients))
+    private func recipientToggleRow(
+        summary: GameOpponentSummary,
+        isSelected: Bool
+    ) -> some View {
+        Button {
+            onToggleRecipient(summary.id)
+        } label: {
+            HStack(spacing: GameTheme.inlineSpacing) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(summary.displayName)
+                        .font(GameTheme.metaFont.weight(.semibold))
+                        .foregroundStyle(GameTheme.ink)
+                    Text("\(summary.victoryPoints) VP · \(summary.handCount) cards")
+                        .font(GameTheme.metaFont)
+                        .foregroundStyle(GameTheme.mutedInk)
+                }
+
+                Spacer(minLength: 0)
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(GameTheme.accent)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, GameTheme.compactPadding)
+            .padding(.vertical, 8)
+            .background(isSelected ? GameTheme.accent.opacity(0.14) : GameTheme.surface.opacity(0.84))
+            .overlay(
+                RoundedRectangle(cornerRadius: GameTheme.smallRadius)
+                    .stroke(isSelected ? GameTheme.accent.opacity(0.40) : GameTheme.outline.opacity(0.12), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: GameTheme.smallRadius))
         }
-        .padding(GameTheme.compactPadding)
-        .background(GameTheme.surface.opacity(0.92))
-        .overlay(
-            RoundedRectangle(cornerRadius: GameTheme.mediumRadius)
-                .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: GameTheme.mediumRadius))
+        .buttonStyle(.plain)
     }
 
     private func offerCard(_ offer: GameTradeOfferSummary) -> some View {
@@ -2090,27 +2045,6 @@ struct GameTradeOverlayView: View {
             Text("\(offer.receiveLabel): \(compactChipLine(offer.receive))")
                 .font(GameTheme.metaFont)
                 .foregroundStyle(GameTheme.ink)
-        }
-        .padding(GameTheme.compactPadding)
-        .background(GameTheme.surface.opacity(0.92))
-        .overlay(
-            RoundedRectangle(cornerRadius: GameTheme.mediumRadius)
-                .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: GameTheme.mediumRadius))
-    }
-
-    private func selectedResponseCard(_ selectedResponse: GameTradeSelectedResponseSummary) -> some View {
-        HStack(alignment: .center, spacing: GameTheme.inlineSpacing) {
-            Image(systemName: "arrowshape.turn.up.left.fill")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(GameTheme.accent)
-
-            Text("\(selectedResponse.displayName) sent a \(selectedResponse.kind.rawValue).")
-                .font(GameTheme.metaFont.weight(.semibold))
-                .foregroundStyle(GameTheme.ink)
-
-            Spacer(minLength: 0)
         }
         .padding(GameTheme.compactPadding)
         .background(GameTheme.surface.opacity(0.92))
@@ -2187,81 +2121,22 @@ struct GameTradeOverlayView: View {
         }
     }
 
-    private func recipientSummaryRow(_ recipients: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Selected recipients")
-                .font(GameTheme.metaFont.weight(.semibold))
-                .foregroundStyle(GameTheme.ink)
-
-            if recipients.isEmpty {
-                Text("Nobody selected yet.")
-                    .font(GameTheme.metaFont)
-                    .foregroundStyle(GameTheme.mutedInk)
-            } else {
-                Text(recipientSummaryText(recipients))
-                    .font(GameTheme.metaFont)
-                    .foregroundStyle(GameTheme.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
     private func recipientCopy(for draft: GameTradeDraft) -> String {
         switch draft.kind {
         case .offer:
-            return "The Players shelf is live. Tap one or more opponents there, then send the offer from here."
+            return "Choose one or more players who should receive this offer."
         case let .counter(originalProposerID):
-            let proposer = recipientSummaries.first(where: { $0.id == originalProposerID })?.displayName
-                ?? panelModel.activeOffer?.proposerDisplay
-                ?? "the proposer"
+            let proposer = displayName(for: originalProposerID)
             return "Counters go back only to \(proposer)."
         }
     }
 
     private func primaryDraftButtonTitle(for draft: GameTradeDraft) -> String {
-        if draft.step == .recipients {
-            return draft.isCounter ? "Send Counter" : "Send Offer"
-        }
-        return "Next"
+        draft.isCounter ? "Send Counter" : "Send Offer"
     }
 
     private func canAdvance(draft: GameTradeDraft) -> Bool {
-        switch draft.step {
-        case .give:
-            return !draft.give.isZero
-        case .want:
-            return !draft.receive.isZero
-        case .recipients:
-            return !draft.give.isZero && !draft.receive.isZero && !draft.recipients.isEmpty
-        }
-    }
-
-    private func stepLabel(_ step: GameTradeDraft.Step, for draft: GameTradeDraft) -> String {
-        switch step {
-        case .give:
-            return "Give"
-        case .want:
-            return "Want"
-        case .recipients:
-            if case let .counter(originalProposerID) = draft.kind {
-                let proposer = recipientSummaries.first(where: { $0.id == originalProposerID })?.displayName ?? "Proposer"
-                return "To \(proposer)"
-            }
-            return "Send"
-        }
-    }
-
-    private func summaryLine(title: String, value: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text(title)
-                .font(GameTheme.metaFont.weight(.semibold))
-                .foregroundStyle(GameTheme.ink)
-
-            Text(value)
-                .font(GameTheme.metaFont)
-                .foregroundStyle(GameTheme.mutedInk)
-                .fixedSize(horizontal: false, vertical: true)
-        }
+        !draft.give.isZero && !draft.receive.isZero && !draft.recipients.isEmpty
     }
 
     private func chips(from hand: ResourceHandV1) -> [GameHandChip] {
@@ -2281,16 +2156,10 @@ struct GameTradeOverlayView: View {
         compactChipLine(chips(from: hand))
     }
 
-    private func recipientSummaryText(_ recipients: [String]) -> String {
-        if recipients.isEmpty {
-            return "nobody"
-        }
-        return recipients
-            .compactMap { id in
-                recipientSummaries.first(where: { $0.id == id })?.displayName
-                    ?? panelModel.activeOffer?.proposerDisplay
-            }
-            .joined(separator: ", ")
+    private func displayName(for playerID: String) -> String {
+        recipientSummaries.first(where: { $0.id == playerID })?.displayName
+            ?? panelModel.activeOffer?.proposerDisplay
+            ?? "Player"
     }
 
     private func count(for resource: ResourceV1, in hand: ResourceHandV1) -> Int {

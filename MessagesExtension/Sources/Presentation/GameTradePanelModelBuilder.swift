@@ -1,11 +1,9 @@
 import ULS_CoreGame
-import ULS_Transport
 
 enum GameTradePanelModelBuilder {
     static func build(
         state: CoreGameStateV1?,
-        actingAs: String?,
-        selectedTurnIntent: ULS_Transport.TurnIntentV1?
+        actingAs: String?
     ) -> GameTradePanelModel? {
         guard
             let state,
@@ -25,7 +23,6 @@ enum GameTradePanelModelBuilder {
             state: state,
             offer: offer,
             actingAs: actingAs,
-            selectedTurnIntent: selectedTurnIntent,
             maritimeOptions: maritimeOptions
         )
     }
@@ -42,7 +39,6 @@ enum GameTradePanelModelBuilder {
                 activeOffer: nil,
                 participantStatuses: [],
                 responderActions: nil,
-                selectedResponse: nil,
                 maritimeOptions: [],
                 pendingBannerText: nil,
                 canReplaceOffer: false
@@ -56,7 +52,6 @@ enum GameTradePanelModelBuilder {
                 activeOffer: nil,
                 participantStatuses: [],
                 responderActions: nil,
-                selectedResponse: nil,
                 maritimeOptions: [],
                 pendingBannerText: nil,
                 canReplaceOffer: false
@@ -76,7 +71,6 @@ enum GameTradePanelModelBuilder {
             activeOffer: nil,
             participantStatuses: [],
             responderActions: nil,
-            selectedResponse: nil,
             maritimeOptions: maritimeOptions,
             pendingBannerText: nil,
             canReplaceOffer: false
@@ -87,7 +81,6 @@ enum GameTradePanelModelBuilder {
         state: CoreGameStateV1,
         offer: TradeOfferV1,
         actingAs: String?,
-        selectedTurnIntent: ULS_Transport.TurnIntentV1?,
         maritimeOptions: [GameTradeMaritimeOption]
     ) -> GameTradePanelModel {
         let proposerDisplay = playerName(offer.proposer, in: state)
@@ -133,12 +126,6 @@ enum GameTradePanelModelBuilder {
                 )
             }
 
-        let selectedResponse = selectedTradeResponse(
-            selectedTurnIntent: selectedTurnIntent,
-            state: state,
-            offer: offer
-        )
-
         let responderActions: GameTradeResponderActions?
         if
             let actingAs,
@@ -159,9 +146,7 @@ enum GameTradePanelModelBuilder {
         let message: String
         if isCurrentPlayer {
             roleTitle = "Your Offer"
-            if let selectedResponse {
-                message = "Apply the selected \(selectedResponse.kind.rawValue) from \(selectedResponse.displayName)."
-            } else if participantStatuses.contains(where: { $0.state == .countered }) {
+            if participantStatuses.contains(where: { $0.state == .countered }) {
                 message = "Counters are visible below. Replace the live offer if you want to answer one."
             } else {
                 message = "Trade is waiting on targeted player responses."
@@ -202,44 +187,9 @@ enum GameTradePanelModelBuilder {
             ),
             participantStatuses: participantStatuses,
             responderActions: responderActions,
-            selectedResponse: selectedResponse,
             maritimeOptions: maritimeOptions,
             pendingBannerText: pendingBannerText(for: offer, proposerDisplay: proposerDisplay, recipients: recipientNames),
             canReplaceOffer: isCurrentPlayer
-        )
-    }
-
-    private static func selectedTradeResponse(
-        selectedTurnIntent: ULS_Transport.TurnIntentV1?,
-        state: CoreGameStateV1,
-        offer: TradeOfferV1
-    ) -> GameTradeSelectedResponseSummary? {
-        guard let selectedTurnIntent,
-              selectedTurnIntent.gameId == state.gameId,
-              selectedTurnIntent.anchorRev == state.rev,
-              selectedTurnIntent.anchorHash == state.stateHash,
-              selectedTurnIntent.tradeOfferHash == offer.offerHash,
-              let playerID = selectedTurnIntent.tradeAcceptPlayer
-        else {
-            return nil
-        }
-
-        let kind: GameTradeResponseIntentKind
-        switch selectedTurnIntent.kind {
-        case .acceptTrade:
-            kind = .accept
-        case .declineTrade:
-            kind = .decline
-        case .counterTrade:
-            kind = .counter
-        default:
-            return nil
-        }
-
-        return GameTradeSelectedResponseSummary(
-            playerID: playerID,
-            displayName: playerName(playerID, in: state),
-            kind: kind
         )
     }
 

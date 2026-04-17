@@ -228,8 +228,7 @@ enum GameShellProjectionBuilder {
             ),
             tradePanelModel: GameTradePanelModelBuilder.build(
                 state: state,
-                actingAs: actingAs,
-                selectedTurnIntent: selectedTurnIntent
+                actingAs: actingAs
             )
         )
     }

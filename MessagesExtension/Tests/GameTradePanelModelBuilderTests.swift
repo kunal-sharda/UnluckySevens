@@ -1,5 +1,4 @@
 import ULS_CoreGame
-import ULS_Transport
 import XCTest
 @testable import MessagesExtension
 
@@ -16,8 +15,7 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
         let panel = try XCTUnwrap(
             GameTradePanelModelBuilder.build(
                 state: state,
-                actingAs: "A",
-                selectedTurnIntent: nil
+                actingAs: "A"
             )
         )
 
@@ -45,8 +43,7 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
         let panel = try XCTUnwrap(
             GameTradePanelModelBuilder.build(
                 state: state,
-                actingAs: "B",
-                selectedTurnIntent: nil
+                actingAs: "B"
             )
         )
 
@@ -59,7 +56,7 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
         )
     }
 
-    func testBuildActiveOfferForCurrentPlayerShowsSelectedCounterAndParticipantStates() throws {
+    func testBuildActiveOfferForCurrentPlayerShowsCounterStateWithoutManualApplyPath() throws {
         let offer = TradeOfferV1(
             offerHash: "offer-1",
             proposer: "A",
@@ -83,28 +80,15 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
                 )
             ]
         )
-        let selectedIntent = ULS_Transport.TurnIntentV1(
-            counterTradePlayer: "B",
-            offerHash: offer.offerHash,
-            counterGive: TransportResourceHandV1(brick: 1),
-            receive: TransportResourceHandV1(ore: 1),
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: "B"
-        )
-
         let panel = try XCTUnwrap(
             GameTradePanelModelBuilder.build(
                 state: state,
-                actingAs: "A",
-                selectedTurnIntent: selectedIntent
+                actingAs: "A"
             )
         )
 
         XCTAssertEqual(panel.roleTitle, "Your Offer")
-        XCTAssertEqual(panel.selectedResponse?.kind, .counter)
-        XCTAssertEqual(panel.selectedResponse?.playerID, "B")
+        XCTAssertTrue(panel.message.contains("Counters are visible"))
         XCTAssertEqual(panel.participantStatuses.first(where: { $0.playerID == "B" })?.state, .countered)
         XCTAssertEqual(panel.participantStatuses.first(where: { $0.playerID == "C" })?.state, .waiting)
         XCTAssertTrue(panel.canReplaceOffer)
@@ -128,8 +112,7 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
         let panel = try XCTUnwrap(
             GameTradePanelModelBuilder.build(
                 state: state,
-                actingAs: "C",
-                selectedTurnIntent: nil
+                actingAs: "C"
             )
         )
 
@@ -156,8 +139,7 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
         let panel = try XCTUnwrap(
             GameTradePanelModelBuilder.build(
                 state: state,
-                actingAs: "B",
-                selectedTurnIntent: nil
+                actingAs: "B"
             )
         )
 

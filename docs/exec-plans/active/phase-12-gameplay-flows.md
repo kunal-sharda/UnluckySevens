@@ -35,25 +35,32 @@ What exists today:
 - phase 10 established a board-first shell, compact opponent summaries, a hand tray, an action dock, and easy-but-secondary debug surfaces
 - phase 11 replaced placeholder board art with a real SpriteKit board, pan/zoom, typed board hit targets, mode-driven highlights, and snapshot rendering
 - stages 12.1 through 12.6 are now landed: lobby join/start is productized, setup placement is playable from the board, the common turn loop can roll, build, buy, and end turn from the product UI, robber/discard flow is wired through the product shell, trade UX is live in the compact modal/shell surfaces, and dev-card actions are available through the compact product panel
-- stage 12.8 now includes `Buy Dev` under `Build`, staged Knight/Monopoly/Year Of Plenty/Road Building choice flows, winning-only Victory Point reveal visibility, a board-first shell that collapses hand, bank, player summaries, build actions, and dev-card inventory into a shared lower shelf, plus interaction hardening for setup/build confirmation and Messages-host resize. The shell now fits the current visible host bounds again, the board keeps one committed world reference size, setup/build placements use selection-first confirm semantics, the board pan/pinch/tap path runs through a narrow `SKView` host instead of a SwiftUI gesture shield, interactive host drag freezes against a captured shell snapshot with watchdog recovery until one settled post-resize update can be applied, the Messages root now reserves a narrow top-only host-resize strip while the main game content lives inside a drag-capturing container, wide-but-short iPad hosts fall back to compact vertical shelf metrics instead of oversized pad minima, and the board stays live whenever the host has returned to its largest settled gameplay extent instead of freezing at the normal fully-extended height
+- stage 12.8 now includes `Buy Dev` under `Build`, staged Knight/Monopoly/Year Of Plenty/Road Building choice flows, winning-only Victory Point reveal visibility, a board-first shell that collapses hand, bank, player summaries, build actions, and dev-card inventory into a shared lower shelf, plus interaction hardening for setup/build confirmation and Messages-host resize. The shell now fits the current visible host bounds again, the board keeps one committed world reference size, setup/build placements use selection-first confirm semantics, the board pan/pinch/tap path runs through a narrow `SKView` host instead of a SwiftUI gesture shield, interactive host drag now keeps the board mounted and live at gameplay height while only a debounced settled redraw applies the heavier board layout work, the Messages root now reserves a narrow top-only host-resize strip while the main game content lives inside a drag-capturing container, wide-but-short iPad hosts fall back to compact vertical shelf metrics instead of oversized pad minima, the shell route model now treats utility shelves, `Build`, `Play Dev`, and `Trade` as peer routes instead of overlapping modes, inviter-side join intents can bridge back into the open lobby state instead of forcing a raw join-intent surface, and targeted trade-response intents now auto-apply into canonical state on the current-player device when the anchored state can be recovered
 - phase 12 currently carries a temporary production transport fallback: canonical payloads still prefer `message.url`, but the extension also mirrors a one-line payload fallback into `summaryText` so real-device gameplay stays end-to-end while phase 13 redesigns transcript rehydration
 - the temporary in-app diagnostics slice also includes a `Reload Board` operator control while host-resize recovery is being hardened; this remains phase-12/13-only instrumentation and should be removed or gated down during release-readiness cleanup
+- same-device cached last-published-state recovery is now enabled as a phase-12 product-reliability bridge, keyed per game so reopen/intent-processing paths can recover the proposer's last canonical state for the correct game without requiring a fresh state-bubble tap first
 - `ULS_CoreGame` already owns legality, viewer-safe projections, and default action selection through [CoreGameViewQueriesV1.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/Packages/ULS_CoreGame/Sources/ULS_CoreGame/CoreGameViewQueriesV1.swift)
 - the main integration point is still [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift), which owns transcript context, debug actions, and shell inputs
 
 What is still missing:
 
-- phase 12.7 is closed, but phase 12 still needs the 12.8 product-cohesion device pass before the gameplay phase can be called complete
-- the remaining gate is full-match real-device signoff and any small product gaps that still prevent a standard base-game Catan match from being played start to finish in Messages
+- phase 12.7 is closed, but the 2026-04-16 audit concluded phase 12 should no longer be the current execution gate
+- the remaining work here is now the deferred gameplay/signoff tail that should complete after the phase-13 host/transport overhaul, not before it
+- the remaining unfinished phase-12 items are:
+  - full-match real-device signoff
+  - any small gameplay-shell bugs that remain once join/trade/recovery architecture is corrected
+  - final winner/end-state confirmation on hardware
+- row-level status for those deferred items now lives in the [2026-04-16 base Catan feature matrix](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-16-base-catan-feature-matrix.md)
 - the required phase-12 match loop is now explicit:
   - invite / join / host start
   - two-settlement snake-order setup with second-settlement starting resources
   - normal turn play with roll, build, trade, buy/play dev cards, and end turn
   - robber / discard / steal resolution
   - immediate win at 10 VP with clear winner state
-- host-stability and transcript-recovery work stay out of the phase-12 success boundary except for the temporary one-line `summaryText` transport bridge needed to keep current gameplay end to end
+- host-stability and transcript-recovery work no longer stay out of the critical path in practice; the 2026-04-16 audit moved them into the active phase-13 gate because they are blocking clean completion of the remaining phase-12 work
 - phase 13 prep is now explicit: before host-stability work begins, the next active ExecPlan must challenge carrier, session, selection, and recovery assumptions up front through an `Assumptions and Evidence Gate` instead of inheriting them from debug-first behavior
 - the current in-app transport badge and host-gesture probe are temporary phase-12/13 diagnostics only; phase-13 release-readiness cleanup owns gating them down or removing them before production distribution
+- durable iMessage host and shell lessons discovered during phase 12 should be normalized into the running `Lessons` section of [QA](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/qa.md) rather than left only in this active ExecPlan
 
 Important constraints already locked in the repo:
 
@@ -76,7 +83,7 @@ User-visible result:
 - the common turn loop is compact and legible inside the current shell
 - robber flow is obvious and cannot be bypassed accidentally
 - trade feels coherent and complete enough for a full asynchronous standard match rather than stopping at default-path shortcuts
-- dev-card actions feel like real player choices inside the product UI rather than only a thin wrapper over engine defaults
+- dev-card actions feel like real player choices inside the product UI rather than only a thin wrapper over engine defaults, with inventory rendered as cards instead of a text-heavy action list
 - the real UI can carry a live two-device game segment without depending on the debug HUD
 - the game ends with an immediately understandable winner state instead of requiring later recap/history work to explain that the match is over
 
@@ -225,8 +232,8 @@ Implement:
 
 - a separate trade panel above the lower shelf, with dock-entry and pending-banner reopen paths
 - a chooser-first trade flow for `Player Trade` vs `Maritime / Bank Trade`
-- a breadcrumb player-trade composer that builds `You Give`, `You Want`, and targeted recipients without burying the flow in a deep modal stack
-- recipient selection that reuses the interactive `Players` shelf while the trade panel stays open above it
+- a self-contained player-trade composer that owns `You Give`, `You Want`, and targeted recipients inside the trade panel without relying on the lower shelf underneath it
+- immediate-draft-discard behavior when the player switches away from trade instead of forcing manual unwind or separate draft recovery
 - canonical targeted-recipient response state for `Accept`, `Decline`, and `Counter`
 - first-accept execution so the proposer no longer has a separate execute step in the product UX
 - a pending trade banner that keeps live-offer state legible after send
@@ -249,6 +256,7 @@ Expected observations:
 - maritime trade feels distinct from player trade rather than like the same form with different wording
 - shell status remains readable while a trade is pending, even after the panel auto-closes
 - current-player trade UX stays panel-driven and shallow rather than falling back to a hand-embedded row or a dense modal form
+- while trade is open, the lower shelf is hidden/disabled so the trade flow owns its own layout and hit-testing
 
 ### Stage 12.6 — Dev Card UX
 
@@ -260,6 +268,7 @@ Implement:
 
 - buy-dev-card follow-through into visible local dev-card state
 - play-dev-card entry points only when legal
+- a card-first dev-card shelf so the owning player can always see their dev-card inventory, including hidden Victory Point cards
 - focused flows for:
   - knight
   - road building
@@ -278,6 +287,7 @@ Expected observations:
 
 - all playable dev-card actions can be completed through the real UI
 - board-based dev-card flows reuse existing mode and selection machinery instead of duplicating interaction logic
+- the dev-card shelf reads as card inventory first and guidance second, rather than as a long text explainer
 - local hidden dev-card detail remains local-only
 
 ### Stage 12.7 — Flow Hardening and Real-Device Pass
@@ -337,7 +347,7 @@ Implement:
 - reserve fixed icon and label slots in the dock row so `End Turn` stays legible on iPad and narrow layouts
 - replace the large board HUD with a compact bottom-center in-board hint pill during guided modes
 - shrink guided hints to one-line chips that move upward when the overlay shelf is open
-- size the shell from the current visible host bounds while freezing the board during interactive host drag so partial collapse does not reintroduce severe lag
+- size the shell from the current visible host bounds while keeping the board live during interactive host drag, then defer the heavier board redraw to one settled post-resize update so partial collapse does not reintroduce severe lag
 - keep board world geometry in a stable reference space so host drag changes viewport/camera behavior without recomputing tile, node, road, or port positions on every intermediate size
 - make setup and build placement selection-first so legal node/edge taps do not publish immediately; confirm by tapping the same selected target again
 - keep setup/build confirmation from hijacking `Hand` / `Bank` / `Players`; the active lower shelf should stay usable on both iPhone and iPad while a pending selection exists
@@ -365,7 +375,7 @@ Expected observations:
 - the only allowed overlap is the deliberate shelf-over-board band at the bottom edge; accidental collisions between shell regions are gone
 - hand and bank now read as the same utility surface instead of two different component systems, and the bank no longer looks like a dead pseudo-button grid during normal viewing
 - utility shelves stay compact and content-only instead of spending vertical space on repeated headings or unnecessary scrolling
-- Messages-host drag no longer causes severe hitching, the visible shell still fits the actual current host bounds instead of hanging below the viewport, the board freezes during drag, and the board itself no longer visibly re-lays out from the live host size on every drag step
+- Messages-host drag no longer causes severe hitching, the visible shell still fits the actual current host bounds instead of hanging below the viewport, the board stays live during drag, and the board itself no longer visibly re-lays out from the live host size on every drag step
 - utility shelves now either fit within the visible shelf body or close; they should never render partially offscreen because the host became shorter
 - iPhone and iPad now use width-class lower-rail caps, so hand/bank/player shelves do not balloon into full-width cards on larger hosts
 - trade and dev-card flows are compact, but legible enough that a full match no longer relies on raw participant IDs, invisible timing rules, or hidden default-choice shortcuts
@@ -480,9 +490,11 @@ Deferred by design in phase 12:
 - 2026-04-12: the final 12.8 utility cleanup keeps `Hand`, `Bank`, and `Players` content-only and non-scroll, makes the bank reuse the hand chip geometry in normal viewing, places `Trade` as a full-width row inside the hand shelf, and hardens the dock button layout so `End Turn` stays visible on iPad.
 - 2026-04-10: the layout contract is now explicit in code and tests rather than informal view tweaking: the shell stays locked to `12% / 70% / 18%`, the lower rail splits into a `6%` handle band and `12%` dock row, the overlay shelf provides the only intentional overlap, the board clips strictly to its slot, and the board hint sits bottom-center inside the ocean margin rather than as a large translucent HUD.
 - 2026-04-12: device feedback showed that freezing the entire shell to a larger host size fixed lag but broke the visible layout contract: shelves could be cut off and the board/shelf boundary could drift when the Messages host became smaller. Stage 12.8 now keeps the shell fitted to the current visible host bounds, leaves the expensive board path on the throttled/no-rebuild resize route, auto-collapses utility shelves that cannot fit a usable body, and still caps the lower-rail width so hand, bank, and player shelves keep a consistent reading width across iPhone and iPad.
-- 2026-04-14: Stage 12.8 now moves board pan/pinch/tap off the SwiftUI gesture overlay and into a dedicated `SKView` host wrapper, keeps the live board host unmounted while resize freeze is active, adds a shell-side freeze watchdog so hostile host resize sequences cannot strand the UI in a frozen state, replaces pure percentage lower-rail sizing with bounded phone/iPad metrics, and falls back from expanded pad vertical minima when the iPad Messages host is wide but short so `Hand`, `Bank`, and `Players` stay readable and tappable on iPad.
+- 2026-04-14: Stage 12.8 now moves board pan/pinch/tap off the SwiftUI gesture overlay and into a dedicated `SKView` host wrapper, replaces pure percentage lower-rail sizing with bounded phone/iPad metrics, and falls back from expanded pad vertical minima when the iPad Messages host is wide but short so `Hand`, `Bank`, and `Players` stay readable and tappable on iPad.
+- 2026-04-16: Stage 12.8 switched normal Messages-host resize away from snapshot freeze/remount and onto a live-resize path. The board now stays mounted at gameplay height during host drag, applies cheap viewport/camera updates immediately, and defers the heavier board redraw to one short debounced settle step so camera jumps and post-thaw board reloads are no longer part of the normal path.
 - 2026-04-14: two audit artifacts now live alongside the phase-12 plan and track follow-on work that is deliberately out of scope for phase 12.8 but should not be lost. [2026-04-12 render/perf audit](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-12-render-performance.md) lists 21 findings against the board/shell render stack (`StandardBoardTopologyV1`, `GameBoardLayout`, `GameBoardRenderModelBuilder`, `GameShellProjection`, `LobbyDriverViewModel`) and is tracked as [TD-007](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md) scheduled for phase 15 with F1 available as an opportunistic pull-forward if 12.8 device feel is still chunky after the current freeze/shield hardening. [2026-04-13 transport reliability plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-13-transport-reliability.md) replaces the previous vague "compact-token rehydration" phase-13 scope bullet with a concrete seven-phase plan (measure → compact board → local cache → delta → CBOR → delete `summaryText` fallback → SMS resync UX) and is tracked as [TD-008](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md) scheduled for phase 13. Neither audit has shipped code yet; they are now the working pre-plans for their respective phases.
 - 2026-04-14: post-12.8b validation and full-match real-device signoff are still pending. The last recorded full-repo automated run is the 2026-04-10 12.8 cohesion pass; the subsequent 12.8b slices (choice-driven dev cards, board-first shell consolidation, utility cleanup, freeze overlay, SKView host wrap, top-only host-resize strip, and bounded iPad metrics) need a new automated run and a fresh pass through the QA `Real Device Gameplay Cohesion` checklist plus the `Real Device Shell Smoke`, `Real Device UX Hardening`, and `Real Device Turn-Taking Smoke` lanes before stage 12.8 can be closed.
+- 2026-04-16: a repo-wide audit concluded the remaining blockers are no longer cleanly separable from phase-13 host/authority/transport work. Phase 12 therefore stops being the current execution gate here. The remaining gameplay-cohesion and full-match signoff work now rides at the tail of the active phase-13 plan instead of pretending the gameplay phase can finish independently first.
 - `MessagesExtensionTests` still emits an Xcode dependency-scan warning because Tuist does not support a direct unit-test dependency on an iMessage extension target in this project shape. The current workaround remains compiling selected extension source files into the test target; capture any future cleanup under the tech-debt tracker rather than forcing a larger restructure into this phase.
 - Real-device validation is expected to drive at least some late-stage UX adjustments; do not treat Simulator-only behavior as sufficient signoff for Messages-hosted gameplay.
 - If setup, trade, or dev-card orchestration starts overwhelming `GameShellView` or `LobbyDriverViewModel`, split it into feature-local helpers rather than growing more shared conditionals.
@@ -495,11 +507,11 @@ Planned result:
 - the lobby and core gameplay loop are playable from the product UI
 - trade and dev-card flows are compact but coherent enough that a full match does not rely on raw IDs, hidden timing assumptions, or stacked debug-era shell affordances as the primary product behavior
 - board taps, shell modes, and modal choices map cleanly into canonical intents
-- once the current device QA closes stage 12.8, the repo is ready for a narrower phase 13 focused on Messages-host stability, transcript recovery, and durability instead of still using phase 12 to finish basic gameplay UX
+- the remaining unfinished phase-12 gameplay/signoff work is now explicitly deferred to the tail of phase 13 after the host/transport/authority substrate is corrected
 
 What remains after this phase by design:
 
-- Messages-host stability, reload/active-game sync, and transcript collapse/readability work
+- Messages-host stability, reload/active-game sync, and transcript collapse/readability work now move into the active phase-13 gate
 - multi-game lifecycle, archive/leave/forfeit, and durable game identity work
 - recap/history/dispute UX
 - final bubble composition polish

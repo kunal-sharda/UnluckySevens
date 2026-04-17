@@ -23,7 +23,7 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - Why it matters: the engine is well covered, but transcript selection, payload-carrier loss, delayed selection metadata, reopen/lifecycle behavior, and participant identity still rely on manual smoke checks.
 - Current cost or risk: regressions at the Messages host boundary can break real-device gameplay even while simulator and engine tests stay green.
 - Proposed fix shape: add simulator transcript-selection and reopen harnesses plus an operator-assisted device lane that captures payload source, selection lifecycle, session, and identity diagnostics.
-- When to address: phase 14.
+- When to address: phase 13.
 - Links: [QA](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/qa.md)
 
 ### TD-002 — Production board visual assertions are still shallow
@@ -59,7 +59,7 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - Why it matters: host start and early turn ownership should derive from observed join intents, but the current lobby still assembles pending joiners from device-local `UserDefaults`.
 - Current cost or risk: a host can see stale or incomplete join state, start a one-player game accidentally, and end up with setup and turn rotation that never include the actual guest.
 - Proposed fix shape: replace the local pending-join cache as the primary roster source with a durable transcript-authoritative join ledger, then treat local cache only as temporary recovery aid.
-- When to address: phase 14.
+- When to address: phase 13.
 - Links: [Phase 12 Plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/active/phase-12-gameplay-flows.md), [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift)
 
 ### TD-006 — Full-state transcript transport still depends on unstable Messages carriers

@@ -14,24 +14,22 @@ Do not put day-to-day execution notes here. If a future phase becomes active, cr
 
 ## Current Execution Gate
 
-### Phase 12.8 — Full Gameplay Experience
+### Phase 13 — Messages Host Stability and Release Readiness
 
-- Owner: [Phase 12 Plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/active/phase-12-gameplay-flows.md)
+- Owner: [Phase 13 Plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/active/phase-13-host-stability-and-release-readiness.md)
 - Status: active
-- Why it is still the gate:
-  - phase 12.7 closed the authority and severe-lag blockers, but phase 12 still needs one final full-match gameplay pass plus device QA before phase 13
-- phase 12 is only complete when a standard base-game Catan match can be started, played, and ended from the Messages UI:
-  - invite / join / host start
-  - snake-order setup
-  - normal turns
-  - robber / discard
-  - player and maritime trade
-  - dev-card play
-  - clear winner state
-- the board-first overlay-shelf shell is now the gameplay substrate, so the remaining gate is real-device verification that the `Header + Board + Dock` hierarchy, lower-shelf entry, and guided placement/turn affordances hold up for a real match on hardware
-  - phase 13 should start only after the full-match gameplay surface is signed off on hardware, not while core match UX is still shifting
+- Why it is now the gate:
+  - the 2026-04-16 repo-wide audit showed the remaining blockers are no longer ordinary phase-12 gameplay gaps
+  - join progression, trade-response progression, active-game desync, and carrier/reopen reliability are all hitting the same Messages-boundary substrate
+  - continuing to stack phase-12 gameplay fixes on top of that substrate is now lower leverage than pulling phase 13 forward
+- what phase 13 must now unblock before the milestone can move on:
+  - per-game canonical ledger and active-game recovery
+  - join/trade-response auto progression from surfaced messages
+  - transport reliability work beyond the temporary `summaryText` bridge
+  - transcript-authoritative lobby recovery instead of device-local pending joins
+  - the final deferred phase-12 full-match signoff on top of the corrected substrate
 
-Do not start phase 13 until the current 12.8 slice is signed off on real devices.
+The remaining phase-12 finish work now rides at the tail of phase 13 rather than staying the current execution gate.
 
 ## Sequenced Next Phases
 
@@ -84,6 +82,7 @@ Why this phase exists:
 Scope:
 
 - migrate from the current containing-app development shell to the intended standalone iMessage app packaging/distribution model
+- per-game canonical local ledger and active-game recovery instead of depending primarily on selected-bubble state plus device-local patching
 - join/lobby responsiveness so join intents resolve back into the known lobby for that game instead of requiring users to reopen a newer bubble just to see updated membership
 - turn publication and cross-device responsiveness so normal actions do not feel artificially slow just because each step is waiting on Messages-host round-trip behavior
 - reliable reload / active-game sync and same-bubble recovery
@@ -92,6 +91,7 @@ Scope:
 - transcript-authoritative multiplayer ledger instead of device-local pending joins
 - explicit multi-game lifecycle UX: identify which game a bubble belongs to, browse active games in the thread, and support leave/archive/forfeit flows instead of assuming one forever-active match
 - operator-assisted Messages host-boundary regression harness
+- complete the remaining deferred phase-12 gameplay signoff on top of the corrected substrate
 - release-readiness hardening for outside testers, including TestFlight-oriented device validation and operator runbooks
 
 Not this phase:
@@ -102,8 +102,8 @@ Not this phase:
 
 Entry criteria:
 
-- phase 12 gameplay flows are usable on real devices without relying on debug-first flow advancement
-- the clean branch is product-safe enough that host-stability work can proceed without debug leakage muddying outcomes
+- broad phase-12 gameplay coverage already exists, but the active audit shows the remaining blockers are architecture-boundary issues rather than isolated feature gaps
+- the clean branch has enough gameplay substrate that host-stability work can proceed and then carry the remaining phase-12 signoff at the tail of the phase
 
 Primary debt links:
 
