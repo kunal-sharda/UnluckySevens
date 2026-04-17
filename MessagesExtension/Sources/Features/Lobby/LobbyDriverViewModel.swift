@@ -251,9 +251,10 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private var includeOutgoingSummaryPayloadMirror: Bool {
-        // Fresh sends still need a cross-device transcript fallback because
-        // real-device selection can drop `message.url` on first open.
-        true
+        // Fresh publishes are URL-only again after the `https` scheme fix.
+        // Legacy decode support stays enabled separately for older bubbles that
+        // were published while the broken custom-scheme transport was live.
+        false
     }
 
     var canInvite: Bool {
@@ -805,6 +806,10 @@ final class LobbyDriverViewModel: ObservableObject {
         diagnosticsEnabled && currentGameId() != nil
     }
 
+    var shouldMaintainSelectionWatch: Bool {
+        activeConversation?.selectedMessage != nil || currentGameId() != nil
+    }
+
     var canApplySelectedSetupIntentAsState: Bool {
         guard
             let state = selectedState,
@@ -979,7 +984,7 @@ final class LobbyDriverViewModel: ObservableObject {
             return
         }
 
-        guard let intent = LobbyMembershipResolver.makeJoinIntent(
+        guard let joinedState = LobbyMembershipResolver.joinedLobbyState(
             state: state,
             localParticipant: actor
         ) else {
@@ -988,14 +993,18 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         do {
-            let payload = try jsonString(from: intent)
-            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
-            try sendEnvelope(envelope, caption: "ULS INTENT join", sessionPolicy: .new)
-            rememberPendingJoiner(actor, for: state.gameId)
-            refreshPendingJoiners(for: state.gameId)
-            selectionStatus = "Join intent sent"
+            let payload = try jsonString(from: joinedState)
+            let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
+            try sendEnvelope(
+                envelope,
+                caption: "ULS STATE rev\(joinedState.rev)",
+                sessionPolicy: .state(gameId: joinedState.gameId)
+            )
+            setActiveContext(joinedState, source: .lastSentState)
+            refreshPendingJoiners(for: joinedState.gameId)
+            selectionStatus = "Joined lobby rev\(joinedState.rev)"
             appendLog(
-                "Sent INTENT kind=join actor=\(shortIdentifier(actor)) local=\(shortIdentifier(actor)) actingAs=\(shortIdentifier(actingAs)) anchorRev=\(state.rev)"
+                "Published lobby join actor=\(shortIdentifier(actor)) rev=\(joinedState.rev) anchorRev=\(state.rev)"
             )
             setLastError(nil)
         } catch {
@@ -1021,12 +1030,12 @@ final class LobbyDriverViewModel: ObservableObject {
 
     func startGame() {
         guard let fromState = selectedState else {
-            setLastError("Select the invite STATE first.")
+            setLastError("Select the latest lobby STATE first.")
             return
         }
 
-        guard fromState.phase == .lobby, fromState.rev == 0 else {
-            setLastError("Start is only available from lobby rev0 STATE.")
+        guard fromState.phase == .lobby else {
+            setLastError("Start is only available from lobby STATE.")
             return
         }
 
@@ -1088,14 +1097,14 @@ final class LobbyDriverViewModel: ObservableObject {
             let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
             try sendEnvelope(
                 envelope,
-                caption: "ULS STATE rev1",
+                caption: "ULS STATE rev\(toState.rev)",
                 sessionPolicy: .state(gameId: toState.gameId)
             )
             gameLedgerStore.clearObservedJoiners(for: toState.gameId)
             refreshRecoveredGames()
             refreshPendingJoiners(for: toState.gameId)
             setActiveContext(toState, source: .lastSentState)
-            selectionStatus = "Start sent: setup rev1"
+            selectionStatus = "Start sent: setup rev\(toState.rev)"
             setLastError(nil)
         } catch {
             setLastError("Start failed: \(error.localizedDescription)")
@@ -2977,6 +2986,7 @@ final class LobbyDriverViewModel: ObservableObject {
 
         if decision.shouldRecordJoiner {
             rememberPendingJoiner(joinIntent.actor, for: joinIntent.gameId)
+            setActiveContext(recovered.state, source: resolvedActiveContextSource(for: recovered.source))
             refreshPendingJoiners(for: joinIntent.gameId)
             selectionStatus = "Updated lobby from join via \(source.label)"
             appendLog(
@@ -3043,7 +3053,7 @@ final class LobbyDriverViewModel: ObservableObject {
             appendLog(
                 "Auto-apply failed kind=\(turnIntent.kind.rawValue) error=\(error.localizedDescription)"
             )
-            setLastError("Automatic trade response apply failed: \(error.localizedDescription)")
+            setLastError("Automatic intent apply failed: \(error.localizedDescription)")
             return false
         }
     }
@@ -3763,8 +3773,8 @@ final class LobbyDriverViewModel: ObservableObject {
         guard let fromState = selectedState else {
             throw NSError(domain: "LobbyDriverViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "No active context."])
         }
-        guard let actor = localActorIdentifier(), actor == fromState.currentPlayer else {
-            throw NSError(domain: "LobbyDriverViewModel", code: 2, userInfo: [NSLocalizedDescriptionKey: "Only current player can publish canonical STATE."])
+        guard let localActor = localActorIdentifier() else {
+            throw NSError(domain: "LobbyDriverViewModel", code: 2, userInfo: [NSLocalizedDescriptionKey: "This device has not joined the selected game."])
         }
         guard
             turnIntent.gameId == fromState.gameId,
@@ -3774,6 +3784,7 @@ final class LobbyDriverViewModel: ObservableObject {
             throw NSError(domain: "LobbyDriverViewModel", code: 3, userInfo: [NSLocalizedDescriptionKey: "Turn intent anchor does not match Active Context."])
         }
 
+        let actor = TurnIntentPublishActorResolver.resolve(turnIntent, localActor: localActor)
         let coreIntent = try turnIntentForTransport(turnIntent)
         let toState = try ULS_CoreGame.apply(intent: coreIntent, to: fromState, actor: actor)
         try validateTransition(from: fromState, to: toState, actor: actor)
@@ -3798,7 +3809,11 @@ final class LobbyDriverViewModel: ObservableObject {
     ) throws {
         let payload = try jsonString(from: turnIntent)
         let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
-        try sendEnvelope(envelope, caption: caption, sessionPolicy: .new)
+        try sendEnvelope(
+            envelope,
+            caption: caption,
+            sessionPolicy: .new
+        )
         selectionStatus = successStatus
         setLastError(nil)
     }
@@ -3900,13 +3915,14 @@ final class LobbyDriverViewModel: ObservableObject {
         case .new:
             return MSSession()
         case let .state(gameId):
-            if let existing = stateSessionsByGameId[gameId] {
-                return existing
-            }
-
-            let newSession = MSSession()
-            stateSessionsByGameId[gameId] = newSession
-            return newSession
+            let preferredSession = TranscriptTransportSupport.preferredStateSession(
+                gameId: gameId,
+                selectedMessage: activeConversation?.selectedMessage,
+                selectedGameId: selectedState?.gameId,
+                cachedSession: stateSessionsByGameId[gameId]
+            )
+            stateSessionsByGameId[gameId] = preferredSession
+            return preferredSession
         }
     }
 

@@ -69,7 +69,7 @@ enum LobbyScreenModelBuilder {
         } else {
             title = "Join This Game"
             subtitle = "Join now and wait for \(displayName(host, gameID: state.gameId, roster: visiblePlayers)) to start."
-            helperText = "Joining sends a join intent immediately. The host decides when to start."
+            helperText = "Joining publishes updated lobby state immediately. The host decides when to start."
         }
 
         return LobbyScreenModel(
@@ -106,7 +106,7 @@ enum LobbyScreenModelBuilder {
         let isLocalJoin = context.localActor == joinIntent.actor
         let title = isLocalJoin ? "Join Sent" : "Join Intent"
         let subtitle = isLocalJoin
-            ? "Waiting for the host to start from the invite state."
+            ? "Waiting for the host to continue from the latest lobby state."
             : "\(displayName(joinIntent.actor, gameID: joinIntent.gameId, roster: lobbyRoster(context: context, joinIntent: joinIntent))) joined the lobby and is waiting for the host."
 
         return LobbyScreenModel(
@@ -127,7 +127,7 @@ enum LobbyScreenModelBuilder {
             inviteButton: nil,
             joinButton: nil,
             startButton: nil,
-            helperText: "Open the invite bubble to view the lobby and start the game once everyone is ready."
+            helperText: "This is a legacy join bubble. Open the latest lobby state to continue."
         )
     }
 

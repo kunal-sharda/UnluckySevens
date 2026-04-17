@@ -9,9 +9,9 @@ This document summarizes the player-facing flows the UI must support in the curr
 - Joining should feel like a game action, not a draft-composition flow. A player should not need an extra manual send step after choosing `Join`.
 - The host sees the current joined roster in the lobby UI and explicitly starts the game when ready.
 - The roster locks when the host starts the game.
-- Lobby UX should preserve the current authority model:
+- Lobby UX should stay on the canonical game-state chain:
   - one invite `STATE`
-  - join `INTENT`s
+  - joining publishes updated lobby `STATE`
   - one host-published start `STATE`
 
 ## Setup Flow
@@ -101,7 +101,7 @@ This document summarizes the player-facing flows the UI must support in the curr
 - `Maritime / Bank Trade` should show a single mixed list of legal precomputed quick trades rather than a manual composer.
 - Targeted recipients can respond with `Accept`, `Decline`, or `Counter`.
 - `Counter` should use the same composer flow, but it is addressed only back to the current player.
-- Targeted responder actions should feel final from the responder side. The current-player device may still receive them as internal trade-response intents, but normal trade UX must not require a manual "apply selected response" step.
+- Targeted responder actions should feel final from the responder side. The current-player device may still receive them as internal trade-response transport, but normal trade UX must not require a manual "apply selected response" step.
 - The first applied targeted `Accept` should resolve the trade and close the live offer.
 - If every targeted player declines, the live offer should close.
 - Non-targeted players should still be able to inspect the live trade state so the table can follow what is happening.
@@ -138,4 +138,4 @@ This document summarizes the player-facing flows the UI must support in the curr
 - Outside the narrow top grabber strip, drags should stay inside the game. Board drags should pan/zoom the board, shelf drags should stay local to the shelf, and only the top strip should be able to hand off to Messages-host resize.
 - On iPad-sized but vertically short Messages hosts, the lower shelf should fall back to the compact vertical layout instead of using oversized pad minima that clip or disable `Hand`, `Bank`, and `Players`.
 - When the app has recoverable canonical state for one or more games, the shell should expose a compact `Game` / `Games` recovery affordance that can reopen the latest known state for that game without forcing the user to hunt for the right transcript bubble first.
-- The bubble should support lobby readability as well as in-game readability; joining and host-start should not create avoidable transcript clutter.
+- The bubble should support lobby readability as well as in-game readability; joining and host-start should stay on the same canonical state chain instead of creating avoidable transcript clutter.

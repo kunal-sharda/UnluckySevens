@@ -37,6 +37,20 @@ final class LobbyDriverViewModelIdentityTests: XCTestCase {
 
     func testCanStartLobbyRequiresInviterAsLocalParticipant() {
         let state = makeLobbyState(host: "host-player")
+        let laterLobbyState = CoreGameStateV1(
+            gameId: state.gameId,
+            rev: 2,
+            prevHash: "hash-1",
+            stateHash: "",
+            roster: ["host-player", "guest-player"],
+            currentPlayer: "host-player",
+            phase: .lobby,
+            seed: nil,
+            diceRngState: nil,
+            resourcesByPlayer: ["host-player": .zero, "guest-player": .zero],
+            boardRules: nil,
+            board: nil
+        ).rehashed()
 
         XCTAssertFalse(
             LobbyMembershipResolver.canStart(
@@ -59,10 +73,30 @@ final class LobbyDriverViewModelIdentityTests: XCTestCase {
                 pendingJoiners: ["guest-player"]
             )
         )
+        XCTAssertTrue(
+            LobbyMembershipResolver.canStart(
+                state: laterLobbyState,
+                localParticipant: "host-player",
+                pendingJoiners: []
+            )
+        )
     }
 
     func testFinalLobbyRosterDeduplicatesJoinersAndKeepsInviterFirst() {
-        let state = makeLobbyState(host: "host-player")
+        let state = CoreGameStateV1(
+            gameId: "game-1",
+            rev: 2,
+            prevHash: "hash-1",
+            stateHash: "",
+            roster: ["host-player", "guest-player"],
+            currentPlayer: "host-player",
+            phase: .lobby,
+            seed: nil,
+            diceRngState: nil,
+            resourcesByPlayer: ["host-player": .zero, "guest-player": .zero],
+            boardRules: nil,
+            board: nil
+        ).rehashed()
 
         XCTAssertEqual(
             LobbyMembershipResolver.finalRoster(
@@ -73,18 +107,19 @@ final class LobbyDriverViewModelIdentityTests: XCTestCase {
         )
     }
 
-    func testMakeJoinIntentUsesActualLocalParticipant() {
+    func testJoinedLobbyStateUsesActualLocalParticipant() {
         let state = makeLobbyState(host: "host-player")
 
-        let intent = LobbyMembershipResolver.makeJoinIntent(
+        let joinedState = LobbyMembershipResolver.joinedLobbyState(
             state: state,
             localParticipant: "guest-player"
         )
 
-        XCTAssertEqual(intent?.actor, "guest-player")
-        XCTAssertEqual(intent?.gameId, state.gameId)
-        XCTAssertEqual(intent?.anchorRev, 0)
-        XCTAssertEqual(intent?.anchorHash, state.stateHash)
+        XCTAssertEqual(joinedState?.gameId, state.gameId)
+        XCTAssertEqual(joinedState?.rev, 1)
+        XCTAssertEqual(joinedState?.prevHash, state.stateHash)
+        XCTAssertEqual(joinedState?.roster, ["host-player", "guest-player"])
+        XCTAssertEqual(joinedState?.currentPlayer, state.currentPlayer)
     }
 
     private func makeLobbyState(host: String) -> CoreGameStateV1 {

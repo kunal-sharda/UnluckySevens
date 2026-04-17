@@ -66,28 +66,76 @@ Use this section for repo knowledge that was learned the hard way and should inf
 
 These are the main iMessage-specific complexities we have already paid for in this repo. Treat them as working constraints, not trivia. If a future change touches any of these surfaces, reread this section before changing the code.
 
-### 1. Transcript transport is not perfectly faithful on selection and reopen
+### 1. `MSMessage.url` must be `http` or `https`; custom schemes are stripped on the wire
 
 What went wrong:
 
-- `MSMessage` transcript selection and reopen flows did not always give the extension a clean `message.url` payload path back on device.
-- Relying on the canonical URL path alone made lobby and game reopen behavior fail in real use even when the original bubble had been sent correctly.
+- The main transport (`TranscriptTransportSupport.buildMessage`) and a temporary standalone diagnostic probe both built `MSMessage.url` using custom schemes (`unluckysevens://msg?...`, `probeurl://msg?...`).
+- On send, iMessage accepted the `MSMessage` locally and the bubble rendered with its caption/summary intact, but the `url` did not arrive on the recipient's `didSelect`/`didReceive` — or it arrived and was dropped on first reopen.
+- For a long stretch of phase-12/phase-13 this looked like a transcript-selection reliability problem, because the *symptom* (URL missing on reopen) lined up with known Messages quirks around `selectedMessage` hydration. The real cause was that a `probeurl://` or `unluckysevens://` URL was never going to round-trip through iMessage at all — the platform validates `MSMessage.url` against the `http`/`https` contract and silently drops non-compliant values.
 
 What we learned:
 
-- Transport publication and transcript re-selection are not the same reliability boundary inside Messages.
+- `MSMessage.url` is not a generic opaque payload slot. Apple's contract says it must be an `http` or `https` URL, and iMessage enforces that contract by dropping non-conforming URLs somewhere between `activeConversation.insert(_:)` and the recipient. Locally on the sender, `message.url` still reads back fine; that is not proof that the URL was transmitted.
+- GamePigeon, Word Hunt, GameClub titles, and similar iMessage games all use real `https://<gamehost>/...?state=<base64>` URLs for exactly this reason. There is no second hidden channel — the URL *is* the transport, but only when the scheme is valid.
+- "URL shows up on sender, missing on recipient/reopen" is a scheme bug signal before it is a transcript-selection signal. Check the scheme before blaming lifecycle timing.
+
+Current repo answer:
+
+- Main transport builds `https://unluckysevens.app/msg?payload=<encodedEnvelope>` (`MessagesExtension/Sources/Presentation/TranscriptTransportSupport.swift`). The host does not need to resolve; it only has to pass the scheme check.
+- A temporary standalone diagnostic probe was also switched to `https://unluckysevens.app/probe?...` for the same reason during validation; the key durable rule is the contract, not the existence of the probe.
+- Custom schemes are banned anywhere we assign to `MSMessage.url`. If a future surface needs a custom scheme for deep linking, that belongs on `UIApplication.open(_:)` or `UISceneDelegate.scene(_:openURLContexts:)` — not on `MSMessage.url`.
+
+How to apply this going forward:
+
+- Any new `MSMessage` construction path must use `components.scheme = "https"`. Reviewers should treat a custom scheme on `MSMessage.url` as a correctness bug, not a style choice.
+- When diagnosing "URL missing on recipient," first confirm the sender wrote `https://...`. If it did not, fix the scheme before instrumenting further.
+- The mental model is: the `url` is validated on the wire the same way iMessage validates any link preview; anything that is not a real web URL is at the platform's mercy.
+
+### 1a. When a platform boundary keeps failing, check the exact symbol-level doc before building repo-wide workarounds
+
+What went wrong:
+
+- The repo spent a long time reasoning from the class-level `MSMessage` / `MSSession` docs, runtime symptoms, and higher-level lifecycle quirks without reading the exact property page for `MSMessage.url`.
+- That let a basic contract bug survive: the symbol-level page already stated that `MSMessage.url` must use `http` or `https`, while the repo was still publishing `unluckysevens://...`.
+- Because the sender could still read `message.url` back locally, the team overfit to transcript-selection and host-hydration theories and built temporary recovery bridges before falsifying the underlying property contract.
+
+What we learned:
+
+- For Apple framework boundaries, the exact symbol-level page (`property`, `method`, `enum case`) is part of the source of truth, not optional supporting reading.
+- If a host/platform bug survives multiple debugging passes, stop and verify the exact API symbol contract before assuming the failure is undocumented framework behavior.
+- If the contract still seems ambiguous after reading the exact symbol page, build the smallest possible repro immediately. Do not keep expanding product workarounds while the base contract is still unverified.
+
+How to apply this going forward:
+
+- For Messages, UIKit, SwiftUI, SpriteKit, or any other Apple-host boundary, read the exact symbol page first when the issue depends on a specific property or callback.
+- If the bug persists after one serious pass, write or update a micro repro and record the exact symbol links in the active ExecPlan's `Assumptions and Evidence Gate`.
+- Reviewers should challenge any platform-workaround patch that does not cite either:
+  - the exact symbol-level Apple doc, or
+  - a minimal local repro that falsified the obvious contract assumptions.
+
+### 1b. Transcript transport is not perfectly faithful on selection and reopen
+
+This lesson originally described the symptoms traced back to the scheme bug above. The summary-fallback transport was built as a workaround when the root cause (scheme validation) was not yet understood. It is preserved here because:
+
+1. Even with a correct `https://` URL, real-device Messages still has rare cases where `selectedMessage?.url` is not hydrated in `viewDidLoad`/`willBecomeActive`. The authoritative read is always the `message` argument in `didSelect(_:conversation:)` / `didReceive(_:conversation:)`.
+2. The historical summary-fallback decode path (`ulsenv:` prefix on a second summary line) still needs to exist for older bubbles that were published while the scheme bug was live. Those bubbles have no usable `url`; their payload survives only on `summaryText`.
+
+What we learned:
+
+- Transport publication and transcript re-selection are not the same reliability boundary inside Messages, but most of the pain we attributed to that boundary was actually scheme validation.
 - We need to distinguish `URL`, `summary fallback`, and `missing` payload sources during triage instead of assuming one decode path.
 
 Current repo answer:
 
-- Canonical payload still prefers `message.url`.
-- Fresh sends now publish a readable multiline `summaryText` fallback: the first line stays human-readable and the mirrored payload sits on a second line for transcript recovery.
-- The temporary transport badge and debug surfaces expose which source actually decoded.
-- Compact envelope framing plus `compactStateV2` now keep the worst-case canonical STATE stress path under the URL budget in tests, and the repo keeps summary-fallback decode compatibility because real-device first-open selection can still drop `message.url`.
+- Canonical payload prefers `message.url` now that the scheme is correct.
+- Fresh sends are URL-only again after the `https` scheme fix; legacy summary-fallback decode remains enabled to recover bubbles from the pre-fix era and to keep fallback observability while hardware retesting completes.
+- The temporary transport badge and debug surfaces expose which source actually decoded, so triage can tell "URL worked" from "fell back to summary" at a glance.
+- Compact envelope framing plus `compactStateV2` keep the worst-case canonical STATE stress path under the URL budget in tests.
 
 Still temporary:
 
-- Incoming `summary fallback` decode remains a bridge path for both legacy transcript bubbles and fresh multiline mirrored publishes. Phase 13 still owns deleting that compatibility path after repeated device validation shows URL-only publication is stable enough.
+- Incoming `summary fallback` decode remains a bridge path for legacy transcript bubbles sent before the scheme fix. Phase 13 still owns retiring that compatibility path once device validation shows URL-only publication is stable on the corrected scheme across enough real-device sessions to be confident.
 
 ### 2. Messages host resize must be treated as a hostile gesture boundary
 
@@ -123,7 +171,8 @@ What we learned:
 Current repo answer:
 
 - Canonical game `STATE` messages reuse one `MSSession` per game.
-- Trade offers use separate sessions so they appear as distinct offer bubbles.
+- Lobby join now publishes canonical lobby `STATE` on that same game session instead of treating join as a detached side bubble.
+- Responder-side non-canonical trade/discard transport must stay off the canonical game session, because a raw responder bubble can otherwise displace the live state bubble without replacing it with authoritative state.
 - Folding/collapse behavior is treated as a phase-13 host-stability concern, not proof that transcript recovery is already solved.
 
 ### 4. SpriteKit board interaction should not run through a hot SwiftUI gesture loop
@@ -167,6 +216,7 @@ What we learned:
 
 - `INTENT` can remain an internal transport/authority concept without becoming a player-facing step.
 - The current-player device should auto-apply matching targeted trade-response intents into canonical state as soon as it has the right anchored state.
+- The authority-side publish path must preserve the **responder** as the trade-response actor for validation/audit semantics. If the shell blindly re-validates responder `acceptTrade` / `declineTrade` / `counterTrade` as if the current player were the action actor, auto-apply will fail every time even though the surfaced response is otherwise valid.
 - When an incoming trade response references a stale anchor, the shell should recover the best latest state for that game instead of dropping into an intent-only surface.
 - Same-device cached last-published state is an acceptable temporary recovery bridge for the current-player device when the extension reopens without an active state already in memory, but it must be keyed per game rather than as one global record.
 - `MSConversation.selectedMessage` is the currently selected transcript bubble, not a live-updating pointer to the latest game update. If a new response message is never surfaced through `didReceive` while the extension is active, the app cannot silently process it from an older selected bubble.
@@ -174,6 +224,9 @@ What we learned:
 Current repo answer:
 
 - The current-player device auto-applies matching targeted trade responses into canonical state as soon as the response message is surfaced and the anchored state can be recovered.
+- Responder-side trade/discard transport stays off the canonical game session so a raw response bubble cannot replace the live state bubble before the app turns it into authoritative state.
+- The authority-side auto-apply path is no longer trade-response-only. Any anchored turn intent that the local current player can legally incorporate, including responder discard submissions, now behaves like an action when it surfaces on the authority device.
+- A short post-selection polling burst is not enough for Messages-hosted async play. If the extension is open on a game bubble, it needs a lightweight ongoing selection watch while that context remains active, because same-session surfacing can lag well past the first couple of seconds.
 - Same-device cached published-state recovery now stores a per-game bridge for reopen/response selection paths instead of relying on one global last-published state.
 - Trade-response copy no longer exposes `INTENT` as a player-facing term, even though intents remain the internal transport primitive under the current authority model.
 
@@ -199,23 +252,26 @@ Current repo answer:
 - Active-context recovery and intent-context resolution now consult that ledger instead of a separate global cached-state bridge.
 - Device-local pending joins are no longer the canonical lobby assembly surface.
 
-### 7a. Join intent handling should recover state before it thinks about join UI
+### 7a. Lobby join should be canonical state; legacy join intents are recovery-only
 
 What went wrong:
 
-- Join-intent selection could still land in a raw join/open-game path even when the app already had recoverable canonical state for that game.
-- That made lobby progression feel like bubble management instead of game recovery.
+- Join spent too long as a detached intent flow even though the product wanted it to feel like the rest of the game.
+- That left the open lobby dependent on surfaced join bubbles and made `Start Game` artificially tied to the original `rev0` invite instead of the latest lobby state.
 
 What we learned:
 
-- Join intents should be treated as a recovery trigger first, not as a player-facing surface.
+- Fresh join should publish updated lobby `STATE` on the canonical game session.
+- Legacy join intents should be treated as a recovery trigger first, not as a player-facing surface.
 - If the app can recover canonical state for the same game, it should reopen that state and only preserve join-specific behavior where the local participant is actually the lobby host.
 
 Current repo answer:
 
-- Join intent handling now resolves against the same per-game recovery context as trade responses.
+- Fresh `Join Game` publishes canonical lobby `STATE` and advances lobby rev instead of emitting a detached join bubble.
+- `Start Game` uses the latest lobby rev, not a hard-coded `rev0` invite assumption.
+- Recoverable legacy join selections still resolve against the same per-game recovery context as trade responses.
 - Recoverable join selections reopen the best available canonical state for that game.
-- Joiner recording only happens on the host+lobby path instead of every recovered join selection.
+- Start-roster assembly merges the visible lobby roster with observed joiners so concurrent join states can still converge when the host starts.
 
 ### 8. Active-game recovery needs a player-visible affordance, not only invisible cache logic
 
@@ -675,11 +731,12 @@ These are the remaining device checks after the 2026-04-16 simulator/practical g
 1. Two-device join:
    - keep the inviter bubble open
    - accept/join from the second device
-   - confirm the inviter shell updates through surfaced join handling without raw join-intent UI
+   - confirm the inviter shell updates through canonical lobby-state progression without raw join-intent UI
 2. Two-device trade response:
    - proposer creates a targeted trade
    - responder accepts, declines, and counters in separate runs
    - confirm the proposer shell auto-recovers the right game state when the response bubble is surfaced and does not require manual “intent bookkeeping”
+   - confirm clicking a surfaced response bubble does not replace the live game with raw response UI
 3. Stale bubble reopen:
    - create a newer canonical `STATE`
    - reopen an older bubble for the same game

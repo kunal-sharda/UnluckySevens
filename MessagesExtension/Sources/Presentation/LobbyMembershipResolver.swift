@@ -26,7 +26,6 @@ enum LobbyMembershipResolver {
         guard
             let state,
             state.phase == .lobby,
-            state.rev == 0,
             let inviter = state.roster.first,
             inviter == localParticipant
         else {
@@ -49,29 +48,69 @@ enum LobbyMembershipResolver {
         }
 
         var finalRoster: [String] = [inviter]
+
+        for player in state.roster where player != inviter && !finalRoster.contains(player) {
+            finalRoster.append(player)
+        }
+
         for joiner in pendingJoiners where joiner != inviter && !finalRoster.contains(joiner) {
             finalRoster.append(joiner)
         }
         return finalRoster
     }
 
-    static func makeJoinIntent(
+    static func joinedLobbyState(
         state: CoreGameStateV1?,
         localParticipant: String?
-    ) -> JoinIntentV1? {
+    ) -> CoreGameStateV1? {
         guard
             let state,
             state.phase == .lobby,
-            let localParticipant
+            let localParticipant,
+            !state.roster.contains(localParticipant)
         else {
             return nil
         }
 
-        return JoinIntentV1(
+        var roster = state.roster
+        roster.append(localParticipant)
+
+        return CoreGameStateV1(
             gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: localParticipant
-        )
+            rev: state.rev + 1,
+            prevHash: state.stateHash,
+            stateHash: "",
+            roster: roster,
+            currentPlayer: state.currentPlayer,
+            phase: .lobby,
+            seed: state.seed,
+            diceRngState: state.diceRngState,
+            robberRngState: state.robberRngState,
+            resourcesByPlayer: state.resourcesByPlayer,
+            bankResources: state.bankResources,
+            devDeck: state.devDeck,
+            devCardsByPlayer: state.devCardsByPlayer,
+            newDevCardsByPlayer: state.newDevCardsByPlayer,
+            revealedVictoryPointsByPlayer: state.revealedVictoryPointsByPlayer,
+            devCardActionPlayedThisTurn: state.devCardActionPlayedThisTurn,
+            knightsPlayedByPlayer: state.knightsPlayedByPlayer,
+            largestArmyOwner: state.largestArmyOwner,
+            largestArmySize: state.largestArmySize,
+            longestRoadOwner: state.longestRoadOwner,
+            longestRoadLength: state.longestRoadLength,
+            winnerPlayer: state.winnerPlayer,
+            winningVictoryPoints: state.winningVictoryPoints,
+            auditLog: state.auditLog,
+            lastTurnRecap: state.lastTurnRecap,
+            activeTradeOffer: state.activeTradeOffer,
+            tradeResponses: state.tradeResponses,
+            settlementsByNode: state.settlementsByNode,
+            citiesByNode: state.citiesByNode,
+            roadsByEdge: state.roadsByEdge,
+            boardRules: state.boardRules,
+            board: state.board,
+            setupState: state.setupState,
+            turnState: state.turnState
+        ).rehashed()
     }
 }

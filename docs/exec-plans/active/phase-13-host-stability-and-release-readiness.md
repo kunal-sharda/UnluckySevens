@@ -33,21 +33,25 @@ What exists today:
 - the repo already has broad gameplay coverage for lobby, setup, turn play, robber/discard, trade, dev cards, and winner-state presentation
 - the board shell is now live-resize rather than snapshot-freeze/remount during normal host drag
 - join intents can bridge back into inviter lobby state in some cases
+- fresh lobby joins now publish canonical lobby `STATE` on the game session instead of relying on a detached join intent path
 - targeted trade responses can auto-apply into canonical state when the response message is surfaced and the correct anchor state can be recovered
 - same-device cached published-state recovery now uses per-game keys instead of one global record
 - a per-game local ledger now persists the latest known canonical `STATE`, observed joiners, and last active game identity instead of splitting those concerns across one global cached-state record plus device-local pending-join arrays
 - active-context recovery and intent-context resolution now read from the same per-game ledger path rather than one global last-published-state record
 - join intents now recover back into the best available canonical state for the same game instead of dropping into a raw join-intent route whenever recoverable state exists
 - trade-response selection now prefers recovered canonical state for the same game whenever the surfaced response cannot be auto-applied cleanly
+- canonical transport URLs now use `https://unluckysevens.app/...`; the earlier custom `unluckysevens://...` scheme was a protocol bug, not a harmless cosmetic choice
+- canonical `STATE` publishes now prefer the currently selected bubble's `MSSession` for the same game instead of relying only on the in-memory per-game cache; this keeps transcript updates anchored to the surfaced session chain more reliably after context churn
+- responder-side trade/discard transport no longer rides the canonical game `MSSession`; responder messages stay off the state chain until the app publishes the resulting authoritative `STATE`
 - compact envelope framing now removes the extra outer JSON-envelope overhead for fresh transport sends while keeping backward decode support for the older JSON-wrapped format
-- compact canonical state transport now uses the `compactStateV2` wrapper, keeps the worst-case stress payload under the URL budget in tests, and publishes a readable multiline `summaryText` mirror so fresh sends still have a cross-device fallback when `message.url` drops on first open
+- compact canonical state transport now uses the `compactStateV2` wrapper, keeps the worst-case stress payload under the URL budget in tests, and retains legacy summary-fallback decode compatibility while fresh publishes are re-tested URL-only on the corrected `https` transport path
 - the shell now exposes a lightweight active-games recovery surface so the app can reopen the latest canonical state for a known game even when the currently selected bubble is stale or missing
 - the temporary transport badge, manual `Reload Board`, and host-gesture HUD are now gated off in the default root shell rather than always visible during normal play
 
 What is still broken or incomplete:
 
-- separate response/join messages still need to be surfaced to the extension before they can be processed
-- transport still depends on unstable `message.url`, so fresh sends currently retain a temporary multiline `summaryText` fallback mirror until repeated device evidence is strong enough to delete that compatibility path
+- separate responder messages still need to be surfaced to the extension before they can be processed
+- transport still retains legacy summary-fallback decode compatibility for older bubbles, but fresh publishes are URL-only again. The remaining question is whether valid `https` URLs are now stable enough on hardware to let the repo delete the summary bridge entirely after revalidation.
 - the underlying diagnostics/probe code still exists for future troubleshooting, but it is no longer part of the default player-facing shell
 
 What is explicitly deferred to the tail of this phase:
@@ -82,20 +86,20 @@ Fallback if false:
 
 Assumption:
 
-- the current product cannot rely on `message.url` round-tripping full canonical state reliably on real devices
+- the current product still needs legacy summary-fallback decode until the corrected `https`-scheme `message.url` path is revalidated on real devices
 
 Evidence:
 
-- existing real-device failures
-- [2026-04-13 transport reliability plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-13-transport-reliability.md)
+- historical real-device failures while the repo was publishing custom-scheme URLs
+- the temporary standalone probe and QA lesson showing `MSMessage.url` must be `http` or `https`
 
 Disproof test:
 
-- phase-13 measurement pass on real devices after payload compaction
+- rerun the phase-13 join/trade/lobby flows on real devices after the `https://unluckysevens.app/...` fix and measure whether summary fallback still fires
 
 Fallback if false:
 
-- retain simpler URL-only transport, but only after measured proof under real gameplay payloads
+- if valid `https` URLs still fail often enough on hardware, restore the fresh summary mirror until a stronger transcript-safe carrier strategy replaces it
 
 ### Assumption 3
 
@@ -249,7 +253,20 @@ Manual signoff still required before phase exit:
 - 2026-04-16: stage 13.2 completed its recovery-bridge hardening. Join intents now recover into the best available canonical state for the same game whenever possible, cached published-state recovery falls back per game rather than globally, and surfaced trade responses now prefer recovered state when auto-apply cannot happen cleanly instead of dropping into raw intent/open-game shells.
 - 2026-04-16: stage 13.3 started with compact envelope framing in `ULS_Transport`. Fresh sends now use a smaller binary-framed base64url envelope while decode remains backward-compatible with the older JSON-wrapped transport payloads.
 - 2026-04-16: stage 13.3 completed its first shippable transport cut. `CompactStateTransport` now uses the `compactStateV2` wrapper, the worst-case canonical STATE stress test stays under the URL budget, and fresh publishes keep a readable multiline summary mirror because real-device join flow still cannot rely on `message.url` alone on first open.
-- 2026-04-16: real-device lobby join re-confirmed that URL-only fresh publishes are still not safe enough for first-open recovery. The outgoing summary mirror was therefore restored in readable multiline form rather than the older payload-first one-line format.
+- 2026-04-16: real-device lobby join re-confirmed that URL-only fresh publishes were not safe enough for first-open recovery, so the outgoing summary mirror was restored in readable multiline form rather than the older payload-first one-line format.
+- 2026-04-16: the missing-URL diagnosis was materially revised after a standalone probe showed the repo had been publishing custom-scheme `MSMessage.url` values. `MSMessage.url` must be `http` or `https`; the main app and the probe both emitted `https://unluckysevens.app/...` after the fix, and device validation had to be rerun against that corrected contract before treating remaining misses as platform behavior.
+- 2026-04-16: after the `https` fix and passing transport/probe validation, fresh outgoing summary mirroring was disabled again. The repo now re-tests URL-only publication while still decoding legacy `summaryText` payload mirrors from older transcript bubbles.
+- 2026-04-17: canonical `STATE` session reuse was tightened so send-time session selection prefers `activeConversation.selectedMessage?.session` when the selected bubble belongs to the same game. The prior cache-only path could fork the transcript chain after context recovery or extension relaunch, leaving valid `STATE` publishes on a different `MSSession` than the bubble the user had actually selected.
+- 2026-04-17: the repo stopped treating lobby join as a generic responder intent. Fresh join publishes canonical lobby `STATE` on the game session, `Start Game` now works from the latest lobby rev instead of a special-case rev0 invite bubble, and start-roster assembly merges the current lobby roster with observed joiners so concurrent join states can still converge at start.
+- 2026-04-17: responder-side trade/discard transport is now explicitly off the canonical game session again. A prior patch routed those responder messages onto the game session and made it possible for a raw responder bubble to displace the canonical game bubble without replacing it with authoritative state.
+- 2026-04-17: trade-response auto-apply was failing for a concrete reason: the extension was validating responder `acceptTrade` / `declineTrade` / `counterTrade` transitions as if the current player were the action actor. The authority-side publish path now preserves the responder as the validation/audit actor for those trade-response transitions while still publishing the resulting canonical `STATE` from the authority device.
+- 2026-04-17: focused validation for the lobby/trade architecture correction passed:
+  - `bash ./scripts/gen.sh`
+  - `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`
+  - `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:MessagesExtensionTests/LobbyDriverViewModelIdentityTests -only-testing:MessagesExtensionTests/TurnIntentPublishActorResolverTests -only-testing:MessagesExtensionTests/TurnIntentContextResolverTests -only-testing:MessagesExtensionTests/JoinIntentContextResolverTests -only-testing:MessagesExtensionTests/TranscriptTransportSupportTests test`
+  - `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:MessagesExtensionTests/LobbyScreenModelBuilderTests test`
+  - `git diff --check` on the touched lobby/transport/docs files
+- 2026-04-17: the selection watch in `MessagesViewController` now stays alive while the extension has an active game/selection context instead of stopping after a short 2.4s burst. The earlier burst polling was too optimistic for delayed same-session surfacing, which meant an already-open bubble could miss remote join/trade-response updates if `didReceive` was late or absent.
 - 2026-04-16: stage 13.4 started with an in-app active-games recovery surface. Recoverable games now have a user-facing reopen path backed by the per-game ledger instead of depending entirely on the selected transcript bubble.
 - 2026-04-16: stage 13.4 completed its release-readiness gating pass. The active-games recovery surface remains visible, but the temporary transport badge, host-gesture HUD, and manual `Reload Board` control are now gated off from the default root shell so normal play no longer exposes operator-only diagnostics.
 - 2026-04-16: stage 13.5 simulator/practical-gate validation is green except for the `ULS_CoreGameEvals` lane, which still hangs after the build phase in this environment. Hardware/two-device QA remains the honest exit gate for the phase.

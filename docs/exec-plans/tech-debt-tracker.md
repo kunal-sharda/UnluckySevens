@@ -56,10 +56,10 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 ### TD-005 — Lobby roster assembly still depends on device-local pending joins
 
 - Area: lobby authority, multiplayer flow
-- Why it matters: host start and early turn ownership should derive from observed join intents, but the current lobby still assembles pending joiners from device-local `UserDefaults`.
-- Current cost or risk: a host can see stale or incomplete join state, start a one-player game accidentally, and end up with setup and turn rotation that never include the actual guest.
-- Proposed fix shape: replace the local pending-join cache as the primary roster source with a durable transcript-authoritative join ledger, then treat local cache only as temporary recovery aid.
-- When to address: phase 13.
+- Why it matters: fresh join now advances canonical lobby `STATE`, but concurrent joins from the same older lobby rev can still arrive as sibling lobby states. The host currently converges those at `Start Game` time by unioning the latest visible lobby roster with the local observed-join ledger.
+- Current cost or risk: the lobby can still show an incomplete roster transiently until the host sees both sibling join states or starts from a merged roster, so lobby convergence is better than before but not yet fully transcript-authoritative.
+- Proposed fix shape: replace the remaining observed-join merge with an explicit transcript-authoritative lobby reconciliation model so concurrent joins converge before start, not only at start time.
+- When to address: post-phase 13 if real-device concurrency still shows lobby skew.
 - Links: [Phase 12 Plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/active/phase-12-gameplay-flows.md), [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift)
 
 ### TD-006 — Full-state transcript transport still depends on unstable Messages carriers

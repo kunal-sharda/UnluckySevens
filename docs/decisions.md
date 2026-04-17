@@ -3,7 +3,7 @@
 This file records **locked product + architecture decisions** for the MVP.  
 If a change is desired, update this file **first**, then update code/tests.
 
-**Last updated:** 2026-04-15
+**Last updated:** 2026-04-17
 
 ---
 
@@ -31,10 +31,15 @@ If a change is desired, update this file **first**, then update code/tests.
 - Two message types:
   - **STATE**: authoritative snapshot (canonical truth).
   - **INTENT**: non-authoritative request anchored to a specific base state.
-- **Only the current player may publish STATE updates.**
+- The lobby is part of the canonical game timeline:
+  - invite/start/join all progress through canonical lobby `STATE` updates on the game session
+  - joining is not a detached draft flow or side intent in fresh publishes
+- During active gameplay, the **current player** publishes canonical `STATE` for normal turn actions.
 - Non-current players:
-  - Can view the game and their own hand.
-  - Can only send INTENTs relevant to the current player’s proposals (see trading).
+  - can view the game and their own hand
+  - may only send responder-side messages for flows that cannot safely publish canonical gameplay state directly
+  - fresh responder-side trade/discard messages stay internal transport, not player-facing protocol
+- Legacy join/trade responder `INTENT` decode remains supported only for backward transcript compatibility and bridge recovery.
 
 ---
 
@@ -43,9 +48,10 @@ If a change is desired, update this file **first**, then update code/tests.
 - Only the **current player** can:
   - Propose trades.
   - Replace or withdraw the current live player-trade offer.
-  - Incorporate responder trade intents into canonical STATE updates.
+- Targeted responder actions may be **Accept**, **Decline**, or **Counter**.
+- Trade-response messages are still internal responder transport, but normal product UX must not expose a manual "apply selected response" step.
+- When the current-player device incorporates a surfaced trade response into canonical `STATE`, the response must validate as the **responding player's action**, not as a synthetic current-player action. The current-player device is the publisher, but the response actor stays the responder for rules/audit semantics.
 - Player-trade offers may target any non-empty subset of opponents.
-- Other players may send **Accept**, **Decline**, or **Counter** intents to a targeted current-player offer.
 - Non-targeted players may still inspect the live offer read-only in the group thread and shell.
 - The first applied **Accept** from a targeted player resolves the trade atomically and closes the offer.
 - If every targeted player **Declines**, the offer closes without a trade.
@@ -84,15 +90,16 @@ Recommended canonical state cadence per turn:
 
 ## 8) Message sessions (GamePigeon-style UX)
 
-- **One `MSSession` per game** for canonical STATE messages (updates collapse / thread clean).
-- **Separate `MSSession` per trade offer** so offers appear as distinct bubbles/cards.
+- **One `MSSession` per game** for canonical `STATE` messages across lobby, setup, turn play, and game over (updates collapse / thread clean).
+- Fresh lobby joins publish updated lobby `STATE` on that same canonical game session.
+- Responder-side non-canonical messages such as trade/discard transport must **not** ride the canonical game `MSSession`, because they can displace the live state bubble without replacing it with authoritative state.
 
 Current transition rule:
 - Preferred transport source is always message URL query `payload`.
-- For phase-12 product reliability, `summaryText` may also carry a one-line mirrored payload fallback when the Messages host does not surface `message.url` back through transcript selection.
+- Legacy transcript recovery may still decode mirrored payloads from older `summaryText` values, but fresh publishes are URL-only again after the `https` scheme fix.
 - Sender-side cached last-published state may smooth same-device reopen UX when transcript selection drops to `nil`, but it is never cross-device authority and must not replace transcript transport.
 - UI must label payload source (`URL` vs `summary fallback`) during decode so fallback use is visible.
-- Phase 13 owns replacing the temporary mirrored full-payload fallback with a cleaner compact-token plus durable rehydration design.
+- Phase 13 owns proving that URL-only publication is stable enough on hardware to retire the remaining legacy summary decode bridge entirely.
 
 ---
 
