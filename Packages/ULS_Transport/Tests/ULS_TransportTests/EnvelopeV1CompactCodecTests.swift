@@ -24,4 +24,38 @@ final class EnvelopeV1CompactCodecTests: XCTestCase {
 
         XCTAssertLessThan(compactEncoded.count, legacyEncoded.count)
     }
+
+    func testLargePayloadUsesCompressedCompactEncoding() throws {
+        let payload = String(
+            repeating: #"{"gameId":"game-1","rev":91,"phase":"turn","currentPlayer":"player-a","audit":["roll","trade","build","endTurn"]}"#,
+            count: 24
+        )
+        let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
+
+        let encoded = try encode(envelope)
+        let decoded = try decode(encoded)
+
+        let baselineCompact = try uncompressedCompactEncoding(of: envelope)
+
+        XCTAssertEqual(decoded, envelope)
+        XCTAssertLessThan(encoded.count, baselineCompact.count)
+    }
+
+    private func uncompressedCompactEncoding(of envelope: EnvelopeV1) throws -> String {
+        let payload: String
+        switch envelope.body {
+        case let .state(value), let .intent(value):
+            payload = value
+        }
+
+        guard let payloadData = payload.data(using: .utf8) else {
+            throw TransportError.invalidJSON
+        }
+
+        var data = Data()
+        data.append(UInt8(envelope.v))
+        data.append(envelope.kind == .state ? 0x53 : 0x49)
+        data.append(payloadData)
+        return base64URLEncode(data)
+    }
 }

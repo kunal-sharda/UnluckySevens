@@ -81,13 +81,13 @@ What we learned:
 Current repo answer:
 
 - Canonical payload still prefers `message.url`.
-- Phase 12 temporarily mirrors a one-line fallback into `summaryText` so gameplay can continue when transcript readback drops the URL.
+- Fresh sends now publish plain human `summaryText` labels; they no longer mirror payload bytes into the visible summary field.
 - The temporary transport badge and debug surfaces expose which source actually decoded.
-- Compact envelope framing now removes the extra outer JSON-envelope overhead for fresh sends, but the repo still keeps backward decode compatibility while the summary fallback remains in place.
+- Compact envelope framing plus `compactStateV2` now keep the worst-case canonical STATE stress path under the URL budget in tests, and the repo keeps backward decode compatibility for already-sent mirrored summaries.
 
 Still temporary:
 
-- The mirrored `summaryText` fallback is phase-12/13 bridge behavior only. Phase 13 should replace it with a cleaner compact-token plus rehydration design.
+- Incoming `summary fallback` decode is still a bridge path for legacy transcript bubbles. Phase 13 still owns deleting that compatibility path after repeated device validation shows URL-only publication is stable enough.
 
 ### 2. Messages host resize must be treated as a hostile gesture boundary
 
@@ -583,7 +583,7 @@ Use this only on the disposable debug branch when a selected transcript bubble d
 - shared `ULS_CoreGame` view/query helpers for legal default actions and viewer-scoped secrecy-safe projections
 - focused core tests covering the new query/projection surface against reducer legality and secrecy expectations
 - transport diagnostics in the debug HUD so selected-message failures show URL, payload, summary, session, and decode-source facts instead of only the empty-state shell
-- temporary production one-line summary mirroring plus sender-side cached-state recovery so device triage and phase-12 gameplay can continue when the Messages host drops `message.url` or transiently clears selection on reopen
+- sender-side compact canonical STATE transport plus sender-side cached-state recovery, with legacy mirrored-summary decode retained only for backward compatibility during the phase-13 rollout
 
 ## Remaining High-Value Gaps
 

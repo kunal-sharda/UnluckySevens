@@ -10,8 +10,8 @@ final class CanonicalStatePayloadBudgetTests: XCTestCase {
 
         let bytes = try encodedByteCount(of: envelope)
 
-        XCTAssertGreaterThan(bytes, 12 * 1024)
-        XCTAssertLessThanOrEqual(bytes, 64 * 1024)
+        XCTAssertGreaterThan(bytes, 2 * 1024)
+        XCTAssertLessThanOrEqual(bytes, 4 * 1024)
     }
 
     func testStressStateEnvelopeRoundTripsCoreGamePayload() throws {

@@ -251,15 +251,7 @@ enum TranscriptTransportSupport {
             return nil
         }
 
-        let payloadStart = prefixRange.upperBound
-        let payloadCandidate = normalizedMirroredPayloadCandidate(
-            from: summaryText[payloadStart...]
-        )
-        guard !payloadCandidate.isEmpty else {
-            return nil
-        }
-
-        return recoverDecodableEnvelopePrefix(from: payloadCandidate)
+        return mirroredPayloadCandidate(from: summaryText[prefixRange.upperBound...])
     }
 
     private static func buildSummaryText(
@@ -282,15 +274,21 @@ enum TranscriptTransportSupport {
         return "\(summaryPayloadPrefix)\(encodedEnvelope) \(summaryLabel)"
     }
 
-    private static func normalizedMirroredPayloadCandidate(
+    private static func mirroredPayloadCandidate(
         from suffix: Substring
-    ) -> String {
+    ) -> String? {
         let allowedCharacters = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
         var scalars: [UnicodeScalar] = []
         var encounteredPayloadCharacter = false
 
         for scalar in suffix.unicodeScalars {
             if CharacterSet.whitespacesAndNewlines.contains(scalar) {
+                if encounteredPayloadCharacter {
+                    let candidate = String(String.UnicodeScalarView(scalars))
+                    if isExactDecodableEnvelope(candidate) {
+                        return candidate
+                    }
+                }
                 continue
             }
 
@@ -305,7 +303,12 @@ enum TranscriptTransportSupport {
             }
         }
 
-        return String(String.UnicodeScalarView(scalars))
+        let candidate = String(String.UnicodeScalarView(scalars))
+        guard !candidate.isEmpty else {
+            return nil
+        }
+
+        return recoverDecodableEnvelopePrefix(from: candidate)
     }
 
     private static func recoverDecodableEnvelopePrefix(
@@ -315,7 +318,7 @@ enum TranscriptTransportSupport {
             return nil
         }
 
-        if isDecodableEnvelope(candidate) {
+        if isExactDecodableEnvelope(candidate) {
             return candidate
         }
 
@@ -323,7 +326,7 @@ enum TranscriptTransportSupport {
         while endIndex > candidate.startIndex {
             endIndex = candidate.index(before: endIndex)
             let prefix = String(candidate[..<endIndex])
-            if isDecodableEnvelope(prefix) {
+            if isExactDecodableEnvelope(prefix) {
                 return prefix
             }
         }
@@ -331,7 +334,15 @@ enum TranscriptTransportSupport {
         return nil
     }
 
-    private static func isDecodableEnvelope(_ candidate: String) -> Bool {
-        (try? decode(candidate)) != nil
+    private static func isExactDecodableEnvelope(_ candidate: String) -> Bool {
+        guard let envelope = try? decode(candidate) else {
+            return false
+        }
+
+        guard let reencoded = try? encode(envelope) else {
+            return false
+        }
+
+        return reencoded == candidate
     }
 }

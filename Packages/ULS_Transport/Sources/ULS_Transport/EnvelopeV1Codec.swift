@@ -42,22 +42,37 @@ public func encodedByteCount(of envelope: EnvelopeV1) throws -> Int {
 private enum CompactEnvelopeKindCode: UInt8 {
     case state = 0x53 // S
     case intent = 0x49 // I
+    case stateCompressed = 0x73 // s
+    case intentCompressed = 0x69 // i
 
-    init(kind: EnvelopeV1.Kind) {
-        switch kind {
-        case .state:
+    init(kind: EnvelopeV1.Kind, compressed: Bool) {
+        switch (kind, compressed) {
+        case (.state, false):
             self = .state
-        case .intent:
+        case (.intent, false):
             self = .intent
+        case (.state, true):
+            self = .stateCompressed
+        case (.intent, true):
+            self = .intentCompressed
         }
     }
 
     var kind: EnvelopeV1.Kind {
         switch self {
-        case .state:
+        case .state, .stateCompressed:
             return .state
-        case .intent:
+        case .intent, .intentCompressed:
             return .intent
+        }
+    }
+
+    var compressed: Bool {
+        switch self {
+        case .stateCompressed, .intentCompressed:
+            return true
+        case .state, .intent:
+            return false
         }
     }
 }
@@ -75,10 +90,14 @@ private func compactEnvelopeData(from envelope: EnvelopeV1) throws -> Data {
         throw TransportError.invalidJSON
     }
 
+    let compressedPayloadData = bestCompressedPayload(from: payloadData)
+    let useCompressedPayload = compressedPayloadData.count < payloadData.count
+    let framedPayload = useCompressedPayload ? compressedPayloadData : payloadData
+
     var data = Data()
     data.append(UInt8(envelope.v))
-    data.append(CompactEnvelopeKindCode(kind: envelope.kind).rawValue)
-    data.append(payloadData)
+    data.append(CompactEnvelopeKindCode(kind: envelope.kind, compressed: useCompressedPayload).rawValue)
+    data.append(framedPayload)
     return data
 }
 
@@ -100,7 +119,14 @@ private func decodeEnvelope(from data: Data) throws -> EnvelopeV1 {
         throw TransportError.invalidJSON
     }
 
-    let payloadData = data.dropFirst(2)
+    let framedPayloadData = data.dropFirst(2)
+    let payloadData: Data
+    if kindCode.compressed {
+        payloadData = try decompressPayload(Data(framedPayloadData))
+    } else {
+        payloadData = Data(framedPayloadData)
+    }
+
     guard let payload = String(data: payloadData, encoding: .utf8) else {
         throw TransportError.invalidJSON
     }
@@ -115,4 +141,42 @@ private func decodeEnvelope(from data: Data) throws -> EnvelopeV1 {
     }
 
     return EnvelopeV1(v: version, kind: kind, body: body)
+}
+
+private func bestCompressedPayload(from data: Data) -> Data {
+    guard data.count >= 256 else {
+        return data
+    }
+
+    guard #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *) else {
+        return data
+    }
+
+    let algorithms: [NSData.CompressionAlgorithm] = [.lzma, .lzfse, .zlib]
+
+    return algorithms.reduce(data) { best, algorithm in
+        guard
+            let compressed = try? (data as NSData).compressed(using: algorithm) as Data,
+            compressed.count < best.count
+        else {
+            return best
+        }
+        return compressed
+    }
+}
+
+private func decompressPayload(_ data: Data) throws -> Data {
+    guard #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *) else {
+        throw TransportError.invalidJSON
+    }
+
+    let algorithms: [NSData.CompressionAlgorithm] = [.lzma, .lzfse, .zlib]
+
+    for algorithm in algorithms {
+        if let decompressed = try? (data as NSData).decompressed(using: algorithm) as Data {
+            return decompressed
+        }
+    }
+
+    throw TransportError.invalidJSON
 }

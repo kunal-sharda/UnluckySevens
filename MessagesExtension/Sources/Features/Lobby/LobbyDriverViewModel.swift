@@ -244,10 +244,14 @@ final class LobbyDriverViewModel: ObservableObject {
         set { mutateGameplayShellProjection { $0.turnIntent = newValue } }
     }
 
-    private var allowSummaryPayloadFallback: Bool {
-        // Temporary production fallback so phase 12 gameplay can stay playable
-        // on real devices while phase 13 redesigns transport rehydration.
+    private var allowIncomingSummaryPayloadFallback: Bool {
+        // Legacy decode support stays enabled until repeated device validation
+        // proves the old mirrored payload carrier can be retired safely.
         true
+    }
+
+    private var includeOutgoingSummaryPayloadMirror: Bool {
+        false
     }
 
     var canInvite: Bool {
@@ -2689,7 +2693,7 @@ final class LobbyDriverViewModel: ObservableObject {
         let snapshot = TranscriptTransportSupport.selectionSnapshot(
             for: message,
             summaryPayloadPrefix: summaryPayloadPrefix,
-            allowSummaryFallback: allowSummaryPayloadFallback
+            allowSummaryFallback: allowIncomingSummaryPayloadFallback
         )
         selectedTrigger = trigger.label
         selectedMessagePresence = snapshot.messagePresence
@@ -3324,7 +3328,7 @@ final class LobbyDriverViewModel: ObservableObject {
             from: message.url,
             summaryText: message.summaryText,
             summaryPayloadPrefix: summaryPayloadPrefix,
-            allowSummaryFallback: allowSummaryPayloadFallback
+            allowSummaryFallback: allowIncomingSummaryPayloadFallback
         )
     }
 
@@ -3351,7 +3355,7 @@ final class LobbyDriverViewModel: ObservableObject {
             session: session(for: resolvedPolicy),
             sessionPolicy: resolvedPolicy,
             summaryPayloadPrefix: summaryPayloadPrefix,
-            includeSummaryPayloadMirror: allowSummaryPayloadFallback
+            includeSummaryPayloadMirror: includeOutgoingSummaryPayloadMirror
         )
         let cachedPublishedStateRecord = cachedPublishedStateRecord(from: envelope)
 
@@ -3612,6 +3616,14 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func decodePayload<T: Decodable>(_ type: T.Type, from payload: String) throws -> T {
+        if type == CoreGameStateV1.self {
+            let state = try CompactStateTransport.decode(payload)
+            guard let typedState = state as? T else {
+                throw TransportError.invalidJSON
+            }
+            return typedState
+        }
+
         let data = Data(payload.utf8)
         do {
             return try JSONDecoder().decode(type, from: data)
@@ -3621,6 +3633,10 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func jsonString<T: Encodable>(from value: T) throws -> String {
+        if let state = value as? CoreGameStateV1 {
+            return try CompactStateTransport.encode(state)
+        }
+
         let data = try JSONEncoder().encode(value)
         guard let jsonString = String(data: data, encoding: .utf8) else {
             throw SendError.invalidJSONPayload
