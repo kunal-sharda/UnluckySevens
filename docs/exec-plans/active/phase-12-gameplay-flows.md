@@ -34,7 +34,7 @@ What exists today:
 
 - phase 10 established a board-first shell, compact opponent summaries, a hand tray, an action dock, and easy-but-secondary debug surfaces
 - phase 11 replaced placeholder board art with a real SpriteKit board, pan/zoom, typed board hit targets, mode-driven highlights, and snapshot rendering
-- stages 12.1 through 12.6 are now landed: lobby join/start is productized, setup placement is playable from the board, the common turn loop can roll, build, buy, and end turn from the product UI, robber/discard flow is wired through the product shell, trade UX is live in the compact modal/shell surfaces, and dev-card actions are available through the compact product panel
+- stages 12.1 through 12.6 are now landed: lobby join/start is productized, setup placement is playable from the board, the common turn loop can roll, build, buy, and end turn from the product UI, robber/discard flow is wired through the product shell with explicit discard selection, trade UX is live in the compact modal/shell surfaces with explicit player and maritime composition flows, and dev-card actions are available through the compact product panel
 - stage 12.8 now includes `Buy Dev` under `Build`, staged Knight/Monopoly/Year Of Plenty/Road Building choice flows, winning-only Victory Point reveal visibility, a board-first shell that collapses hand, bank, player summaries, build actions, and dev-card inventory into a shared lower shelf, plus interaction hardening for setup/build confirmation and Messages-host resize. The shell now fits the current visible host bounds again, the board keeps one committed world reference size, setup/build placements use selection-first confirm semantics, the board pan/pinch/tap path runs through a narrow `SKView` host instead of a SwiftUI gesture shield, interactive host drag now keeps the board mounted and live at gameplay height while only a debounced settled redraw applies the heavier board layout work, the Messages root now reserves a narrow top-only host-resize strip while the main game content lives inside a drag-capturing container, wide-but-short iPad hosts fall back to compact vertical shelf metrics instead of oversized pad minima, the shell route model now treats utility shelves, `Build`, `Play Dev`, and `Trade` as peer routes instead of overlapping modes, fresh lobby join now advances canonical lobby state on the game session, and targeted trade-response intents now auto-apply into canonical state on the current-player device when the anchored state can be recovered
 - phase 12 now relies on URL-only fresh publishes after the `https` scheme fix; legacy summary-fallback decode remains enabled only so older transcript bubbles sent before that fix can still be recovered while phase 13 finishes hardware revalidation
 - the temporary in-app diagnostics slice also includes a `Reload Board` operator control while host-resize recovery is being hardened; this remains phase-12/13-only instrumentation and should be removed or gated down during release-readiness cleanup
@@ -82,7 +82,7 @@ User-visible result:
 - setup feels guided and blocking rather than debug-like
 - the common turn loop is compact and legible inside the current shell
 - robber flow is obvious and cannot be bypassed accidentally
-- trade feels coherent and complete enough for a full asynchronous standard match rather than stopping at default-path shortcuts
+- trade feels coherent and complete enough for a full asynchronous standard match without default-path shortcuts replacing explicit player choice
 - dev-card actions feel like real player choices inside the product UI rather than only a thin wrapper over engine defaults, with inventory rendered as cards instead of a text-heavy action list
 - the real UI can carry a live two-device game segment without depending on the debug HUD
 - the game ends with an immediately understandable winner state instead of requiring later recap/history work to explain that the match is over
@@ -138,7 +138,7 @@ Expected observations:
 - join no longer feels like "tap action, then manually press Send"
 - the host can see who has joined from the product UI
 - the host can start from the invite state without local debug bookkeeping being the normal path
-- canonical protocol shape stays the same: one invite `STATE`, join `INTENT`s, one start `STATE`
+- canonical protocol shape for the shipped path is now one invite `STATE`, joined lobby `STATE`s on the same game session, and one host-published start `STATE`
 
 ### Stage 12.2 — Setup Placement UX
 
@@ -453,9 +453,10 @@ Deferred by design in phase 12:
 - Setup highlights are back only because setup placement is now actionable. They are no longer passive debug clutter; they reflect the legal node or edge targets for the current setup step.
 - Stage 12.3 keeps the common turn loop shallow by treating roll, buy-dev-card, and end-turn as direct canonical state publications while build actions stay board-driven. That avoids introducing a second turn view model while still moving the real UI ahead of the debug path.
 - Dev-card dock presentation now distinguishes a pure buy action from later play-dev-card work. When purchase is legal but play is not, the dock presents `Buy Dev` instead of suggesting the full dev-card surface already exists.
-- Stage 12.4 keeps the robber/discard flow within the locked authority model instead of relaxing it: the current player still publishes canonical turn state, while non-current players use a product discard panel that auto-sends a discard `INTENT` the current player can apply from the selected transcript bubble.
+- Stage 12.4 keeps the robber/discard flow within the locked authority model instead of relaxing it: the current player still publishes canonical turn state, while every discarding player now uses an explicit product discard panel to choose the exact cards before the response is sent or published.
 - Stage 12.4 also tightens shell guidance so forced steps show `Discard required`, `Move the robber`, or `Steal a card` in the header rather than falling back to generic turn ownership copy.
-- Stage 12.5 moves trade into a compact modal and shell-visible status path: current players see suggested player-trade and maritime-trade actions, non-current players can send accept intents, and the current player can apply a selected accept bubble and execute with accepted players without losing the pending-trade context in the shell.
+- Stage 12.5 moves trade into a compact modal and shell-visible status path: current players compose both player trade and maritime trade explicitly from the product panel, non-current players can send accept intents, and the live offer remains legible in the shell instead of depending on shortcut rows or quick-trade pickers.
+- 2026-04-17: the remaining shortcut-style product flows were removed from the shipped shell. Discard no longer relies on generated default payloads, and maritime trade no longer uses a quick-trade list; both now require explicit player-selected resources.
 - Stage 12.1 through 12.5 validation ran through the MessagesExtension-focused lane: `bash ./scripts/gen.sh`, `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`, and `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test -only-testing:MessagesExtensionTests`, with `49` MessagesExtension tests green after the robber/discard slice landed and trade UX stayed within the product shell.
 - Stage 12.6 keeps dev-card UX compact instead of introducing a new full-screen flow: the shell opens a focused dev-card panel, buy/play actions stay default-driven through pure `GameDevCardPanelModelBuilder` and `DevCardInteractionResolver` seams, and the current player publishes the resulting canonical state transitions directly from the product UI.
 - Knight default selection cannot reuse the robber-move legality query because knight play happens from normal turn state rather than `needsRobberMove`; the resolver now prefers a non-current robber tile with a default steal target, then falls back to the first legal non-current robber tile.
@@ -498,7 +499,7 @@ Deferred by design in phase 12:
 - `MessagesExtensionTests` still emits an Xcode dependency-scan warning because Tuist does not support a direct unit-test dependency on an iMessage extension target in this project shape. The current workaround remains compiling selected extension source files into the test target; capture any future cleanup under the tech-debt tracker rather than forcing a larger restructure into this phase.
 - Real-device validation is expected to drive at least some late-stage UX adjustments; do not treat Simulator-only behavior as sufficient signoff for Messages-hosted gameplay.
 - If setup, trade, or dev-card orchestration starts overwhelming `GameShellView` or `LobbyDriverViewModel`, split it into feature-local helpers rather than growing more shared conditionals.
-- Lobby join/start should preserve the current authority model unless there is an explicit product request to change it: one invite `STATE`, join `INTENT`s, one host-published start `STATE`.
+- Lobby join/start now preserve the current authority model by keeping lobby progress on canonical `STATE`: one invite `STATE`, joined lobby `STATE`s on the same game session, and one host-published start `STATE`.
 
 ## Outcome
 

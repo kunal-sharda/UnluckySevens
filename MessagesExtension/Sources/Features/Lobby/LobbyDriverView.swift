@@ -7,8 +7,8 @@ struct LobbyDriverView: View {
     // Manual QA Checklist:
     // 1) Tap a STATE bubble, open extension, and verify Active Context banner shows rev/phase/current.
     // 2) Switch Acting As to non-current player and verify current-player actions disable with reasons.
-    // 3) Send a setup/turn INTENT as non-current and verify it appears in transcript with short label.
-    // 4) Switch Acting As to current player, tap Apply Selected ... INTENT -> STATE, and verify rev increments.
+    // 3) Send a legacy setup/turn INTENT from debug tools and verify it appears in transcript with a legacy label.
+    // 4) Switch Acting As to current player, tap Apply Selected ... Legacy INTENT -> STATE, and verify rev increments.
     // 5) Send a new STATE and verify Active Context updates immediately without reselecting.
     // 6) Toggle single-session debug on/off and verify transcript threading behavior changes.
     // 7) Clear Context and verify action buttons disable with "No Active Context" reason.
@@ -205,7 +205,7 @@ struct LobbyDriverView: View {
                         requiresCurrentPlayer: false,
                         isEnabled: viewModel.canJoin
                     ) {
-                        viewModel.sendJoinIntent()
+                        viewModel.publishLobbyJoinState()
                     }
 
                     actionButton(
@@ -225,7 +225,7 @@ struct LobbyDriverView: View {
                     }
 
                     actionButton(
-                        "Apply Selected Setup INTENT -> STATE",
+                        "Apply Selected Legacy Setup INTENT -> STATE",
                         requiresCurrentPlayer: true,
                         isEnabled: viewModel.canApplySelectedSetupIntentAsState
                     ) {
@@ -233,7 +233,7 @@ struct LobbyDriverView: View {
                     }
 
                     actionButton(
-                        "Apply Selected Turn INTENT -> STATE",
+                        "Apply Selected Legacy Turn INTENT -> STATE",
                         requiresCurrentPlayer: true,
                         isEnabled: viewModel.canApplySelectedTurnIntentAsState
                     ) {
@@ -273,14 +273,6 @@ struct LobbyDriverView: View {
                             isEnabled: viewModel.canSendRollDiceIntentDebug
                         ) {
                             viewModel.sendRollDiceIntentDebug()
-                        }
-
-                        actionButton(
-                            "Submit Discard",
-                            requiresCurrentPlayer: false,
-                            isEnabled: viewModel.canSendSubmitDiscardIntentDebug
-                        ) {
-                            viewModel.sendSubmitDiscardIntentDebug()
                         }
 
                         actionButton(
@@ -326,14 +318,6 @@ struct LobbyDriverView: View {
                         }
 
                         actionButton(
-                            "Propose Trade (Current Player)",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendProposeTradeIntentDebug
-                        ) {
-                            viewModel.sendProposeTradeIntentDebug()
-                        }
-
-                        actionButton(
                             "Accept Trade",
                             requiresCurrentPlayer: false,
                             isEnabled: viewModel.canSendAcceptTradeIntentDebug
@@ -347,14 +331,6 @@ struct LobbyDriverView: View {
                             isEnabled: viewModel.canSendExecuteTradeIntentDebug
                         ) {
                             viewModel.sendExecuteTradeIntentDebug()
-                        }
-
-                        actionButton(
-                            "Maritime Trade (Current Player)",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendMaritimeTradeIntentDebug
-                        ) {
-                            viewModel.sendMaritimeTradeIntentDebug()
                         }
 
                         actionButton(

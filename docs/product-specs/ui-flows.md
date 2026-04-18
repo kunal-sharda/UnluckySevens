@@ -96,9 +96,14 @@ This document summarizes the player-facing flows the UI must support in the curr
   - `You Give`, using the current player hand chips as the interactive source
   - `You Want`, using bank-style resource chips plus remaining public bank counts
   - `Recipients`, as the only scrollable section in the composer
+- Forced discard should use the same explicit hand-chip pattern: the acting player selects the exact cards to discard, sees progress toward the required count, and cannot submit until the required total is selected.
 - Closing or switching away from trade should discard the current draft immediately for now.
 - After send, the trade panel should close and the pending-offer banner should become the primary reopen affordance.
-- `Maritime / Bank Trade` should show a single mixed list of legal precomputed quick trades rather than a manual composer.
+- `Maritime / Bank Trade` should use an explicit composer rather than a quick-trade list.
+- `Maritime / Bank Trade` should present:
+  - `You Give`, using the current player's hand chips as the interactive source
+  - `You Want`, using bank-style resource chips plus remaining public bank counts
+- The maritime composer should only allow legal ratio-compliant submissions for the selected give resource and available port access.
 - Targeted recipients can respond with `Accept`, `Decline`, or `Counter`.
 - `Counter` should use the same composer flow, but it is addressed only back to the current player.
 - Targeted responder actions should feel final from the responder side. The current-player device may still receive them as internal trade-response transport on the same game session, but normal trade UX must not require a manual "apply selected response" step or a separate response bubble workflow.

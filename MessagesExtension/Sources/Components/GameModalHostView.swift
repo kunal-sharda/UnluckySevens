@@ -8,6 +8,9 @@ struct GameModalHostView: View {
     let discardPanel: GameDiscardPanelModel?
     let devCardPanel: GameDevCardPanelModel?
     let robberVictimOptions: [GameRobberVictimOption]
+    let discardSelectedHandCounts: [ResourceV1: Int]
+    let onSelectDiscardResource: ((ResourceV1) -> Void)?
+    let onRemoveDiscardResource: ((ResourceV1) -> Void)?
     let onDiscardAction: () -> Void
     let onApplySelectedTurnIntent: () -> Void
     let onDevCardAction: (GameDevCardActionKind) -> Void
@@ -106,13 +109,29 @@ struct GameModalHostView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             if let action = discardPanel.action {
-                discardChipRow(for: action)
+                switch action {
+                case let .publishDiscard(requiredCount, availableHand),
+                     let .sendDiscard(requiredCount, availableHand):
+                    discardComposerSection(
+                        requiredCount: requiredCount,
+                        availableHand: availableHand
+                    )
 
-                Button(action: discardButtonAction(for: action)) {
-                    Text(discardButtonTitle(for: action))
-                        .frame(maxWidth: .infinity)
+                    Button(action: onDiscardAction) {
+                        Text(discardButtonTitle(for: action))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(discardSelectedCount != requiredCount)
+                case .applySelectedDiscard:
+                    discardChipRow(for: action)
+
+                    Button(action: discardButtonAction(for: action)) {
+                        Text(discardButtonTitle(for: action))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
-                .buttonStyle(.borderedProminent)
             }
 
             if !discardPanel.waitingPlayers.isEmpty {
@@ -126,6 +145,91 @@ struct GameModalHostView: View {
                 .foregroundStyle(GameTheme.mutedInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    @ViewBuilder
+    private func discardComposerSection(
+        requiredCount: Int,
+        availableHand: [GameHandChip]
+    ) -> some View {
+        let density = ResourceChipDensity.compact
+        let remaining = max(requiredCount - discardSelectedCount, 0)
+
+        VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+            Text("Selected discard (\(discardSelectedCount)/\(requiredCount))")
+                .font(GameTheme.metaFont.weight(.semibold))
+                .foregroundStyle(GameTheme.ink)
+
+            if discardSelectedChips.isEmpty {
+                Text("Nothing selected yet.")
+                    .font(GameTheme.metaFont)
+                    .foregroundStyle(GameTheme.mutedInk)
+            } else {
+                ResourceChipGridView(items: discardSelectedChips, density: density) { chip in
+                    ResourceCountChipView(
+                        resource: chip.resource,
+                        label: chip.shortLabel,
+                        count: chip.count,
+                        isEnabled: true,
+                        isSelected: true,
+                        selectionBadge: nil,
+                        detailBadge: "-",
+                        density: density,
+                        action: {
+                            onRemoveDiscardResource?(chip.resource)
+                        },
+                        accessibilityLabel: "\(chip.shortLabel), remove one from discard selection"
+                    )
+                }
+            }
+
+            Text(remaining == 0 ? "Ready to submit." : "Select \(remaining) more card\(remaining == 1 ? "" : "s").")
+                .font(GameTheme.metaFont)
+                .foregroundStyle(GameTheme.mutedInk)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Your hand")
+                    .font(GameTheme.metaFont.weight(.semibold))
+                    .foregroundStyle(GameTheme.ink)
+
+                if availableHand.isEmpty {
+                    Text("No resources in hand.")
+                        .font(GameTheme.metaFont)
+                        .foregroundStyle(GameTheme.mutedInk)
+                } else {
+                    ResourceChipGridView(items: availableHand, density: density) { chip in
+                        discardAvailableChip(
+                            chip,
+                            requiredCount: requiredCount,
+                            density: density
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private func discardAvailableChip(
+        _ chip: GameHandChip,
+        requiredCount: Int,
+        density: ResourceChipDensity
+    ) -> some View {
+        let selected = discardSelectedHandCounts[chip.resource] ?? 0
+        let canAdd = selected < chip.count && discardSelectedCount < requiredCount
+        return ResourceCountChipView(
+            resource: chip.resource,
+            label: chip.shortLabel,
+            count: chip.count,
+            isEnabled: canAdd,
+            isSelected: selected > 0,
+            selectionBadge: selected > 0 ? String(selected) : nil,
+            detailBadge: canAdd ? "+" : nil,
+            density: density,
+            action: canAdd ? {
+                onSelectDiscardResource?(chip.resource)
+            } : nil,
+            accessibilityLabel: "\(chip.shortLabel), \(chip.count) in hand, \(selected) selected to discard"
+        )
     }
 
     @ViewBuilder
@@ -156,32 +260,15 @@ struct GameModalHostView: View {
     @ViewBuilder
     private func devCardContent(fallbackMessage: String) -> some View {
         if let devCardPanel {
-            Text(devCardPanel.message)
-                .font(GameTheme.metaFont)
-                .foregroundStyle(GameTheme.mutedInk)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if !devCardPanel.timingNotes.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(Array(devCardPanel.timingNotes.enumerated()), id: \.offset) { _, note in
-                        Text(note)
-                            .font(GameTheme.metaFont)
-                            .foregroundStyle(GameTheme.mutedInk)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
+            if !devCardPanel.cards.isEmpty {
+                devCardGrid(cards: devCardPanel.cards)
             }
 
-            if !devCardPanel.playableCounts.isEmpty {
-                devCardCountSection(title: "Playable", counts: devCardPanel.playableCounts)
-            }
-
-            if !devCardPanel.heldCounts.isEmpty {
-                devCardCountSection(title: "Held", counts: devCardPanel.heldCounts)
-            }
-
-            if !devCardPanel.newCounts.isEmpty {
-                devCardCountSection(title: "Held This Turn", counts: devCardPanel.newCounts)
+            if mode != .playDevCard || devCardPanel.cards.isEmpty {
+                Text(devCardPanel.message)
+                    .font(GameTheme.metaFont)
+                    .foregroundStyle(GameTheme.mutedInk)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             if let draftSummary = devCardPanel.draftSummary {
@@ -191,34 +278,11 @@ struct GameModalHostView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if !devCardPanel.playActions.isEmpty {
-                VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-                    Text("Play Or Reveal")
-                        .font(GameTheme.metaFont.weight(.semibold))
-                        .foregroundStyle(GameTheme.ink)
-
-                    ForEach(devCardPanel.playActions) { action in
-                        VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-                            Label(action.title, systemImage: action.systemImage)
-                                .font(GameTheme.metaFont.weight(.semibold))
-                                .foregroundStyle(GameTheme.ink)
-
-                            Text(action.detail)
-                                .font(GameTheme.metaFont)
-                                .foregroundStyle(GameTheme.mutedInk)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            Button {
-                                onDevCardAction(action.kind)
-                            } label: {
-                                Label(action.title, systemImage: action.systemImage)
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.borderedProminent)
-                        }
-                        .padding(.top, 4)
-                    }
-                }
+            if mode == .playDevCard, !devCardPanel.timingNotes.isEmpty {
+                Text(devCardPanel.timingNotes[0])
+                    .font(GameTheme.metaFont)
+                    .foregroundStyle(GameTheme.mutedInk)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             if let confirmTitle = devCardPanel.confirmTitle {
@@ -243,6 +307,91 @@ struct GameModalHostView: View {
                 .foregroundStyle(GameTheme.mutedInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private func devCardGrid(cards: [GameDevCardTileModel]) -> some View {
+        LazyVGrid(
+            columns: [
+                GridItem(.flexible(minimum: 0), spacing: GameTheme.inlineSpacing),
+                GridItem(.flexible(minimum: 0), spacing: GameTheme.inlineSpacing),
+            ],
+            spacing: GameTheme.inlineSpacing
+        ) {
+            ForEach(cards) { card in
+                devCardTile(card)
+            }
+        }
+    }
+
+    private func devCardTile(_ card: GameDevCardTileModel) -> some View {
+        let tileBody = VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: card.kind.systemImage)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(card.isEnabled ? GameTheme.accent : GameTheme.mutedInk)
+
+                Spacer(minLength: 0)
+
+                Text("\(card.count)")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(cardCountTint(for: card))
+                    .clipShape(Capsule())
+            }
+
+            Text(card.kind.title)
+                .font(GameTheme.metaFont.weight(.semibold))
+                .foregroundStyle(GameTheme.ink)
+                .lineLimit(2)
+
+            Text(card.statusText)
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundStyle(card.isEnabled ? GameTheme.accent : GameTheme.mutedInk)
+                .lineLimit(2)
+
+            Text(card.detailText)
+                .font(GameTheme.metaFont)
+                .foregroundStyle(GameTheme.mutedInk)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, minHeight: 134, alignment: .topLeading)
+        .padding(GameTheme.compactPadding)
+        .background(devCardTileBackground(for: card))
+        .overlay(
+            RoundedRectangle(cornerRadius: GameTheme.mediumRadius)
+                .stroke(card.isSelected ? GameTheme.accent.opacity(0.48) : GameTheme.outline.opacity(0.14), lineWidth: card.isSelected ? 2 : 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: GameTheme.mediumRadius))
+        .opacity(card.isEnabled || card.isSelected ? 1 : 0.88)
+
+        return Group {
+            if let action = card.actionKind {
+                Button {
+                    onDevCardAction(action)
+                } label: {
+                    tileBody
+                }
+                .buttonStyle(.plain)
+            } else {
+                tileBody
+            }
+        }
+    }
+
+    private func devCardTileBackground(for card: GameDevCardTileModel) -> Color {
+        if card.isSelected {
+            return GameTheme.accent.opacity(0.14)
+        }
+        return GameTheme.surface.opacity(0.92)
+    }
+
+    private func cardCountTint(for card: GameDevCardTileModel) -> Color {
+        card.isEnabled ? GameTheme.accent : GameTheme.mutedInk.opacity(0.75)
     }
 
     @ViewBuilder
@@ -302,12 +451,12 @@ struct GameModalHostView: View {
 
     private func discardMessage(for panel: GameDiscardPanelModel) -> String {
         switch panel.action {
-        case let .publishSuggestedDiscard(requiredCount, _):
-            return "Discard \(requiredCount) cards to continue the forced robber flow. Because you're the current player, this publishes the next canonical state immediately."
-        case let .sendSuggestedDiscard(requiredCount, _):
-            return "Discard \(requiredCount) cards to continue the forced robber flow. This sends your discard intent so the current player can incorporate it."
+        case let .publishDiscard(requiredCount, _):
+            return "Discard exactly \(requiredCount) cards to continue the forced robber flow. Because you're the current player, this publishes the next canonical state immediately."
+        case let .sendDiscard(requiredCount, _):
+            return "Discard exactly \(requiredCount) cards to continue the forced robber flow. This sends your discard response so the current player can incorporate it."
         case let .applySelectedDiscard(playerDisplay, _):
-            return "Apply the selected discard intent from \(playerDisplay) to advance the forced robber flow."
+            return "Apply the selected discard response from \(playerDisplay) to advance the forced robber flow."
         case .none:
             if panel.waitingPlayers.isEmpty {
                 return "Discard resolution is blocking turn progress."
@@ -318,18 +467,18 @@ struct GameModalHostView: View {
 
     private func discardButtonTitle(for action: GameDiscardPanelModel.Action) -> String {
         switch action {
-        case .publishSuggestedDiscard:
+        case .publishDiscard:
             return "Publish Discard"
-        case .sendSuggestedDiscard:
-            return "Send Discard"
+        case .sendDiscard:
+            return "Send Discard Response"
         case .applySelectedDiscard:
-            return "Apply Selected Discard"
+            return "Apply Selected Response"
         }
     }
 
     private func discardButtonAction(for action: GameDiscardPanelModel.Action) -> () -> Void {
         switch action {
-        case .publishSuggestedDiscard, .sendSuggestedDiscard:
+        case .publishDiscard, .sendDiscard:
             return onDiscardAction
         case .applySelectedDiscard:
             return onApplySelectedTurnIntent
@@ -338,10 +487,25 @@ struct GameModalHostView: View {
 
     private func discardChips(for action: GameDiscardPanelModel.Action) -> [GameHandChip] {
         switch action {
-        case let .publishSuggestedDiscard(_, suggested),
-             let .sendSuggestedDiscard(_, suggested),
-             let .applySelectedDiscard(_, suggested):
-            return suggested
+        case let .publishDiscard(_, availableHand),
+             let .sendDiscard(_, availableHand):
+            return availableHand
+        case let .applySelectedDiscard(_, discarded):
+            return discarded
+        }
+    }
+
+    private var discardSelectedCount: Int {
+        discardSelectedHandCounts.values.reduce(0, +)
+    }
+
+    private var discardSelectedChips: [GameHandChip] {
+        ResourceV1.tradeableCases.compactMap { resource in
+            let count = discardSelectedHandCounts[resource] ?? 0
+            guard count > 0 else {
+                return nil
+            }
+            return GameHandChip(resource: resource, count: count)
         }
     }
 
@@ -396,5 +560,11 @@ struct GameModalHostView: View {
         default:
             return nil
         }
+    }
+}
+
+private extension ResourceV1 {
+    static var tradeableCases: [ResourceV1] {
+        [.wood, .brick, .sheep, .wheat, .ore]
     }
 }

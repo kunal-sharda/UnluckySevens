@@ -26,6 +26,7 @@ struct GameShellFreezeSnapshot {
     let selectedBuildKind: GameBuildShelfItem.Kind?
     let setupInstruction: String?
     let discardPanel: GameDiscardPanelModel?
+    let discardSelectedHandCounts: [ResourceV1: Int]
     let tradePanelModel: GameTradePanelModel?
     let devCardPanel: GameDevCardPanelModel?
     let robberVictimOptions: [GameRobberVictimOption]
@@ -172,6 +173,9 @@ private struct FrozenOverlayShelfCard: View {
                 onSelectHandResource: nil,
                 selectedRecipients: snapshot.tradeSelectedRecipients,
                 onSelectRecipient: nil,
+                discardSelectedHandCounts: snapshot.discardSelectedHandCounts,
+                onSelectDiscardResource: nil,
+                onRemoveDiscardResource: nil,
                 onSelectBuild: { _ in },
                 onSelectBankResource: { _ in },
                 onDiscardAction: {},
@@ -275,11 +279,11 @@ private struct FrozenTradeOverlayCard: View {
                 onRemoveGiveResource: { _ in },
                 onAddWantResource: { _ in },
                 onRemoveWantResource: { _ in },
-                onToggleRecipient: { _ in },
-                onAcceptOffer: {},
-                onDeclineOffer: {},
-                onSendMaritimeTrade: { _ in }
-            )
+                        onToggleRecipient: { _ in },
+                        onAcceptOffer: {},
+                        onDeclineOffer: {},
+                        onSendMaritimeTrade: {}
+                    )
         }
     }
 }

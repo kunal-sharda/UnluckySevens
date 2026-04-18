@@ -59,7 +59,8 @@ enum TurnInteractionResolver {
 
     static func draftDiscardIntent(
         state: CoreGameStateV1?,
-        actingAs: String?
+        actingAs: String?,
+        discarded: ResourceHandV1
     ) -> ULS_Transport.TurnIntentV1? {
         guard
             let state,
@@ -68,7 +69,18 @@ enum TurnInteractionResolver {
             let actingAs,
             let required = state.turnState?.discardRequirementsByPlayer[actingAs],
             required > 0,
-            let discarded = state.defaultDiscard(for: actingAs)
+            discarded.totalCount == required
+        else {
+            return nil
+        }
+
+        let availableHand = state.resourcesByPlayer[actingAs] ?? .zero
+        guard
+            discarded.wood <= availableHand.wood,
+            discarded.brick <= availableHand.brick,
+            discarded.sheep <= availableHand.sheep,
+            discarded.wheat <= availableHand.wheat,
+            discarded.ore <= availableHand.ore
         else {
             return nil
         }

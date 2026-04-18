@@ -110,7 +110,7 @@ final class GameShellProjectionBuilderTests: XCTestCase {
         )
         let joinProjection = GameShellProjectionBuilder.build(joinIntent: joinIntent)
 
-        XCTAssertEqual(joinProjection.kind, "INTENT(join)")
+        XCTAssertEqual(joinProjection.kind, "LEGACY_JOIN")
         XCTAssertEqual(joinProjection.gameScreenModel.header.statusLine.title, "Open game")
 
         let turnIntent = TurnIntentV1(
@@ -122,9 +122,21 @@ final class GameShellProjectionBuilderTests: XCTestCase {
         )
         let turnProjection = GameShellProjectionBuilder.build(turnIntent: turnIntent)
 
-        XCTAssertEqual(turnProjection.kind, "INTENT(rollDice)")
+        XCTAssertEqual(turnProjection.kind, "LEGACY_INTENT(rollDice)")
         XCTAssertEqual(turnProjection.turnIntent, "kind: rollDice")
         XCTAssertTrue(turnProjection.robberVictimOptions.isEmpty)
+
+        let discardResponse = TurnIntentV1(
+            submitDiscardFor: "guest",
+            discarded: TransportResourceHandV1(wood: 2),
+            gameId: "game-1",
+            anchorRev: 2,
+            anchorHash: "hash-2",
+            actor: "guest"
+        )
+        let discardProjection = GameShellProjectionBuilder.build(turnIntent: discardResponse)
+
+        XCTAssertEqual(discardProjection.kind, "RESPONSE(discard)")
     }
 
     private func makeTurnState(

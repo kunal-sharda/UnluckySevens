@@ -20,11 +20,11 @@ enum GameDiscardPanelModelBuilder {
         if let actingAs,
            let requiredCount = state.turnState?.discardRequirementsByPlayer[actingAs],
            requiredCount > 0,
-           let suggested = state.defaultDiscard(for: actingAs) {
+           let availableHand = state.resourcesByPlayer[actingAs] {
             let action: GameDiscardPanelModel.Action = if actingAs == state.currentPlayer {
-                .publishSuggestedDiscard(requiredCount: requiredCount, suggested: handChips(from: suggested))
+                .publishDiscard(requiredCount: requiredCount, availableHand: handChips(from: availableHand))
             } else {
-                .sendSuggestedDiscard(requiredCount: requiredCount, suggested: handChips(from: suggested))
+                .sendDiscard(requiredCount: requiredCount, availableHand: handChips(from: availableHand))
             }
 
             return GameDiscardPanelModel(waitingPlayers: waitingPlayers, action: action)
@@ -42,7 +42,7 @@ enum GameDiscardPanelModelBuilder {
                 waitingPlayers: waitingPlayers,
                 action: .applySelectedDiscard(
                     playerDisplay: playerName(discardPlayer, in: state),
-                    suggested: handChips(from: discarded)
+                    discarded: handChips(from: discarded)
                 )
             )
         }

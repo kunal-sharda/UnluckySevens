@@ -2065,7 +2065,7 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     @discardableResult
-    func handleDiscardFlowAction() -> Bool {
+    func handleDiscardFlowAction(discarded: ResourceHandV1) -> Bool {
         guard let state = selectedState else {
             setLastError("No Active Context — tap a STATE bubble.")
             return false
@@ -2078,7 +2078,8 @@ final class LobbyDriverViewModel: ObservableObject {
 
         guard let intent = TurnInteractionResolver.draftDiscardIntent(
             state: state,
-            actingAs: actor
+            actingAs: actor,
+            discarded: discarded
         ) else {
             setLastError("No valid discard action is currently available.")
             return false

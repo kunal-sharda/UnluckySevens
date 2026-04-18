@@ -1,8 +1,8 @@
 struct GameDiscardPanelModel: Equatable {
     enum Action: Equatable {
-        case publishSuggestedDiscard(requiredCount: Int, suggested: [GameHandChip])
-        case sendSuggestedDiscard(requiredCount: Int, suggested: [GameHandChip])
-        case applySelectedDiscard(playerDisplay: String, suggested: [GameHandChip])
+        case publishDiscard(requiredCount: Int, availableHand: [GameHandChip])
+        case sendDiscard(requiredCount: Int, availableHand: [GameHandChip])
+        case applySelectedDiscard(playerDisplay: String, discarded: [GameHandChip])
     }
 
     let waitingPlayers: [String]

@@ -3,7 +3,7 @@ import ULS_CoreGame
 enum GameTradeOverlayRoute: Equatable {
     case chooser
     case playerDraft(GameTradeDraft)
-    case maritime
+    case maritimeDraft(GameMaritimeTradeDraft)
     case liveOffer
 }
 
@@ -24,6 +24,11 @@ struct GameTradeDraft: Equatable {
         }
         return false
     }
+}
+
+struct GameMaritimeTradeDraft: Equatable {
+    var give: ResourceHandV1
+    var receive: ResourceHandV1
 }
 
 enum GameShellRoute: Equatable {

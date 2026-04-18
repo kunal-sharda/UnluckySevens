@@ -32,9 +32,9 @@ final class GameDiscardPanelModelBuilderTests: XCTestCase {
                 waitingPlayers: [
                     PlayerPseudonymResolver.displayName(for: "A", gameID: state.gameId, roster: state.roster)
                 ],
-                action: .publishSuggestedDiscard(
+                action: .publishDiscard(
                     requiredCount: 2,
-                    suggested: [
+                    availableHand: [
                         GameHandChip(resource: .wood, count: 1),
                         GameHandChip(resource: .brick, count: 1),
                     ]
@@ -69,9 +69,9 @@ final class GameDiscardPanelModelBuilderTests: XCTestCase {
                 waitingPlayers: [
                     PlayerPseudonymResolver.displayName(for: "B", gameID: state.gameId, roster: state.roster)
                 ],
-                action: .sendSuggestedDiscard(
+                action: .sendDiscard(
                     requiredCount: 2,
-                    suggested: [
+                    availableHand: [
                         GameHandChip(resource: .wood, count: 1),
                         GameHandChip(resource: .brick, count: 1),
                     ]
@@ -113,7 +113,7 @@ final class GameDiscardPanelModelBuilderTests: XCTestCase {
                 ],
                 action: .applySelectedDiscard(
                     playerDisplay: PlayerPseudonymResolver.displayName(for: "B", gameID: state.gameId, roster: state.roster),
-                    suggested: [GameHandChip(resource: .wood, count: 2)]
+                    discarded: [GameHandChip(resource: .wood, count: 2)]
                 )
             )
         )

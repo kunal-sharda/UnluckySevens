@@ -11,6 +11,7 @@ struct GameShellView: View {
     @State private var selectedBoardTarget: GameBoardTarget?
     @State private var boardCommitDraft: GameBoardCommitDraft?
     @State private var boardHintText: String?
+    @State private var discardDraft: ResourceHandV1 = .zero
     @State private var devCardDraft: GameDevCardDraft?
     @State private var shellRoute: GameShellRoute = .none
     @State private var lastUtilityShelf: GameLowerShelf = .hand
@@ -62,7 +63,8 @@ struct GameShellView: View {
             currentMode: resolvedMode
         )
         let selectedDockKind = shellRoute.selectedDockKind ?? shelfPresentation.selectedDockKind
-        let selectedHandCounts = tradeSelectedHandCounts(route: activeTradeRoute)
+        let selectedTradeHandCounts = tradeSelectedHandCounts(route: activeTradeRoute)
+        let selectedDiscardHandCounts = discardSelectedHandCounts()
         let selectedRecipients = tradeSelectedRecipients(route: activeTradeRoute)
 
         ZStack {
@@ -160,11 +162,12 @@ struct GameShellView: View {
                                                 selectedBuildKind: resolvedMode.buildShelfKind,
                                                 setupInstruction: projection.setupGuidanceText,
                                                 discardPanel: projection.discardPanelModel,
+                                                discardSelectedHandCounts: selectedDiscardHandCounts,
                                                 tradePanelModel: projection.tradePanelModel,
                                                 devCardPanel: devCardPanelModel,
                                                 robberVictimOptions: projection.robberVictimOptions,
                                                 tradeOverlayRoute: activeTradeRoute,
-                                                tradeSelectedHandCounts: selectedHandCounts,
+                                                tradeSelectedHandCounts: selectedTradeHandCounts,
                                                 tradeSelectedRecipients: selectedRecipients,
                                                 pendingTradeBannerText: projection.tradePanelModel?.pendingBannerText
                                             )
@@ -233,10 +236,17 @@ struct GameShellView: View {
                                     discardPanel: projection.discardPanelModel,
                                     devCardPanel: devCardPanelModel,
                                     robberVictimOptions: projection.robberVictimOptions,
-                                    selectedHandCounts: selectedHandCounts,
+                                    selectedHandCounts: selectedTradeHandCounts,
                                     onSelectHandResource: nil,
                                     selectedRecipients: selectedRecipients,
                                     onSelectRecipient: nil,
+                                    discardSelectedHandCounts: selectedDiscardHandCounts,
+                                    onSelectDiscardResource: { resource in
+                                        addDiscardResource(resource)
+                                    },
+                                    onRemoveDiscardResource: { resource in
+                                        removeDiscardResource(resource)
+                                    },
                                     onSelectBuild: { buildKind in
                                         handleBuildShelfSelection(buildKind)
                                     },
@@ -244,7 +254,8 @@ struct GameShellView: View {
                                         handleBankResourceSelection(resource, mode: resolvedMode)
                                     },
                                     onDiscardAction: {
-                                        guard viewModel.handleDiscardFlowAction() else { return }
+                                        guard viewModel.handleDiscardFlowAction(discarded: discardDraft) else { return }
+                                        discardDraft = .zero
                                         selectedBoardTarget = nil
                                     },
                                     onApplySelectedTurnIntent: {
@@ -332,33 +343,58 @@ struct GameShellView: View {
                                     stepBackTradeDraft()
                                 },
                                 onAddGiveResource: { resource in
-                                    addGiveResource(resource)
+                                    switch tradeOverlayRoute {
+                                    case .playerDraft:
+                                        addGiveResource(resource)
+                                    case .maritimeDraft:
+                                        addMaritimeGiveResource(resource)
+                                    case .chooser, .liveOffer:
+                                        break
+                                    }
                                 },
                                 onRemoveGiveResource: { resource in
-                                    removeGiveResource(resource)
+                                    switch tradeOverlayRoute {
+                                    case .playerDraft:
+                                        removeGiveResource(resource)
+                                    case .maritimeDraft:
+                                        removeMaritimeGiveResource(resource)
+                                    case .chooser, .liveOffer:
+                                        break
+                                    }
                                 },
                                 onAddWantResource: { resource in
-                                    addWantResource(resource)
+                                    switch tradeOverlayRoute {
+                                    case .playerDraft:
+                                        addWantResource(resource)
+                                    case .maritimeDraft:
+                                        addMaritimeWantResource(resource)
+                                    case .chooser, .liveOffer:
+                                        break
+                                    }
                                 },
                                 onRemoveWantResource: { resource in
-                                    removeWantResource(resource)
+                                    switch tradeOverlayRoute {
+                                    case .playerDraft:
+                                        removeWantResource(resource)
+                                    case .maritimeDraft:
+                                        removeMaritimeWantResource(resource)
+                                    case .chooser, .liveOffer:
+                                        break
+                                    }
                                 },
                                 onToggleRecipient: { playerID in
                                     toggleTradeRecipient(playerID)
                                 },
                                 onAcceptOffer: {
-                                    guard viewModel.sendAcceptTradeIntent() else { return }
+                                    guard viewModel.sendAcceptTradeResponse() else { return }
                                     closeTradePanel(resetDraft: true)
                                 },
                                 onDeclineOffer: {
-                                    guard viewModel.sendDeclineTradeIntent() else { return }
+                                    guard viewModel.sendDeclineTradeResponse() else { return }
                                     closeTradePanel(resetDraft: true)
                                 },
-                                onSendMaritimeTrade: { option in
-                                    let give = resourceHand(from: option.give)
-                                    let receive = resourceHand(from: option.receive)
-                                    guard viewModel.publishMaritimeTrade(give: give, receive: receive) else { return }
-                                    closeTradePanel(resetDraft: true)
+                                onSendMaritimeTrade: {
+                                    submitMaritimeDraft()
                                 }
                             )
                             .frame(height: tradePanelHeight, alignment: .top)
@@ -412,6 +448,7 @@ struct GameShellView: View {
         .onReceive(viewModel.$gameplayShellProjection.removeDuplicates()) { projection in
             shellProjection = projection
             synchronizeTradeOverlay(with: projection)
+            synchronizeDiscardDraft(with: projection.discardPanelModel)
         }
         .onChange(of: screenModel.modeAvailability) { _, availability in
             synchronizeMode(with: availability)
@@ -424,6 +461,9 @@ struct GameShellView: View {
             synchronizeBoardSelection(mode: newMode)
             if !newMode.isDevCardMode {
                 devCardDraft = nil
+            }
+            if newMode != .discard {
+                discardDraft = .zero
             }
             if newMode.isForcedBoardMode {
                 shellRoute = .none
@@ -672,7 +712,12 @@ struct GameShellView: View {
     }
 
     private func startMaritimeTrade() {
-        shellRoute = .trade(.maritime)
+        shellRoute = .trade(.maritimeDraft(
+            GameMaritimeTradeDraft(
+                give: .zero,
+                receive: .zero
+            )
+        ))
         clearBoardSelection()
     }
 
@@ -680,7 +725,7 @@ struct GameShellView: View {
         switch shellRoute.tradeOverlayRoute {
         case .chooser, nil:
             closeTradePanel(resetDraft: true)
-        case .maritime:
+        case .maritimeDraft:
             shellRoute = .trade(.chooser)
         case .playerDraft:
             closeTradePanel(resetDraft: true)
@@ -704,13 +749,26 @@ struct GameShellView: View {
                 targetPlayers: draft.recipients
             )
         case .counter:
-            didSend = viewModel.sendCounterTradeIntent(
+            didSend = viewModel.sendCounterTradeResponse(
                 give: draft.give,
                 receive: draft.receive
             )
         }
 
         guard didSend else {
+            return
+        }
+
+        closeTradePanel(resetDraft: true)
+        selectedBoardTarget = nil
+    }
+
+    private func submitMaritimeDraft() {
+        guard case let .trade(.maritimeDraft(draft)) = shellRoute else {
+            return
+        }
+
+        guard viewModel.publishMaritimeTrade(give: draft.give, receive: draft.receive) else {
             return
         }
 
@@ -761,6 +819,64 @@ struct GameShellView: View {
         shellRoute = .trade(.playerDraft(nextDraft))
     }
 
+    private func addMaritimeGiveResource(_ resource: ResourceV1) {
+        mutateMaritimeDraft { draft in
+            let currentResource = firstSelectedResource(in: draft.give)
+            guard currentResource == nil || currentResource == resource else {
+                return
+            }
+            let maxCount = maritimeGiveRequirement(for: resource)
+            guard maxCount > 0 else {
+                return
+            }
+            let selected = tradeResourceCount(resource, in: draft.give)
+            guard selected < maxCount, draft.give.totalCount < maxCount else {
+                return
+            }
+            draft.give = updating(resource: resource, in: draft.give, delta: 1)
+            if !maritimeAllowedReceiveResources(for: draft.give).contains(firstSelectedResource(in: draft.receive) ?? .desert) {
+                draft.receive = .zero
+            }
+        }
+    }
+
+    private func removeMaritimeGiveResource(_ resource: ResourceV1) {
+        mutateMaritimeDraft { draft in
+            draft.give = updating(resource: resource, in: draft.give, delta: -1)
+            if !maritimeAllowedReceiveResources(for: draft.give).contains(firstSelectedResource(in: draft.receive) ?? .desert) {
+                draft.receive = .zero
+            }
+        }
+    }
+
+    private func addMaritimeWantResource(_ resource: ResourceV1) {
+        mutateMaritimeDraft { draft in
+            guard maritimeAllowedReceiveResources(for: draft.give).contains(resource) else {
+                return
+            }
+            guard draft.receive.totalCount == 0 else {
+                return
+            }
+            draft.receive = updating(resource: resource, in: draft.receive, delta: 1)
+        }
+    }
+
+    private func removeMaritimeWantResource(_ resource: ResourceV1) {
+        mutateMaritimeDraft { draft in
+            draft.receive = updating(resource: resource, in: draft.receive, delta: -1)
+        }
+    }
+
+    private func mutateMaritimeDraft(_ mutate: (inout GameMaritimeTradeDraft) -> Void) {
+        guard case let .trade(.maritimeDraft(draft)) = shellRoute else {
+            return
+        }
+
+        var nextDraft = draft
+        mutate(&nextDraft)
+        shellRoute = .trade(.maritimeDraft(nextDraft))
+    }
+
     private func toggleTradeRecipient(_ playerID: String) {
         mutateTradeDraft { draft in
             guard !draft.isCounter else {
@@ -782,10 +898,14 @@ struct GameShellView: View {
     }
 
     private func tradeSelectedHandCounts(route: GameTradeOverlayRoute?) -> [ResourceV1: Int] {
-        guard case let .playerDraft(draft)? = route else {
+        switch route {
+        case let .playerDraft(draft)?:
+            return tradeCountMap(for: draft.give)
+        case let .maritimeDraft(draft)?:
+            return tradeCountMap(for: draft.give)
+        case .chooser, .liveOffer, nil:
             return [:]
         }
-        return tradeCountMap(for: draft.give)
     }
 
     private func tradeSelectedRecipients(route: GameTradeOverlayRoute?) -> Set<String> {
@@ -804,6 +924,10 @@ struct GameShellView: View {
             .ore: hand.ore,
         ]
         .filter { $0.value > 0 }
+    }
+
+    private func discardSelectedHandCounts() -> [ResourceV1: Int] {
+        tradeCountMap(for: discardDraft)
     }
 
     private func tradeResourceCount(_ resource: ResourceV1, in chips: [GameHandChip]) -> Int {
@@ -825,6 +949,117 @@ struct GameShellView: View {
         case .desert:
             return 0
         }
+    }
+
+    private func addDiscardResource(_ resource: ResourceV1) {
+        guard let discardChoice = discardSelectionAction(from: shellProjection.discardPanelModel) else {
+            return
+        }
+
+        let available = discardChoice.availableHand.first(where: { $0.resource == resource })?.count ?? 0
+        let selected = tradeResourceCount(resource, in: discardDraft)
+        guard selected < available, discardDraft.totalCount < discardChoice.requiredCount else {
+            return
+        }
+
+        discardDraft = updating(resource: resource, in: discardDraft, delta: 1)
+    }
+
+    private func removeDiscardResource(_ resource: ResourceV1) {
+        discardDraft = updating(resource: resource, in: discardDraft, delta: -1)
+    }
+
+    private func discardSelectionAction(
+        from panel: GameDiscardPanelModel?
+    ) -> (requiredCount: Int, availableHand: [GameHandChip])? {
+        guard let panel else {
+            return nil
+        }
+
+        switch panel.action {
+        case let .publishDiscard(requiredCount, availableHand),
+             let .sendDiscard(requiredCount, availableHand):
+            return (requiredCount, availableHand)
+        case .applySelectedDiscard, .none:
+            return nil
+        }
+    }
+
+    private func synchronizeDiscardDraft(with panel: GameDiscardPanelModel?) {
+        guard let discardChoice = discardSelectionAction(from: panel) else {
+            discardDraft = .zero
+            return
+        }
+
+        var sanitized = ResourceHandV1.zero
+        for resource in ResourceV1.tradeableCases {
+            let selected = tradeResourceCount(resource, in: discardDraft)
+            let available = discardChoice.availableHand.first(where: { $0.resource == resource })?.count ?? 0
+            if selected > 0, available > 0 {
+                sanitized = sanitized.adding(min(selected, available), for: resource)
+            }
+        }
+
+        if sanitized.totalCount > discardChoice.requiredCount {
+            discardDraft = .zero
+        } else {
+            discardDraft = sanitized
+        }
+    }
+
+    private func maritimeGiveRequirement(for resource: ResourceV1) -> Int {
+        guard let panelModel = shellProjection.tradePanelModel else {
+            return 0
+        }
+        return panelModel.maritimeOptions.first(where: { option in
+            option.give.count == 1
+                && option.give.first?.resource == resource
+        })?.ratio ?? 0
+    }
+
+    private func maritimeAllowedReceiveResources(for give: ResourceHandV1) -> Set<ResourceV1> {
+        guard let giveResource = firstSelectedResource(in: give),
+              let panelModel = shellProjection.tradePanelModel
+        else {
+            return []
+        }
+
+        let requiredCount = tradeResourceCount(giveResource, in: give)
+        return Set(
+            panelModel.maritimeOptions.compactMap { option in
+                guard
+                    option.give.count == 1,
+                    option.give.first?.resource == giveResource,
+                    option.give.first?.count == requiredCount,
+                    option.receive.count == 1
+                else {
+                    return nil
+                }
+                return option.receive.first?.resource
+            }
+        )
+    }
+
+    private func canSubmitMaritimeDraft(_ draft: GameMaritimeTradeDraft) -> Bool {
+        guard let panelModel = shellProjection.tradePanelModel else {
+            return false
+        }
+
+        let giveChips = handChips(from: draft.give)
+        let receiveChips = handChips(from: draft.receive)
+        return panelModel.maritimeOptions.contains { option in
+            option.give == giveChips && option.receive == receiveChips
+        }
+    }
+
+    private func firstSelectedResource(in hand: ResourceHandV1) -> ResourceV1? {
+        ResourceV1.tradeableCases.first { tradeResourceCount($0, in: hand) > 0 }
+    }
+
+    private func handChips(from hand: ResourceHandV1) -> [GameHandChip] {
+        ResourceV1.tradeableCases
+            .map { GameHandChip(resource: $0, count: tradeResourceCount($0, in: hand)) }
+            .filter { $0.count > 0 }
     }
 
     private func updating(resource: ResourceV1, in hand: ResourceHandV1, delta: Int) -> ResourceHandV1 {
@@ -1527,8 +1762,8 @@ enum GameTradeOverlayLayout {
         switch route {
         case .chooser, nil:
             return isWide ? 220 : 236
-        case .maritime:
-            return isWide ? 264 : 292
+        case .maritimeDraft:
+            return isWide ? 344 : 388
         case .liveOffer:
             return isWide ? 300 : 336
         case .playerDraft:
@@ -1561,7 +1796,7 @@ struct GameTradeOverlayView: View {
     let onToggleRecipient: (String) -> Void
     let onAcceptOffer: () -> Void
     let onDeclineOffer: () -> Void
-    let onSendMaritimeTrade: (GameTradeMaritimeOption) -> Void
+    let onSendMaritimeTrade: () -> Void
 
     private let tradeableResources: [ResourceV1] = [.wood, .brick, .sheep, .wheat, .ore]
 
@@ -1579,8 +1814,8 @@ struct GameTradeOverlayView: View {
                 chooserBody
             case let .playerDraft(draft):
                 composerBody(draft: draft, density: density)
-            case .maritime:
-                maritimeBody
+            case let .maritimeDraft(draft):
+                maritimeBody(draft: draft, density: density)
             case .liveOffer:
                 liveOfferBody
             }
@@ -1644,7 +1879,7 @@ struct GameTradeOverlayView: View {
                 title: "Maritime / Bank",
                 detail: panelModel.maritimeOptions.isEmpty
                     ? "No legal port or bank trades are available from your current hand."
-                    : "Pick from the legal mixed list of quick trades.",
+                    : "Choose the resource to trade away, then pick one legal bank resource to receive.",
                 systemImage: "ferry.fill",
                 isDisabled: panelModel.maritimeOptions.isEmpty,
                 action: onChooseMaritimeTrade
@@ -1684,7 +1919,10 @@ struct GameTradeOverlayView: View {
         }
     }
 
-    private var maritimeBody: some View {
+    private func maritimeBody(
+        draft: GameMaritimeTradeDraft,
+        density: ResourceChipDensity
+    ) -> some View {
         VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
             if panelModel.maritimeOptions.isEmpty {
                 Text("No legal maritime or bank trades are available right now.")
@@ -1692,29 +1930,30 @@ struct GameTradeOverlayView: View {
                     .foregroundStyle(GameTheme.mutedInk)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
-                ForEach(panelModel.maritimeOptions) { option in
-                    Button {
-                        onSendMaritimeTrade(option)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Give \(compactChipLine(option.give)) for \(compactChipLine(option.receive))")
-                                .font(GameTheme.metaFont.weight(.semibold))
-                                .foregroundStyle(GameTheme.ink)
-                            Text("\(option.ratio):1 trade")
-                                .font(GameTheme.metaFont)
-                                .foregroundStyle(GameTheme.mutedInk)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+                        maritimeGiveSection(draft: draft, density: density)
+                        maritimeWantSection(draft: draft, density: density)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .scrollBounceBehavior(.basedOnSize)
+
+                HStack(spacing: GameTheme.inlineSpacing) {
+                    Button("Back") {
+                        onBackDraftStep()
+                    }
+                    .frame(maxWidth: .infinity)
                     .buttonStyle(.bordered)
+
+                    Button("Trade") {
+                        onSendMaritimeTrade()
+                    }
+                    .frame(maxWidth: .infinity)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!canSubmitMaritimeDraft(draft))
                 }
             }
-
-            Button("Back") {
-                onBackDraftStep()
-            }
-            .frame(maxWidth: .infinity)
-            .buttonStyle(.bordered)
         }
     }
 
@@ -1760,7 +1999,7 @@ struct GameTradeOverlayView: View {
             return "Trade"
         case let .playerDraft(draft):
             return draft.isCounter ? "Counter Trade" : "Player Trade"
-        case .maritime:
+        case .maritimeDraft:
             return "Maritime / Bank"
         case .liveOffer:
             return panelModel.roleTitle
@@ -1872,6 +2111,68 @@ struct GameTradeOverlayView: View {
         }
     }
 
+    private func maritimeGiveSection(
+        draft: GameMaritimeTradeDraft,
+        density: ResourceChipDensity
+    ) -> some View {
+        let selectedResource = firstSelectedResource(in: draft.give)
+        let ratioText: String
+        if let selectedResource, let ratio = maritimeRatio(for: selectedResource) {
+            let label = selectedResource.shortLabel.lowercased()
+            ratioText = "Choose exactly \(ratio) \(label) to match your best available port or bank ratio."
+        } else {
+            ratioText = "Choose one resource type from your hand. Ports or the bank determine how many copies you must give."
+        }
+
+        return tradeComposerSection(title: "You Give", detail: ratioText) {
+            if handChips.isEmpty {
+                Text("No resources in hand.")
+                    .font(GameTheme.metaFont)
+                    .foregroundStyle(GameTheme.mutedInk)
+            } else {
+                ResourceChipGridView(items: handChips, density: density) { chip in
+                    maritimeGiveResourceChip(chip, draft: draft, density: density)
+                }
+            }
+
+            selectedResourceSection(
+                title: "Selected",
+                hand: draft.give,
+                density: density,
+                emptyText: "Nothing selected yet.",
+                action: onRemoveGiveResource
+            )
+        }
+    }
+
+    private func maritimeWantSection(
+        draft: GameMaritimeTradeDraft,
+        density: ResourceChipDensity
+    ) -> some View {
+        let detail: String
+        if draft.give.isZero {
+            detail = "Pick what you give first, then choose one legal bank resource."
+        } else if let ratio = firstSelectedResource(in: draft.give).flatMap(maritimeRatio) {
+            detail = "Choose one bank resource to receive. This trade will resolve at \(ratio):1."
+        } else {
+            detail = "Choose one legal bank resource."
+        }
+
+        return tradeComposerSection(title: "You Want", detail: detail) {
+            ResourceChipGridView(items: bankChips, density: density) { chip in
+                maritimeWantResourceChip(chip, draft: draft, density: density)
+            }
+
+            selectedResourceSection(
+                title: "Requested",
+                hand: draft.receive,
+                density: density,
+                emptyText: "Nothing requested yet.",
+                action: onRemoveWantResource
+            )
+        }
+    }
+
     private func tradeComposerSection<Content: View>(
         title: String,
         detail: String,
@@ -1980,6 +2281,60 @@ struct GameTradeOverlayView: View {
                 onAddWantResource(chip.resource)
             } : nil,
             accessibilityLabel: "\(chip.resource.shortLabel), \(chip.count) left in bank, \(selected) requested"
+        )
+    }
+
+    private func maritimeGiveResourceChip(
+        _ chip: GameHandChip,
+        draft: GameMaritimeTradeDraft,
+        density: ResourceChipDensity
+    ) -> some View {
+        let selected = count(for: chip.resource, in: draft.give)
+        let ratio = maritimeRatio(for: chip.resource) ?? 0
+        let hasDifferentSelection = firstSelectedResource(in: draft.give).map { $0 != chip.resource } ?? false
+        let canAdd = !hasDifferentSelection
+            && ratio > 0
+            && selected < chip.count
+            && selected < ratio
+            && draft.give.totalCount < ratio
+        return ResourceCountChipView(
+            resource: chip.resource,
+            label: chip.shortLabel,
+            count: chip.count,
+            isEnabled: canAdd,
+            isSelected: selected > 0,
+            selectionBadge: selected > 0 ? String(selected) : nil,
+            detailBadge: ratio > 0 ? "\(ratio):1" : nil,
+            density: density,
+            action: canAdd ? {
+                onAddGiveResource(chip.resource)
+            } : nil,
+            accessibilityLabel: "\(chip.shortLabel), \(chip.count) in hand, maritime ratio \(ratio):1, \(selected) selected"
+        )
+    }
+
+    private func maritimeWantResourceChip(
+        _ chip: GameBankChip,
+        draft: GameMaritimeTradeDraft,
+        density: ResourceChipDensity
+    ) -> some View {
+        let selected = count(for: chip.resource, in: draft.receive)
+        let canAdd = chip.count > 0
+            && draft.receive.totalCount == 0
+            && maritimeAllowedReceiveResources(for: draft.give).contains(chip.resource)
+        return ResourceCountChipView(
+            resource: chip.resource,
+            label: chip.resource.shortLabel,
+            count: chip.count,
+            isEnabled: canAdd,
+            isSelected: selected > 0,
+            selectionBadge: selected > 0 ? "1" : nil,
+            detailBadge: canAdd ? "+" : nil,
+            density: density,
+            action: canAdd ? {
+                onAddWantResource(chip.resource)
+            } : nil,
+            accessibilityLabel: "\(chip.resource.shortLabel), \(chip.count) left in bank"
         )
     }
 
@@ -2139,6 +2494,40 @@ struct GameTradeOverlayView: View {
         !draft.give.isZero && !draft.receive.isZero && !draft.recipients.isEmpty
     }
 
+    private func canSubmitMaritimeDraft(_ draft: GameMaritimeTradeDraft) -> Bool {
+        panelModel.maritimeOptions.contains { option in
+            option.give == chips(from: draft.give) && option.receive == chips(from: draft.receive)
+        }
+    }
+
+    private func maritimeRatio(for resource: ResourceV1) -> Int? {
+        panelModel.maritimeOptions.first(where: { option in
+            option.give.count == 1
+                && option.give.first?.resource == resource
+        })?.ratio
+    }
+
+    private func maritimeAllowedReceiveResources(for give: ResourceHandV1) -> Set<ResourceV1> {
+        guard let giveResource = firstSelectedResource(in: give) else {
+            return []
+        }
+
+        let requiredCount = count(for: giveResource, in: give)
+        return Set(
+            panelModel.maritimeOptions.compactMap { option in
+                guard
+                    option.give.count == 1,
+                    option.give.first?.resource == giveResource,
+                    option.give.first?.count == requiredCount,
+                    option.receive.count == 1
+                else {
+                    return nil
+                }
+                return option.receive.first?.resource
+            }
+        )
+    }
+
     private func chips(from hand: ResourceHandV1) -> [GameHandChip] {
         tradeableResources
             .map { GameHandChip(resource: $0, count: count(for: $0, in: hand)) }
@@ -2177,6 +2566,10 @@ struct GameTradeOverlayView: View {
         case .desert:
             return 0
         }
+    }
+
+    private func firstSelectedResource(in hand: ResourceHandV1) -> ResourceV1? {
+        tradeableResources.first { count(for: $0, in: hand) > 0 }
     }
 }
 
@@ -2227,6 +2620,12 @@ private extension GameMode {
         default:
             return false
         }
+    }
+}
+
+private extension ResourceV1 {
+    static var tradeableCases: [ResourceV1] {
+        [.wood, .brick, .sheep, .wheat, .ore]
     }
 }
 

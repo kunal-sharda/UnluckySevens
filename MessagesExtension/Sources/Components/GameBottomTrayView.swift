@@ -55,6 +55,9 @@ struct GameLowerShelfContentView: View {
     let onSelectHandResource: ((ResourceV1) -> Void)?
     let selectedRecipients: Set<String>
     let onSelectRecipient: ((String) -> Void)?
+    let discardSelectedHandCounts: [ResourceV1: Int]
+    let onSelectDiscardResource: ((ResourceV1) -> Void)?
+    let onRemoveDiscardResource: ((ResourceV1) -> Void)?
     let onSelectBuild: (GameBuildShelfItem.Kind) -> Void
     let onSelectBankResource: (ResourceV1) -> Void
     let onDiscardAction: () -> Void
@@ -145,6 +148,9 @@ struct GameLowerShelfContentView: View {
             discardPanel: discardPanel,
             devCardPanel: devCardPanel,
             robberVictimOptions: robberVictimOptions,
+            discardSelectedHandCounts: discardSelectedHandCounts,
+            onSelectDiscardResource: onSelectDiscardResource,
+            onRemoveDiscardResource: onRemoveDiscardResource,
             onDiscardAction: onDiscardAction,
             onApplySelectedTurnIntent: onApplySelectedTurnIntent,
             onDevCardAction: onDevCardAction,

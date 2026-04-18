@@ -122,7 +122,8 @@ final class TurnInteractionResolverTests: XCTestCase {
 
         let intent = TurnInteractionResolver.draftDiscardIntent(
             state: state,
-            actingAs: "A"
+            actingAs: "A",
+            discarded: ResourceHandV1(wood: 1, brick: 1)
         )
 
         XCTAssertEqual(
