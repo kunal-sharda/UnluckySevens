@@ -11,8 +11,9 @@ These principles are the highest-signal engineering rules for the repo. If a cha
 ## Determinism and Authority
 
 - Determinism is sacred: gameplay outcomes must come from persisted deterministic state, never device-local randomness.
-- Only the current player publishes canonical `STATE`.
-- `INTENT` messages are inert until incorporated into a later canonical state.
+- Lobby progression and current-player gameplay actions should publish canonical `STATE` directly whenever the acting device can do so safely.
+- Responder-side trade/discard messages are the only remaining non-canonical transport path, but they should still stay on the same per-game session so the transcript behaves like one game thread.
+- Responder or legacy `INTENT` messages are inert until incorporated into a later canonical state, and the shell should prefer recovered `STATE` over showing a raw response bubble whenever recoverable context exists.
 
 ## Transport and Secrecy
 

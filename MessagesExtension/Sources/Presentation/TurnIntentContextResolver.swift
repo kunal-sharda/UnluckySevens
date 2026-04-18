@@ -82,7 +82,6 @@ enum TurnIntentContextResolver {
         localParticipant: String?
     ) -> Bool {
         guard
-            isTradeResponse(turnIntent.kind),
             let localParticipant,
             let anchorMatched = resolution.anchorMatched
         else {
@@ -98,15 +97,29 @@ enum TurnIntentContextResolver {
         resolution: TurnIntentContextResolution,
         localParticipant: String?
     ) -> Bool {
+        if case .responderMessage = TurnIntentTransportRoleResolver.resolve(turnIntent) {
+            guard
+                let recovered = resolution.bestAvailable,
+                recovered.state.gameId == turnIntent.gameId
+            else {
+                return false
+            }
+
+            return !shouldAutoApply(
+                turnIntent,
+                resolution: resolution,
+                localParticipant: localParticipant
+            )
+        }
+
         guard
-            isTradeResponse(turnIntent.kind),
             let recovered = resolution.bestAvailable,
             recovered.state.gameId == turnIntent.gameId
         else {
             return false
         }
 
-        return !shouldAutoApply(
+        return recovered.state.rev > turnIntent.anchorRev && !shouldAutoApply(
             turnIntent,
             resolution: resolution,
             localParticipant: localParticipant

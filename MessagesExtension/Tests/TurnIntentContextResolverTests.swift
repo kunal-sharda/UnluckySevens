@@ -56,7 +56,7 @@ final class TurnIntentContextResolverTests: XCTestCase {
         )
     }
 
-    func testShouldNotAutoApplyForNonTradeIntentOrNonAuthorityParticipant() {
+    func testShouldNotAutoApplyForLegacyIntentOrNonAuthorityParticipant() {
         let anchorState = makeState(rev: 7, currentPlayer: "A")
         let endTurnIntent = ULS_Transport.TurnIntentV1(
             kind: .endTurn,
@@ -85,7 +85,7 @@ final class TurnIntentContextResolverTests: XCTestCase {
             TurnIntentContextResolver.shouldAutoApply(
                 endTurnIntent,
                 resolution: resolution,
-                localParticipant: "A"
+                localParticipant: "B"
             )
         )
         XCTAssertFalse(
@@ -95,11 +95,65 @@ final class TurnIntentContextResolverTests: XCTestCase {
                 localParticipant: "B"
             )
         )
+        XCTAssertFalse(
+            TurnIntentContextResolver.shouldPreferRecoveredState(
+                endTurnIntent,
+                resolution: resolution,
+                localParticipant: "B"
+            )
+        )
+    }
+
+    func testResponderTradeResponsePrefersRecoveredStateEvenAtAnchorRevForNonAuthority() {
+        let anchorState = makeState(rev: 7, currentPlayer: "A")
+        let tradeIntent = ULS_Transport.TurnIntentV1(
+            acceptTradePlayer: "B",
+            offerHash: "offer-1",
+            gameId: anchorState.gameId,
+            anchorRev: anchorState.rev,
+            anchorHash: anchorState.stateHash,
+            actor: "B"
+        )
+
+        let resolution = TurnIntentContextResolver.resolve(
+            turnIntent: tradeIntent,
+            selectedState: anchorState,
+            latestKnownStatesByGameId: [:],
+            cachedPublishedState: nil
+        )
+
         XCTAssertTrue(
             TurnIntentContextResolver.shouldPreferRecoveredState(
                 tradeIntent,
                 resolution: resolution,
                 localParticipant: "B"
+            )
+        )
+    }
+
+    func testShouldAutoApplyDiscardIntentForCurrentPlayerAuthority() {
+        let anchorState = makeState(rev: 7, currentPlayer: "A")
+        let discardIntent = ULS_Transport.TurnIntentV1(
+            submitDiscardFor: "B",
+            discarded: TransportResourceHandV1(wood: 1, brick: 1),
+            gameId: anchorState.gameId,
+            anchorRev: anchorState.rev,
+            anchorHash: anchorState.stateHash,
+            actor: "B"
+        )
+
+        let resolution = TurnIntentContextResolver.resolve(
+            turnIntent: discardIntent,
+            selectedState: anchorState,
+            latestKnownStatesByGameId: [:],
+            cachedPublishedState: nil
+        )
+
+        XCTAssertTrue(
+            TurnIntentContextResolver.shouldAutoApply(
+                discardIntent,
+                resolution: resolution,
+                localParticipant: "A"
             )
         )
     }

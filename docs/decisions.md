@@ -30,7 +30,7 @@ If a change is desired, update this file **first**, then update code/tests.
 
 - Two message types:
   - **STATE**: authoritative snapshot (canonical truth).
-  - **INTENT**: non-authoritative request anchored to a specific base state.
+  - **INTENT**: non-authoritative responder or legacy request anchored to a specific base state.
 - The lobby is part of the canonical game timeline:
   - invite/start/join all progress through canonical lobby `STATE` updates on the game session
   - joining is not a detached draft flow or side intent in fresh publishes
@@ -39,7 +39,7 @@ If a change is desired, update this file **first**, then update code/tests.
   - can view the game and their own hand
   - may only send responder-side messages for flows that cannot safely publish canonical gameplay state directly
   - fresh responder-side trade/discard messages stay internal transport, not player-facing protocol
-- Legacy join/trade responder `INTENT` decode remains supported only for backward transcript compatibility and bridge recovery.
+- Legacy join/setup/current-player turn `INTENT` decode remains supported only for backward transcript compatibility, debug tools, and bridge recovery.
 
 ---
 
@@ -92,7 +92,9 @@ Recommended canonical state cadence per turn:
 
 - **One `MSSession` per game** for canonical `STATE` messages across lobby, setup, turn play, and game over (updates collapse / thread clean).
 - Fresh lobby joins publish updated lobby `STATE` on that same canonical game session.
-- Responder-side non-canonical messages such as trade/discard transport must **not** ride the canonical game `MSSession`, because they can displace the live state bubble without replacing it with authoritative state.
+- Fresh current-player gameplay actions publish updated canonical `STATE` on that same canonical game session.
+- Responder-side trade/discard transport also rides that same per-game `MSSession`, because the product requirement is that remote responses feel like updates to the same game thread rather than detached transcript artifacts.
+- Because those responder messages are still non-canonical, the shell must immediately auto-apply them when possible and otherwise prefer recovered game `STATE` over showing a raw response shell.
 
 Current transition rule:
 - Preferred transport source is always message URL query `payload`.

@@ -172,7 +172,8 @@ Current repo answer:
 
 - Canonical game `STATE` messages reuse one `MSSession` per game.
 - Lobby join now publishes canonical lobby `STATE` on that same game session instead of treating join as a detached side bubble.
-- Responder-side non-canonical trade/discard transport must stay off the canonical game session, because a raw responder bubble can otherwise displace the live state bubble without replacing it with authoritative state.
+- Responder-side non-canonical trade/discard transport now also reuses that same game session so remote responses stay inside the same game thread.
+- Because those responder messages are still non-canonical, the shell must recover and prefer the live game `STATE` whenever it can, instead of dropping into a raw response surface.
 - Folding/collapse behavior is treated as a phase-13 host-stability concern, not proof that transcript recovery is already solved.
 
 ### 4. SpriteKit board interaction should not run through a hot SwiftUI gesture loop
@@ -224,7 +225,8 @@ What we learned:
 Current repo answer:
 
 - The current-player device auto-applies matching targeted trade responses into canonical state as soon as the response message is surfaced and the anchored state can be recovered.
-- Responder-side trade/discard transport stays off the canonical game session so a raw response bubble cannot replace the live state bubble before the app turns it into authoritative state.
+- Responder-side trade/discard transport now rides the same per-game session as the live game thread, because detached response bubbles were producing worse transcript UX than the risk they were trying to avoid.
+- When a responder message surfaces and the shell can recover any valid game context for that game, it should stay on recovered game `STATE` rather than replacing the UI with a raw response shell.
 - The authority-side auto-apply path is no longer trade-response-only. Any anchored turn intent that the local current player can legally incorporate, including responder discard submissions, now behaves like an action when it surfaces on the authority device.
 - A short post-selection polling burst is not enough for Messages-hosted async play. If the extension is open on a game bubble, it needs a lightweight ongoing selection watch while that context remains active, because same-session surfacing can lag well past the first couple of seconds.
 - Same-device cached published-state recovery now stores a per-game bridge for reopen/response selection paths instead of relying on one global last-published state.
@@ -272,6 +274,26 @@ Current repo answer:
 - Recoverable legacy join selections still resolve against the same per-game recovery context as trade responses.
 - Recoverable join selections reopen the best available canonical state for that game.
 - Start-roster assembly merges the visible lobby roster with observed joiners so concurrent join states can still converge when the host starts.
+
+### 7b. Current-player gameplay should not masquerade as generic intent transport
+
+What went wrong:
+
+- The repo gradually moved the real player flows onto direct canonical `STATE` publication, but the codebase and fallback shells still talked as if generic `INTENT` transport were the main model.
+- That made it harder to reason about session ownership and easy to accidentally reintroduce fresh-session `INTENT` sends for flows that should have behaved like roll/build/end-turn.
+
+What we learned:
+
+- The clean product model is: new game creates the game session once, and lobby/current-player gameplay keep reusing that session for canonical `STATE`.
+- Trade/discard responder transport is still the exception logically, but it should ride that same per-game session so the game transcript remains one thread.
+- Legacy setup/turn intents can remain for debug and backward transcript decode, but the code and UI should label them as legacy, not as the normal gameplay path.
+
+Current repo answer:
+
+- Fresh lobby join and current-player gameplay publish canonical `STATE` on the canonical game session.
+- Trade/discard responder transport is now narrowed to response handling only, but it reuses the canonical game session instead of forking into detached bubbles.
+- The per-game ledger must record decoded incoming `STATE` as well as locally published `STATE`; otherwise recovery becomes asymmetrically worse on receiving devices, which is exactly where Messages host churn already hurts the most.
+- Recovery/fallback shells distinguish responder messages from legacy intent bubbles so operator tooling does not imply generic intent transport is the normal player UX.
 
 ### 8. Active-game recovery needs a player-visible affordance, not only invisible cache logic
 
