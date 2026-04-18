@@ -31,7 +31,7 @@ Owner docs for concepts used here:
 What exists today:
 
 - the repo already has broad gameplay coverage for lobby, setup, turn play, robber/discard, trade, dev cards, and winner-state presentation
-- the remaining shipped gameplay flows now follow the rules-exact product model more closely: discard requires explicit card selection and maritime trade uses an explicit give/want composer instead of shortcut quick-picks
+- the remaining shipped gameplay flows now follow the rules-exact product model more closely: discard requires explicit card selection, player trade stays explicitly composed, and maritime trade is represented as a legal quick-trade list because the full option set is enumerable
 - the board shell is now live-resize rather than snapshot-freeze/remount during normal host drag
 - join intents can bridge back into inviter lobby state in some cases
 - fresh lobby joins now publish canonical lobby `STATE` on the game session instead of relying on a detached join intent path
@@ -265,7 +265,7 @@ Manual signoff still required before phase exit:
 - 2026-04-17: per-game ledger writes now happen on incoming decoded `STATE` as well as locally sent `STATE`. The prior local-send-only path meant recovery quality was asymmetric across devices, which is the wrong tradeoff for an iMessage-hosted game where reopen and stale-bubble recovery are first-order concerns.
 - 2026-04-17: trade-response auto-apply was failing for a concrete reason: the extension was validating responder `acceptTrade` / `declineTrade` / `counterTrade` transitions as if the current player were the action actor. The authority-side publish path now preserves the responder as the validation/audit actor for those trade-response transitions while still publishing the resulting canonical `STATE` from the authority device.
 - 2026-04-17: the repo’s internal terminology was tightened to match the intended product model. Fresh lobby joins and current-player gameplay are canonical `STATE` updates on the game session. Detached `INTENT` transport is now treated as responder-only for discard/trade plus legacy/debug compatibility, and fallback shells label those cases as responder or legacy transport instead of pretending generic intents are the normal gameplay substrate.
-- 2026-04-17: the remaining shortcut-style gameplay UX was removed from the shipped shell. Discard now requires explicit resource selection, and maritime trade now uses a give/want composer instead of quick-trade suggestions, keeping the Messages product flow aligned with the underlying rules instead of debug-era convenience defaults.
+- 2026-04-18: the gameplay-flow rule was narrowed after product review. Discard and player trade keep explicit resource selection, but maritime trade returns to a quick-trade list because the engine already enumerates the complete legal option set and the list does not hide extra player choice.
 - 2026-04-17: focused validation for the rules-exact discard and maritime trade cleanup passed:
   - `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`
   - `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:MessagesExtensionTests/GameDiscardPanelModelBuilderTests -only-testing:MessagesExtensionTests/TurnInteractionResolverTests -only-testing:MessagesExtensionTests/GameTradePanelModelBuilderTests -only-testing:MessagesExtensionTests/GameShellProjectionBuilderTests test`

@@ -279,11 +279,11 @@ private struct FrozenTradeOverlayCard: View {
                 onRemoveGiveResource: { _ in },
                 onAddWantResource: { _ in },
                 onRemoveWantResource: { _ in },
-                        onToggleRecipient: { _ in },
-                        onAcceptOffer: {},
-                        onDeclineOffer: {},
-                        onSendMaritimeTrade: {}
-                    )
+                onToggleRecipient: { _ in },
+                onAcceptOffer: {},
+                onDeclineOffer: {},
+                onSendMaritimeTrade: { _ in }
+            )
         }
     }
 }

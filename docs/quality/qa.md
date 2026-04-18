@@ -74,19 +74,19 @@ These are the durable gameplay-UX rules learned while hardening the product shel
 
 What went wrong:
 
-- The shell originally used shortcut behavior for some legal-but-important actions: discard could fall back to a generated default payload and maritime trade could surface as a quick-trade list instead of an explicit give/want composition flow.
+- The shell originally used shortcut behavior for some legal-but-important actions: discard could fall back to a generated default payload, and other flows blurred the line between acceptable enumerated quick actions and required explicit player choice.
 - Those shortcuts were mechanically legal in some cases, but they weakened the base-Catan product contract because the player was no longer choosing the exact cards/resources involved in a rules-significant action.
 
 What we learned:
 
 - If the tabletop rule asks the player to choose exact resources, the product shell should expose that choice directly.
-- "Legal default" and "quick action" helpers are acceptable inside engine/query or debug tooling, but they should not become the shipped product UX for discard, maritime trade, or similar forced/resource-specific flows.
+- Quick lists are acceptable only when the legal option set is already fully enumerated by the rules and no extra player choice is being hidden. Maritime / bank trade fits that category; discard and player-to-player trade composition do not.
 
 Current repo answer:
 
 - Discard is now an explicit selection flow: the acting player chooses the exact cards to discard and the submit action stays disabled until the required count is selected.
-- Maritime trade is now an explicit composer with `You Give` and `You Want` sections, backed by legality/ratio checks rather than a precomputed quick-trade picker.
-- Future gameplay UX should treat this as the default standard: explicit player choice first, engine validation second, no shortcut auto-selection in the shipped shell.
+- Maritime trade is represented as a legal quick-trade list because the engine can enumerate the complete valid option set from the current hand and port access without hiding additional player choice.
+- Future gameplay UX should follow this split: explicit selection when the player is choosing exact resources, quick lists only when the legal outcomes are already fully enumerated by the rules.
 
 ### 1. `MSMessage.url` must be `http` or `https`; custom schemes are stripped on the wire
 
@@ -684,7 +684,7 @@ Use this only on the disposable debug branch when a selected transcript bubble d
 - setup placement UX in the product shell
 - the common turn loop and build/buy actions in the product shell
 - robber/discard forced-flow handling in the product shell
-- trade UX in the product shell, including self-contained player trade, explicit maritime trade composition, and responder actions
+- trade UX in the product shell, including self-contained player trade, maritime quick-trade options, and responder actions
 - dev-card UX in the product shell, including compact play actions, pre-roll/post-roll timing, staged bank/board choice flows, and winning-only Victory Point reveal
 - setup sequencing and starting resources
 - deterministic dice, board generation, dev deck, and robber steal behavior
@@ -756,7 +756,7 @@ Use the current product shell for one smoke pass and three targeted checks. Keep
 
 1. From an `afterRoll` state, open the compact trade modal as the current player.
 2. Verify `Player Trade` opens a self-contained composer with `You Give`, `You Want`, and `Recipients`.
-3. Verify `Maritime / Bank Trade` opens an explicit give/want composer rather than a quick-trade list.
+3. Verify `Maritime / Bank Trade` opens a quick-trade list of legal options rather than a manual composer.
 4. Switch acting actor and send one or more accept intents.
 5. Return to the current-player device and confirm the accepted response auto-resolves into canonical state without a manual "apply selected response" step.
 6. Verify resource transfer is atomic and the offer clears.

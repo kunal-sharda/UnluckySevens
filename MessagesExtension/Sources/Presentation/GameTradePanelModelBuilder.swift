@@ -60,9 +60,9 @@ enum GameTradePanelModelBuilder {
 
         let message: String
         if maritimeOptions.isEmpty {
-            message = "Start a player trade from the chooser, or open the maritime composer later if your hand or ports unlock one."
+            message = "Start a player trade from the chooser, or take a maritime trade later if your hand or ports unlock one."
         } else {
-            message = "Choose a player trade or open the maritime / bank composer."
+            message = "Choose a player trade or pick one of the legal maritime / bank quick trades."
         }
 
         return GameTradePanelModel(
