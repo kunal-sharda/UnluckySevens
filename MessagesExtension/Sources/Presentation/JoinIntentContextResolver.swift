@@ -11,7 +11,7 @@ enum JoinIntentContextResolver {
         joinIntent: JoinIntentV1,
         selectedState: CoreGameStateV1?,
         latestKnownStatesByGameId: [String: CoreGameStateV1],
-        cachedPublishedState: CoreGameStateV1?,
+        localLedgerState: CoreGameStateV1?,
         localParticipant: String?
     ) -> JoinIntentContextDecision {
         let resolution = TurnIntentContextResolver.resolve(
@@ -20,7 +20,7 @@ enum JoinIntentContextResolver {
             anchorHash: joinIntent.anchorHash,
             selectedState: selectedState,
             latestKnownStatesByGameId: latestKnownStatesByGameId,
-            cachedPublishedState: cachedPublishedState
+            localLedgerState: localLedgerState
         )
 
         guard let recovered = resolution.anchorMatched ?? resolution.bestAvailable else {
@@ -28,7 +28,6 @@ enum JoinIntentContextResolver {
         }
 
         let shouldRecordJoiner = recovered.state.phase == .lobby
-            && recovered.state.roster.first == localParticipant
 
         return JoinIntentContextDecision(
             recoveredContext: recovered,

@@ -61,7 +61,6 @@ struct GameLowerShelfContentView: View {
     let onSelectBuild: (GameBuildShelfItem.Kind) -> Void
     let onSelectBankResource: (ResourceV1) -> Void
     let onDiscardAction: () -> Void
-    let onApplySelectedTurnIntent: () -> Void
     let onDevCardAction: (GameDevCardActionKind) -> Void
     let onConfirmDevCardDraft: () -> Void
     let onResetDevCardDraft: () -> Void
@@ -152,7 +151,6 @@ struct GameLowerShelfContentView: View {
             onSelectDiscardResource: onSelectDiscardResource,
             onRemoveDiscardResource: onRemoveDiscardResource,
             onDiscardAction: onDiscardAction,
-            onApplySelectedTurnIntent: onApplySelectedTurnIntent,
             onDevCardAction: onDevCardAction,
             onConfirmDevCardDraft: onConfirmDevCardDraft,
             onResetDevCardDraft: onResetDevCardDraft,

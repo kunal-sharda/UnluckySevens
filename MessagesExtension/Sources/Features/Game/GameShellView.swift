@@ -258,10 +258,6 @@ struct GameShellView: View {
                                         discardDraft = .zero
                                         selectedBoardTarget = nil
                                     },
-                                    onApplySelectedTurnIntent: {
-                                        guard viewModel.publishSelectedTurnIntentState() else { return }
-                                        selectedBoardTarget = nil
-                                    },
                                     onDevCardAction: { action in
                                         handleDevCardSelection(action)
                                     },
@@ -875,7 +871,7 @@ struct GameShellView: View {
         case let .publishDiscard(requiredCount, availableHand),
              let .sendDiscard(requiredCount, availableHand):
             return (requiredCount, availableHand)
-        case .applySelectedDiscard, .none:
+        case .none:
             return nil
         }
     }

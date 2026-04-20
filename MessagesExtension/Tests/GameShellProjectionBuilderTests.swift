@@ -37,7 +37,7 @@ final class GameShellProjectionBuilderTests: XCTestCase {
         XCTAssertEqual(projection.visibleHands, "A: w:2, b:1, s:1, wh:1, o:1 | B: 0")
     }
 
-    func testBuildStateProjectionKeepsTradePanelStateDrivenAndSurfacesSelectedDiscardIntent() throws {
+    func testBuildStateProjectionKeepsTradePanelStateDrivenAndDiscardPanelStateDriven() throws {
         let tradeOffer = TradeOfferV1(
             offerHash: "offer-1",
             proposer: "A",
@@ -80,25 +80,12 @@ final class GameShellProjectionBuilderTests: XCTestCase {
                 discardRequirementsByPlayer: ["B": 4]
             )
         )
-        let discardIntent = TurnIntentV1(
-            submitDiscardFor: "B",
-            discarded: TransportResourceHandV1(wood: 1, brick: 1, sheep: 1, wheat: 1),
-            gameId: discardState.gameId,
-            anchorRev: discardState.rev,
-            anchorHash: discardState.stateHash,
-            actor: "B"
-        )
-
         let discardProjection = GameShellProjectionBuilder.build(
             state: discardState,
-            actingAs: "A",
-            selectedTurnIntent: discardIntent
+            actingAs: "A"
         )
 
-        if case .applySelectedDiscard = discardProjection.discardPanelModel?.action {
-        } else {
-            XCTFail("Expected selected discard projection to expose an apply action.")
-        }
+        XCTAssertNil(discardProjection.discardPanelModel?.action)
     }
 
     func testBuildIntentProjectionsUseOpenGameFallbackShells() {

@@ -75,6 +75,7 @@ This document summarizes the player-facing flows the UI must support in the curr
 - The bank should be quickly accessible rather than always expanded. Its full public counts for wood, brick, sheep, wheat, and ore should live in the `Bank` shelf and become interactive only for Monopoly and Year of Plenty.
 - The bank should reuse the same five-chip visual format as the hand in normal viewing, adding only minimal selection decoration during Monopoly or Year of Plenty.
 - Opponent summaries should be shelf-only rather than always visible in the main shell.
+- The `Players` shelf should show each opponent with the same player-color swatch used by their roads and settlements on the board so the roster and board stay visually aligned.
 - `Play Dev` should open a dedicated dev-card shelf rendered as card tiles rather than a text-heavy action list.
 - Dev-card actions should be choice-driven for Knight, Monopoly, Year of Plenty, and Road Building rather than expanding into a deep form flow or hiding behind defaults.
 - Victory Point cards should remain visible to the owning player in that card shelf, but only become actionable when revealing them would immediately win the game.

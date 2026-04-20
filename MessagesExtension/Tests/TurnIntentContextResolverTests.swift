@@ -20,11 +20,11 @@ final class TurnIntentContextResolverTests: XCTestCase {
             turnIntent: turnIntent,
             selectedState: nil,
             latestKnownStatesByGameId: [latestState.gameId: latestState],
-            cachedPublishedState: anchorState
+            localLedgerState: anchorState
         )
 
         XCTAssertEqual(resolution.anchorMatched?.state.rev, 7)
-        XCTAssertEqual(resolution.anchorMatched?.source, .cachedPublishedState)
+        XCTAssertEqual(resolution.anchorMatched?.source, .localLedgerState)
         XCTAssertEqual(resolution.bestAvailable?.state.rev, 8)
         XCTAssertEqual(resolution.bestAvailable?.source, .latestKnownState)
     }
@@ -44,7 +44,7 @@ final class TurnIntentContextResolverTests: XCTestCase {
             turnIntent: turnIntent,
             selectedState: anchorState,
             latestKnownStatesByGameId: [:],
-            cachedPublishedState: nil
+            localLedgerState: nil
         )
 
         XCTAssertTrue(
@@ -78,7 +78,7 @@ final class TurnIntentContextResolverTests: XCTestCase {
             turnIntent: tradeIntent,
             selectedState: anchorState,
             latestKnownStatesByGameId: [:],
-            cachedPublishedState: nil
+            localLedgerState: nil
         )
 
         XCTAssertFalse(
@@ -119,7 +119,7 @@ final class TurnIntentContextResolverTests: XCTestCase {
             turnIntent: tradeIntent,
             selectedState: anchorState,
             latestKnownStatesByGameId: [:],
-            cachedPublishedState: nil
+            localLedgerState: nil
         )
 
         XCTAssertTrue(
@@ -146,7 +146,7 @@ final class TurnIntentContextResolverTests: XCTestCase {
             turnIntent: discardIntent,
             selectedState: anchorState,
             latestKnownStatesByGameId: [:],
-            cachedPublishedState: nil
+            localLedgerState: nil
         )
 
         XCTAssertTrue(
@@ -174,7 +174,7 @@ final class TurnIntentContextResolverTests: XCTestCase {
             turnIntent: tradeIntent,
             selectedState: laterState,
             latestKnownStatesByGameId: [laterState.gameId: laterState],
-            cachedPublishedState: anchorState
+            localLedgerState: anchorState
         )
 
         XCTAssertTrue(
@@ -208,11 +208,11 @@ final class TurnIntentContextResolverTests: XCTestCase {
             anchorHash: matchingState.stateHash,
             selectedState: otherGameState,
             latestKnownStatesByGameId: [:],
-            cachedPublishedState: matchingState
+            localLedgerState: matchingState
         )
 
         XCTAssertEqual(resolution.anchorMatched?.state.gameId, matchingState.gameId)
-        XCTAssertEqual(resolution.anchorMatched?.source, .cachedPublishedState)
+        XCTAssertEqual(resolution.anchorMatched?.source, .localLedgerState)
         XCTAssertEqual(resolution.bestAvailable?.state.gameId, matchingState.gameId)
         XCTAssertEqual(resolution.bestAvailable?.state.rev, matchingState.rev)
     }

@@ -179,7 +179,6 @@ private struct FrozenOverlayShelfCard: View {
                 onSelectBuild: { _ in },
                 onSelectBankResource: { _ in },
                 onDiscardAction: {},
-                onApplySelectedTurnIntent: {},
                 onDevCardAction: { _ in },
                 onConfirmDevCardDraft: {},
                 onResetDevCardDraft: {},

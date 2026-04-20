@@ -4,7 +4,7 @@ import ULS_Transport
 enum TurnIntentContextCandidateSource: Equatable {
     case selectedState
     case latestKnownState
-    case cachedPublishedState
+    case localLedgerState
 
     fileprivate var priority: Int {
         switch self {
@@ -12,7 +12,7 @@ enum TurnIntentContextCandidateSource: Equatable {
             return 3
         case .selectedState:
             return 2
-        case .cachedPublishedState:
+        case .localLedgerState:
             return 1
         }
     }
@@ -33,7 +33,7 @@ enum TurnIntentContextResolver {
         turnIntent: ULS_Transport.TurnIntentV1,
         selectedState: CoreGameStateV1?,
         latestKnownStatesByGameId: [String: CoreGameStateV1],
-        cachedPublishedState: CoreGameStateV1?
+        localLedgerState: CoreGameStateV1?
     ) -> TurnIntentContextResolution {
         resolve(
             gameId: turnIntent.gameId,
@@ -41,7 +41,7 @@ enum TurnIntentContextResolver {
             anchorHash: turnIntent.anchorHash,
             selectedState: selectedState,
             latestKnownStatesByGameId: latestKnownStatesByGameId,
-            cachedPublishedState: cachedPublishedState
+            localLedgerState: localLedgerState
         )
     }
 
@@ -51,13 +51,13 @@ enum TurnIntentContextResolver {
         anchorHash: String,
         selectedState: CoreGameStateV1?,
         latestKnownStatesByGameId: [String: CoreGameStateV1],
-        cachedPublishedState: CoreGameStateV1?
+        localLedgerState: CoreGameStateV1?
     ) -> TurnIntentContextResolution {
         let candidates = orderedCandidates(
             gameId: gameId,
             selectedState: selectedState,
             latestKnownStatesByGameId: latestKnownStatesByGameId,
-            cachedPublishedState: cachedPublishedState
+            localLedgerState: localLedgerState
         )
 
         let anchorMatched = candidates.first { candidate in
@@ -139,7 +139,7 @@ enum TurnIntentContextResolver {
         gameId: String,
         selectedState: CoreGameStateV1?,
         latestKnownStatesByGameId: [String: CoreGameStateV1],
-        cachedPublishedState: CoreGameStateV1?
+        localLedgerState: CoreGameStateV1?
     ) -> [TurnIntentContextCandidate] {
         var candidates: [TurnIntentContextCandidate] = []
 
@@ -161,11 +161,11 @@ enum TurnIntentContextResolver {
             )
         }
 
-        if let cachedPublishedState {
+        if let localLedgerState {
             candidates.append(
                 TurnIntentContextCandidate(
-                    state: cachedPublishedState,
-                    source: .cachedPublishedState
+                    state: localLedgerState,
+                    source: .localLedgerState
                 )
             )
         }

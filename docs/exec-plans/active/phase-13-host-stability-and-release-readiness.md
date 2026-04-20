@@ -24,6 +24,7 @@ Owner docs for concepts used here:
 - [2026-04-16 phase boundary audit](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-16-phase-boundary-audit.md)
 - [2026-04-16 base Catan feature matrix](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-16-base-catan-feature-matrix.md)
 - [2026-04-16 phase 13 validation audit](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-16-phase-13-validation-audit.md)
+- [2026-04-19 legacy code audit](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-19-legacy-code-audit.md)
 - [Phase 12 Plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/active/phase-12-gameplay-flows.md)
 
 ## Current State
@@ -37,19 +38,21 @@ What exists today:
 - fresh lobby joins now publish canonical lobby `STATE` on the game session instead of relying on a detached join intent path
 - current-player gameplay actions already use the same canonical game-session `STATE` path; the remaining non-canonical message work is now narrowed to responder-side trade/discard transport plus legacy recovery
 - targeted trade responses can auto-apply into canonical state when the response message is surfaced and the correct anchor state can be recovered
-- same-device cached published-state recovery now uses per-game keys instead of one global record
-- a per-game local ledger now persists the latest known canonical `STATE`, observed joiners, and last active game identity instead of splitting those concerns across one global cached-state record plus device-local pending-join arrays
+- same-device local-ledger recovery now uses per-game keys instead of one global record
+- a per-game local ledger now persists the latest known canonical `STATE`, observed joiners, and last active game identity instead of splitting those concerns across one global cached-state record plus device-local pending-join overlays
 - active-context recovery and intent-context resolution now read from the same per-game ledger path rather than one global last-published-state record
 - join intents now recover back into the best available canonical state for the same game instead of dropping into a raw join-intent route whenever recoverable state exists
 - trade-response selection now prefers recovered canonical state for the same game whenever the surfaced response cannot be auto-applied cleanly
 - canonical transport URLs now use `https://unluckysevens.app/...`; the earlier custom `unluckysevens://...` scheme was a protocol bug, not a harmless cosmetic choice
 - canonical `STATE` publishes now prefer the currently selected bubble's `MSSession` for the same game instead of relying only on the in-memory per-game cache; this keeps transcript updates anchored to the surfaced session chain more reliably after context churn
 - responder-side trade/discard transport now reuses the canonical game `MSSession` so remote responses stay inside the same game thread instead of forking into detached transcript artifacts
+- the `didReceive` path now records durable callback diagnostics and only auto-activates messages for the currently active game; incoming updates for other games are stored for recovery instead of hijacking the open shell
 - freshly decoded incoming canonical `STATE` messages now write through into the per-game ledger immediately, so reopen/recovery does not depend only on locally published state
 - compact envelope framing now removes the extra outer JSON-envelope overhead for fresh transport sends while keeping backward decode support for the older JSON-wrapped format
 - compact canonical state transport now uses the `compactStateV2` wrapper, keeps the worst-case stress payload under the URL budget in tests, and retains legacy summary-fallback decode compatibility while fresh publishes are re-tested URL-only on the corrected `https` transport path
 - the shell now exposes a lightweight active-games recovery surface so the app can reopen the latest canonical state for a known game even when the currently selected bubble is stale or missing
 - the temporary transport badge, manual `Reload Board`, and host-gesture HUD are now gated off in the default root shell rather than always visible during normal play
+- the remaining legacy surface is now explicitly audited and narrowed: live product fallback paths have been removed, the local recovery surface is now named after the per-game ledger it actually uses, and the intentionally preserved residue is now mostly transcript compatibility plus the lobby/trade debug stack
 
 What is still broken or incomplete:
 
@@ -108,20 +111,20 @@ Fallback if false:
 
 Assumption:
 
-- join and trade-response UX will remain poor while device-local pending joins and selected-bubble authority remain primary recovery tools
+- join and trade-response UX will remain poor while responder-side progression still depends on surfaced Messages delivery and selected-bubble authority
 
 Evidence:
 
-- current `LobbyDriverViewModel` and `LobbyMembershipResolver` behavior
-- current join/trade failures on device
+- current `LobbyDriverViewModel` / `MessagesViewController` delivery path
+- current join/trade failures on device when responder messages are not surfaced live
 
 Disproof test:
 
-- implement per-game ledger and transcript-authoritative join/response recovery, then rerun the same device scenarios
+- rerun the open-bubble join/trade device scenarios after the canonical-lobby cleanup and session/transport fixes and confirm whether surfaced delivery is still the limiting factor
 
 Fallback if false:
 
-- if the simpler bridge already becomes robust after targeted fixes, reduce the scope of ledger work; current audit does not support that optimistic path
+- if open-bubble progression becomes robust after the current cleanup, reduce the remaining responder-transport work and keep `didReceive` as a best-effort optimization instead of redesigning around it
 
 ## Target End State
 
@@ -251,9 +254,10 @@ Manual signoff still required before phase exit:
 
 - 2026-04-16: phase 13 was pulled forward after a repo-wide audit showed the remaining blockers were authority/recovery architecture issues, not ordinary phase-12 gameplay gaps.
 - 2026-04-16: the remaining unfinished phase-12 work is now explicitly treated as the tail of phase 13 rather than the current execution gate.
-- 2026-04-16: stage 13.1 landed as a real per-game local ledger. Latest canonical state, observed joiners, and last-active-game recovery now come from the same ledger instead of separate pendingJoiners arrays and one global cached published-state record.
+- 2026-04-16: stage 13.1 landed as a real per-game local ledger. Latest canonical state, observed joiners, and last-active-game recovery now come from the same ledger instead of separate pending-join overlays and one global cached-state record.
 - 2026-04-16: stage 13.2 no longer exposes a proposer-side "Apply Selected Response" gameplay path. Trade-response intents are still an internal authority primitive, but normal trade UI should either auto-resolve them into canonical `STATE` or stay on the state-driven trade surface.
-- 2026-04-16: stage 13.2 completed its recovery-bridge hardening. Join intents now recover into the best available canonical state for the same game whenever possible, cached published-state recovery falls back per game rather than globally, and surfaced trade responses now prefer recovered state when auto-apply cannot happen cleanly instead of dropping into raw intent/open-game shells.
+- 2026-04-16: stage 13.2 completed its recovery-bridge hardening. Join intents now recover into the best available canonical state for the same game whenever possible, local-ledger recovery falls back per game rather than globally, and surfaced trade responses now prefer recovered state when auto-apply cannot happen cleanly instead of dropping into raw intent/open-game shells.
+- 2026-04-19: the legacy cleanup slice removed the remaining live product fallbacks from the audit: lobby `canStart` / participant UI no longer consume observed join overlays, the discard panel no longer exposes manual responder application, and the obsolete non-join/non-trade legacy debug senders were deleted while preserving lobby join and trade debugging surfaces.
 - 2026-04-16: stage 13.3 started with compact envelope framing in `ULS_Transport`. Fresh sends now use a smaller binary-framed base64url envelope while decode remains backward-compatible with the older JSON-wrapped transport payloads.
 - 2026-04-16: stage 13.3 completed its first shippable transport cut. `CompactStateTransport` now uses the `compactStateV2` wrapper, the worst-case canonical STATE stress test stays under the URL budget, and fresh publishes keep a readable multiline summary mirror because real-device join flow still cannot rely on `message.url` alone on first open.
 - 2026-04-16: real-device lobby join re-confirmed that URL-only fresh publishes were not safe enough for first-open recovery, so the outgoing summary mirror was restored in readable multiline form rather than the older payload-first one-line format.
@@ -276,6 +280,7 @@ Manual signoff still required before phase exit:
   - `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:MessagesExtensionTests/LobbyScreenModelBuilderTests test`
   - `git diff --check` on the touched lobby/transport/docs files
 - 2026-04-17: the selection watch in `MessagesViewController` now stays alive while the extension has an active game/selection context instead of stopping after a short 2.4s burst. The earlier burst polling was too optimistic for delayed same-session surfacing, which meant an already-open bubble could miss remote join/trade-response updates if `didReceive` was late or absent.
+- 2026-04-18: `didReceive` instrumentation was tightened so debugging no longer depends on the transient `selectedTrigger` field alone. The view model now records a durable callback count plus the last received game/disposition/outcome, and the reducer explicitly refuses to let `didReceive` switch the active shell onto a different game's message while another game is already open.
 - 2026-04-16: stage 13.4 started with an in-app active-games recovery surface. Recoverable games now have a user-facing reopen path backed by the per-game ledger instead of depending entirely on the selected transcript bubble.
 - 2026-04-16: stage 13.4 completed its release-readiness gating pass. The active-games recovery surface remains visible, but the temporary transport badge, host-gesture HUD, and manual `Reload Board` control are now gated off from the default root shell so normal play no longer exposes operator-only diagnostics.
 - 2026-04-16: stage 13.5 simulator/practical-gate validation is green except for the `ULS_CoreGameEvals` lane, which still hangs after the build phase in this environment. Hardware/two-device QA remains the honest exit gate for the phase.

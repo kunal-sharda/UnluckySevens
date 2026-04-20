@@ -10,27 +10,18 @@ final class LobbyDriverViewModelIdentityTests: XCTestCase {
         XCTAssertTrue(
             LobbyMembershipResolver.canJoin(
                 state: state,
-                localParticipant: "guest-player",
-                pendingJoiners: []
+                localParticipant: "guest-player"
             )
         )
     }
 
-    func testCanJoinLobbyRejectsJoinedOrPendingParticipant() {
+    func testCanJoinLobbyRejectsJoinedParticipant() {
         let state = makeLobbyState(host: "host-player")
 
         XCTAssertFalse(
             LobbyMembershipResolver.canJoin(
                 state: state,
-                localParticipant: "host-player",
-                pendingJoiners: []
-            )
-        )
-        XCTAssertFalse(
-            LobbyMembershipResolver.canJoin(
-                state: state,
-                localParticipant: "guest-player",
-                pendingJoiners: ["guest-player"]
+                localParticipant: "host-player"
             )
         )
     }
@@ -55,55 +46,20 @@ final class LobbyDriverViewModelIdentityTests: XCTestCase {
         XCTAssertFalse(
             LobbyMembershipResolver.canStart(
                 state: state,
-                localParticipant: "host-player",
-                pendingJoiners: []
-            )
-        )
-        XCTAssertTrue(
-            LobbyMembershipResolver.canStart(
-                state: state,
-                localParticipant: "host-player",
-                pendingJoiners: ["guest-player"]
+                localParticipant: "host-player"
             )
         )
         XCTAssertFalse(
             LobbyMembershipResolver.canStart(
                 state: state,
-                localParticipant: "guest-player",
-                pendingJoiners: ["guest-player"]
+                localParticipant: "guest-player"
             )
         )
         XCTAssertTrue(
             LobbyMembershipResolver.canStart(
                 state: laterLobbyState,
-                localParticipant: "host-player",
-                pendingJoiners: []
+                localParticipant: "host-player"
             )
-        )
-    }
-
-    func testFinalLobbyRosterDeduplicatesJoinersAndKeepsInviterFirst() {
-        let state = CoreGameStateV1(
-            gameId: "game-1",
-            rev: 2,
-            prevHash: "hash-1",
-            stateHash: "",
-            roster: ["host-player", "guest-player"],
-            currentPlayer: "host-player",
-            phase: .lobby,
-            seed: nil,
-            diceRngState: nil,
-            resourcesByPlayer: ["host-player": .zero, "guest-player": .zero],
-            boardRules: nil,
-            board: nil
-        ).rehashed()
-
-        XCTAssertEqual(
-            LobbyMembershipResolver.finalRoster(
-                state: state,
-                pendingJoiners: ["host-player", "guest-player", "guest-player", "guest-two"]
-            ),
-            ["host-player", "guest-player", "guest-two"]
         )
     }
 

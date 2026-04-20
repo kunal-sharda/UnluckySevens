@@ -3,7 +3,7 @@ import ULS_CoreGame
 enum TranscriptActiveContextSource: Equatable {
     case selectedBubble
     case lastSentState
-    case cachedPublishedState
+    case localLedgerState
 
     var label: String {
         switch self {
@@ -11,8 +11,8 @@ enum TranscriptActiveContextSource: Equatable {
             return "selectedBubble"
         case .lastSentState:
             return "lastSentState"
-        case .cachedPublishedState:
-            return "cachedPublishedState"
+        case .localLedgerState:
+            return "localLedgerState"
         }
     }
 }
@@ -120,7 +120,7 @@ enum TranscriptStateSelection {
             return true
         }
 
-        if activeSource == .lastSentState || activeSource == .cachedPublishedState {
+        if activeSource == .lastSentState || activeSource == .localLedgerState {
             return preferredState.rev >= activeState.rev
         }
 

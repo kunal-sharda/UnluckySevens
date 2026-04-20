@@ -27,7 +27,45 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
                 selectedState: state,
                 selectedJoinIntent: nil,
                 localActor: host,
-                pendingJoiners: [alice],
+                contextMeta: "Source: test",
+                staleWarning: "-",
+                lastError: "-",
+                canInvite: true,
+                canJoin: false,
+                canStartGame: false
+            )
+        )
+
+        XCTAssertEqual(model.title, "Invite Friends")
+        XCTAssertEqual(model.participants.count, 1)
+        XCTAssertEqual(model.participants.first?.detailText, "Host")
+        XCTAssertNil(model.startButton)
+        XCTAssertNil(model.joinButton)
+    }
+
+    func testBuildForStartedLobbyUsesCanonicalRosterOnly() {
+        let host = "host-player"
+        let alice = "alice-player"
+        let state = CoreGameStateV1(
+            gameId: "game-1",
+            rev: 1,
+            prevHash: "hash-0",
+            stateHash: "",
+            roster: [host, alice],
+            currentPlayer: host,
+            phase: .lobby,
+            seed: nil,
+            diceRngState: nil,
+            resourcesByPlayer: [host: .zero, alice: .zero],
+            boardRules: nil,
+            board: nil
+        ).rehashed()
+
+        let model = LobbyScreenModelBuilder.build(
+            context: LobbyScreenContext(
+                selectedState: state,
+                selectedJoinIntent: nil,
+                localActor: host,
                 contextMeta: "Source: test",
                 staleWarning: "-",
                 lastError: "-",
@@ -39,47 +77,8 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
 
         XCTAssertEqual(model.title, "Ready to Start")
         XCTAssertEqual(model.participants.count, 2)
-        XCTAssertEqual(model.participants.first?.detailText, "Host")
+        XCTAssertEqual(Set(model.participants.map(\.displayName)).count, 2)
         XCTAssertEqual(model.startButton?.title, "Start Game")
-        XCTAssertNil(model.joinButton)
-    }
-
-    func testBuildForHostLobbyAssignsUniqueAliasesToPendingJoiners() {
-        let host = "host-player"
-        let alice = "alice-player"
-        let bob = "bob-player"
-        let state = CoreGameStateV1(
-            gameId: "game-1",
-            rev: 0,
-            prevHash: nil,
-            stateHash: "",
-            roster: [host],
-            currentPlayer: host,
-            phase: .lobby,
-            seed: nil,
-            diceRngState: nil,
-            resourcesByPlayer: [host: .zero],
-            boardRules: nil,
-            board: nil
-        ).rehashed()
-
-        let model = LobbyScreenModelBuilder.build(
-            context: LobbyScreenContext(
-                selectedState: state,
-                selectedJoinIntent: nil,
-                localActor: host,
-                pendingJoiners: [alice, bob],
-                contextMeta: "Source: test",
-                staleWarning: "-",
-                lastError: "-",
-                canInvite: true,
-                canJoin: false,
-                canStartGame: true
-            )
-        )
-
-        XCTAssertEqual(model.participants.count, 3)
-        XCTAssertEqual(Set(model.participants.map(\.displayName)).count, 3)
     }
 
     func testBuildForHostLobbyWithoutGuestShowsInviteFriendsAndNoStart() {
@@ -104,7 +103,6 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
                 selectedState: state,
                 selectedJoinIntent: nil,
                 localActor: host,
-                pendingJoiners: [],
                 contextMeta: "Source: test",
                 staleWarning: "-",
                 lastError: "-",
@@ -142,7 +140,6 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
                 selectedState: state,
                 selectedJoinIntent: nil,
                 localActor: guest,
-                pendingJoiners: [],
                 contextMeta: "Source: test",
                 staleWarning: "-",
                 lastError: "-",
@@ -170,7 +167,6 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
                 selectedState: nil,
                 selectedJoinIntent: intent,
                 localActor: "guest-player",
-                pendingJoiners: ["guest-player"],
                 contextMeta: "Source: test",
                 staleWarning: "-",
                 lastError: "-",
@@ -202,7 +198,6 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
                 selectedState: nil,
                 selectedJoinIntent: intent,
                 localActor: "host-player",
-                pendingJoiners: ["guest-one", "guest-two"],
                 contextMeta: "Source: test",
                 staleWarning: "-",
                 lastError: "-",
@@ -213,6 +208,13 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
         )
 
         XCTAssertEqual(model.participants.count, 1)
-        XCTAssertNotEqual(model.participants[0].displayName, PlayerPseudonymResolver.displayName(for: "guest-one", gameID: intent.gameId, roster: ["host-player", "guest-one", "guest-two"]))
+        XCTAssertNotEqual(
+            model.participants[0].displayName,
+            PlayerPseudonymResolver.displayName(
+                for: "host-player",
+                gameID: intent.gameId,
+                roster: ["guest-two", "host-player"]
+            )
+        )
     }
 }

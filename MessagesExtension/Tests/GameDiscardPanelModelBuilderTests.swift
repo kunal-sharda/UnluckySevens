@@ -1,5 +1,4 @@
 import ULS_CoreGame
-import ULS_Transport
 import XCTest
 @testable import MessagesExtension
 
@@ -22,8 +21,7 @@ final class GameDiscardPanelModelBuilderTests: XCTestCase {
 
         let model = GameDiscardPanelModelBuilder.build(
             state: state,
-            actingAs: "A",
-            selectedTurnIntent: nil
+            actingAs: "A"
         )
 
         XCTAssertEqual(
@@ -59,8 +57,7 @@ final class GameDiscardPanelModelBuilderTests: XCTestCase {
 
         let model = GameDiscardPanelModelBuilder.build(
             state: state,
-            actingAs: "B",
-            selectedTurnIntent: nil
+            actingAs: "B"
         )
 
         XCTAssertEqual(
@@ -80,7 +77,7 @@ final class GameDiscardPanelModelBuilderTests: XCTestCase {
         )
     }
 
-    func testBuildReturnsApplyActionForCurrentPlayerWithSelectedDiscardIntent() {
+    func testBuildReturnsWaitingStateForCurrentPlayerWithoutManualApplyFallback() {
         let state = makeTurnState(
             resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(wood: 3)],
             currentPlayer: "A",
@@ -90,19 +87,9 @@ final class GameDiscardPanelModelBuilderTests: XCTestCase {
                 discardRequirementsByPlayer: ["B": 2]
             )
         )
-        let selectedIntent = TurnIntentV1(
-            submitDiscardFor: "B",
-            discarded: TransportResourceHandV1(wood: 2),
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: "B"
-        )
-
         let model = GameDiscardPanelModelBuilder.build(
             state: state,
-            actingAs: "A",
-            selectedTurnIntent: selectedIntent
+            actingAs: "A"
         )
 
         XCTAssertEqual(
@@ -111,10 +98,7 @@ final class GameDiscardPanelModelBuilderTests: XCTestCase {
                 waitingPlayers: [
                     PlayerPseudonymResolver.displayName(for: "B", gameID: state.gameId, roster: state.roster)
                 ],
-                action: .applySelectedDiscard(
-                    playerDisplay: PlayerPseudonymResolver.displayName(for: "B", gameID: state.gameId, roster: state.roster),
-                    discarded: [GameHandChip(resource: .wood, count: 2)]
-                )
+                action: nil
             )
         )
     }
@@ -132,8 +116,7 @@ final class GameDiscardPanelModelBuilderTests: XCTestCase {
 
         let model = GameDiscardPanelModelBuilder.build(
             state: state,
-            actingAs: "A",
-            selectedTurnIntent: nil
+            actingAs: "A"
         )
 
         XCTAssertEqual(

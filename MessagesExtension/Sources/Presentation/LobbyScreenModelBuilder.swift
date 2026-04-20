@@ -39,16 +39,12 @@ enum LobbyScreenModelBuilder {
         warningText: String?
     ) -> LobbyScreenModel {
         let host = state.roster.first
-        let visiblePlayers = uniquePlayers(
-            state.roster + context.pendingJoiners.filter { !state.roster.contains($0) }
-        )
+        let visiblePlayers = state.roster
         let participants = participantSummaries(for: state, context: context, visiblePlayers: visiblePlayers)
         let joinedCount = participants.count
         let localActor = context.localActor
         let isLocalHost = localActor == host
-        let localHasJoined = localActor.map { actor in
-            state.roster.contains(actor) || context.pendingJoiners.contains(actor)
-        } ?? false
+        let localHasJoined = localActor.map(state.roster.contains) ?? false
 
         let title: String
         let subtitle: String
@@ -171,7 +167,7 @@ enum LobbyScreenModelBuilder {
     }
 
     private static func lobbyRoster(context: LobbyScreenContext, joinIntent: JoinIntentV1) -> [String] {
-        uniquePlayers([joinIntent.actor, context.localActor] + context.pendingJoiners.map(Optional.some))
+        uniquePlayers([joinIntent.actor, context.localActor])
     }
 
     private static func displayName(_ actor: String?, gameID: String?, roster: [String]) -> String {

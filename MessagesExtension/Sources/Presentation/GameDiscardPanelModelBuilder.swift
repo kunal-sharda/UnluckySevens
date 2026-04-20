@@ -1,11 +1,9 @@
 import ULS_CoreGame
-import ULS_Transport
 
 enum GameDiscardPanelModelBuilder {
     static func build(
         state: CoreGameStateV1?,
-        actingAs: String?,
-        selectedTurnIntent: ULS_Transport.TurnIntentV1?
+        actingAs: String?
     ) -> GameDiscardPanelModel? {
         guard
             let state,
@@ -30,23 +28,6 @@ enum GameDiscardPanelModelBuilder {
             return GameDiscardPanelModel(waitingPlayers: waitingPlayers, action: action)
         }
 
-        if actingAs == state.currentPlayer,
-           let selectedTurnIntent,
-           selectedTurnIntent.kind == .submitDiscard,
-           selectedTurnIntent.gameId == state.gameId,
-           selectedTurnIntent.anchorRev == state.rev,
-           selectedTurnIntent.anchorHash == state.stateHash,
-           let discardPlayer = selectedTurnIntent.discardPlayer,
-           let discarded = selectedTurnIntent.discarded {
-            return GameDiscardPanelModel(
-                waitingPlayers: waitingPlayers,
-                action: .applySelectedDiscard(
-                    playerDisplay: playerName(discardPlayer, in: state),
-                    discarded: handChips(from: discarded)
-                )
-            )
-        }
-
         return GameDiscardPanelModel(waitingPlayers: waitingPlayers, action: nil)
     }
 
@@ -64,17 +45,6 @@ enum GameDiscardPanelModelBuilder {
     }
 
     private static func handChips(from hand: ResourceHandV1) -> [GameHandChip] {
-        [
-            GameHandChip(resource: .wood, count: hand.wood),
-            GameHandChip(resource: .brick, count: hand.brick),
-            GameHandChip(resource: .sheep, count: hand.sheep),
-            GameHandChip(resource: .wheat, count: hand.wheat),
-            GameHandChip(resource: .ore, count: hand.ore),
-        ]
-        .filter { $0.count > 0 }
-    }
-
-    private static func handChips(from hand: TransportResourceHandV1) -> [GameHandChip] {
         [
             GameHandChip(resource: .wood, count: hand.wood),
             GameHandChip(resource: .brick, count: hand.brick),

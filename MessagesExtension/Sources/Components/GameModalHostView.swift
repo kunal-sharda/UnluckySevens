@@ -12,7 +12,6 @@ struct GameModalHostView: View {
     let onSelectDiscardResource: ((ResourceV1) -> Void)?
     let onRemoveDiscardResource: ((ResourceV1) -> Void)?
     let onDiscardAction: () -> Void
-    let onApplySelectedTurnIntent: () -> Void
     let onDevCardAction: (GameDevCardActionKind) -> Void
     let onConfirmDevCardDraft: () -> Void
     let onResetDevCardDraft: () -> Void
@@ -109,29 +108,25 @@ struct GameModalHostView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             if let action = discardPanel.action {
-                switch action {
-                case let .publishDiscard(requiredCount, availableHand),
-                     let .sendDiscard(requiredCount, availableHand):
-                    discardComposerSection(
-                        requiredCount: requiredCount,
-                        availableHand: availableHand
-                    )
-
-                    Button(action: onDiscardAction) {
-                        Text(discardButtonTitle(for: action))
-                            .frame(maxWidth: .infinity)
+                let (requiredCount, availableHand): (Int, [GameHandChip]) = {
+                    switch action {
+                    case let .publishDiscard(required, hand),
+                         let .sendDiscard(required, hand):
+                        return (required, hand)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(discardSelectedCount != requiredCount)
-                case .applySelectedDiscard:
-                    discardChipRow(for: action)
+                }()
 
-                    Button(action: discardButtonAction(for: action)) {
-                        Text(discardButtonTitle(for: action))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
+                discardComposerSection(
+                    requiredCount: requiredCount,
+                    availableHand: availableHand
+                )
+
+                Button(action: onDiscardAction) {
+                    Text(discardButtonTitle(for: action))
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.borderedProminent)
+                .disabled(discardSelectedCount != requiredCount)
             }
 
             if !discardPanel.waitingPlayers.isEmpty {
@@ -395,22 +390,6 @@ struct GameModalHostView: View {
     }
 
     @ViewBuilder
-    private func discardChipRow(for action: GameDiscardPanelModel.Action) -> some View {
-        let chips = discardChips(for: action)
-        if chips.isEmpty {
-            EmptyView()
-        } else {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: GameTheme.chipSpacing) {
-                    ForEach(chips) { chip in
-                        chipView(chip)
-                    }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
     private func devCardCountSection(title: String, counts: [GameDevCardCount]) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
@@ -430,33 +409,12 @@ struct GameModalHostView: View {
         }
     }
 
-    private func chipView(_ chip: GameHandChip) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(chip.shortLabel)
-                .font(GameTheme.chipFont)
-                .foregroundStyle(GameTheme.ink)
-            Text("\(chip.count)")
-                .font(GameTheme.metaFont)
-                .foregroundStyle(GameTheme.mutedInk)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(chipBackground(for: chip))
-        .overlay(
-            RoundedRectangle(cornerRadius: GameTheme.smallRadius)
-                .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: GameTheme.smallRadius))
-    }
-
     private func discardMessage(for panel: GameDiscardPanelModel) -> String {
         switch panel.action {
         case let .publishDiscard(requiredCount, _):
             return "Discard exactly \(requiredCount) cards to continue the forced robber flow. Because you're the current player, this publishes the next canonical state immediately."
         case let .sendDiscard(requiredCount, _):
             return "Discard exactly \(requiredCount) cards to continue the forced robber flow. This sends your discard response so the current player can incorporate it."
-        case let .applySelectedDiscard(playerDisplay, _):
-            return "Apply the selected discard response from \(playerDisplay) to advance the forced robber flow."
         case .none:
             if panel.waitingPlayers.isEmpty {
                 return "Discard resolution is blocking turn progress."
@@ -471,27 +429,6 @@ struct GameModalHostView: View {
             return "Publish Discard"
         case .sendDiscard:
             return "Send Discard Response"
-        case .applySelectedDiscard:
-            return "Apply Selected Response"
-        }
-    }
-
-    private func discardButtonAction(for action: GameDiscardPanelModel.Action) -> () -> Void {
-        switch action {
-        case .publishDiscard, .sendDiscard:
-            return onDiscardAction
-        case .applySelectedDiscard:
-            return onApplySelectedTurnIntent
-        }
-    }
-
-    private func discardChips(for action: GameDiscardPanelModel.Action) -> [GameHandChip] {
-        switch action {
-        case let .publishDiscard(_, availableHand),
-             let .sendDiscard(_, availableHand):
-            return availableHand
-        case let .applySelectedDiscard(_, discarded):
-            return discarded
         }
     }
 

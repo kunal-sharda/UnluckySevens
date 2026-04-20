@@ -104,7 +104,6 @@ enum GameShellProjectionBuilder {
     static func build(
         state: CoreGameStateV1?,
         actingAs: String?,
-        selectedTurnIntent: ULS_Transport.TurnIntentV1? = nil,
         actionAvailability: GameActionAvailability = .none,
         modeAvailability: GameModeAvailability = .none,
         contextBanner: String = "Active Context: none",
@@ -219,8 +218,7 @@ enum GameShellProjectionBuilder {
             ),
             discardPanelModel: GameDiscardPanelModelBuilder.build(
                 state: state,
-                actingAs: actingAs,
-                selectedTurnIntent: selectedTurnIntent
+                actingAs: actingAs
             ),
             robberVictimOptions: GameRobberVictimOptionBuilder.build(
                 state: state,
@@ -246,7 +244,7 @@ enum GameShellProjectionBuilder {
         )
 
         return GameShellProjection(
-            kind: "INTENT(join)",
+            kind: "LEGACY_JOIN",
             gameId: joinIntent.gameId,
             rev: String(joinIntent.anchorRev),
             prevHash: "-",
@@ -304,7 +302,7 @@ enum GameShellProjectionBuilder {
         )
 
         return GameShellProjection(
-            kind: "INTENT(\(setupIntent.kind.rawValue))",
+            kind: "LEGACY_SETUP(\(setupIntent.kind.rawValue))",
             gameId: setupIntent.gameId,
             rev: String(setupIntent.anchorRev),
             prevHash: "-",
@@ -362,7 +360,7 @@ enum GameShellProjectionBuilder {
         )
 
         return GameShellProjection(
-            kind: "INTENT(\(turnIntent.kind.rawValue))",
+            kind: turnIntentProjectionKind(turnIntent),
             gameId: turnIntent.gameId,
             rev: String(turnIntent.anchorRev),
             prevHash: "-",
@@ -405,6 +403,17 @@ enum GameShellProjectionBuilder {
             robberVictimOptions: [],
             tradePanelModel: nil
         )
+    }
+
+    private static func turnIntentProjectionKind(_ turnIntent: ULS_Transport.TurnIntentV1) -> String {
+        switch TurnIntentTransportRoleResolver.resolve(turnIntent) {
+        case .responderMessage(.discardResponse):
+            return "RESPONSE(discard)"
+        case .responderMessage(.tradeResponse):
+            return "RESPONSE(trade)"
+        case .legacyIntent:
+            return "LEGACY_INTENT(\(turnIntent.kind.rawValue))"
+        }
     }
 
     private static func maritimeTradeSummary(

@@ -17,8 +17,30 @@ final class JoinIntentContextResolverTests: XCTestCase {
             joinIntent: joinIntent,
             selectedState: nil,
             latestKnownStatesByGameId: [lobbyState.gameId: lobbyState],
-            cachedPublishedState: nil,
+            localLedgerState: nil,
             localParticipant: "host"
+        )
+
+        XCTAssertEqual(decision.recoveredContext?.state.rev, lobbyState.rev)
+        XCTAssertEqual(decision.recoveredContext?.source, .latestKnownState)
+        XCTAssertTrue(decision.shouldRecordJoiner)
+    }
+
+    func testResolveRecoversLobbyAndRecordsJoinerForNonHostObserver() {
+        let lobbyState = makeLobbyState(rev: 2, host: "host")
+        let joinIntent = JoinIntentV1(
+            gameId: lobbyState.gameId,
+            anchorRev: lobbyState.rev,
+            anchorHash: lobbyState.stateHash,
+            actor: "guest"
+        )
+
+        let decision = JoinIntentContextResolver.resolve(
+            joinIntent: joinIntent,
+            selectedState: nil,
+            latestKnownStatesByGameId: [lobbyState.gameId: lobbyState],
+            localLedgerState: nil,
+            localParticipant: "observer"
         )
 
         XCTAssertEqual(decision.recoveredContext?.state.rev, lobbyState.rev)
@@ -39,7 +61,7 @@ final class JoinIntentContextResolverTests: XCTestCase {
             joinIntent: joinIntent,
             selectedState: nil,
             latestKnownStatesByGameId: [gameState.gameId: gameState],
-            cachedPublishedState: nil,
+            localLedgerState: nil,
             localParticipant: "guest"
         )
 
@@ -48,7 +70,7 @@ final class JoinIntentContextResolverTests: XCTestCase {
         XCTAssertFalse(decision.shouldRecordJoiner)
     }
 
-    func testResolveUsesCachedPublishedStateFallbackWhenGameLedgerLookupMisses() {
+    func testResolveUsesLocalLedgerStateFallbackWhenGameLedgerLookupMisses() {
         let turnState = makeTurnState(rev: 4, currentPlayer: "host")
         let joinIntent = JoinIntentV1(
             gameId: turnState.gameId,
@@ -61,12 +83,12 @@ final class JoinIntentContextResolverTests: XCTestCase {
             joinIntent: joinIntent,
             selectedState: nil,
             latestKnownStatesByGameId: [:],
-            cachedPublishedState: turnState,
+            localLedgerState: turnState,
             localParticipant: "observer"
         )
 
         XCTAssertEqual(decision.recoveredContext?.state.rev, turnState.rev)
-        XCTAssertEqual(decision.recoveredContext?.source, .cachedPublishedState)
+        XCTAssertEqual(decision.recoveredContext?.source, .localLedgerState)
         XCTAssertFalse(decision.shouldRecordJoiner)
     }
 

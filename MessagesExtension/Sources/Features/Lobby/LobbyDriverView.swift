@@ -6,9 +6,9 @@ struct LobbyDriverView: View {
 
     // Manual QA Checklist:
     // 1) Tap a STATE bubble, open extension, and verify Active Context banner shows rev/phase/current.
-    // 2) Switch Acting As to non-current player and verify current-player actions disable with reasons.
-    // 3) Send a legacy setup/turn INTENT from debug tools and verify it appears in transcript with a legacy label.
-    // 4) Switch Acting As to current player, tap Apply Selected ... Legacy INTENT -> STATE, and verify rev increments.
+    // 2) Use Join / Record Join / Clear Observed Joiners and verify lobby debug output changes.
+    // 3) Use Propose / Accept / Execute trade debug tools and verify transcript/session behavior.
+    // 4) Switch Acting As to current player, tap Apply Selected Legacy Turn INTENT -> STATE, and verify rev increments.
     // 5) Send a new STATE and verify Active Context updates immediately without reselecting.
     // 6) Toggle single-session debug on/off and verify transcript threading behavior changes.
     // 7) Clear Context and verify action buttons disable with "No Active Context" reason.
@@ -97,14 +97,21 @@ struct LobbyDriverView: View {
                         field("session", viewModel.selectedSessionPresence)
                         field("decodeSource", viewModel.selectedDecodeSource)
                         field("decodeResult", viewModel.selectedDecodeResult)
+                        field("didReceiveCount", viewModel.didReceiveCount)
+                        field("didReceiveTransport", viewModel.lastDidReceiveTransport)
+                        field("didReceiveGame", viewModel.lastDidReceiveGameId)
+                        field("didReceiveDisposition", viewModel.lastDidReceiveDisposition)
+                        field("didReceiveOutcome", viewModel.lastDidReceiveOutcome)
                         field("localParticipant", viewModel.localParticipantDebug)
                         field("resolvedActor", viewModel.resolvedActorDebug)
                         field("localInRoster", viewModel.localInRosterDebug)
-                        field("localPendingJoin", viewModel.localPendingJoinDebug)
+                        field("localObservedJoin", viewModel.localObservedJoinDebug)
                         field("canJoin", viewModel.canJoinDebug)
                         field("isInviter", viewModel.isInviterDebug)
                     }
                     .font(.system(.caption, design: .monospaced))
+
+                    debugLinesSection("didReceive History", lines: viewModel.didReceiveHistory)
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -171,7 +178,7 @@ struct LobbyDriverView: View {
                     field("visibleDevCards", viewModel.visibleDevCards)
                     field("setupPlacement", viewModel.setupPlacement)
                     field("turnIntent", viewModel.turnIntent)
-                    field("pendingJoiners", viewModel.pendingJoiners)
+                    field("observedJoiners", viewModel.observedJoinersDebug)
                 }
                 .font(.system(.caption, design: .monospaced))
 
@@ -225,14 +232,6 @@ struct LobbyDriverView: View {
                     }
 
                     actionButton(
-                        "Apply Selected Legacy Setup INTENT -> STATE",
-                        requiresCurrentPlayer: true,
-                        isEnabled: viewModel.canApplySelectedSetupIntentAsState
-                    ) {
-                        viewModel.applySelectedSetupIntentAsState()
-                    }
-
-                    actionButton(
                         "Apply Selected Legacy Turn INTENT -> STATE",
                         requiresCurrentPlayer: true,
                         isEnabled: viewModel.canApplySelectedTurnIntentAsState
@@ -240,81 +239,13 @@ struct LobbyDriverView: View {
                         viewModel.applySelectedTurnIntentAsState()
                     }
 
-                    if viewModel.isSetupSelectedState {
-                        actionButton(
-                            "Place Settlement (Current Player)",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendSetupSettlementIntentDebug
-                        ) {
-                            viewModel.sendSetupSettlementIntentDebug(node: 0)
-                        }
-
-                        actionButton(
-                            "Place Road (Current Player)",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendSetupRoadIntentDebug
-                        ) {
-                            viewModel.sendSetupRoadIntentDebug(edge: 0)
-                        }
-
-                        actionButton(
-                            "Place Pair (Current Player)",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendSetupPairIntentDebug
-                        ) {
-                            viewModel.sendSetupPairIntentDebug(settlementNode: 0, roadEdge: 0)
-                        }
-                    }
-
                     if viewModel.isTurnSelectedState {
                         actionButton(
-                            "Roll Dice (Current Player)",
+                            "Propose Trade",
                             requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendRollDiceIntentDebug
+                            isEnabled: viewModel.canSendProposeTradeIntentDebug
                         ) {
-                            viewModel.sendRollDiceIntentDebug()
-                        }
-
-                        actionButton(
-                            "Move Robber (Current Player)",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendMoveRobberIntentDebug
-                        ) {
-                            viewModel.sendMoveRobberIntentDebug()
-                        }
-
-                        ForEach(viewModel.stealVictimOptions, id: \.self) { victim in
-                            actionButton(
-                                "Steal From \(victim) (Current Player)",
-                                requiresCurrentPlayer: true,
-                                isEnabled: true
-                            ) {
-                                viewModel.sendSelectStealVictimIntentDebug(victimPlayer: victim)
-                            }
-                        }
-
-                        actionButton(
-                            "Build Road (Current Player)",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendBuildRoadIntentDebug
-                        ) {
-                            viewModel.sendBuildRoadIntentDebug()
-                        }
-
-                        actionButton(
-                            "Build Settlement (Current Player)",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendBuildSettlementIntentDebug
-                        ) {
-                            viewModel.sendBuildSettlementIntentDebug()
-                        }
-
-                        actionButton(
-                            "Build City (Current Player)",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendBuildCityIntentDebug
-                        ) {
-                            viewModel.sendBuildCityIntentDebug()
+                            viewModel.sendProposeTradeIntentDebug()
                         }
 
                         actionButton(
@@ -332,70 +263,14 @@ struct LobbyDriverView: View {
                         ) {
                             viewModel.sendExecuteTradeIntentDebug()
                         }
-
-                        actionButton(
-                            "Buy Dev Card (Current Player)",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendBuyDevCardIntentDebug
-                        ) {
-                            viewModel.sendBuyDevCardIntentDebug()
-                        }
-
-                        actionButton(
-                            "Play Knight (Current Player)",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendPlayKnightIntentDebug
-                        ) {
-                            viewModel.sendPlayKnightIntentDebug()
-                        }
-
-                        actionButton(
-                            "Play Monopoly (Current Player)",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendPlayMonopolyIntentDebug
-                        ) {
-                            viewModel.sendPlayMonopolyIntentDebug()
-                        }
-
-                        actionButton(
-                            "Play Year of Plenty (Current Player)",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendPlayYearOfPlentyIntentDebug
-                        ) {
-                            viewModel.sendPlayYearOfPlentyIntentDebug()
-                        }
-
-                        actionButton(
-                            "Play Road Building (Current Player)",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendPlayRoadBuildingIntentDebug
-                        ) {
-                            viewModel.sendPlayRoadBuildingIntentDebug()
-                        }
-
-                        actionButton(
-                            "Reveal VP (Current Player)",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendRevealVictoryPointIntentDebug
-                        ) {
-                            viewModel.sendRevealVictoryPointIntentDebug()
-                        }
-
-                        actionButton(
-                            "End Turn (Current Player)",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendEndTurnIntentDebug
-                        ) {
-                            viewModel.sendEndTurnIntentDebug()
-                        }
                     }
 
                     actionButton(
-                        "Clear Pending Joins",
+                        "Clear Observed Joiners",
                         requiresCurrentPlayer: false,
-                        isEnabled: viewModel.canClearPendingJoins
+                        isEnabled: viewModel.canClearObservedJoiners
                     ) {
-                        viewModel.clearPendingJoins()
+                        viewModel.clearObservedJoiners()
                     }
                 }
                 .frame(maxWidth: .infinity)

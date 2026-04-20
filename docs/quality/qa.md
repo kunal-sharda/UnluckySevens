@@ -243,6 +243,8 @@ What we learned:
 - When an incoming trade response references a stale anchor, the shell should recover the best latest state for that game instead of dropping into an intent-only surface.
 - Same-device cached last-published state is an acceptable temporary recovery bridge for the current-player device when the extension reopens without an active state already in memory, but it must be keyed per game rather than as one global record.
 - `MSConversation.selectedMessage` is the currently selected transcript bubble, not a live-updating pointer to the latest game update. If a new response message is never surfaced through `didReceive` while the extension is active, the app cannot silently process it from an older selected bubble.
+- `didReceive` should be treated as the live-update optimization path for the currently open game, not as permission to hijack the shell onto any newer game update in the thread. If another game's message arrives while a game is open, record it for recovery but keep the visible shell anchored to the active game.
+- The debug surface needs durable `didReceive` fields that survive later `selectionPoll` / `didSelect` events. A single mutable `selectedTrigger` field is not enough to tell "Messages never delivered the callback" from "the callback arrived and the reducer path mishandled it."
 
 Current repo answer:
 
@@ -261,7 +263,7 @@ What went wrong:
 - The repo previously mixed three separate recovery ideas:
   - `latestKnownStatesByGameId` in memory
   - one global last-published-state cache
-  - device-local `pendingJoiners`
+  - device-local observed-join overlays
 - That split made join/start recovery and reopen behavior brittle because the app could recover state for one game and joiners for another, or regress to the wrong recovery source after a reopen.
 
 What we learned:
@@ -662,7 +664,9 @@ Use this only on the disposable debug branch when a selected transcript bubble d
 
 1. Open the debug HUD on the affected device after selecting the bubble.
 2. Check `Selection` and `Transport Debug` before trying fallback actions.
-3. Confirm the selected bubble reports:
+3. If validating already-open bubble live updates, also check the dedicated `didReceive*` debug fields. They now appear in the lobby shell's compact `Lobby Debug` card as well as the internal driver debug view, and should tell you whether the callback ran, which game it carried, and whether the shell applied it or only stored it for recovery.
+4. Prefer the rolling `didReceiveHistory` lines over the single latest outcome when multiple callbacks fire in one session. The last callback can be a no-op replay and hide the earlier activation or missing-payload event that actually explains the bug.
+4. Confirm the selected bubble reports:
    - `message: present`
    - `payloadLength: > 0`
    - `decodeSource: URL`
