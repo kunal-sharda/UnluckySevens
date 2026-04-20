@@ -248,7 +248,7 @@ What we learned:
 
 Current repo answer:
 
-- The current-player device auto-applies matching targeted trade responses into canonical state as soon as the response message is surfaced and the anchored state can be recovered.
+- Targeted `acceptTrade` now publishes canonical state directly from the accepting device because the engine applies that transition atomically. `Decline` and `Counter` still use responder-message transport and should auto-resolve on the current-player side when surfaced against the right anchor state.
 - Responder-side trade/discard transport now rides the same per-game session as the live game thread, because detached response bubbles were producing worse transcript UX than the risk they were trying to avoid.
 - When a responder message surfaces and the shell can recover any valid game context for that game, it should stay on recovered game `STATE` rather than replacing the UI with a raw response shell.
 - The authority-side auto-apply path is no longer trade-response-only. Any anchored turn intent that the local current player can legally incorporate, including responder discard submissions, now behaves like an action when it surfaces on the authority device.
@@ -761,10 +761,11 @@ Use the current product shell for one smoke pass and three targeted checks. Keep
 1. From an `afterRoll` state, open the compact trade modal as the current player.
 2. Verify `Player Trade` opens a self-contained composer with `You Give`, `You Want`, and `Recipients`.
 3. Verify `Maritime / Bank Trade` opens a quick-trade list of legal options rather than a manual composer.
-4. Switch acting actor and send one or more accept intents.
-5. Return to the current-player device and confirm the accepted response auto-resolves into canonical state without a manual "apply selected response" step.
+4. Switch acting actor and accept the offer from a targeted responder device.
+5. Confirm the accepting device immediately publishes the resolved canonical trade state and that the updated state is visible to the table without a separate manual execute step.
 6. Verify resource transfer is atomic and the offer clears.
-7. Repeat a turn where the offer is not executed and confirm `End Turn` expires it.
+7. Repeat with decline or counter and confirm those responses still resolve without a manual "apply selected response" step.
+8. Repeat a turn where the offer is not executed and confirm `End Turn` expires it.
 
 ### Targeted Check: Context / Secrecy Safety
 

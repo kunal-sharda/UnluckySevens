@@ -1427,11 +1427,7 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         do {
-            try sendResponderTurnEnvelope(
-                intent,
-                caption: "ULS TRADE RESPONSE accept",
-                successStatus: "Sent trade accept response"
-            )
+            try publishTradeResponse(intent)
             return true
         } catch {
             setLastError("Accept trade failed: \(error.localizedDescription)")
@@ -1450,11 +1446,7 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         do {
-            try sendResponderTurnEnvelope(
-                intent,
-                caption: "ULS TRADE RESPONSE decline",
-                successStatus: "Sent trade decline response"
-            )
+            try publishTradeResponse(intent)
             return true
         } catch {
             setLastError("Decline trade failed: \(error.localizedDescription)")
@@ -1475,11 +1467,7 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         do {
-            try sendResponderTurnEnvelope(
-                intent,
-                caption: "ULS TRADE RESPONSE counter",
-                successStatus: "Sent trade counter response"
-            )
+            try publishTradeResponse(intent)
             return true
         } catch {
             setLastError("Counter trade failed: \(error.localizedDescription)")
@@ -3331,6 +3319,26 @@ final class LobbyDriverViewModel: ObservableObject {
         setLastError(nil)
     }
 
+    private func publishTradeResponse(_ turnIntent: ULS_Transport.TurnIntentV1) throws {
+        guard let publicationMode = TradeResponsePublicationResolver.resolve(turnIntent) else {
+            throw SendError.invalidIntentPayload
+        }
+
+        switch publicationMode {
+        case .canonicalState:
+            try applyAndPublishTurnIntent(
+                turnIntent,
+                successStatus: successStatus(for: turnIntent.kind)
+            )
+        case .responderEnvelope:
+            try sendResponderTurnEnvelope(
+                turnIntent,
+                caption: tradeResponseCaption(for: turnIntent.kind),
+                successStatus: responderTradeResponseSuccessStatus(for: turnIntent.kind)
+            )
+        }
+    }
+
     private func immediateTurnIntent(for actionKind: GameActionDockItem.Kind) -> ULS_Transport.TurnIntentV1? {
         guard
             let state = selectedState,
@@ -3413,6 +3421,32 @@ final class LobbyDriverViewModel: ObservableObject {
             return "Published end turn"
         default:
             return "Published turn action"
+        }
+    }
+
+    private func tradeResponseCaption(for kind: ULS_Transport.TurnIntentV1.Kind) -> String {
+        switch kind {
+        case .declineTrade:
+            return "ULS TRADE RESPONSE decline"
+        case .counterTrade:
+            return "ULS TRADE RESPONSE counter"
+        case .acceptTrade:
+            return "ULS TRADE RESPONSE accept"
+        default:
+            return "ULS TRADE RESPONSE"
+        }
+    }
+
+    private func responderTradeResponseSuccessStatus(for kind: ULS_Transport.TurnIntentV1.Kind) -> String {
+        switch kind {
+        case .declineTrade:
+            return "Sent trade decline response"
+        case .counterTrade:
+            return "Sent trade counter response"
+        case .acceptTrade:
+            return "Sent trade accept response"
+        default:
+            return "Sent trade response"
         }
     }
 

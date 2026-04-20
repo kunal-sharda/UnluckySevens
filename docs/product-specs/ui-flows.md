@@ -104,7 +104,7 @@ This document summarizes the player-facing flows the UI must support in the curr
 - The maritime quick-trade list should only show legal ratio-compliant options for the current hand and available port access.
 - Targeted recipients can respond with `Accept`, `Decline`, or `Counter`.
 - `Counter` should use the same composer flow, but it is addressed only back to the current player.
-- Targeted responder actions should feel final from the responder side. The current-player device may still receive them as internal trade-response transport on the same game session, but normal trade UX must not require a manual "apply selected response" step or a separate response bubble workflow.
+- Targeted responder actions should feel final from the responder side. A targeted `Accept` should publish the resolved canonical trade state immediately, while `Decline` and `Counter` may still travel as internal trade-response transport on the same game session. Normal trade UX must not require a manual "apply selected response" step or a separate response bubble workflow.
 - The first applied targeted `Accept` should resolve the trade and close the live offer.
 - If every targeted player declines, the live offer should close.
 - Non-targeted players should still be able to inspect the live trade state so the table can follow what is happening.
