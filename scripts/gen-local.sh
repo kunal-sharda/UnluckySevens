@@ -5,12 +5,16 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKSPACE_PATH="$ROOT_DIR/UnluckySevens.xcworkspace"
 OPEN_XCODE_INSTANCES=2
 RUN_CLEAN=0
-OPEN_XCODE=1
+OPEN_XCODE=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --clean)
       RUN_CLEAN=1
+      shift
+      ;;
+    --open)
+      OPEN_XCODE=1
       shift
       ;;
     --no-open)
