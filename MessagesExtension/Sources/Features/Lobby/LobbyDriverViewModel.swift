@@ -20,6 +20,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var selectedSessionPresence: String = "missing"
     @Published var selectedDecodeSource: String = "-"
     @Published var selectedDecodeResult: String = "No message selected"
+    @Published var lastPublishSelectionSnapshot: String = "-"
     @Published var didReceiveCount: String = "0"
     @Published var lastDidReceiveTransport: String = "-"
     @Published var lastDidReceiveGameId: String = "-"
@@ -52,6 +53,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published private(set) var boardDiagnosticsSnapshot: BoardInteractionDiagnosticsSnapshot = .empty
     @Published private(set) var boardReloadToken: Int = 0
     @Published private(set) var recoveredGames: [ActiveGameRecoverySummary] = []
+    @Published private(set) var dismissRequestToken: Int = 0
 
     private let summaryPayloadPrefix = "ulsenv:"
     private let boardStrategyKey = "uls.boardStrategy"
@@ -63,6 +65,7 @@ final class LobbyDriverViewModel: ObservableObject {
     private let showsLatestUpdateNotices = false
 
     private weak var activeConversation: MSConversation?
+    var onRequestDismiss: (() -> Void)?
     private var selectedState: CoreGameStateV1?
     private var selectedJoinIntent: JoinIntentV1?
     private var selectedSetupIntent: SetupPlacementIntentV1?
@@ -287,6 +290,7 @@ final class LobbyDriverViewModel: ObservableObject {
                 selectedState: selectedState,
                 selectedJoinIntent: selectedJoinIntent,
                 localActor: localParticipantIdentifier(),
+                activeContextSource: activeContextSource,
                 contextMeta: activeContextMeta,
                 staleWarning: staleContextWarning,
                 lastError: lastError,
@@ -916,7 +920,8 @@ final class LobbyDriverViewModel: ObservableObject {
             try sendEnvelope(
                 envelope,
                 caption: "ULS STATE rev0",
-                sessionPolicy: .state(gameId: state.gameId)
+                sessionPolicy: .state(gameId: state.gameId),
+                postPublishEffect: .dismissExtension
             )
             setActiveContext(state, source: .lastSentState)
             selectionStatus = "Invite sent: lobby rev0"
@@ -1230,12 +1235,14 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func publishSetupState(for target: GameBoardTarget) -> Bool {
-        guard let fromState = selectedState else {
+        let resolution = actionAuthoringStateResolution()
+        guard let fromState = resolution.state else {
             setLastError("No Active Context — tap a STATE bubble.")
             return false
         }
+        activateAuthoringStateIfNeeded(resolution)
 
-        guard let actor = localActorIdentifier(), actor == fromState.currentPlayer else {
+        guard let actor = localActorIdentifier(for: fromState), actor == fromState.currentPlayer else {
             setLastError("Only current player can publish canonical STATE.")
             return false
         }
@@ -1280,29 +1287,31 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func publishTurnState(for target: GameBoardTarget, mode: GameMode) -> Bool {
+        let resolution = actionAuthoringStateResolution()
+        let authoringState = resolution.state
         let intent: ULS_Transport.TurnIntentV1?
         let failureMessage: String
 
         switch mode {
         case .buildRoad, .buildSettlement, .buildCity:
             intent = TurnInteractionResolver.draftBuildIntent(
-                state: selectedState,
-                actingAs: localActorIdentifier(),
+                state: authoringState,
+                actingAs: localActorIdentifier(for: authoringState),
                 mode: mode,
                 target: target
             )
             failureMessage = "Selected build target is not legal."
         case .robberMove:
             intent = TurnInteractionResolver.draftRobberMoveIntent(
-                state: selectedState,
-                actingAs: localActorIdentifier(),
+                state: authoringState,
+                actingAs: localActorIdentifier(for: authoringState),
                 target: target
             )
             failureMessage = "Selected robber tile is not legal."
         case .robberVictim:
             intent = TurnInteractionResolver.draftStealVictimIntent(
-                state: selectedState,
-                actingAs: localActorIdentifier(),
+                state: authoringState,
+                actingAs: localActorIdentifier(for: authoringState),
                 target: target
             )
             failureMessage = "Selected robber victim is not legal."
@@ -1315,6 +1324,7 @@ final class LobbyDriverViewModel: ObservableObject {
             setLastError(failureMessage)
             return false
         }
+        activateAuthoringStateIfNeeded(resolution)
 
         do {
             try applyAndPublishTurnIntent(intent, successStatus: successStatus(for: intent.kind))
@@ -1327,12 +1337,14 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func handleDiscardFlowAction(discarded: ResourceHandV1) -> Bool {
-        guard let state = selectedState else {
+        let resolution = actionAuthoringStateResolution()
+        guard let state = resolution.state else {
             setLastError("No Active Context — tap a STATE bubble.")
             return false
         }
+        activateAuthoringStateIfNeeded(resolution)
 
-        guard let actor = localActorIdentifier() else {
+        guard let actor = localActorIdentifier(for: state) else {
             setLastError("Missing local participant identifier.")
             return false
         }
@@ -1375,9 +1387,10 @@ final class LobbyDriverViewModel: ObservableObject {
         receive: ResourceHandV1,
         targetPlayers: [String]
     ) -> Bool {
+        let resolution = actionAuthoringStateResolution()
         guard let intent = TradeInteractionResolver.draftTradeOfferIntent(
-            state: selectedState,
-            actingAs: localActorIdentifier(),
+            state: resolution.state,
+            actingAs: localActorIdentifier(for: resolution.state),
             give: give,
             receive: receive,
             targetPlayers: targetPlayers
@@ -1385,6 +1398,7 @@ final class LobbyDriverViewModel: ObservableObject {
             setLastError("Selected trade offer is not legal.")
             return false
         }
+        activateAuthoringStateIfNeeded(resolution)
 
         do {
             try applyAndPublishTurnIntent(intent, successStatus: "Published trade offer")
@@ -1397,15 +1411,17 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func publishMaritimeTrade(give: ResourceHandV1, receive: ResourceHandV1) -> Bool {
+        let resolution = actionAuthoringStateResolution()
         guard let intent = TradeInteractionResolver.draftMaritimeTradeIntent(
-            state: selectedState,
-            actingAs: localActorIdentifier(),
+            state: resolution.state,
+            actingAs: localActorIdentifier(for: resolution.state),
             give: give,
             receive: receive
         ) else {
             setLastError("Selected maritime trade is not legal.")
             return false
         }
+        activateAuthoringStateIfNeeded(resolution)
 
         do {
             try applyAndPublishTurnIntent(intent, successStatus: "Published maritime trade")
@@ -1418,13 +1434,15 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func sendAcceptTradeResponse() -> Bool {
+        let resolution = actionAuthoringStateResolution()
         guard let intent = TradeInteractionResolver.draftAcceptTradeIntent(
-            state: selectedState,
-            actingAs: localActorIdentifier()
+            state: resolution.state,
+            actingAs: localActorIdentifier(for: resolution.state)
         ) else {
             setLastError("No legal trade accept is available.")
             return false
         }
+        activateAuthoringStateIfNeeded(resolution)
 
         do {
             try publishTradeResponse(intent)
@@ -1437,13 +1455,15 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func sendDeclineTradeResponse() -> Bool {
+        let resolution = actionAuthoringStateResolution()
         guard let intent = TradeInteractionResolver.draftDeclineTradeIntent(
-            state: selectedState,
-            actingAs: localActorIdentifier()
+            state: resolution.state,
+            actingAs: localActorIdentifier(for: resolution.state)
         ) else {
             setLastError("No legal trade decline is available.")
             return false
         }
+        activateAuthoringStateIfNeeded(resolution)
 
         do {
             try publishTradeResponse(intent)
@@ -1456,15 +1476,17 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func sendCounterTradeResponse(give: ResourceHandV1, receive: ResourceHandV1) -> Bool {
+        let resolution = actionAuthoringStateResolution()
         guard let intent = TradeInteractionResolver.draftCounterTradeIntent(
-            state: selectedState,
-            actingAs: localActorIdentifier(),
+            state: resolution.state,
+            actingAs: localActorIdentifier(for: resolution.state),
             give: give,
             receive: receive
         ) else {
             setLastError("No legal counter trade is available.")
             return false
         }
+        activateAuthoringStateIfNeeded(resolution)
 
         do {
             try publishTradeResponse(intent)
@@ -1479,13 +1501,15 @@ final class LobbyDriverViewModel: ObservableObject {
     func handleDevCardAction(_ action: GameDevCardActionKind) -> Bool {
         switch action {
         case .buyDevCard:
+            let resolution = actionAuthoringStateResolution()
             guard let intent = DevCardInteractionResolver.draftBuyDevCardIntent(
-                state: selectedState,
-                actingAs: localActorIdentifier()
+                state: resolution.state,
+                actingAs: localActorIdentifier(for: resolution.state)
             ) else {
                 setLastError("Selected dev-card action is not legal.")
                 return false
             }
+            activateAuthoringStateIfNeeded(resolution)
             do {
                 try applyAndPublishTurnIntent(intent, successStatus: "Published dev-card purchase")
                 return true
@@ -1494,13 +1518,15 @@ final class LobbyDriverViewModel: ObservableObject {
                 return false
             }
         case .revealVictoryPoint:
+            let resolution = actionAuthoringStateResolution()
             guard let intent = DevCardInteractionResolver.draftRevealVictoryPointIntent(
-                state: selectedState,
-                actingAs: localActorIdentifier()
+                state: resolution.state,
+                actingAs: localActorIdentifier(for: resolution.state)
             ) else {
                 setLastError("Selected dev-card action is not legal.")
                 return false
             }
+            activateAuthoringStateIfNeeded(resolution)
             do {
                 try applyAndPublishTurnIntent(intent, successStatus: "Published victory-point reveal")
                 return true
@@ -1516,6 +1542,9 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func publishDevCardDraft(_ draft: GameDevCardDraft) -> Bool {
+        let resolution = actionAuthoringStateResolution()
+        let authoringState = resolution.state
+        let authoringActor = localActorIdentifier(for: authoringState)
         let intent: ULS_Transport.TurnIntentV1?
         let successStatus: String
 
@@ -1526,8 +1555,8 @@ final class LobbyDriverViewModel: ObservableObject {
                 return false
             }
             intent = DevCardInteractionResolver.draftPlayKnightIntent(
-                state: selectedState,
-                actingAs: localActorIdentifier(),
+                state: authoringState,
+                actingAs: authoringActor,
                 tileID: tileID,
                 victimPlayer: victimPlayer
             )
@@ -1538,8 +1567,8 @@ final class LobbyDriverViewModel: ObservableObject {
                 return false
             }
             intent = DevCardInteractionResolver.draftPlayMonopolyIntent(
-                state: selectedState,
-                actingAs: localActorIdentifier(),
+                state: authoringState,
+                actingAs: authoringActor,
                 resource: resource
             )
             successStatus = "Published monopoly play"
@@ -1549,8 +1578,8 @@ final class LobbyDriverViewModel: ObservableObject {
                 return false
             }
             intent = DevCardInteractionResolver.draftPlayYearOfPlentyIntent(
-                state: selectedState,
-                actingAs: localActorIdentifier(),
+                state: authoringState,
+                actingAs: authoringActor,
                 firstResource: first,
                 secondResource: second
             )
@@ -1561,8 +1590,8 @@ final class LobbyDriverViewModel: ObservableObject {
                 return false
             }
             intent = DevCardInteractionResolver.draftPlayRoadBuildingIntent(
-                state: selectedState,
-                actingAs: localActorIdentifier(),
+                state: authoringState,
+                actingAs: authoringActor,
                 firstEdgeID: firstEdgeID,
                 secondEdgeID: secondEdgeID
             )
@@ -1573,6 +1602,7 @@ final class LobbyDriverViewModel: ObservableObject {
             setLastError("Selected dev-card action is not legal.")
             return false
         }
+        activateAuthoringStateIfNeeded(resolution)
 
         do {
             try applyAndPublishTurnIntent(intent, successStatus: successStatus)
@@ -1585,14 +1615,16 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func publishRobberVictimState(victimPlayer: String) -> Bool {
+        let resolution = actionAuthoringStateResolution()
         guard let intent = TurnInteractionResolver.draftStealVictimIntent(
-            state: selectedState,
-            actingAs: localActorIdentifier(),
+            state: resolution.state,
+            actingAs: localActorIdentifier(for: resolution.state),
             victimPlayer: victimPlayer
         ) else {
             setLastError("Selected robber victim is not legal.")
             return false
         }
+        activateAuthoringStateIfNeeded(resolution)
 
         do {
             try applyAndPublishTurnIntent(intent, successStatus: successStatus(for: intent.kind))
@@ -1824,6 +1856,10 @@ final class LobbyDriverViewModel: ObservableObject {
             switch activeSource {
             case .selectedBubble:
                 transcriptActiveSource = .selectedBubble
+            case .receivedMessage:
+                transcriptActiveSource = .receivedMessage
+            case .latestKnownState:
+                transcriptActiveSource = .latestKnownState
             case .lastSentState:
                 transcriptActiveSource = .lastSentState
             case .localLedgerState:
@@ -1845,7 +1881,13 @@ final class LobbyDriverViewModel: ObservableObject {
                 didReceiveDisposition == .applyToActiveContext,
                 stateSelection.shouldActivate
             {
-                setActiveContext(stateSelection.preferredState, source: .selectedBubble)
+                let activationSource: ActiveContextSource = switch trigger {
+                case .didReceive:
+                    .receivedMessage
+                case .didSelect, .selectionPoll, .viewDidLoad, .reload:
+                    .selectedBubble
+                }
+                setActiveContext(stateSelection.preferredState, source: activationSource)
             }
 
             if didReceiveDisposition == .storeForRecoveryOnly {
@@ -2040,6 +2082,10 @@ final class LobbyDriverViewModel: ObservableObject {
         let payloadSource: TranscriptPayloadSource
         switch source {
         case .selectedBubble:
+            payloadSource = .url
+        case .receivedMessage:
+            payloadSource = .url
+        case .latestKnownState:
             payloadSource = .url
         case .lastSentState:
             payloadSource = .local
@@ -2351,6 +2397,31 @@ final class LobbyDriverViewModel: ObservableObject {
         return fallback
     }
 
+    private func actionAuthoringStateResolution(
+        for gameId: String? = nil
+    ) -> ActionAuthoringStateResolution {
+        let resolvedGameId = gameId ?? selectedState?.gameId
+        return ActionAuthoringStateResolver.resolve(
+            gameId: resolvedGameId,
+            selectedState: selectedState,
+            latestKnownStatesByGameId: latestKnownStatesByGameId,
+            localLedgerState: resolvedGameId.flatMap(localLedgerStateForIntentContext(gameId:))
+        )
+    }
+
+    private func activateAuthoringStateIfNeeded(_ resolution: ActionAuthoringStateResolution) {
+        guard
+            resolution.prefersRecoveredState,
+            let state = resolution.state,
+            let source = resolution.source,
+            shouldRecoverActiveContext(to: state)
+        else {
+            return
+        }
+
+        setActiveContext(state, source: resolvedActiveContextSource(for: source))
+    }
+
     private func showLatestUpdateNotice(_ message: String) {
         guard showsLatestUpdateNotices else {
             return
@@ -2524,24 +2595,28 @@ final class LobbyDriverViewModel: ObservableObject {
         trigger: TranscriptSelectionTrigger
     ) -> Bool {
         guard
-            TurnIntentContextResolver.shouldAutoApply(
+            let applyContext = TurnIntentContextResolver.autoApplyContext(
                 turnIntent,
                 resolution: resolution,
                 localParticipant: localParticipantIdentifier()
-            ),
-            let matchedContext = resolution.anchorMatched
+            )
         else {
             return false
         }
 
-        if shouldRecoverActiveContext(to: matchedContext.state) {
-            setActiveContext(matchedContext.state, source: resolvedActiveContextSource(for: matchedContext.source))
+        if shouldRecoverActiveContext(to: applyContext.state) {
+            setActiveContext(applyContext.state, source: resolvedActiveContextSource(for: applyContext.source))
         }
 
         do {
-            try applyAndPublishTurnIntent(turnIntent, successStatus: successStatus(for: turnIntent.kind))
+            let rebasedIntent = try discardIntentReanchoredIfNeeded(turnIntent, to: applyContext.state)
+            try applyAndPublishTurnIntent(rebasedIntent, successStatus: successStatus(for: turnIntent.kind))
+            let reanchored = rebasedIntent.anchorRev != turnIntent.anchorRev
+                || rebasedIntent.anchorHash != turnIntent.anchorHash
             appendLog(
-                "Selection \(trigger.label): auto-applied \(turnIntent.kind.rawValue) via \(source.label)"
+                reanchored
+                    ? "Selection \(trigger.label): auto-applied \(turnIntent.kind.rawValue) via \(source.label) reanchored r\(turnIntent.anchorRev)->r\(rebasedIntent.anchorRev)"
+                    : "Selection \(trigger.label): auto-applied \(turnIntent.kind.rawValue) via \(source.label)"
             )
             return true
         } catch {
@@ -2854,7 +2929,8 @@ final class LobbyDriverViewModel: ObservableObject {
     private func sendEnvelope(
         _ envelope: EnvelopeV1,
         caption: String,
-        sessionPolicy: TranscriptSessionPolicy
+        sessionPolicy: TranscriptSessionPolicy,
+        postPublishEffect: PostPublishEffect = .none
     ) throws {
         guard let conversation = activeConversation else {
             throw SendError.noActiveConversation
@@ -2888,7 +2964,8 @@ final class LobbyDriverViewModel: ObservableObject {
             into: conversation,
             envelopeKind: envelope.kind,
             sessionPolicy: builtMessage.sessionPolicy,
-            localLedgerStateRecord: localLedgerStateRecord
+            localLedgerStateRecord: localLedgerStateRecord,
+            postPublishEffect: postPublishEffect
         )
     }
 
@@ -2897,10 +2974,12 @@ final class LobbyDriverViewModel: ObservableObject {
         into conversation: MSConversation,
         envelopeKind: EnvelopeV1.Kind,
         sessionPolicy: TranscriptSessionPolicy,
-        localLedgerStateRecord: Data?
+        localLedgerStateRecord: Data?,
+        postPublishEffect: PostPublishEffect
     ) {
         let envelopeKindLabel = envelopeKind.rawValue
         let sessionPolicyLabel = sessionPolicy.label
+        let sentSessionID = message.session.map(Self.sessionIdentity) ?? "-"
         conversation.send(message) { [weak self] error in
             Task { @MainActor in
                 guard let self else { return }
@@ -2910,6 +2989,11 @@ final class LobbyDriverViewModel: ObservableObject {
                         "Error: publish failed kind=\(envelopeKindLabel) session=\(sessionPolicyLabel)"
                     )
                 } else {
+                    self.recordPublishSelectionSnapshot(
+                        envelopeKindLabel: envelopeKindLabel,
+                        sessionPolicyLabel: sessionPolicyLabel,
+                        sentSessionID: sentSessionID
+                    )
                     if let localLedgerStateRecord {
                         self.cacheLocalLedgerStateRecord(localLedgerStateRecord)
                         self.appendLog("Stored local ledger STATE record")
@@ -2917,9 +3001,56 @@ final class LobbyDriverViewModel: ObservableObject {
                     self.appendLog(
                         "Published kind=\(envelopeKindLabel) session=\(sessionPolicyLabel)"
                     )
+                    self.apply(postPublishEffect: postPublishEffect)
                 }
             }
         }
+    }
+
+    func requestExtensionDismissal() {
+        dismissRequestToken += 1
+        onRequestDismiss?()
+        appendLog("Requested extension dismiss")
+    }
+
+    private func apply(postPublishEffect: PostPublishEffect) {
+        switch postPublishEffect {
+        case .none:
+            break
+        case .dismissExtension:
+            requestExtensionDismissal()
+        }
+    }
+
+    private func recordPublishSelectionSnapshot(
+        envelopeKindLabel: String,
+        sessionPolicyLabel: String,
+        sentSessionID: String
+    ) {
+        guard diagnosticsEnabled else {
+            return
+        }
+
+        let selectedMessage = activeConversation?.selectedMessage
+        let snapshot = TranscriptTransportSupport.selectionSnapshot(
+            for: selectedMessage,
+            summaryPayloadPrefix: summaryPayloadPrefix,
+            allowSummaryFallback: allowIncomingSummaryPayloadFallback
+        )
+        let selectedSessionID = selectedMessage?.session.map(Self.sessionIdentity) ?? "-"
+        let matchesSentSession =
+            sentSessionID != "-" && selectedSessionID == sentSessionID ? "yes" : "no"
+
+        lastPublishSelectionSnapshot =
+            "kind=\(envelopeKindLabel) policy=\(sessionPolicyLabel) "
+            + "selectedMsg=\(snapshot.messagePresence) "
+            + "selectedSession=\(snapshot.sessionPresence) "
+            + "selectedSessionId=\(selectedSessionID) "
+            + "sentSessionId=\(sentSessionID) "
+            + "matchesSent=\(matchesSentSession) "
+            + "selectedURL=\(snapshot.urlPresence) "
+            + "decode=\(snapshot.decodeSource)"
+        appendLog("postPublish \(lastPublishSelectionSnapshot)")
     }
 
     private func localLedgerStateRecord(from envelope: EnvelopeV1) -> Data? {
@@ -3167,9 +3298,13 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func localActorIdentifier() -> String? {
+        localActorIdentifier(for: selectedState)
+    }
+
+    private func localActorIdentifier(for state: CoreGameStateV1?) -> String? {
         ProductActorResolver.resolve(
             localParticipant: localParticipantIdentifier(),
-            state: selectedState
+            state: state
         )
     }
 
@@ -3190,7 +3325,20 @@ final class LobbyDriverViewModel: ObservableObject {
         case .selectedState:
             return activeSource ?? .selectedBubble
         case .latestKnownState:
-            return .selectedBubble
+            return .latestKnownState
+        case .localLedgerState:
+            return .localLedgerState
+        }
+    }
+
+    private func resolvedActiveContextSource(
+        for source: ActionAuthoringStateSource
+    ) -> ActiveContextSource {
+        switch source {
+        case .selectedState:
+            return activeSource ?? .selectedBubble
+        case .latestKnownState:
+            return .latestKnownState
         case .localLedgerState:
             return .localLedgerState
         }
@@ -3268,10 +3416,13 @@ final class LobbyDriverViewModel: ObservableObject {
         _ turnIntent: ULS_Transport.TurnIntentV1,
         successStatus: String
     ) throws {
-        guard let fromState = selectedState else {
+        let resolution = actionAuthoringStateResolution(for: turnIntent.gameId)
+        activateAuthoringStateIfNeeded(resolution)
+
+        guard let fromState = resolution.state ?? selectedState else {
             throw NSError(domain: "LobbyDriverViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "No active context."])
         }
-        guard let localActor = localActorIdentifier() else {
+        guard let localActor = localActorIdentifier(for: fromState) else {
             throw NSError(domain: "LobbyDriverViewModel", code: 2, userInfo: [NSLocalizedDescriptionKey: "This device has not joined the selected game."])
         }
         guard
@@ -3339,38 +3490,68 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
-    private func immediateTurnIntent(for actionKind: GameActionDockItem.Kind) -> ULS_Transport.TurnIntentV1? {
+    private func discardIntentReanchoredIfNeeded(
+        _ turnIntent: ULS_Transport.TurnIntentV1,
+        to state: CoreGameStateV1
+    ) throws -> ULS_Transport.TurnIntentV1 {
         guard
-            let state = selectedState,
-            state.phase == .turn,
-            let actor = localActorIdentifier(),
-            actor == state.currentPlayer
+            turnIntent.anchorRev != state.rev || turnIntent.anchorHash != state.stateHash
+        else {
+            return turnIntent
+        }
+
+        guard turnIntent.kind == .submitDiscard else {
+            return turnIntent
+        }
+
+        guard let discardPlayer = turnIntent.discardPlayer, let discarded = turnIntent.discarded else {
+            throw SendError.invalidIntentPayload
+        }
+
+        return ULS_Transport.TurnIntentV1(
+            submitDiscardFor: discardPlayer,
+            discarded: discarded,
+            gameId: state.gameId,
+            anchorRev: state.rev,
+            anchorHash: state.stateHash,
+            actor: turnIntent.actor
+        )
+    }
+
+    private func immediateTurnIntent(for actionKind: GameActionDockItem.Kind) -> ULS_Transport.TurnIntentV1? {
+        let resolution = actionAuthoringStateResolution()
+        guard
+            let authoringState = resolution.state,
+            authoringState.phase == .turn,
+            let authoringActor = localActorIdentifier(for: authoringState),
+            authoringActor == authoringState.currentPlayer
         else {
             return nil
         }
+        activateAuthoringStateIfNeeded(resolution)
 
         switch actionKind {
         case .roll:
-            guard canPublishRollState else {
+            guard authoringState.turnState?.step == .needsRoll else {
                 return nil
             }
             return ULS_Transport.TurnIntentV1(
                 kind: .rollDice,
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: actor
+                gameId: authoringState.gameId,
+                anchorRev: authoringState.rev,
+                anchorHash: authoringState.stateHash,
+                actor: authoringActor
             )
         case .endTurn:
-            guard canPublishEndTurnState else {
+            guard authoringState.turnState?.step == .afterRoll else {
                 return nil
             }
             return ULS_Transport.TurnIntentV1(
                 kind: .endTurn,
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: actor
+                gameId: authoringState.gameId,
+                anchorRev: authoringState.rev,
+                anchorHash: authoringState.stateHash,
+                actor: authoringActor
             )
         case .build, .trade, .devCards:
             return nil
@@ -3541,6 +3722,8 @@ final class LobbyDriverViewModel: ObservableObject {
 
     private enum ActiveContextSource {
         case selectedBubble
+        case receivedMessage
+        case latestKnownState
         case lastSentState
         case localLedgerState
 
@@ -3548,6 +3731,10 @@ final class LobbyDriverViewModel: ObservableObject {
             switch self {
             case .selectedBubble:
                 return "selectedBubble"
+            case .receivedMessage:
+                return "receivedMessage"
+            case .latestKnownState:
+                return "latestKnownState"
             case .lastSentState:
                 return "lastSentState"
             case .localLedgerState:
@@ -3582,6 +3769,11 @@ final class LobbyDriverViewModel: ObservableObject {
         let actor: String?
         let mode: GameMode
         let draft: GameDevCardDraft?
+    }
+
+    private enum PostPublishEffect {
+        case none
+        case dismissExtension
     }
 
     private enum SendError: LocalizedError {

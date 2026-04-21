@@ -159,6 +159,35 @@ Still temporary:
 
 - Incoming `summary fallback` decode remains a bridge path for legacy transcript bubbles sent before the scheme fix. Phase 13 still owns retiring that compatibility path once device validation shows URL-only publication is stable on the corrected scheme across enough real-device sessions to be confident.
 
+### 1c. Lobby join `didReceive` fires for gameplay moves but not for the lobby host (open investigation)
+
+What we observed (all real-device, both participants on the thread):
+
+- Host opens the lobby drawer, publishes the lobby invite (`STATE rev0`, `.state(gameId:)` session policy), and stays on the drawer. Internal debug instrumentation showed `lifecycleState=active`, with no `willResignActive` in history.
+- Joiner taps the invite bubble, lobby shell opens, taps Join, publishes `STATE rev1` on the chained `MSSession`. Joiner's debug confirms `incomingMatchesCached=yes` (chain held at publish time).
+- Host's `didReceiveCount` stays `0` and UI does not update. Only a manual dismiss-and-reopen (or tapping the replaced bubble) lands the new state — via `didBecomeActive` / `didSelect` reading `selectedMessage.url` ("Decoded STATE via URL").
+- Gameplay moves (build, roll, other turn actions) DO fire `didReceive` live on the counterparty through what looks structurally like the same code path (`.state(gameId:)`, `kind: .state`, same `applyAndPublish*` shape). So the failure is specific to the lobby/join boundary, not a blanket `didReceive` reliability claim.
+
+What is not yet the root cause:
+
+- Not MSSession policy: join, setup, and turn STATE publishes all go through `sessionPolicy: .state(gameId:)`, and gameplay works. Swapping join to `.new` was proposed as a diagnostic, not a fix.
+- Not lifecycle suspension: the host's `lifecycleHistory` shows continuous `active` with no `willResignActive` between `didBecomeActive` and the expected delivery window.
+- Not transcript transport payload: the envelope, URL scheme, and caption format are identical between invite and gameplay STATE publishes.
+- Not session chain breakage: joiner's `lastSessionResolve` confirms `source=selected` and `incomingMatchesCached=yes` on the return trip.
+
+Likely-but-not-yet-confirmed directions:
+
+- Something specific to the *first* reply on a freshly-minted `MSSession` (the invite is the only STATE on that session until the joiner replies). Established sessions in gameplay have multiple prior exchanges and may route deliveries differently.
+- Something specific to the lobby host shell state (single-participant roster, `.lastSentState` active context, "just sent first message" presentation state) interacting with Messages' delivery routing.
+- An iMessage quirk around delivery to the sender of the *initiating* message in a thread while that sender is still presenting.
+
+How to apply this while the root cause is open:
+
+- Treat lobby join and trade-response (recipient-is-actively-waiting) flows as *not* safely live-pushable. Design the UX for a dismiss-reopen or tap-the-replaced-bubble interaction until we can pin down the specific mechanism.
+- Keep `didReceive` wired as the optimization path (it demonstrably works for gameplay); keep `didBecomeActive` + `conversation.selectedMessage` + per-game ledger / active-games recovery surface as the durable path (Lessons 7 and 8).
+- When diagnosing "live update never arrived," check `lifecycleState` + `lifecycleHistory` first, `didReceiveCount` / `didReceiveHistory` second, and whether `didBecomeActive` / `didSelect` caught up on reopen third. Record whether the failing flow is a *first* reply on a new `MSSession` vs. an established one — that is the biggest open variable.
+- Do not over-generalize this to "`didReceive` is broken on device." Gameplay confirms it works; the narrow, reproducible failure is the lobby join handshake specifically, and that is where investigation should continue.
+
 ### 2. Messages host resize must be treated as a hostile gesture boundary
 
 What went wrong:
@@ -241,6 +270,7 @@ What we learned:
 - The current-player device should auto-apply matching targeted trade-response intents into canonical state as soon as it has the right anchored state.
 - The authority-side publish path must preserve the **responder** as the trade-response actor for validation/audit semantics. If the shell blindly re-validates responder `acceptTrade` / `declineTrade` / `counterTrade` as if the current player were the action actor, auto-apply will fail every time even though the surfaced response is otherwise valid.
 - When an incoming trade response references a stale anchor, the shell should recover the best latest state for that game instead of dropping into an intent-only surface.
+- Responder discard submissions have the same stale-anchor problem during multi-player seven flows. If one discard advances canonical state before another responder bubble surfaces, the authority device should re-anchor that later discard onto the newest valid `.pendingDiscards` state instead of silently dropping it as an obsolete response.
 - Same-device cached last-published state is an acceptable temporary recovery bridge for the current-player device when the extension reopens without an active state already in memory, but it must be keyed per game rather than as one global record.
 - `MSConversation.selectedMessage` is the currently selected transcript bubble, not a live-updating pointer to the latest game update. If a new response message is never surfaced through `didReceive` while the extension is active, the app cannot silently process it from an older selected bubble.
 - `didReceive` should be treated as the live-update optimization path for the currently open game, not as permission to hijack the shell onto any newer game update in the thread. If another game's message arrives while a game is open, record it for recovery but keep the visible shell anchored to the active game.
@@ -252,6 +282,8 @@ Current repo answer:
 - Responder-side trade/discard transport now rides the same per-game session as the live game thread, because detached response bubbles were producing worse transcript UX than the risk they were trying to avoid.
 - When a responder message surfaces and the shell can recover any valid game context for that game, it should stay on recovered game `STATE` rather than replacing the UI with a raw response shell.
 - The authority-side auto-apply path is no longer trade-response-only. Any anchored turn intent that the local current player can legally incorporate, including responder discard submissions, now behaves like an action when it surfaces on the authority device.
+- Multi-player discard progression now tolerates stale responder anchors specifically for `.pendingDiscards`: if the authority device has a newer valid discard state for the same game and the discarding player has not submitted yet, the surfaced response is re-anchored onto that newer state and published as canonical `STATE`.
+- Authoring from a stale selected bubble is a different failure mode from recovering from a stale selected bubble. Turn/setup/trade/dev-card publication paths should resolve against the newest known canonical state for the same game before drafting or validating an action, otherwise the shell can still produce obsolete anchors even after recovery logic improved.
 - A short post-selection polling burst is not enough for Messages-hosted async play. If the extension is open on a game bubble, it needs a lightweight ongoing selection watch while that context remains active, because same-session surfacing can lag well past the first couple of seconds.
 - Same-device cached published-state recovery now stores a per-game bridge for reopen/response selection paths instead of relying on one global last-published state.
 - Trade-response copy no longer exposes `INTENT` as a player-facing term, even though intents remain the internal transport primitive under the current authority model.
@@ -535,12 +567,12 @@ Run this after shell, layout, presentation, or mode-system changes.
 Run this after any lobby join/start UX change.
 
 1. From device A, send an invite `STATE` into the thread.
-2. On device A, select the invite bubble and confirm the extension resolves the lobby from transcript transport rather than falling back to `No Lobby Selected`.
-3. On device B, select the same invite bubble and confirm the extension resolves the same invite before joining.
+2. On device A, confirm the extension dismisses back to the Messages thread immediately after the invite is sent.
+3. On device B, select the invite bubble and confirm the extension resolves the invite before joining.
 4. From device B, open the invite and join.
 5. Confirm joining does not require an extra manual send step after tapping `Join`.
-6. From device A (host), confirm the lobby UI reflects both the host and the joined guest before trying to start.
-7. Confirm `Start Game` stays unavailable until at least two players appear in the host lobby, then start from device A.
+6. On device A, reopen the latest lobby bubble in the thread and confirm the lobby UI now reflects both the host and the joined guest. Reopening a real one-player lobby bubble before anyone joins should show the normal interactive lobby.
+7. Confirm `Start Game` stays unavailable until at least two players appear in that reopened host lobby, then start from device A.
 8. From device B, open the start `STATE` and confirm the extension resolves the new setup context cleanly.
 9. On both devices, if the thread now contains more than one recoverable game or stale lobby context, confirm the compact `Game` / `Games` recovery chip opens the correct latest known lobby or game context without requiring transcript hunting.
 
@@ -602,52 +634,53 @@ Run this before calling phase 12 complete.
    - `City`
    - `Buy Dev`
 15. While `Build` is open, tap `Hand`, `Bank`, and `Players` and confirm the shell switches directly to the requested utility shelf instead of forcing a manual build close first.
-16. Tap the pull-tab, then `Hand`, `Bank`, and `Players`, and confirm only one shelf opens at a time.
-17. Close each shelf through both:
+16. While `Hand`, `Bank`, or `Players` is open, tap `Roll`, `Build`, `Trade`, `Dev Cards`, and `End Turn` as they become legal and confirm the dock buttons stay tappable instead of being blocked by the visible shelf container.
+17. Tap the pull-tab, then `Hand`, `Bank`, and `Players`, and confirm only one shelf opens at a time.
+18. Close each shelf through both:
    - the close chevron
    - tapping the selected utility tab again
-18. Confirm the `Trade` dock action appears only after rolling and opens a dedicated trade panel rather than a `Hand` shelf row.
-19. While trade is open, confirm the lower shelf is hidden/disabled and the trade panel fully owns interaction until the draft is sent or cancelled.
-20. As proposer, confirm the player-trade composer is vertically stacked as:
+19. Confirm the `Trade` dock action appears only after rolling and opens a dedicated trade panel rather than a `Hand` shelf row.
+20. While trade is open, confirm the lower shelf is hidden/disabled and the trade panel fully owns interaction until the draft is sent or cancelled.
+21. As proposer, confirm the player-trade composer is vertically stacked as:
    - `You Give`
    - `You Want`
    - `Recipients`
    and that only the recipient section scrolls.
-21. Confirm `You Want` shows both the five resource types and the remaining public bank counts.
-22. Switch away from trade by opening another peer route and confirm the trade draft is discarded immediately rather than leaving stale shell state behind.
-23. Open the `Bank` shelf and confirm it shows public remaining counts for wood, brick, sheep, wheat, and ore using the same chip sizing and spacing as the `Hand` shelf. Verify it only becomes interactive during Monopoly or Year of Plenty selection.
-24. Open the `Players` shelf and confirm each opponent row only shows:
+22. Confirm `You Want` shows both the five resource types and the remaining public bank counts.
+23. Switch away from trade by opening another peer route and confirm the trade draft is discarded immediately rather than leaving stale shell state behind.
+24. Open the `Bank` shelf and confirm it shows public remaining counts for wood, brick, sheep, wheat, and ore using the same chip sizing and spacing as the `Hand` shelf. Verify it only becomes interactive during Monopoly or Year of Plenty selection.
+25. Open the `Players` shelf and confirm each opponent row only shows:
    - alias
    - current-turn indicator
    - public VP
    - public hand count
-25. Confirm `Hand`, `Bank`, and `Players` do not add inner titles or subtitles and do not scroll in the normal case except when the host is too constrained to fit the utility body without scrolling.
-26. Tap random nodes, edges, and tiles while idle. Confirm nothing highlights or remains selected unless the active mode actually uses that board target class.
-27. Open the dev-card panel and confirm it renders as visible card inventory rather than a long text list. The owning player should be able to see held dev cards, including Victory Point cards.
-28. Confirm only legal dev-card plays are actionable from that card shelf:
+26. Confirm `Hand`, `Bank`, and `Players` do not add inner titles or subtitles and do not scroll in the normal case except when the host is too constrained to fit the utility body without scrolling.
+27. Tap random nodes, edges, and tiles while idle. Confirm nothing highlights or remains selected unless the active mode actually uses that board target class.
+28. Open the dev-card panel and confirm it renders as visible card inventory rather than a long text list. The owning player should be able to see held dev cards, including Victory Point cards.
+29. Confirm only legal dev-card plays are actionable from that card shelf:
    - Knight
    - Monopoly
    - Year of Plenty
    - Road Building
-29. Play Knight and confirm the robber moves to the selected tile. If the chosen tile has multiple legal victims, verify the board highlight victim step becomes explicit; if it has one or zero legal victims, verify the flow resolves without an unnecessary extra picker.
-30. Play Monopoly and confirm the chosen resource is the one collected from opponents.
-31. Play Year of Plenty and confirm the selected two resources are taken from the bank and added to the player.
-32. Play Road Building and confirm the selected two edges are placed without resource cost.
-33. If a Victory Point card is present, confirm it is visible in the owner card shelf but only becomes revealable when it would immediately win the game.
-34. Open the trade panel as proposer and responder. Confirm the compact panel explains accepted, waiting, passive-decline, and execute/end-turn expiry behavior without leaking raw IDs or debug text.
-35. Enter setup, build, robber, Knight, and Road Building flows and confirm the in-board hint chip is small, single-line, and shifted above the overlay shelf when the shelf is open.
-36. Finish a game-over state or load one from transcript and confirm the shell shows:
+30. Play Knight and confirm the robber moves to the selected tile. If the chosen tile has multiple legal victims, verify the board highlight victim step becomes explicit; if it has one or zero legal victims, verify the flow resolves without an unnecessary extra picker.
+31. Play Monopoly and confirm the chosen resource is the one collected from opponents.
+32. Play Year of Plenty and confirm the selected two resources are taken from the bank and added to the player.
+33. Play Road Building and confirm the selected two edges are placed without resource cost.
+34. If a Victory Point card is present, confirm it is visible in the owner card shelf but only becomes revealable when it would immediately win the game.
+35. Open the trade panel as proposer and responder. Confirm the compact panel explains accepted, waiting, passive-decline, and execute/end-turn expiry behavior without leaking raw IDs or debug text.
+36. Enter setup, build, robber, Knight, and Road Building flows and confirm the in-board hint chip is small, single-line, and shifted above the overlay shelf when the shelf is open.
+37. Finish a game-over state or load one from transcript and confirm the shell shows:
    - winner clearly
    - compact final score
    - short last-turn recap
    - no dead bottom tray
-37. Open and close `Hand`, `Bank`, `Players`, `Build`, and `Play Dev` repeatedly and confirm the board does not visibly hitch or rebuild while the shelf changes.
-38. In setup and build modes, tap one legal target once and confirm nothing publishes yet. Confirm the target highlights, then tap the same selected target again and confirm it publishes.
-39. After selecting a setup/build target, tap a different legal target and confirm the selection moves without publishing.
-40. On both iPhone and iPad, select a setup/build target while `Hand`, `Bank`, or `Players` is visible and confirm the shelf header tabs remain usable instead of being replaced by a forced-flow panel.
-41. Drag down from the top of the Messages transcript to collapse the host while a live game is open, both with the shelf closed and with a shelf open. Confirm the board stays mounted and responsive at gameplay height during the drag, then performs one clean final refit after the host settles without camera jumps or manual reload.
-42. On both iPhone and iPad, confirm the `Hand` and `Bank` shelves keep the same chip sizing and a capped reading width instead of stretching to full host width.
-43. In a visibly constrained host height, confirm a utility shelf closes instead of rendering partially offscreen or leaving unreachable content below the viewport.
+38. Open and close `Hand`, `Bank`, `Players`, `Build`, and `Play Dev` repeatedly and confirm the board does not visibly hitch or rebuild while the shelf changes.
+39. In setup and build modes, tap one legal target once and confirm nothing publishes yet. Confirm the target highlights, then tap the same selected target again and confirm it publishes.
+40. After selecting a setup/build target, tap a different legal target and confirm the selection moves without publishing.
+41. On both iPhone and iPad, select a setup/build target while `Hand`, `Bank`, or `Players` is visible and confirm the shelf header tabs remain usable instead of being replaced by a forced-flow panel.
+42. Drag down from the top of the Messages transcript to collapse the host while a live game is open, both with the shelf closed and with a shelf open. Confirm the board stays mounted and responsive at gameplay height during the drag, then performs one clean final refit after the host settles without camera jumps or manual reload.
+43. On both iPhone and iPad, confirm the `Hand` and `Bank` shelves keep the same chip sizing and a capped reading width instead of stretching to full host width.
+44. In a visibly constrained host height, confirm a utility shelf closes instead of rendering partially offscreen or leaving unreachable content below the viewport.
 
 ### Real Device UX Hardening
 
@@ -664,13 +697,15 @@ Use this only on the disposable debug branch when a selected transcript bubble d
 
 1. Open the debug HUD on the affected device after selecting the bubble.
 2. Check `Selection` and `Transport Debug` before trying fallback actions.
-3. If validating already-open bubble live updates, also check the dedicated `didReceive*` debug fields. They now appear in the lobby shell's compact `Lobby Debug` card as well as the internal driver debug view, and should tell you whether the callback ran, which game it carried, and whether the shell applied it or only stored it for recovery.
+3. If validating already-open bubble live updates on a debug branch, check the dedicated `didReceive*` debug fields in the internal driver/debug surfaces. They should tell you whether the callback ran, which game it carried, and whether the shell applied it or only stored it for recovery.
 4. Prefer the rolling `didReceiveHistory` lines over the single latest outcome when multiple callbacks fire in one session. The last callback can be a no-op replay and hide the earlier activation or missing-payload event that actually explains the bug.
-4. Confirm the selected bubble reports:
+5. If diagnosing "host sent invite, guest joined, host stayed stale," also compare `postSendSelection` against the later live-update case. `postSendSelection selectedMsg=missing` or `matchesSent=no` means the host is still sitting on its optimistic `lastSentState` shell rather than a selected transcript bubble after send.
+6. Treat `source=selectedBubble` narrowly. It now means the active state was anchored from a selected transcript bubble. `source=receivedMessage` means the state came from `didReceive` without bubble selection, and `source=latestKnownState` means the shell recovered from transcript-known state rather than the currently selected bubble.
+7. Confirm the selected bubble reports:
    - `message: present`
    - `payloadLength: > 0`
    - `decodeSource: URL`
-4. Prefer `url: present` plus `payloadQuery: present`. If they are missing, treat it as a transport publication or host-selection failure rather than a lobby-state bug.
+8. Prefer `url: present` plus `payloadQuery: present`. If they are missing, treat it as a transport publication or host-selection failure rather than a lobby-state bug.
 5. During the temporary transport fallback, `decodeSource: summary fallback` is acceptable evidence that the mirrored summary carrier recovered the payload; capture it as a host-fidelity defect and keep phase 13 responsible for removing that fallback.
 6. The temporary in-app diagnostics slice is now gated off by default. Re-enable it only on a troubleshooting branch; normal release-readiness validation should not depend on a visible `Reload Board` control or transport badge.
 7. If lobby `STATE` decodes but `Join Game` is still missing on the receiving device, inspect:
@@ -722,7 +757,7 @@ Use the current product shell for one smoke pass and three targeted checks. Keep
 1. Run the Practical Gate commands.
 2. Launch the current development build if needed to install the extension, then open Messages in the simulator.
 3. In Messages, create or open a thread and launch Unlucky Sevens.
-4. Tap `Invite New Game`, then verify a lobby `STATE` bubble appears and the extension decodes it as active context.
+4. Tap `Invite Players`, then verify a lobby `STATE` bubble appears and the extension decodes it as active context.
 5. Tap `Join` from another simulated actor path if available, then `Start Game`.
    - Prefer the product flow. Debug-only steps such as `Record Join` should only be used on older branches or if a stage is still incomplete.
 6. Apply setup intents until the game reaches turn phase.
@@ -753,6 +788,7 @@ Use the current product shell for one smoke pass and three targeted checks. Keep
 1. Continue play until a 7 occurs naturally.
 2. Verify required discard counts appear only for players with more than 7 cards.
 3. Submit explicit discard selections and confirm the engine blocks robber movement until all required discards complete.
+4. In a multi-player discard turn, submit one responder discard, then submit a second responder discard from an older bubble and confirm the authority device still progresses the turn without requiring a manual bubble hop.
 4. Move the robber and confirm the engine only offers eligible victims.
 5. Apply steal and verify the turn returns to `afterRoll`.
 
