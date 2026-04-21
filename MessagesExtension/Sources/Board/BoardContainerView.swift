@@ -14,6 +14,7 @@ struct BoardContainerView: View {
     let onDiagnosticsChanged: ((BoardInteractionDiagnosticsSnapshot) -> Void)?
     let onGestureEvent: ((HostGestureEvent) -> Void)?
     let onResizeFreezeChanged: ((BoardResizeFreezeState) -> Void)?
+    let onFreezeRecoveryReloadRequested: ((String) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
     private var shouldShowBoardHeader: Bool {
@@ -120,6 +121,7 @@ struct BoardContainerView: View {
                         onDiagnosticsChanged: onDiagnosticsChanged,
                         onGestureEvent: onGestureEvent,
                         onResizeFreezeChanged: onResizeFreezeChanged,
+                        onFreezeRecoveryReloadRequested: onFreezeRecoveryReloadRequested,
                         onTargetTap: onTargetTap
                     )
                     .equatable()

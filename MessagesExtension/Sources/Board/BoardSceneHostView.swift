@@ -102,7 +102,6 @@ struct BoardSceneHostView: UIViewRepresentable {
             self.view = view
 
             let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
-            pan.maximumNumberOfTouches = 1
             pan.delegate = self
 
             let pinch = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))

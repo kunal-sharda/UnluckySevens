@@ -33,6 +33,7 @@ enum GameDevCardPanelModelBuilder {
             playableCounts: playableCounts
         )
         let newCounts = counts(from: revealedNew)
+        let selectedActionKind = selectedActionKind(for: mode, draft: draft)
         let timingNotes = makeTimingNotes(
             state: state,
             actingAs: actingAs,
@@ -44,6 +45,13 @@ enum GameDevCardPanelModelBuilder {
         guard let actingAs else {
             return GameDevCardPanelModel(
                 message: "Development-card actions are unavailable without a local player identity.",
+                cards: makeCards(
+                    playableCounts: playableCounts,
+                    heldCounts: heldCounts,
+                    newCounts: newCounts,
+                    playActions: playActions,
+                    selectedActionKind: selectedActionKind
+                ),
                 playableCounts: playableCounts,
                 heldCounts: heldCounts,
                 newCounts: newCounts,
@@ -64,6 +72,13 @@ enum GameDevCardPanelModelBuilder {
                     playableCounts: playableCounts,
                     heldCounts: heldCounts,
                     newCounts: newCounts
+                ),
+                cards: makeCards(
+                    playableCounts: playableCounts,
+                    heldCounts: heldCounts,
+                    newCounts: newCounts,
+                    playActions: playActions,
+                    selectedActionKind: selectedActionKind
                 ),
                 playableCounts: playableCounts,
                 heldCounts: heldCounts,
@@ -86,6 +101,13 @@ enum GameDevCardPanelModelBuilder {
                     heldCounts: heldCounts,
                     newCounts: newCounts
                 ),
+                cards: makeCards(
+                    playableCounts: playableCounts,
+                    heldCounts: heldCounts,
+                    newCounts: newCounts,
+                    playActions: playActions,
+                    selectedActionKind: selectedActionKind
+                ),
                 playableCounts: playableCounts,
                 heldCounts: heldCounts,
                 newCounts: newCounts,
@@ -98,10 +120,12 @@ enum GameDevCardPanelModelBuilder {
             )
         case .devCardKnightMove:
             return stagedModel(
-                message: "Choose the robber's destination tile on the board.",
+                message: "Pick robber tile.",
                 playableCounts: playableCounts,
                 heldCounts: heldCounts,
                 newCounts: newCounts,
+                playActions: playActions,
+                selectedActionKind: selectedActionKind,
                 timingNotes: timingNotes,
                 draftSummary: draftSummary(for: draft, in: state),
                 confirmTitle: nil,
@@ -109,10 +133,12 @@ enum GameDevCardPanelModelBuilder {
             )
         case .devCardKnightVictim:
             return stagedModel(
-                message: "Choose one highlighted victim to steal from.",
+                message: "Pick victim.",
                 playableCounts: playableCounts,
                 heldCounts: heldCounts,
                 newCounts: newCounts,
+                playActions: playActions,
+                selectedActionKind: selectedActionKind,
                 timingNotes: timingNotes,
                 draftSummary: draftSummary(for: draft, in: state),
                 confirmTitle: nil,
@@ -122,10 +148,12 @@ enum GameDevCardPanelModelBuilder {
             let selectedResource = monopolyResource(from: draft)
             let selectedPreview = state.monopolyPreviews(for: actingAs).first { $0.resource == selectedResource }
             return stagedModel(
-                message: "Choose one resource from the bank strip, then confirm the play.",
+                message: "Pick resource.",
                 playableCounts: playableCounts,
                 heldCounts: heldCounts,
                 newCounts: newCounts,
+                playActions: playActions,
+                selectedActionKind: selectedActionKind,
                 timingNotes: timingNotes,
                 draftSummary: selectedPreview.map {
                     "Selected \(resourceLabel($0.resource)). This will claim up to \($0.claimCount) cards."
@@ -140,6 +168,8 @@ enum GameDevCardPanelModelBuilder {
                 playableCounts: playableCounts,
                 heldCounts: heldCounts,
                 newCounts: newCounts,
+                playActions: playActions,
+                selectedActionKind: selectedActionKind,
                 timingNotes: timingNotes,
                 draftSummary: yearOfPlentySummary(first: selection.first, second: selection.second),
                 confirmTitle: "Play Year Of Plenty",
@@ -147,10 +177,12 @@ enum GameDevCardPanelModelBuilder {
             )
         case .devCardRoadBuildingFirst:
             return stagedModel(
-                message: "Choose the first highlighted road on the board.",
+                message: "Pick 1st road.",
                 playableCounts: playableCounts,
                 heldCounts: heldCounts,
                 newCounts: newCounts,
+                playActions: playActions,
+                selectedActionKind: selectedActionKind,
                 timingNotes: timingNotes,
                 draftSummary: draftSummary(for: draft, in: state),
                 confirmTitle: nil,
@@ -158,10 +190,12 @@ enum GameDevCardPanelModelBuilder {
             )
         case .devCardRoadBuildingSecond:
             return stagedModel(
-                message: "Choose the second highlighted road connected to the first.",
+                message: "Pick 2nd road.",
                 playableCounts: playableCounts,
                 heldCounts: heldCounts,
                 newCounts: newCounts,
+                playActions: playActions,
+                selectedActionKind: selectedActionKind,
                 timingNotes: timingNotes,
                 draftSummary: draftSummary(for: draft, in: state),
                 confirmTitle: nil,
@@ -191,6 +225,8 @@ enum GameDevCardPanelModelBuilder {
         playableCounts: [GameDevCardCount],
         heldCounts: [GameDevCardCount],
         newCounts: [GameDevCardCount],
+        playActions: [GameDevCardAction],
+        selectedActionKind: GameDevCardActionKind?,
         timingNotes: [String],
         draftSummary: String?,
         confirmTitle: String?,
@@ -198,10 +234,17 @@ enum GameDevCardPanelModelBuilder {
     ) -> GameDevCardPanelModel {
         GameDevCardPanelModel(
             message: message,
+            cards: makeCards(
+                playableCounts: playableCounts,
+                heldCounts: heldCounts,
+                newCounts: newCounts,
+                playActions: playActions,
+                selectedActionKind: selectedActionKind
+            ),
             playableCounts: playableCounts,
             heldCounts: heldCounts,
             newCounts: newCounts,
-            playActions: [],
+            playActions: playActions,
             timingNotes: timingNotes,
             draftSummary: draftSummary,
             confirmTitle: confirmTitle,
@@ -418,6 +461,50 @@ enum GameDevCardPanelModelBuilder {
         return counts(from: heldInventory)
     }
 
+    private static func makeCards(
+        playableCounts: [GameDevCardCount],
+        heldCounts: [GameDevCardCount],
+        newCounts: [GameDevCardCount],
+        playActions: [GameDevCardAction],
+        selectedActionKind: GameDevCardActionKind?
+    ) -> [GameDevCardTileModel] {
+        let actionsByKind = Dictionary(uniqueKeysWithValues: playActions.map { ($0.kind, $0) })
+
+        return GameDevCardVisualKind.allCases.compactMap { kind in
+            let playable = count(for: kind.title, in: playableCounts)
+            let held = count(for: kind.title, in: heldCounts)
+            let new = count(for: kind.title, in: newCounts)
+            let total = playable + held + new
+            let action = actionsByKind[kind.actionKind]
+
+            guard total > 0 || action != nil else {
+                return nil
+            }
+
+            return GameDevCardTileModel(
+                kind: kind,
+                count: max(total, 1),
+                statusText: statusText(
+                    for: kind,
+                    playable: playable,
+                    held: held,
+                    new: new,
+                    action: action
+                ),
+                detailText: detailText(
+                    for: kind,
+                    action: action,
+                    playable: playable,
+                    held: held,
+                    new: new
+                ),
+                actionKind: action?.kind,
+                isEnabled: action != nil,
+                isSelected: selectedActionKind == kind.actionKind
+            )
+        }
+    }
+
     private static func counts(from inventory: DevCardInventoryV1?) -> [GameDevCardCount] {
         guard let inventory else {
             return []
@@ -439,6 +526,98 @@ enum GameDevCardPanelModelBuilder {
 
     private static func count(for title: String, in counts: [GameDevCardCount]) -> Int {
         counts.first(where: { $0.title == title })?.count ?? 0
+    }
+
+    private static func selectedActionKind(
+        for mode: GameMode,
+        draft: GameDevCardDraft?
+    ) -> GameDevCardActionKind? {
+        if let draft {
+            return draft.actionKind
+        }
+
+        switch mode {
+        case .devCardKnightMove, .devCardKnightVictim:
+            return .playKnight
+        case .devCardMonopoly:
+            return .playMonopoly
+        case .devCardYearOfPlenty:
+            return .playYearOfPlenty
+        case .devCardRoadBuildingFirst, .devCardRoadBuildingSecond:
+            return .playRoadBuilding
+        case .playDevCard:
+            return nil
+        case .idle, .setup, .buildRoad, .buildSettlement, .buildCity, .robberMove, .robberVictim, .trade, .discard:
+            return nil
+        }
+    }
+
+    private static func statusText(
+        for kind: GameDevCardVisualKind,
+        playable: Int,
+        held: Int,
+        new: Int,
+        action: GameDevCardAction?
+    ) -> String {
+        if action?.kind == .revealVictoryPoint {
+            return "Reveal to win"
+        }
+        if playable > 0 {
+            var segments = ["\(playable) playable"]
+            if held > 0 {
+                segments.append("\(held) held")
+            }
+            if new > 0 {
+                segments.append("\(new) new")
+            }
+            return segments.joined(separator: " · ")
+        }
+        if held > 0, new > 0 {
+            return "\(held) held · \(new) new"
+        }
+        if new > 0 {
+            return "\(new) new this turn"
+        }
+        if held > 0 {
+            return kind == .victoryPoint ? "\(held) hidden" : "\(held) held"
+        }
+        return "Unavailable"
+    }
+
+    private static func detailText(
+        for kind: GameDevCardVisualKind,
+        action: GameDevCardAction?,
+        playable: Int,
+        held: Int,
+        new: Int
+    ) -> String {
+        if let action {
+            switch action.kind {
+            case .playKnight:
+                return "Move robber"
+            case .playMonopoly:
+                return "Choose resource"
+            case .playYearOfPlenty:
+                return "Take 2 resources"
+            case .playRoadBuilding:
+                return "Place 2 roads"
+            case .revealVictoryPoint:
+                return "Reveal now"
+            case .buyDevCard:
+                return action.detail
+            }
+        }
+
+        if kind == .victoryPoint {
+            return "Stays hidden until it wins."
+        }
+        if new > 0 {
+            return "Locked until your next turn."
+        }
+        if held > 0 && playable == 0 {
+            return "Not legal right now."
+        }
+        return "No legal play."
     }
 
     private static func canChooseYearOfPlenty(from options: [BankResourceOptionV1]) -> Bool {

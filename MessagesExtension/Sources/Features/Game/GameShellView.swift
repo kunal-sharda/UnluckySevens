@@ -287,7 +287,6 @@ struct GameShellView: View {
                             .padding(.horizontal, GameTheme.shellPadding)
                             .padding(.bottom, GameTheme.shellPadding + shellLayout.lowerRail.dockHeight)
                             .zIndex(1)
-                            .contentShape(Rectangle())
                         }
 
                         if !isGameOver, let pendingBannerText = projection.tradePanelModel?.pendingBannerText, shouldShowPendingTradeBanner {

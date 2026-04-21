@@ -32,6 +32,8 @@ final class GameDevCardPanelModelBuilderTests: XCTestCase {
         XCTAssertFalse(panel.showsBackButton)
         XCTAssertTrue(panel.message.contains("Choose one of your legal development cards"))
         XCTAssertTrue(panel.timingNotes.contains { $0.contains("Only one non-Victory Point") })
+        XCTAssertTrue(panel.cards.contains(where: { $0.kind == .knight && $0.isEnabled }))
+        XCTAssertTrue(panel.cards.contains(where: { $0.kind == .monopoly && $0.isEnabled }))
     }
 
     func testBuildBeforeRollingShowsWinningRevealAndPlayableActions() throws {
@@ -105,6 +107,8 @@ final class GameDevCardPanelModelBuilderTests: XCTestCase {
         XCTAssertEqual(panel.newCounts.first(where: { $0.title == "Year of Plenty" })?.count, 1)
         XCTAssertFalse(panel.playActions.contains(where: { $0.kind == .revealVictoryPoint }))
         XCTAssertTrue(panel.timingNotes.contains { $0.contains("Victory Point cards only reveal") })
+        XCTAssertTrue(panel.cards.contains(where: { $0.kind == .victoryPoint && !$0.isEnabled }))
+        XCTAssertTrue(panel.cards.contains(where: { $0.kind == .yearOfPlenty && !$0.isEnabled }))
     }
 
     func testBuildAfterDevCardActionPlayedThisTurnKeepsOnlyWinningRevealAvailable() throws {

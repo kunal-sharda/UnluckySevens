@@ -1,3 +1,4 @@
+import SpriteKit
 import ULS_CoreGame
 
 enum GameScreenModelBuilder {
@@ -95,6 +96,7 @@ enum GameScreenModelBuilder {
             return GameOpponentSummary(
                 id: player,
                 displayName: PlayerPseudonymResolver.displayName(for: player, gameID: state.gameId, roster: state.roster),
+                playerTint: playerTint(for: player, roster: state.roster),
                 victoryPoints: victoryPoints[player] ?? 0,
                 handCount: handCounts[player] ?? 0,
                 isCurrentPlayer: player == state.currentPlayer
@@ -276,5 +278,19 @@ enum GameScreenModelBuilder {
         case .endTurn:
             return "ended turn"
         }
+    }
+
+    private static func playerTint(for player: String, roster: [String]) -> GamePlayerTint {
+        let color = GameBoardPalette.playerColor(owner: player, playerOrder: roster)
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        color.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        return GamePlayerTint(
+            red: Double(red),
+            green: Double(green),
+            blue: Double(blue)
+        )
     }
 }

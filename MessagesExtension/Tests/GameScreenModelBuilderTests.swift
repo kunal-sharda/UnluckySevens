@@ -57,9 +57,17 @@ final class GameScreenModelBuilderTests: XCTestCase {
             model.opponents[0].displayName,
             PlayerPseudonymResolver.displayName(for: "B", gameID: state.gameId, roster: state.roster)
         )
+        XCTAssertEqual(
+            model.opponents[0].playerTint,
+            GamePlayerTint(red: 0.18, green: 0.39, blue: 0.78)
+        )
         XCTAssertEqual(model.opponents[0].victoryPoints, 3)
         XCTAssertEqual(model.opponents[0].handCount, 3)
         XCTAssertFalse(model.opponents[0].isCurrentPlayer)
+        XCTAssertEqual(
+            model.opponents[1].playerTint,
+            GamePlayerTint(red: 0.96, green: 0.95, blue: 0.91)
+        )
         XCTAssertEqual(model.opponents[1].victoryPoints, 1)
         XCTAssertEqual(model.opponents[1].handCount, 4)
     }

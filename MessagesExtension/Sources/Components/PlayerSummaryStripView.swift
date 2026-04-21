@@ -79,9 +79,7 @@ private struct PlayerSummaryRow: View {
 
     private var rowBody: some View {
         HStack(alignment: .center, spacing: GameTheme.inlineSpacing) {
-            Circle()
-                .fill(summary.isCurrentPlayer ? GameTheme.accent : GameTheme.outline.opacity(0.35))
-                .frame(width: 10, height: 10)
+            playerColorSwatch
 
             Text(summary.displayName)
                 .font(GameTheme.headingFont)
@@ -125,5 +123,20 @@ private struct PlayerSummaryRow: View {
                 .stroke(isSelected ? GameTheme.accent.opacity(0.45) : GameTheme.outline.opacity(0.15), lineWidth: isSelected ? 2 : 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: GameTheme.smallRadius))
+    }
+
+    private var playerColorSwatch: some View {
+        Circle()
+            .fill(Color(
+                red: summary.playerTint.red,
+                green: summary.playerTint.green,
+                blue: summary.playerTint.blue
+            ))
+            .frame(width: 14, height: 14)
+            .overlay(
+                Circle()
+                    .stroke(GameTheme.outline.opacity(0.42), lineWidth: 1)
+            )
+            .accessibilityHidden(true)
     }
 }

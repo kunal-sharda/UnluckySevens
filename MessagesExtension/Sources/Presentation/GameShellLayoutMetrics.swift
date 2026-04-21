@@ -12,9 +12,6 @@ struct GameShellLayoutMetrics: Equatable {
     private static let padHeaderRatio: CGFloat = 0.095
     private static let phoneDockRatio: CGFloat = 0.18
     private static let padDockRatio: CGFloat = 0.16
-    private static let phoneOverlayRatio: CGFloat = 0.22
-    private static let padOverlayRatio: CGFloat = 0.29
-
     private static let phoneHeaderMin: CGFloat = 58
     private static let phoneHeaderMax: CGFloat = 80
     private static let padHeaderMin: CGFloat = 68
@@ -27,16 +24,17 @@ struct GameShellLayoutMetrics: Equatable {
     private static let phoneHandleMax: CGFloat = 62
     private static let padHandleMin: CGFloat = 52
     private static let padHandleMax: CGFloat = 72
-    private static let phoneOverlayMin: CGFloat = 204
-    private static let phoneOverlayMax: CGFloat = 280
-    private static let padOverlayMin: CGFloat = 240
-    private static let padOverlayMax: CGFloat = 344
-    private static let wideCompactOverlayMin: CGFloat = 176
-    private static let wideCompactOverlayMax: CGFloat = 232
     private static let phoneOverlayHeaderMin: CGFloat = 40
     private static let phoneOverlayHeaderMax: CGFloat = 46
     private static let padOverlayHeaderMin: CGFloat = 44
     private static let padOverlayHeaderMax: CGFloat = 52
+
+    enum OverlayShelfKind: Equatable {
+        case utility
+        case build
+        case devCards
+        case forcedFlow
+    }
 
     struct LowerRailMetrics: Equatable {
         let handleBandHeight: CGFloat
@@ -59,12 +57,14 @@ struct GameShellLayoutMetrics: Equatable {
 
     static func resolve(
         availableSize: CGSize,
-        spacing: CGFloat
+        spacing: CGFloat,
+        overlayKind: OverlayShelfKind = .utility
     ) -> GameShellLayoutMetrics {
         resolve(
             availableHeight: availableSize.height,
             availableWidth: availableSize.width,
-            spacing: spacing
+            spacing: spacing,
+            overlayKind: overlayKind
         )
     }
 
@@ -79,7 +79,11 @@ struct GameShellLayoutMetrics: Equatable {
         availableSize: CGSize,
         spacing: CGFloat
     ) -> Bool {
-        let metrics = resolve(availableSize: availableSize, spacing: spacing)
+        let metrics = resolve(
+            availableSize: availableSize,
+            spacing: spacing,
+            overlayKind: .utility
+        )
         return metrics.boardHeight >= minimumBoardHeightForUtilityShelf
             && metrics.overlayShelf.contentHeight >= minimumUtilityShelfContentHeight
     }
@@ -96,19 +100,22 @@ struct GameShellLayoutMetrics: Equatable {
 
     static func resolve(
         availableHeight: CGFloat,
-        spacing: CGFloat
+        spacing: CGFloat,
+        overlayKind: OverlayShelfKind = .utility
     ) -> GameShellLayoutMetrics {
         resolve(
             availableHeight: availableHeight,
             availableWidth: 0,
-            spacing: spacing
+            spacing: spacing,
+            overlayKind: overlayKind
         )
     }
 
     static func resolve(
         availableHeight: CGFloat,
         availableWidth: CGFloat,
-        spacing: CGFloat
+        spacing: CGFloat,
+        overlayKind: OverlayShelfKind = .utility
     ) -> GameShellLayoutMetrics {
         let regionCount = 3
         let usableHeight = max(availableHeight - (spacing * CGFloat(regionCount - 1)), 0)
@@ -136,17 +143,16 @@ struct GameShellLayoutMetrics: Equatable {
             maximum: usesExpandedVerticalProfile ? padHandleMax : phoneHandleMax
         )
         let dockHeight = max(dockRegionHeight - handleBandHeight, 0)
-        let compactOverlayMinimum = isWideLayout
-            ? wideCompactOverlayMin
-            : phoneOverlayMin
-        let compactOverlayMaximum = isWideLayout
-            ? wideCompactOverlayMax
-            : phoneOverlayMax
+        let overlayProfile = overlayProfile(
+            for: overlayKind,
+            isWideLayout: isWideLayout,
+            usesExpandedVerticalProfile: usesExpandedVerticalProfile
+        )
         let overlayHeight = boundedHeight(
             usableHeight,
-            ratio: usesExpandedVerticalProfile ? padOverlayRatio : phoneOverlayRatio,
-            minimum: usesExpandedVerticalProfile ? padOverlayMin : compactOverlayMinimum,
-            maximum: usesExpandedVerticalProfile ? padOverlayMax : compactOverlayMaximum
+            ratio: overlayProfile.ratio,
+            minimum: overlayProfile.minimum,
+            maximum: overlayProfile.maximum
         )
         let overlayVisibleInLowerRailHeight = handleBandHeight
         let overlayOverlapIntoBoardHeight = max(overlayHeight - overlayVisibleInLowerRailHeight, 0)
@@ -181,5 +187,54 @@ struct GameShellLayoutMetrics: Equatable {
         maximum: CGFloat
     ) -> CGFloat {
         min(max(availableHeight * ratio, minimum), maximum)
+    }
+
+    private struct OverlayShelfProfile {
+        let ratio: CGFloat
+        let minimum: CGFloat
+        let maximum: CGFloat
+    }
+
+    private static func overlayProfile(
+        for kind: OverlayShelfKind,
+        isWideLayout: Bool,
+        usesExpandedVerticalProfile: Bool
+    ) -> OverlayShelfProfile {
+        if usesExpandedVerticalProfile {
+            switch kind {
+            case .utility:
+                return OverlayShelfProfile(ratio: 0.18, minimum: 172, maximum: 220)
+            case .build:
+                return OverlayShelfProfile(ratio: 0.21, minimum: 198, maximum: 252)
+            case .devCards:
+                return OverlayShelfProfile(ratio: 0.25, minimum: 236, maximum: 320)
+            case .forcedFlow:
+                return OverlayShelfProfile(ratio: 0.29, minimum: 240, maximum: 344)
+            }
+        }
+
+        if isWideLayout {
+            switch kind {
+            case .utility:
+                return OverlayShelfProfile(ratio: 0.17, minimum: 148, maximum: 188)
+            case .build:
+                return OverlayShelfProfile(ratio: 0.18, minimum: 160, maximum: 208)
+            case .devCards:
+                return OverlayShelfProfile(ratio: 0.21, minimum: 188, maximum: 248)
+            case .forcedFlow:
+                return OverlayShelfProfile(ratio: 0.22, minimum: 176, maximum: 232)
+            }
+        }
+
+        switch kind {
+        case .utility:
+            return OverlayShelfProfile(ratio: 0.17, minimum: 156, maximum: 208)
+        case .build:
+            return OverlayShelfProfile(ratio: 0.18, minimum: 168, maximum: 224)
+        case .devCards:
+            return OverlayShelfProfile(ratio: 0.24, minimum: 212, maximum: 296)
+        case .forcedFlow:
+            return OverlayShelfProfile(ratio: 0.22, minimum: 204, maximum: 280)
+        }
     }
 }

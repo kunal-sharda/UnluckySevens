@@ -90,32 +90,46 @@ final class MessagesHostResizeShield: NSObject, UIGestureRecognizerDelegate {
 
 private final class HostBoundaryDragGestureRecognizer: UIGestureRecognizer {
     private let movementThreshold: CGFloat = 2
-    private var trackingTouch: UITouch?
-    private var initialLocation: CGPoint = .zero
+    private var trackedTouches: [ObjectIdentifier: UITouch] = [:]
+    private var initialLocations: [ObjectIdentifier: CGPoint] = [:]
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
-        guard state == .possible,
-              trackingTouch == nil,
-              let touch = touches.first,
-              let view else {
+        guard let view else {
             state = .failed
             return
         }
 
-        trackingTouch = touch
-        initialLocation = touch.location(in: view)
+        switch state {
+        case .possible, .began, .changed:
+            for touch in touches {
+                let key = ObjectIdentifier(touch)
+                trackedTouches[key] = touch
+                initialLocations[key] = touch.location(in: view)
+            }
+        default:
+            state = .failed
+        }
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
-        guard let trackingTouch,
-              touches.contains(trackingTouch),
-              let view else {
+        guard let view else {
             return
         }
 
-        let location = trackingTouch.location(in: view)
-        let distance = hypot(location.x - initialLocation.x, location.y - initialLocation.y)
-        guard distance >= movementThreshold else {
+        let movedBeyondThreshold = touches.contains { touch in
+            let key = ObjectIdentifier(touch)
+            guard let trackedTouch = trackedTouches[key],
+                  let initialLocation = initialLocations[key],
+                  trackedTouch === touch else {
+                return false
+            }
+
+            let location = trackedTouch.location(in: view)
+            let distance = hypot(location.x - initialLocation.x, location.y - initialLocation.y)
+            return distance >= movementThreshold
+        }
+
+        guard movedBeyondThreshold else {
             return
         }
 
@@ -130,8 +144,9 @@ private final class HostBoundaryDragGestureRecognizer: UIGestureRecognizer {
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
-        guard let trackingTouch,
-              touches.contains(trackingTouch) else {
+        removeTrackedTouches(touches)
+
+        guard trackedTouches.isEmpty else {
             return
         }
 
@@ -144,18 +159,22 @@ private final class HostBoundaryDragGestureRecognizer: UIGestureRecognizer {
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent) {
-        guard let trackingTouch,
-              touches.contains(trackingTouch) else {
-            return
-        }
-
+        removeTrackedTouches(touches)
         state = .cancelled
     }
 
     override func reset() {
         super.reset()
-        trackingTouch = nil
-        initialLocation = .zero
+        trackedTouches.removeAll()
+        initialLocations.removeAll()
+    }
+
+    private func removeTrackedTouches(_ touches: Set<UITouch>) {
+        for touch in touches {
+            let key = ObjectIdentifier(touch)
+            trackedTouches.removeValue(forKey: key)
+            initialLocations.removeValue(forKey: key)
+        }
     }
 
     override func canBePrevented(by preventingGestureRecognizer: UIGestureRecognizer) -> Bool {

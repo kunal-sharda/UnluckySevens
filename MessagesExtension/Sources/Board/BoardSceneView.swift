@@ -11,6 +11,7 @@ struct BoardSceneView: View, Equatable {
     let onDiagnosticsChanged: ((BoardInteractionDiagnosticsSnapshot) -> Void)?
     let onGestureEvent: ((HostGestureEvent) -> Void)?
     let onResizeFreezeChanged: ((BoardResizeFreezeState) -> Void)?
+    let onFreezeRecoveryReloadRequested: ((String) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
     @State private var scene = GameBoardScene(size: CGSize(width: 320, height: 240))
@@ -19,22 +20,14 @@ struct BoardSceneView: View, Equatable {
     @State private var stableBoardReferenceSize: CGSize?
     @State private var largestSettledViewportSize: CGSize?
     @State private var lastViewportUpdateSize: CGSize?
-    @State private var isResizeFrozen: Bool = false
-    @State private var frozenSnapshot: UIImage?
     @State private var pendingViewportSize: CGSize?
     @State private var pendingRenderModel: GameBoardRenderModel?
     @State private var pendingOverlayModel: GameBoardOverlayModel?
-    @State private var resizeFreezeTask: Task<Void, Never>?
-    @State private var resizeFreezeWatchdogTask: Task<Void, Never>?
-    @State private var resizeFreezeEpoch: Int = 0
+    @State private var resizeSettleTask: Task<Void, Never>?
     @State private var boardHostReloadGeneration: Int = 0
 
     private static let referencePromotionThreshold: CGFloat = 24
-    private static let resizeFreezeThreshold: CGFloat = 10
-    private static let resizeFreezeDelayNanoseconds: UInt64 = 220_000_000
-    private static let resizeFreezeWatchdogNanoseconds: UInt64 = 1_200_000_000
-    private static let fullExtentFreezeEntryHeightLoss: CGFloat = 88
-    private static let fullExtentFreezeExitHeightBand: CGFloat = 40
+    private static let resizeSettleDelayNanoseconds: UInt64 = 180_000_000
 
     static func == (lhs: BoardSceneView, rhs: BoardSceneView) -> Bool {
         lhs.renderModel == rhs.renderModel
@@ -49,37 +42,25 @@ struct BoardSceneView: View, Equatable {
             let layout = GameBoardLayout(size: referenceSize, geometry: renderModel.geometry)
 
             ZStack {
-                if !isResizeFrozen {
-                    BoardSceneHostView(
-                        scene: scene,
-                        renderModel: renderModel,
-                        overlayModel: overlayModel,
-                        interactionMode: interactionMode,
-                        viewportSize: geometry.size,
-                        contentFrame: layout.contentFrame,
-                        boardReferenceSize: referenceSize,
-                        interactionController: interactionController,
-                        isInteractionEnabled: true,
-                        onInteractionChanged: { active in
-                            isBoardInteracting = active
-                            onInteractionChanged?(active)
-                            emitDiagnosticsSnapshot(viewportSize: geometry.size)
-                        },
-                        onGestureEvent: onGestureEvent,
-                        onTargetTap: onTargetTap
-                    )
-                    .id("board-host-\(reloadToken)-\(boardHostReloadGeneration)")
-                }
-
-                if let frozenSnapshot {
-                    Image(uiImage: frozenSnapshot)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .clipped()
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
-                }
+                BoardSceneHostView(
+                    scene: scene,
+                    renderModel: renderModel,
+                    overlayModel: overlayModel,
+                    interactionMode: interactionMode,
+                    viewportSize: geometry.size,
+                    contentFrame: layout.contentFrame,
+                    boardReferenceSize: referenceSize,
+                    interactionController: interactionController,
+                    isInteractionEnabled: true,
+                    onInteractionChanged: { active in
+                        isBoardInteracting = active
+                        onInteractionChanged?(active)
+                        emitDiagnosticsSnapshot(viewportSize: geometry.size)
+                    },
+                    onGestureEvent: onGestureEvent,
+                    onTargetTap: onTargetTap
+                )
+                .id("board-host-\(reloadToken)-\(boardHostReloadGeneration)")
             }
             .clipped()
             .onAppear {
@@ -101,11 +82,6 @@ struct BoardSceneView: View, Equatable {
             }
             .onChange(of: renderModel) { _, newValue in
                 pendingRenderModel = newValue
-                if isResizeFrozen {
-                    scheduleResizeFreezeSettle(epoch: resizeFreezeEpoch)
-                    return
-                }
-
                 commitViewportState(
                     viewportSize: geometry.size,
                     renderModel: newValue,
@@ -114,11 +90,6 @@ struct BoardSceneView: View, Equatable {
             }
             .onChange(of: overlayModel) { _, newValue in
                 pendingOverlayModel = newValue
-                if isResizeFrozen {
-                    scheduleResizeFreezeSettle(epoch: resizeFreezeEpoch)
-                    return
-                }
-
                 let referenceSize = resolvedReferenceSize(for: geometry.size)
                 scene.updateOverlay(
                     renderModel: renderModel,
@@ -129,43 +100,13 @@ struct BoardSceneView: View, Equatable {
                 emitDiagnosticsSnapshot(viewportSize: geometry.size)
             }
             .onChange(of: geometry.size) { _, newValue in
-                if shouldKeepLiveBoard(for: newValue) {
-                    if isResizeFrozen {
-                        finishResizeFreeze(
-                            viewportSize: newValue,
-                            renderModel: renderModel,
-                            overlayModel: overlayModel,
-                            source: "full-extent"
-                        )
-                    } else {
-                        commitViewportState(
-                            viewportSize: newValue,
-                            renderModel: renderModel,
-                            overlayModel: overlayModel
-                        )
-                    }
-                    return
-                }
-
-                guard isResizeFrozen || shouldFreezeForResize(to: newValue) else {
-                    commitViewportState(
-                        viewportSize: newValue,
-                        renderModel: renderModel,
-                        overlayModel: overlayModel
-                    )
-                    return
-                }
-
-                beginResizeFreeze(
+                handleLiveViewportResize(
                     viewportSize: newValue,
                     renderModel: renderModel,
                     overlayModel: overlayModel
                 )
             }
             .onChange(of: reloadToken) { _, _ in
-                guard !isResizeFrozen else {
-                    return
-                }
                 rebuildBoardSurface(
                     viewportSize: geometry.size,
                     renderModel: renderModel,
@@ -174,13 +115,13 @@ struct BoardSceneView: View, Equatable {
                 )
             }
             .onDisappear {
-                cancelResizeFreeze()
+                cancelResizeSettle()
                 interactionController.resetInteraction()
             }
         }
     }
 
-    private func beginResizeFreeze(
+    private func handleLiveViewportResize(
         viewportSize: CGSize,
         renderModel: GameBoardRenderModel,
         overlayModel: GameBoardOverlayModel
@@ -189,167 +130,49 @@ struct BoardSceneView: View, Equatable {
         pendingRenderModel = renderModel
         pendingOverlayModel = overlayModel
 
-        if !isResizeFrozen {
-            isResizeFrozen = true
-            resizeFreezeEpoch &+= 1
-            interactionController.resetInteraction()
-            frozenSnapshot = GameBoardSnapshotRenderer.render(
-                renderModel: renderModel,
-                overlayModel: overlayModel,
-                referenceSize: resolvedReferenceSize(for: lastViewportUpdateSize ?? viewportSize),
-                viewportSize: lastViewportUpdateSize ?? viewportSize,
-                cameraState: interactionController.cameraState
-            )
-            onResizeFreezeChanged?(BoardResizeFreezeState(
-                isFrozen: true,
-                snapshot: frozenSnapshot
-            ))
-            let detail = diagnosticDetail(
-                viewportSize: viewportSize,
-                largestSettledViewportSize: largestSettledViewportSize
-            )
-            onGestureEvent?(HostGestureEvent(kind: .resizeFreezeBegan, detail: detail))
-            emitDiagnosticsSnapshot(viewportSize: viewportSize)
-            startResizeFreezeWatchdog(epoch: resizeFreezeEpoch)
-        }
-
-        scheduleResizeFreezeSettle(epoch: resizeFreezeEpoch)
-    }
-
-    private func scheduleResizeFreezeSettle(epoch: Int) {
-        resizeFreezeTask?.cancel()
-        resizeFreezeTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: Self.resizeFreezeDelayNanoseconds)
-            guard !Task.isCancelled, isResizeFrozen, epoch == resizeFreezeEpoch else { return }
-            settleFrozenResize()
-        }
-    }
-
-    private func startResizeFreezeWatchdog(epoch: Int) {
-        resizeFreezeWatchdogTask?.cancel()
-        resizeFreezeWatchdogTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: Self.resizeFreezeWatchdogNanoseconds)
-            guard !Task.isCancelled, isResizeFrozen, epoch == resizeFreezeEpoch else { return }
-            settleFrozenResize(source: "watchdog")
-        }
-    }
-
-    private func cancelResizeFreeze() {
-        resizeFreezeTask?.cancel()
-        resizeFreezeWatchdogTask?.cancel()
-        resizeFreezeTask = nil
-        resizeFreezeWatchdogTask = nil
-        let wasFrozen = isResizeFrozen
-        isResizeFrozen = false
-        frozenSnapshot = nil
-        pendingViewportSize = nil
-        pendingRenderModel = nil
-        pendingOverlayModel = nil
-        interactionController.resetInteraction()
-        if wasFrozen {
-            onResizeFreezeChanged?(BoardResizeFreezeState(
-                isFrozen: false,
-                snapshot: nil
-            ))
-            let detail = diagnosticDetail(
-                viewportSize: lastViewportUpdateSize,
-                largestSettledViewportSize: largestSettledViewportSize
-            )
-            onGestureEvent?(HostGestureEvent(kind: .resizeFreezeEnded, detail: detail))
-        }
-        emitDiagnosticsSnapshot(viewportSize: lastViewportUpdateSize)
-    }
-
-    private func shouldFreezeForResize(to size: CGSize) -> Bool {
-        guard !isBoardInteracting else {
-            return false
-        }
-
-        guard let lastViewportUpdateSize else {
-            return false
-        }
-
-        let delta = max(
-            abs(size.width - lastViewportUpdateSize.width),
-            abs(size.height - lastViewportUpdateSize.height)
+        let referenceSize = resolvedReferenceSize(for: viewportSize)
+        let referenceLayout = GameBoardLayout(size: referenceSize, geometry: renderModel.geometry)
+        scene.updateViewport(viewportSize: viewportSize)
+        interactionController.clampCameraState(
+            viewportSize: viewportSize,
+            contentFrame: referenceLayout.contentFrame,
+            scene: scene
         )
-        guard delta >= Self.resizeFreezeThreshold else {
-            return false
-        }
-
-        guard let largestSettledViewportSize else {
-            return false
-        }
-
-        return size.height < (largestSettledViewportSize.height - Self.fullExtentFreezeEntryHeightLoss)
+        emitDiagnosticsSnapshot(viewportSize: viewportSize)
+        scheduleResizeSettle()
     }
 
-    private func shouldKeepLiveBoard(for viewportSize: CGSize) -> Bool {
-        guard !isBoardInteracting else {
-            return true
+    private func scheduleResizeSettle() {
+        resizeSettleTask?.cancel()
+        resizeSettleTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: Self.resizeSettleDelayNanoseconds)
+            guard !Task.isCancelled else { return }
+            settleViewportResize()
         }
-
-        guard let largestSettledViewportSize else {
-            return true
-        }
-
-        return viewportSize.height >= (largestSettledViewportSize.height - Self.fullExtentFreezeExitHeightBand)
     }
 
-    private func settleFrozenResize() {
-        settleFrozenResize(source: "settle")
-    }
-
-    private func settleFrozenResize(source: String) {
+    private func settleViewportResize() {
         let viewportSize = pendingViewportSize ?? lastViewportUpdateSize ?? stableBoardReferenceSize ?? CGSize(width: 320, height: 240)
         let renderModel = pendingRenderModel ?? self.renderModel
         let overlayModel = pendingOverlayModel ?? self.overlayModel
-
-        finishResizeFreeze(
-            viewportSize: viewportSize,
-            renderModel: renderModel,
-            overlayModel: overlayModel,
-            source: source
-        )
-    }
-
-    private func finishResizeFreeze(
-        viewportSize: CGSize,
-        renderModel: GameBoardRenderModel,
-        overlayModel: GameBoardOverlayModel,
-        source: String
-    ) {
+        pendingViewportSize = nil
+        pendingRenderModel = nil
+        pendingOverlayModel = nil
+        resizeSettleTask?.cancel()
+        resizeSettleTask = nil
         commitViewportState(
             viewportSize: viewportSize,
             renderModel: renderModel,
             overlayModel: overlayModel
         )
+    }
 
-        isResizeFrozen = false
-        frozenSnapshot = nil
+    private func cancelResizeSettle() {
+        resizeSettleTask?.cancel()
+        resizeSettleTask = nil
         pendingViewportSize = nil
         pendingRenderModel = nil
         pendingOverlayModel = nil
-        resizeFreezeTask?.cancel()
-        resizeFreezeWatchdogTask?.cancel()
-        resizeFreezeTask = nil
-        resizeFreezeWatchdogTask = nil
-        onResizeFreezeChanged?(BoardResizeFreezeState(
-            isFrozen: false,
-            snapshot: nil
-        ))
-        let detail = diagnosticDetail(
-            viewportSize: viewportSize,
-            largestSettledViewportSize: largestSettledViewportSize
-        )
-        onGestureEvent?(HostGestureEvent(kind: .resizeFreezeEnded, detail: "\(detail) source=\(source)"))
-        rebuildBoardSurface(
-            viewportSize: viewportSize,
-            renderModel: renderModel,
-            overlayModel: overlayModel,
-            reason: "freeze-recovery:\(source)"
-        )
-        emitDiagnosticsSnapshot(viewportSize: viewportSize)
     }
 
     private func commitViewportState(
@@ -445,7 +268,7 @@ struct BoardSceneView: View, Equatable {
         onDiagnosticsChanged?(
             BoardInteractionDiagnosticsSnapshot(
                 isBoardInteracting: isBoardInteracting,
-                isResizeFrozen: isResizeFrozen,
+                isResizeFrozen: false,
                 viewportSize: viewportSize ?? lastViewportUpdateSize,
                 largestSettledViewportSize: largestSettledViewportSize
             )
