@@ -12,28 +12,73 @@ struct LobbyShellView: View {
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: GameTheme.sectionSpacing) {
-                    GameHeaderView(
-                        model: GameHeaderModel(
-                            statusLine: GameShellStatusLine(
-                                title: model.title,
-                                subtitle: model.subtitle
-                            ),
-                            metaText: model.metaText
+                    if model.showsInviteEntryHero {
+                        inviteEntrySection(model: model)
+                    } else {
+                        GameHeaderView(
+                            model: GameHeaderModel(
+                                statusLine: GameShellStatusLine(
+                                    title: model.title,
+                                    subtitle: model.subtitle
+                                ),
+                                metaText: model.metaText
+                            )
                         )
-                    )
 
-                    if let warningText = model.warningText {
-                        warningCard(text: warningText)
+                        if let warningText = model.warningText {
+                            warningCard(text: warningText)
+                        }
+
+                        participantsSection(model: model)
+                        actionsSection(model: model)
+                        contextActions
                     }
-
-                    participantsSection(model: model)
-                    actionsSection(model: model)
-                    contextActions
                 }
                 .padding(GameTheme.shellPadding)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+    }
+
+    private func inviteEntrySection(model: LobbyScreenModel) -> some View {
+        VStack(alignment: .center, spacing: GameTheme.inlineSpacing) {
+            ZStack {
+                Circle()
+                    .fill(GameTheme.surfaceRaised.opacity(0.95))
+                    .frame(width: 78, height: 78)
+
+                Image(systemName: "dice.fill")
+                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .foregroundStyle(GameTheme.accent)
+            }
+
+            Text(model.title)
+                .font(.system(.title2, design: .serif).bold())
+                .foregroundStyle(GameTheme.ink)
+                .multilineTextAlignment(.center)
+
+            Text(model.subtitle)
+                .font(GameTheme.bodyFont)
+                .foregroundStyle(GameTheme.mutedInk)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let inviteButton = model.inviteButton {
+                actionButton(inviteButton, accent: true) {
+                    viewModel.inviteNewGame()
+                }
+                .padding(.top, 6)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(20)
+        .background(GameTheme.surface.opacity(0.92))
+        .overlay(
+            RoundedRectangle(cornerRadius: GameTheme.largeRadius)
+                .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius))
+        .shadow(color: GameTheme.sectionShadow, radius: 10, x: 0, y: 3)
     }
 
     @ViewBuilder
@@ -45,9 +90,9 @@ struct LobbyShellView: View {
 
             if model.participants.isEmpty {
                 ContentUnavailableView(
-                    "No Lobby Selected",
-                    systemImage: "person.3.sequence.fill",
-                    description: Text("Select an invite bubble or send a new one to open the lobby.")
+                    model.participantsEmptyTitle,
+                    systemImage: model.participantsEmptySystemImage,
+                    description: Text(model.participantsEmptyDescription)
                 )
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
@@ -113,7 +158,7 @@ struct LobbyShellView: View {
 
             if let joinButton = model.joinButton {
                 actionButton(joinButton, accent: true) {
-                    viewModel.sendJoinIntent()
+                    viewModel.publishLobbyJoinState()
                 }
             }
 

@@ -39,8 +39,9 @@ final class ULS_TransportTests: XCTestCase {
         let encoded = encodeDebugPayload(payload)
 
         var components = URLComponents()
-        components.scheme = "unluckysevens"
-        components.host = "msg"
+        components.scheme = "https"
+        components.host = "unluckysevens.app"
+        components.path = "/msg"
         components.queryItems = [URLQueryItem(name: "payload", value: encoded)]
 
         let extractedPayload = components.queryItems?.first(where: { $0.name == "payload" })?.value

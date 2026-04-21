@@ -81,15 +81,49 @@ enum TurnIntentContextResolver {
         resolution: TurnIntentContextResolution,
         localParticipant: String?
     ) -> Bool {
-        guard
-            let localParticipant,
-            let anchorMatched = resolution.anchorMatched
-        else {
-            return false
+        autoApplyContext(
+            turnIntent,
+            resolution: resolution,
+            localParticipant: localParticipant
+        ) != nil
+    }
+
+    static func autoApplyContext(
+        _ turnIntent: ULS_Transport.TurnIntentV1,
+        resolution: TurnIntentContextResolution,
+        localParticipant: String?
+    ) -> TurnIntentContextCandidate? {
+        guard let localParticipant else {
+            return nil
         }
 
-        return anchorMatched.state.currentPlayer == localParticipant
-            && anchorMatched.state.roster.contains(localParticipant)
+        if turnIntent.kind == .submitDiscard,
+           let recovered = resolution.bestAvailable,
+           isNewerRecoveredState(recovered.state, than: turnIntent) {
+            return canReanchorDiscardResponderMessage(
+                turnIntent,
+                onto: recovered.state,
+                localParticipant: localParticipant
+            ) ? recovered : nil
+        }
+
+        if let anchorMatched = resolution.anchorMatched,
+           isAuthorityContext(anchorMatched.state, localParticipant: localParticipant) {
+            return anchorMatched
+        }
+
+        guard
+            let recovered = resolution.bestAvailable,
+            canReanchorDiscardResponderMessage(
+                turnIntent,
+                onto: recovered.state,
+                localParticipant: localParticipant
+            )
+        else {
+            return nil
+        }
+
+        return recovered
     }
 
     static func shouldPreferRecoveredState(
@@ -133,6 +167,44 @@ enum TurnIntentContextResolver {
         default:
             return false
         }
+    }
+
+    private static func isAuthorityContext(
+        _ state: CoreGameStateV1,
+        localParticipant: String
+    ) -> Bool {
+        state.currentPlayer == localParticipant && state.roster.contains(localParticipant)
+    }
+
+    private static func canReanchorDiscardResponderMessage(
+        _ turnIntent: ULS_Transport.TurnIntentV1,
+        onto state: CoreGameStateV1,
+        localParticipant: String
+    ) -> Bool {
+        guard
+            turnIntent.kind == .submitDiscard,
+            state.gameId == turnIntent.gameId,
+            state.phase == .turn,
+            state.turnState?.step == .pendingDiscards,
+            isAuthorityContext(state, localParticipant: localParticipant),
+            let discardPlayer = turnIntent.discardPlayer,
+            discardPlayer == turnIntent.actor,
+            let turnState = state.turnState,
+            turnState.discardRequirementsByPlayer[discardPlayer] != nil,
+            turnState.submittedDiscardsByPlayer[discardPlayer] == nil
+        else {
+            return false
+        }
+
+        return state.rev > turnIntent.anchorRev || state.stateHash != turnIntent.anchorHash
+    }
+
+    private static func isNewerRecoveredState(
+        _ state: CoreGameStateV1,
+        than turnIntent: ULS_Transport.TurnIntentV1
+    ) -> Bool {
+        state.gameId == turnIntent.gameId
+            && (state.rev > turnIntent.anchorRev || state.stateHash != turnIntent.anchorHash)
     }
 
     private static func orderedCandidates(

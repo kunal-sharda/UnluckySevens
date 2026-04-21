@@ -132,7 +132,7 @@ final class TurnIntentContextResolverTests: XCTestCase {
     }
 
     func testShouldAutoApplyDiscardIntentForCurrentPlayerAuthority() {
-        let anchorState = makeState(rev: 7, currentPlayer: "A")
+        let anchorState = makeDiscardState(rev: 7, currentPlayer: "A")
         let discardIntent = ULS_Transport.TurnIntentV1(
             submitDiscardFor: "B",
             discarded: TransportResourceHandV1(wood: 1, brick: 1),
@@ -150,6 +150,92 @@ final class TurnIntentContextResolverTests: XCTestCase {
         )
 
         XCTAssertTrue(
+            TurnIntentContextResolver.shouldAutoApply(
+                discardIntent,
+                resolution: resolution,
+                localParticipant: "A"
+            )
+        )
+    }
+
+    func testStaleDiscardIntentAutoAppliesAgainstRecoveredPendingDiscardsState() {
+        let anchorState = makeDiscardState(rev: 7, currentPlayer: "A")
+        let recoveredState = makeDiscardState(
+            rev: 8,
+            currentPlayer: "A",
+            submittedDiscardsByPlayer: ["C": ResourceHandV1(wheat: 4)]
+        )
+        let discardIntent = ULS_Transport.TurnIntentV1(
+            submitDiscardFor: "B",
+            discarded: TransportResourceHandV1(brick: 4),
+            gameId: anchorState.gameId,
+            anchorRev: anchorState.rev,
+            anchorHash: anchorState.stateHash,
+            actor: "B"
+        )
+
+        let resolution = TurnIntentContextResolver.resolve(
+            turnIntent: discardIntent,
+            selectedState: nil,
+            latestKnownStatesByGameId: [recoveredState.gameId: recoveredState],
+            localLedgerState: anchorState
+        )
+
+        XCTAssertEqual(
+            TurnIntentContextResolver.autoApplyContext(
+                discardIntent,
+                resolution: resolution,
+                localParticipant: "A"
+            )?.state.rev,
+            recoveredState.rev
+        )
+        XCTAssertTrue(
+            TurnIntentContextResolver.shouldAutoApply(
+                discardIntent,
+                resolution: resolution,
+                localParticipant: "A"
+            )
+        )
+        XCTAssertFalse(
+            TurnIntentContextResolver.shouldPreferRecoveredState(
+                discardIntent,
+                resolution: resolution,
+                localParticipant: "A"
+            )
+        )
+    }
+
+    func testStaleDiscardIntentDoesNotAutoApplyAfterRecoveredStateAlreadyContainsThatPlayer() {
+        let anchorState = makeDiscardState(rev: 7, currentPlayer: "A")
+        let recoveredState = makeDiscardState(
+            rev: 8,
+            currentPlayer: "A",
+            submittedDiscardsByPlayer: ["B": ResourceHandV1(brick: 4)]
+        )
+        let discardIntent = ULS_Transport.TurnIntentV1(
+            submitDiscardFor: "B",
+            discarded: TransportResourceHandV1(brick: 4),
+            gameId: anchorState.gameId,
+            anchorRev: anchorState.rev,
+            anchorHash: anchorState.stateHash,
+            actor: "B"
+        )
+
+        let resolution = TurnIntentContextResolver.resolve(
+            turnIntent: discardIntent,
+            selectedState: nil,
+            latestKnownStatesByGameId: [recoveredState.gameId: recoveredState],
+            localLedgerState: anchorState
+        )
+
+        XCTAssertNil(
+            TurnIntentContextResolver.autoApplyContext(
+                discardIntent,
+                resolution: resolution,
+                localParticipant: "A"
+            )
+        )
+        XCTAssertFalse(
             TurnIntentContextResolver.shouldAutoApply(
                 discardIntent,
                 resolution: resolution,
@@ -246,6 +332,36 @@ final class TurnIntentContextResolverTests: XCTestCase {
                 createdRev: rev
             ),
             turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 4))
+        ).rehashed()
+    }
+
+    private func makeDiscardState(
+        rev: Int,
+        currentPlayer: String = "A",
+        submittedDiscardsByPlayer: [String: ResourceHandV1] = [:]
+    ) -> CoreGameStateV1 {
+        CoreGameStateV1(
+            gameId: "turn-intent-context",
+            rev: rev,
+            prevHash: rev == 0 ? nil : "hash-\(rev - 1)",
+            stateHash: "",
+            roster: ["A", "B", "C"],
+            currentPlayer: currentPlayer,
+            phase: .turn,
+            seed: 1,
+            diceRngState: UInt64(rev),
+            robberRngState: UInt64(rev + 10),
+            resourcesByPlayer: [
+                "A": ResourceHandV1(wood: 8),
+                "B": ResourceHandV1(brick: 8),
+                "C": ResourceHandV1(wheat: 8),
+            ],
+            turnState: TurnStateV1(
+                step: .pendingDiscards,
+                lastRoll: DiceRollV1(d1: 3, d2: 4),
+                discardRequirementsByPlayer: ["B": 4, "C": 4],
+                submittedDiscardsByPlayer: submittedDiscardsByPlayer
+            )
         ).rehashed()
     }
 }

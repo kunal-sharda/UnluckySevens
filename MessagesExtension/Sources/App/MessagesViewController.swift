@@ -6,12 +6,16 @@ final class MessagesViewController: MSMessagesAppViewController {
     private let viewModel = LobbyDriverViewModel()
     private let hostResizeShield = MessagesHostResizeShield()
     private var selectionPollingToken: Int = 0
+    private let selectionPollingInterval: TimeInterval = 1.5
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
         hostResizeShield.onEvent = { [weak self] event in
             self?.viewModel.recordHostGestureEvent(event)
+        }
+        viewModel.onRequestDismiss = { [weak self] in
+            self?.dismiss()
         }
 
         let rootView = MessagesRootView(viewModel: viewModel)
@@ -51,6 +55,7 @@ final class MessagesViewController: MSMessagesAppViewController {
 
     override func willBecomeActive(with conversation: MSConversation) {
         super.willBecomeActive(with: conversation)
+        viewModel.recordLifecycleEvent("willBecomeActive")
         requestExpandedPresentationIfNeeded()
         refreshContextAndMaybePoll(
             conversation: conversation,
@@ -61,6 +66,7 @@ final class MessagesViewController: MSMessagesAppViewController {
 
     override func didBecomeActive(with conversation: MSConversation) {
         super.didBecomeActive(with: conversation)
+        viewModel.recordLifecycleEvent("didBecomeActive")
         requestExpandedPresentationIfNeeded()
         refreshContextAndMaybePoll(
             conversation: conversation,
@@ -99,25 +105,34 @@ final class MessagesViewController: MSMessagesAppViewController {
         }
     }
 
+    override func willResignActive(with conversation: MSConversation) {
+        super.willResignActive(with: conversation)
+        viewModel.recordLifecycleEvent("willResignActive")
+        cancelSelectionPolling()
+    }
+
+    override func didTransition(to presentationStyle: MSMessagesAppPresentationStyle) {
+        super.didTransition(to: presentationStyle)
+        viewModel.recordLifecycleEvent("didTransition:\(label(for: presentationStyle))")
+    }
+
+    private func label(for presentationStyle: MSMessagesAppPresentationStyle) -> String {
+        switch presentationStyle {
+        case .compact: return "compact"
+        case .expanded: return "expanded"
+        case .transcript: return "transcript"
+        @unknown default: return "unknown"
+        }
+    }
+
     private func startSelectionPolling(conversation: MSConversation) {
         cancelSelectionPolling()
         let token = selectionPollingToken
-        let delays: [TimeInterval] = [0.2, 0.6, 1.2, 2.4]
-
-        for delay in delays {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                guard let self, self.selectionPollingToken == token else { return }
-
-                let shouldContinuePolling = self.viewModel.updateContext(
-                    conversation: conversation,
-                    selectedMessage: conversation.selectedMessage,
-                    trigger: .selectionPoll
-                )
-                if !shouldContinuePolling {
-                    self.cancelSelectionPolling()
-                }
-            }
-        }
+        scheduleSelectionPoll(
+            conversation: conversation,
+            token: token,
+            delay: 0.2
+        )
     }
 
     private func refreshContextAndMaybePoll(
@@ -130,10 +145,37 @@ final class MessagesViewController: MSMessagesAppViewController {
             selectedMessage: selectedMessage,
             trigger: trigger
         )
-        if shouldContinuePolling {
+        if shouldContinuePolling || viewModel.shouldMaintainSelectionWatch {
             startSelectionPolling(conversation: conversation)
         } else {
             cancelSelectionPolling()
+        }
+    }
+
+    private func scheduleSelectionPoll(
+        conversation: MSConversation,
+        token: Int,
+        delay: TimeInterval
+    ) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, self.selectionPollingToken == token else { return }
+
+            _ = self.viewModel.updateContext(
+                conversation: conversation,
+                selectedMessage: conversation.selectedMessage,
+                trigger: .selectionPoll
+            )
+
+            guard self.selectionPollingToken == token, self.viewModel.shouldMaintainSelectionWatch else {
+                self.cancelSelectionPolling()
+                return
+            }
+
+            self.scheduleSelectionPoll(
+                conversation: conversation,
+                token: token,
+                delay: self.selectionPollingInterval
+            )
         }
     }
 

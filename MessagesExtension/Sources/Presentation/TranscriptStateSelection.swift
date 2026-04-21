@@ -2,6 +2,8 @@ import ULS_CoreGame
 
 enum TranscriptActiveContextSource: Equatable {
     case selectedBubble
+    case receivedMessage
+    case latestKnownState
     case lastSentState
     case localLedgerState
 
@@ -9,6 +11,10 @@ enum TranscriptActiveContextSource: Equatable {
         switch self {
         case .selectedBubble:
             return "selectedBubble"
+        case .receivedMessage:
+            return "receivedMessage"
+        case .latestKnownState:
+            return "latestKnownState"
         case .lastSentState:
             return "lastSentState"
         case .localLedgerState:

@@ -32,7 +32,11 @@ final class TranscriptTransportSupportTests: XCTestCase {
                 .first(where: { $0.name == "payload" })?
                 .value
         )
+        let builtURL = try XCTUnwrap(URL(string: builtMessage.urlString))
         XCTAssertEqual(payloadQuery, encodedEnvelope)
+        XCTAssertEqual(builtURL.scheme, "https")
+        XCTAssertEqual(builtURL.host, "unluckysevens.app")
+        XCTAssertEqual(builtURL.path, "/msg")
         XCTAssertEqual(builtMessage.payloadLength, encodedEnvelope.count)
         XCTAssertEqual(builtMessage.mirroredPayloadLength, 0)
         XCTAssertEqual(builtMessage.sessionPolicy, .state(gameId: "game-1"))
@@ -90,7 +94,7 @@ final class TranscriptTransportSupportTests: XCTestCase {
     }
 
     func testDecodePayloadPrefersURLWhenSummaryMirrorAlsoExists() {
-        let url = URL(string: "unluckysevens://msg?payload=url-payload")
+        let url = URL(string: "https://unluckysevens.app/msg?payload=url-payload")
 
         let decoded = TranscriptTransportSupport.decodePayload(
             from: url,
@@ -163,6 +167,36 @@ final class TranscriptTransportSupportTests: XCTestCase {
         )
 
         XCTAssertEqual(policy, .new)
+    }
+
+    func testPreferredStateSessionUsesSelectedBubbleSessionForMatchingGame() {
+        let selectedSession = MSSession()
+        let cachedSession = MSSession()
+        let selectedMessage = MSMessage(session: selectedSession)
+
+        let resolvedSession = TranscriptTransportSupport.preferredStateSession(
+            gameId: "game-1",
+            selectedMessage: selectedMessage,
+            selectedGameId: "game-1",
+            cachedSession: cachedSession
+        )
+
+        XCTAssertEqual(resolvedSession, selectedSession)
+    }
+
+    func testPreferredStateSessionFallsBackToCachedSessionWhenSelectedGameDoesNotMatch() {
+        let selectedSession = MSSession()
+        let cachedSession = MSSession()
+        let selectedMessage = MSMessage(session: selectedSession)
+
+        let resolvedSession = TranscriptTransportSupport.preferredStateSession(
+            gameId: "game-1",
+            selectedMessage: selectedMessage,
+            selectedGameId: "game-2",
+            cachedSession: cachedSession
+        )
+
+        XCTAssertEqual(resolvedSession, cachedSession)
     }
 
     private func jsonString<T: Encodable>(_ value: T) throws -> String {

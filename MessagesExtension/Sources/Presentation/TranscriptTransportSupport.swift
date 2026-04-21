@@ -1,5 +1,6 @@
 import Foundation
 import Messages
+import ULS_CoreGame
 import ULS_Transport
 
 enum TranscriptSessionPolicy: Equatable {
@@ -87,6 +88,26 @@ enum TranscriptTransportError: LocalizedError {
 }
 
 enum TranscriptTransportSupport {
+    static func preferredStateSession(
+        gameId: String,
+        selectedMessage: MSMessage?,
+        selectedGameId: String?,
+        cachedSession: MSSession?
+    ) -> MSSession {
+        if
+            selectedGameId == gameId,
+            let selectedSession = selectedMessage?.session
+        {
+            return selectedSession
+        }
+
+        if let cachedSession {
+            return cachedSession
+        }
+
+        return MSSession()
+    }
+
     static func resolveSessionPolicy(
         requestedPolicy: TranscriptSessionPolicy,
         envelopeKind: EnvelopeV1.Kind,
@@ -115,8 +136,10 @@ enum TranscriptTransportSupport {
         includeSummaryPayloadMirror: Bool
     ) throws -> TranscriptBuiltMessage {
         var components = URLComponents()
-        components.scheme = "unluckysevens"
-        components.host = "msg"
+        // MSMessage.url requires http/https; custom schemes are stripped on the wire.
+        components.scheme = "https"
+        components.host = "unluckysevens.app"
+        components.path = "/msg"
         components.queryItems = [URLQueryItem(name: "payload", value: encodedEnvelope)]
 
         guard let url = components.url else {
@@ -282,12 +305,6 @@ enum TranscriptTransportSupport {
 
         for scalar in suffix.unicodeScalars {
             if CharacterSet.whitespacesAndNewlines.contains(scalar) {
-                if encounteredPayloadCharacter {
-                    let candidate = String(String.UnicodeScalarView(scalars))
-                    if isExactDecodableEnvelope(candidate) {
-                        return candidate
-                    }
-                }
                 continue
             }
 
@@ -342,6 +359,18 @@ enum TranscriptTransportSupport {
             return false
         }
 
-        return reencoded == candidate
+        guard reencoded == candidate else {
+            return false
+        }
+
+        switch envelope.body {
+        case let .state(payload):
+            return (try? CompactStateTransport.decode(payload)) != nil
+        case let .intent(payload):
+            let data = Data(payload.utf8)
+            return (try? JSONDecoder().decode(ULS_Transport.TurnIntentV1.self, from: data)) != nil
+                || (try? JSONDecoder().decode(JoinIntentV1.self, from: data)) != nil
+                || (try? JSONDecoder().decode(SetupPlacementIntentV1.self, from: data)) != nil
+        }
     }
 }

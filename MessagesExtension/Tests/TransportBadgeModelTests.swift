@@ -8,7 +8,7 @@ final class TransportBadgeModelTests: XCTestCase {
             snapshot: TranscriptSelectionSnapshot(
                 messagePresence: "present",
                 urlPresence: "present",
-                urlString: "unluckysevens://msg?payload=abc",
+                urlString: "https://unluckysevens.app/msg?payload=abc",
                 payloadQueryPresence: "present",
                 payloadLength: "3",
                 summaryText: "-",

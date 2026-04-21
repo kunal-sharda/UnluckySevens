@@ -5,9 +5,11 @@ This document summarizes the player-facing flows the UI must support in the curr
 ## Lobby Flow
 
 - A player starts a game from Messages and sends an invite/game-state bubble into a thread.
+- Before the first invite is sent, the lobby surface should be a simple invite entry screen focused on one action: invite players to Unlucky Sevens.
+- Immediately after sending the initial invite, the extension dismisses back to the Messages thread instead of pretending the local post-send shell is a live lobby.
 - Other players join before the host starts.
 - Joining should feel like a game action, not a draft-composition flow. A player should not need an extra manual send step after choosing `Join`.
-- The host sees the current joined roster in the lobby UI and explicitly starts the game when ready.
+- Reopening a real lobby bubble should show the normal lobby roster/start surface, even if no guest has joined yet. The host waits and starts from that selected bubble path, not from a synthetic post-send shell.
 - The roster locks when the host starts the game.
 - Lobby UX should stay on the canonical game-state chain:
   - one invite `STATE`
