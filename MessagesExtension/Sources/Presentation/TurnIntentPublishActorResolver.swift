@@ -6,7 +6,7 @@ enum TurnIntentPublishActorResolver {
         localActor: String
     ) -> String {
         switch turnIntent.kind {
-        case .acceptTrade, .declineTrade, .counterTrade:
+        case .submitDiscard, .acceptTrade, .declineTrade, .counterTrade:
             return turnIntent.actor
         default:
             return localActor

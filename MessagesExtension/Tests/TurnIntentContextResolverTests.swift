@@ -244,6 +244,40 @@ final class TurnIntentContextResolverTests: XCTestCase {
         )
     }
 
+    func testStaleDiscardIntentDoesNotAutoApplyWhenAnotherPlayerIsNextInOrder() {
+        let anchorState = makeDiscardState(rev: 7, currentPlayer: "A")
+        let discardIntent = ULS_Transport.TurnIntentV1(
+            submitDiscardFor: "C",
+            discarded: TransportResourceHandV1(wheat: 4),
+            gameId: anchorState.gameId,
+            anchorRev: anchorState.rev,
+            anchorHash: anchorState.stateHash,
+            actor: "C"
+        )
+
+        let resolution = TurnIntentContextResolver.resolve(
+            turnIntent: discardIntent,
+            selectedState: anchorState,
+            latestKnownStatesByGameId: [:],
+            localLedgerState: nil
+        )
+
+        XCTAssertNil(
+            TurnIntentContextResolver.autoApplyContext(
+                discardIntent,
+                resolution: resolution,
+                localParticipant: "A"
+            )
+        )
+        XCTAssertFalse(
+            TurnIntentContextResolver.shouldAutoApply(
+                discardIntent,
+                resolution: resolution,
+                localParticipant: "A"
+            )
+        )
+    }
+
     func testShouldPreferRecoveredStateForTradeResponsesWhenRecoveredStateExists() {
         let anchorState = makeState(rev: 7, currentPlayer: "A")
         let laterState = makeState(rev: 8, currentPlayer: "B")

@@ -67,6 +67,7 @@ enum TurnInteractionResolver {
             state.phase == .turn,
             state.turnState?.step == .pendingDiscards,
             let actingAs,
+            PendingDiscardOrderResolver.nextPendingPlayer(in: state) == actingAs,
             let required = state.turnState?.discardRequirementsByPlayer[actingAs],
             required > 0,
             discarded.totalCount == required

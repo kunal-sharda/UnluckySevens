@@ -3,7 +3,7 @@
 This file records **locked product + architecture decisions** for the MVP.  
 If a change is desired, update this file **first**, then update code/tests.
 
-**Last updated:** 2026-04-17
+**Last updated:** 2026-04-22
 
 ---
 
@@ -30,15 +30,15 @@ If a change is desired, update this file **first**, then update code/tests.
 
 - Two message types:
   - **STATE**: authoritative snapshot (canonical truth).
-  - **INTENT**: non-authoritative responder or legacy request anchored to a specific base state.
+  - **INTENT**: legacy or compatibility-only request anchored to a specific base state.
 - The lobby is part of the canonical game timeline:
   - invite/start/join all progress through canonical lobby `STATE` updates on the game session
   - joining is not a detached draft flow or side intent in fresh publishes
 - During active gameplay, the **current player** publishes canonical `STATE` for normal turn actions.
 - Non-current players:
   - can view the game and their own hand
-  - may only send responder-side messages for flows that cannot safely publish canonical gameplay state directly
-  - fresh responder-side trade/discard messages stay internal transport, not player-facing protocol
+  - may publish canonical `STATE` directly for rules-defined responder actions that do not advance turn ownership
+  - forced discard and targeted trade responses validate as the **responding player's** action while `currentPlayer` stays on the turn owner
 - Legacy join/setup/current-player turn `INTENT` decode remains supported only for backward transcript compatibility, debug tools, and bridge recovery.
 
 ---
@@ -49,8 +49,8 @@ If a change is desired, update this file **first**, then update code/tests.
   - Propose trades.
   - Replace or withdraw the current live player-trade offer.
 - Targeted responder actions may be **Accept**, **Decline**, or **Counter**.
-- Trade-response messages are still internal responder transport, but normal product UX must not expose a manual "apply selected response" step.
-- When the current-player device incorporates a surfaced trade response into canonical `STATE`, the response must validate as the **responding player's action**, not as a synthetic current-player action. The current-player device is the publisher, but the response actor stays the responder for rules/audit semantics.
+- Fresh targeted trade responses publish canonical `STATE` directly from the responding device; normal product UX must not expose a manual "apply selected response" step.
+- Trade-response transitions must validate as the **responding player's action**, not as a synthetic current-player action. The current player remains the turn owner, but the response actor stays the responder for rules/audit semantics.
 - Player-trade offers may target any non-empty subset of opponents.
 - Non-targeted players may still inspect the live offer read-only in the group thread and shell.
 - The first applied **Accept** from a targeted player resolves the trade atomically and closes the offer.
@@ -65,6 +65,7 @@ If a change is desired, update this file **first**, then update code/tests.
 
 - Explicit “End Turn” button; no auto-advance.
 - **No timeout / force-advance** in MVP (social enforcement; game may stall).
+- During a `7` discard round, each required discarder publishes one canonical `STATE` in locked roster order while `currentPlayer` stays unchanged. Robber movement stays blocked until the discard queue is empty.
 
 Recommended canonical state cadence per turn:
 - STATE update after roll (so others can see results and decide on trades).
@@ -90,11 +91,11 @@ Recommended canonical state cadence per turn:
 
 ## 8) Message sessions (GamePigeon-style UX)
 
-- **One `MSSession` per game** for canonical `STATE` messages across lobby, setup, turn play, and game over (updates collapse / thread clean).
+- **One `MSSession` per game** for canonical `STATE` messages across lobby, setup, turn play, forced discard, targeted trade responses, and game over (updates collapse / thread clean).
 - Fresh lobby joins publish updated lobby `STATE` on that same canonical game session.
 - Fresh current-player gameplay actions publish updated canonical `STATE` on that same canonical game session.
-- Responder-side trade/discard transport also rides that same per-game `MSSession`, because the product requirement is that remote responses feel like updates to the same game thread rather than detached transcript artifacts.
-- Because those responder messages are still non-canonical, the shell must immediately auto-apply them when possible and otherwise prefer recovered game `STATE` over showing a raw response shell.
+- Fresh forced-discard and targeted trade-response publishes also stay on that same canonical game session so the game transcript remains one thread.
+- Legacy responder or intent bubbles may still decode for backward transcript compatibility, but when the shell can recover canonical `STATE` for that game it should prefer recovered game state over showing a raw legacy shell.
 
 Current transition rule:
 - Preferred transport source is always message URL query `payload`.

@@ -18,7 +18,7 @@ final class TurnIntentPublishActorResolverTests: XCTestCase {
         XCTAssertEqual(actor, "guest")
     }
 
-    func testDiscardKeepsLocalAuthorityActorWhenPublishingCanonicalState() {
+    func testDiscardUsesDiscardingActorWhenPublishingCanonicalState() {
         let intent = ULS_Transport.TurnIntentV1(
             submitDiscardFor: "guest",
             discarded: TransportResourceHandV1(wood: 1),
@@ -30,7 +30,7 @@ final class TurnIntentPublishActorResolverTests: XCTestCase {
 
         let actor = TurnIntentPublishActorResolver.resolve(intent, localActor: "host")
 
-        XCTAssertEqual(actor, "host")
+        XCTAssertEqual(actor, "guest")
     }
 
     func testCurrentPlayerActionKeepsLocalActor() {

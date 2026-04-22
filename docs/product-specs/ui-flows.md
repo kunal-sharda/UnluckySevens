@@ -87,6 +87,7 @@ This document summarizes the player-facing flows the UI must support in the curr
 - The only valid overlap in the shell is the deliberate shelf-over-board overlay at the bottom edge. Utility tabs, dock buttons, board chrome, and content regions must otherwise stack without collision or wrapping.
 - If the active player reaches the win threshold on their turn, the game ends immediately.
 - Forced subflows such as discard and robber movement should feel blocking rather than like optional side actions.
+- When multiple players must discard after a `7`, only the next pending discarder in locked roster order should see an enabled discard action. Each discard publishes canonical `STATE` immediately while robber movement stays blocked until the discard queue is empty.
 
 ## Trade Flow
 
@@ -106,7 +107,7 @@ This document summarizes the player-facing flows the UI must support in the curr
 - The maritime quick-trade list should only show legal ratio-compliant options for the current hand and available port access.
 - Targeted recipients can respond with `Accept`, `Decline`, or `Counter`.
 - `Counter` should use the same composer flow, but it is addressed only back to the current player.
-- Targeted responder actions should feel final from the responder side. A targeted `Accept` should publish the resolved canonical trade state immediately, while `Decline` and `Counter` may still travel as internal trade-response transport on the same game session. Normal trade UX must not require a manual "apply selected response" step or a separate response bubble workflow.
+- Targeted responder actions should feel final from the responder side. `Accept`, `Decline`, and `Counter` should each publish canonical trade state immediately from the responder device. Normal trade UX must not require a manual "apply selected response" step or a separate response bubble workflow.
 - The first applied targeted `Accept` should resolve the trade and close the live offer.
 - If every targeted player declines, the live offer should close.
 - Non-targeted players should still be able to inspect the live trade state so the table can follow what is happening.

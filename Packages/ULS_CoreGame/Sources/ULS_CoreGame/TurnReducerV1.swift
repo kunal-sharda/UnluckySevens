@@ -1314,6 +1314,8 @@ private func isAuthorizedActorForTurnIntent(
     currentPlayer: String
 ) -> Bool {
     switch intent {
+    case let .submitDiscard(player, _):
+        return actor == player
     case let .acceptTrade(acceptingPlayer, _):
         return actor == acceptingPlayer
     case let .declineTrade(decliningPlayer, _):

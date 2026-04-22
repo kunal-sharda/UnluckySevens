@@ -1358,25 +1358,11 @@ final class LobbyDriverViewModel: ObservableObject {
             return false
         }
 
-        if actor == state.currentPlayer {
-            do {
-                try applyAndPublishTurnIntent(intent, successStatus: successStatus(for: intent.kind))
-                return true
-            } catch {
-                setLastError("Discard publication failed: \(error.localizedDescription)")
-                return false
-            }
-        }
-
         do {
-            try sendResponderTurnEnvelope(
-                intent,
-                caption: "ULS DISCARD RESPONSE",
-                successStatus: "Sent discard response"
-            )
+            try applyAndPublishTurnIntent(intent, successStatus: successStatus(for: intent.kind))
             return true
         } catch {
-            setLastError("Discard intent failed: \(error.localizedDescription)")
+            setLastError("Discard publication failed: \(error.localizedDescription)")
             return false
         }
     }
@@ -3451,43 +3437,14 @@ final class LobbyDriverViewModel: ObservableObject {
         setLastError(nil)
     }
 
-    private func sendResponderTurnEnvelope(
-        _ turnIntent: ULS_Transport.TurnIntentV1,
-        caption: String,
-        successStatus: String
-    ) throws {
-        guard case .responderMessage = TurnIntentTransportRoleResolver.resolve(turnIntent) else {
-            throw SendError.unsupportedResponderTransport
-        }
-        let payload = try jsonString(from: turnIntent)
-        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
-        try sendEnvelope(
-            envelope,
-            caption: caption,
-            sessionPolicy: .state(gameId: turnIntent.gameId)
-        )
-        selectionStatus = successStatus
-        setLastError(nil)
-    }
-
     private func publishTradeResponse(_ turnIntent: ULS_Transport.TurnIntentV1) throws {
-        guard let publicationMode = TradeResponsePublicationResolver.resolve(turnIntent) else {
+        guard TradeResponsePublicationResolver.resolve(turnIntent) != nil else {
             throw SendError.invalidIntentPayload
         }
-
-        switch publicationMode {
-        case .canonicalState:
-            try applyAndPublishTurnIntent(
-                turnIntent,
-                successStatus: successStatus(for: turnIntent.kind)
-            )
-        case .responderEnvelope:
-            try sendResponderTurnEnvelope(
-                turnIntent,
-                caption: tradeResponseCaption(for: turnIntent.kind),
-                successStatus: responderTradeResponseSuccessStatus(for: turnIntent.kind)
-            )
-        }
+        try applyAndPublishTurnIntent(
+            turnIntent,
+            successStatus: successStatus(for: turnIntent.kind)
+        )
     }
 
     private func discardIntentReanchoredIfNeeded(
@@ -3602,32 +3559,6 @@ final class LobbyDriverViewModel: ObservableObject {
             return "Published end turn"
         default:
             return "Published turn action"
-        }
-    }
-
-    private func tradeResponseCaption(for kind: ULS_Transport.TurnIntentV1.Kind) -> String {
-        switch kind {
-        case .declineTrade:
-            return "ULS TRADE RESPONSE decline"
-        case .counterTrade:
-            return "ULS TRADE RESPONSE counter"
-        case .acceptTrade:
-            return "ULS TRADE RESPONSE accept"
-        default:
-            return "ULS TRADE RESPONSE"
-        }
-    }
-
-    private func responderTradeResponseSuccessStatus(for kind: ULS_Transport.TurnIntentV1.Kind) -> String {
-        switch kind {
-        case .declineTrade:
-            return "Sent trade decline response"
-        case .counterTrade:
-            return "Sent trade counter response"
-        case .acceptTrade:
-            return "Sent trade accept response"
-        default:
-            return "Sent trade response"
         }
     }
 

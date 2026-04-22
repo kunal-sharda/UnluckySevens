@@ -223,8 +223,8 @@ Current repo answer:
 
 - Canonical game `STATE` messages reuse one `MSSession` per game.
 - Lobby join now publishes canonical lobby `STATE` on that same game session instead of treating join as a detached side bubble.
-- Responder-side non-canonical trade/discard transport now also reuses that same game session so remote responses stay inside the same game thread.
-- Because those responder messages are still non-canonical, the shell must recover and prefer the live game `STATE` whenever it can, instead of dropping into a raw response surface.
+- Forced discard and targeted trade responses now also publish canonical `STATE` on that same game session so remote responder gameplay stays inside the same game thread.
+- Legacy responder artifacts still decode for backward transcript compatibility, but the shell should recover and prefer the live game `STATE` whenever it can instead of dropping into a raw response surface.
 - Folding/collapse behavior is treated as a phase-13 host-stability concern, not proof that transcript recovery is already solved.
 
 ### 4. SpriteKit board interaction should not run through a hot SwiftUI gesture loop
@@ -256,37 +256,35 @@ What we learned:
 - The right fix for normal gameplay-height resize is not “better thaw.”
 - The right fix is to keep the board mounted, do only cheap viewport/camera work during drag, and defer the heavier board redraw to a short debounced settle step.
 
-### 6. Internal trade-response intents must not leak into product UX
+### 6. Responder actions should publish canonical state directly whenever the rules allow it
 
 What went wrong:
 
-- The current authority model keeps non-current-player trade responses as intents, but the shell exposed that directly.
-- Responders could send `Accept`, `Decline`, or `Counter`, then the current-player side still behaved like it had to manually view and apply that response.
-- That made trade acceptance feel like transcript bookkeeping instead of one coherent game action.
+- Non-current-player trade responses and forced discard originally depended on responder envelopes plus later authority-side surfacing.
+- That made trade resolution and seven/discard progression feel like transcript bookkeeping instead of one coherent game action.
+- It also left correctness exposed to exactly the weakest Messages boundary: whether another device happened to surface the response bubble while open.
 
 What we learned:
 
-- `INTENT` can remain an internal transport/authority concept without becoming a player-facing step.
-- The current-player device should auto-apply matching targeted trade-response intents into canonical state as soon as it has the right anchored state.
-- The authority-side publish path must preserve the **responder** as the trade-response actor for validation/audit semantics. If the shell blindly re-validates responder `acceptTrade` / `declineTrade` / `counterTrade` as if the current player were the action actor, auto-apply will fail every time even though the surfaced response is otherwise valid.
-- When an incoming trade response references a stale anchor, the shell should recover the best latest state for that game instead of dropping into an intent-only surface.
-- Responder discard submissions have the same stale-anchor problem during multi-player seven flows. If one discard advances canonical state before another responder bubble surfaces, the authority device should re-anchor that later discard onto the newest valid `.pendingDiscards` state instead of silently dropping it as an obsolete response.
+- If the rules already allow a non-current actor while `currentPlayer` stays unchanged, that player should publish canonical `STATE` directly instead of waiting for the turn owner to absorb a responder envelope later.
+- The publish path must preserve the **responding player's** actor semantics for validation and audit. If the shell blindly re-validates `acceptTrade` / `declineTrade` / `counterTrade` / `submitDiscard` as if the current player were the action actor, the transition is wrong even if the state math itself is legal.
+- When a responder action is authored from an older selected bubble, the shell should resolve against the newest known canonical state for that game before drafting or validating the action.
+- Ordered forced discard is the cheapest Messages-only way to avoid sibling-state races. If only the next pending discarder may act, multi-player seven flow no longer depends on cross-device merge of simultaneous discard states.
 - Same-device cached last-published state is an acceptable temporary recovery bridge for the current-player device when the extension reopens without an active state already in memory, but it must be keyed per game rather than as one global record.
-- `MSConversation.selectedMessage` is the currently selected transcript bubble, not a live-updating pointer to the latest game update. If a new response message is never surfaced through `didReceive` while the extension is active, the app cannot silently process it from an older selected bubble.
+- `MSConversation.selectedMessage` is the currently selected transcript bubble, not a live-updating pointer to the latest game update.
 - `didReceive` should be treated as the live-update optimization path for the currently open game, not as permission to hijack the shell onto any newer game update in the thread. If another game's message arrives while a game is open, record it for recovery but keep the visible shell anchored to the active game.
 - The debug surface needs durable `didReceive` fields that survive later `selectionPoll` / `didSelect` events. A single mutable `selectedTrigger` field is not enough to tell "Messages never delivered the callback" from "the callback arrived and the reducer path mishandled it."
 
 Current repo answer:
 
-- Targeted `acceptTrade` now publishes canonical state directly from the accepting device because the engine applies that transition atomically. `Decline` and `Counter` still use responder-message transport and should auto-resolve on the current-player side when surfaced against the right anchor state.
-- Responder-side trade/discard transport now rides the same per-game session as the live game thread, because detached response bubbles were producing worse transcript UX than the risk they were trying to avoid.
-- When a responder message surfaces and the shell can recover any valid game context for that game, it should stay on recovered game `STATE` rather than replacing the UI with a raw response shell.
-- The authority-side auto-apply path is no longer trade-response-only. Any anchored turn intent that the local current player can legally incorporate, including responder discard submissions, now behaves like an action when it surfaces on the authority device.
-- Multi-player discard progression now tolerates stale responder anchors specifically for `.pendingDiscards`: if the authority device has a newer valid discard state for the same game and the discarding player has not submitted yet, the surfaced response is re-anchored onto that newer state and published as canonical `STATE`.
+- Targeted `acceptTrade`, `declineTrade`, and `counterTrade` now publish canonical state directly from the responding device.
+- Forced discard now publishes canonical state directly from the discarding player's device while preserving the original turn owner as `currentPlayer`.
+- Multi-player discard is serialized in locked roster order, so only the next pending discarder can act and each canonical discard publish advances the queue deterministically.
+- Legacy responder/intent bubbles still decode for backward transcript compatibility, but fresh gameplay no longer depends on responder envelopes surfacing on the authority device.
 - Authoring from a stale selected bubble is a different failure mode from recovering from a stale selected bubble. Turn/setup/trade/dev-card publication paths should resolve against the newest known canonical state for the same game before drafting or validating an action, otherwise the shell can still produce obsolete anchors even after recovery logic improved.
 - A short post-selection polling burst is not enough for Messages-hosted async play. If the extension is open on a game bubble, it needs a lightweight ongoing selection watch while that context remains active, because same-session surfacing can lag well past the first couple of seconds.
 - Same-device cached published-state recovery now stores a per-game bridge for reopen/response selection paths instead of relying on one global last-published state.
-- Trade-response copy no longer exposes `INTENT` as a player-facing term, even though intents remain the internal transport primitive under the current authority model.
+- Trade-response copy no longer exposes `INTENT` as a player-facing term, and fresh responder gameplay no longer uses it as the main transport primitive.
 
 ### 7. Per-game recovery beats one global cached-state bridge
 
@@ -347,7 +345,7 @@ What we learned:
 Current repo answer:
 
 - Fresh lobby join and current-player gameplay publish canonical `STATE` on the canonical game session.
-- Trade/discard responder transport is now narrowed to response handling only, but it reuses the canonical game session instead of forking into detached bubbles.
+- Forced discard and targeted trade responses now also publish canonical `STATE` on that same game session, while legacy responder artifacts remain compatibility-only.
 - The per-game ledger must record decoded incoming `STATE` as well as locally published `STATE`; otherwise recovery becomes asymmetrically worse on receiving devices, which is exactly where Messages host churn already hurts the most.
 - Recovery/fallback shells distinguish responder messages from legacy intent bubbles so operator tooling does not imply generic intent transport is the normal player UX.
 
@@ -788,9 +786,9 @@ Use the current product shell for one smoke pass and three targeted checks. Keep
 1. Continue play until a 7 occurs naturally.
 2. Verify required discard counts appear only for players with more than 7 cards.
 3. Submit explicit discard selections and confirm the engine blocks robber movement until all required discards complete.
-4. In a multi-player discard turn, submit one responder discard, then submit a second responder discard from an older bubble and confirm the authority device still progresses the turn without requiring a manual bubble hop.
-4. Move the robber and confirm the engine only offers eligible victims.
-5. Apply steal and verify the turn returns to `afterRoll`.
+4. In a multi-player discard turn, verify only the next pending discarder can submit. After the first discard publishes, confirm the next required player becomes active on the latest state and an older bubble does not allow an out-of-order discard publish.
+5. Move the robber and confirm the engine only offers eligible victims.
+6. Apply steal and verify the turn returns to `afterRoll`.
 
 ### Targeted Check: Trade Lifecycle
 
@@ -800,7 +798,7 @@ Use the current product shell for one smoke pass and three targeted checks. Keep
 4. Switch acting actor and accept the offer from a targeted responder device.
 5. Confirm the accepting device immediately publishes the resolved canonical trade state and that the updated state is visible to the table without a separate manual execute step.
 6. Verify resource transfer is atomic and the offer clears.
-7. Repeat with decline or counter and confirm those responses still resolve without a manual "apply selected response" step.
+7. Repeat with decline or counter and confirm those responses also publish canonical state immediately from the responder device without a manual "apply selected response" step.
 8. Repeat a turn where the offer is not executed and confirm `End Turn` expires it.
 
 ### Targeted Check: Context / Secrecy Safety

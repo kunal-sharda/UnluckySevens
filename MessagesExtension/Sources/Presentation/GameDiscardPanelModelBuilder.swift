@@ -1,5 +1,35 @@
 import ULS_CoreGame
 
+enum PendingDiscardOrderResolver {
+    static func orderedPendingPlayers(in state: CoreGameStateV1) -> [String] {
+        guard
+            state.phase == .turn,
+            let turnState = state.turnState,
+            turnState.step == .pendingDiscards
+        else {
+            return []
+        }
+
+        let submittedPlayers = Set(turnState.submittedDiscardsByPlayer.keys)
+        let requiredPlayers = Set(turnState.discardRequirementsByPlayer.keys)
+
+        var orderedPlayers = state.roster.filter { player in
+            requiredPlayers.contains(player) && !submittedPlayers.contains(player)
+        }
+
+        let remainingPlayers = requiredPlayers
+            .subtracting(orderedPlayers)
+            .subtracting(submittedPlayers)
+            .sorted()
+        orderedPlayers.append(contentsOf: remainingPlayers)
+        return orderedPlayers
+    }
+
+    static func nextPendingPlayer(in state: CoreGameStateV1) -> String? {
+        orderedPendingPlayers(in: state).first
+    }
+}
+
 enum GameDiscardPanelModelBuilder {
     static func build(
         state: CoreGameStateV1?,
@@ -16,14 +46,14 @@ enum GameDiscardPanelModelBuilder {
         let waitingPlayers = waitingPlayers(in: state)
 
         if let actingAs,
+           PendingDiscardOrderResolver.nextPendingPlayer(in: state) == actingAs,
            let requiredCount = state.turnState?.discardRequirementsByPlayer[actingAs],
            requiredCount > 0,
            let availableHand = state.resourcesByPlayer[actingAs] {
-            let action: GameDiscardPanelModel.Action = if actingAs == state.currentPlayer {
-                .publishDiscard(requiredCount: requiredCount, availableHand: handChips(from: availableHand))
-            } else {
-                .sendDiscard(requiredCount: requiredCount, availableHand: handChips(from: availableHand))
-            }
+            let action = GameDiscardPanelModel.Action.publishDiscard(
+                requiredCount: requiredCount,
+                availableHand: handChips(from: availableHand)
+            )
 
             return GameDiscardPanelModel(waitingPlayers: waitingPlayers, action: action)
         }
@@ -32,12 +62,7 @@ enum GameDiscardPanelModelBuilder {
     }
 
     private static func waitingPlayers(in state: CoreGameStateV1) -> [String] {
-        let submitted = state.turnState?.submittedDiscardsByPlayer ?? [:]
-        return (state.turnState?.discardRequirementsByPlayer ?? [:])
-            .keys
-            .filter { submitted[$0] == nil }
-            .sorted()
-            .map { playerName($0, in: state) }
+        PendingDiscardOrderResolver.orderedPendingPlayers(in: state).map { playerName($0, in: state) }
     }
 
     private static func playerName(_ playerID: String, in state: CoreGameStateV1) -> String {

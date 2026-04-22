@@ -190,6 +190,24 @@ private func isAuthorizedActorForTransition(
     }
 
     switch expectedAction {
+    case .submitDiscard:
+        guard
+            from.phase == .turn,
+            to.phase == .turn || to.phase == .gameOver,
+            from.currentPlayer == to.currentPlayer,
+            from.turnState?.step == .pendingDiscards,
+            let fromSubmitted = from.turnState?.submittedDiscardsByPlayer,
+            let toSubmitted = to.turnState?.submittedDiscardsByPlayer
+        else {
+            return false
+        }
+
+        let newPlayers = Set(toSubmitted.keys).subtracting(fromSubmitted.keys)
+        guard newPlayers.count == 1, let submittedPlayer = newPlayers.first else {
+            return false
+        }
+
+        return submittedPlayer == actor
     case .acceptTrade, .declineTrade, .counterTrade:
         guard
             from.phase == .turn,

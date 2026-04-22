@@ -47,9 +47,27 @@ final class TurnRollSevenV1Tests: XCTestCase {
         let rolled = try apply(intent: .rollDice, to: initial, actor: "A")
 
         XCTAssertThrowsError(
-            try apply(intent: .submitDiscard(player: "B", discarded: ResourceHandV1(wood: 3)), to: rolled, actor: "A")
+            try apply(intent: .submitDiscard(player: "C", discarded: .zero), to: rolled, actor: "C")
         ) { error in
             XCTAssertEqual(error as? CoreGameError, .discardSubmissionNotRequired)
+        }
+    }
+
+    func testDiscardMustBePublishedByDiscardingPlayer() throws {
+        let initial = makeTurnState(
+            diceSeed: Self.rollSevenSeed,
+            resourcesByPlayer: [
+                "A": ResourceHandV1(wood: 8),
+                "B": ResourceHandV1(brick: 8),
+                "C": .zero,
+            ]
+        )
+        let rolled = try apply(intent: .rollDice, to: initial, actor: "A")
+
+        XCTAssertThrowsError(
+            try apply(intent: .submitDiscard(player: "B", discarded: ResourceHandV1(brick: 4)), to: rolled, actor: "A")
+        ) { error in
+            XCTAssertEqual(error as? CoreGameError, .actorMismatch)
         }
     }
 
@@ -75,10 +93,10 @@ final class TurnRollSevenV1Tests: XCTestCase {
         let afterSecondDiscard = try apply(
             intent: .submitDiscard(player: "B", discarded: ResourceHandV1(brick: 4)),
             to: afterFirstDiscard,
-            actor: "A"
+            actor: "B"
         )
         XCTAssertEqual(afterSecondDiscard.turnState?.step, .needsRobberMove)
-        XCTAssertNoThrow(try validateTransition(from: afterFirstDiscard, to: afterSecondDiscard, actor: "A"))
+        XCTAssertNoThrow(try validateTransition(from: afterFirstDiscard, to: afterSecondDiscard, actor: "B"))
     }
 
     func testRobberMoveRejectedBeforeAllDiscardsSubmittedStateUnchanged() throws {

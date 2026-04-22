@@ -110,8 +110,7 @@ struct GameModalHostView: View {
             if let action = discardPanel.action {
                 let (requiredCount, availableHand): (Int, [GameHandChip]) = {
                     switch action {
-                    case let .publishDiscard(required, hand),
-                         let .sendDiscard(required, hand):
+                    case let .publishDiscard(required, hand):
                         return (required, hand)
                     }
                 }()
@@ -412,14 +411,12 @@ struct GameModalHostView: View {
     private func discardMessage(for panel: GameDiscardPanelModel) -> String {
         switch panel.action {
         case let .publishDiscard(requiredCount, _):
-            return "Discard exactly \(requiredCount) cards to continue the forced robber flow. Because you're the current player, this publishes the next canonical state immediately."
-        case let .sendDiscard(requiredCount, _):
-            return "Discard exactly \(requiredCount) cards to continue the forced robber flow. This sends your discard response so the current player can incorporate it."
+            return "Discard exactly \(requiredCount) cards to publish the next canonical discard state. Discarders resolve in roster order during this robber step."
         case .none:
             if panel.waitingPlayers.isEmpty {
                 return "Discard resolution is blocking turn progress."
             }
-            return "Discard resolution is blocking turn progress until the remaining players respond."
+            return "Discard resolution is blocking turn progress until the remaining players submit in order."
         }
     }
 
@@ -427,8 +424,6 @@ struct GameModalHostView: View {
         switch action {
         case .publishDiscard:
             return "Publish Discard"
-        case .sendDiscard:
-            return "Send Discard Response"
         }
     }
 

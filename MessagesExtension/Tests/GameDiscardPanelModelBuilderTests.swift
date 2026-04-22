@@ -41,7 +41,7 @@ final class GameDiscardPanelModelBuilderTests: XCTestCase {
         )
     }
 
-    func testBuildReturnsSendActionForNonCurrentPlayerDiscard() {
+    func testBuildReturnsPublishActionForNextDiscarderEvenWhenTheyAreNotCurrentPlayer() {
         let state = makeTurnState(
             resourcesByPlayer: [
                 "A": .zero,
@@ -66,13 +66,45 @@ final class GameDiscardPanelModelBuilderTests: XCTestCase {
                 waitingPlayers: [
                     PlayerPseudonymResolver.displayName(for: "B", gameID: state.gameId, roster: state.roster)
                 ],
-                action: .sendDiscard(
+                action: .publishDiscard(
                     requiredCount: 2,
                     availableHand: [
                         GameHandChip(resource: .wood, count: 1),
                         GameHandChip(resource: .brick, count: 1),
                     ]
                 )
+            )
+        )
+    }
+
+    func testBuildReturnsWaitingStateForRequiredPlayerWhoIsNotNextInOrder() {
+        let state = makeTurnState(
+            resourcesByPlayer: [
+                "A": .zero,
+                "B": ResourceHandV1(wood: 2),
+                "C": ResourceHandV1(brick: 1),
+            ],
+            currentPlayer: "A",
+            turnState: TurnStateV1(
+                step: .pendingDiscards,
+                lastRoll: DiceRollV1(d1: 5, d2: 2),
+                discardRequirementsByPlayer: ["B": 2, "C": 1]
+            )
+        )
+
+        let model = GameDiscardPanelModelBuilder.build(
+            state: state,
+            actingAs: "C"
+        )
+
+        XCTAssertEqual(
+            model,
+            GameDiscardPanelModel(
+                waitingPlayers: [
+                    PlayerPseudonymResolver.displayName(for: "B", gameID: state.gameId, roster: state.roster),
+                    PlayerPseudonymResolver.displayName(for: "C", gameID: state.gameId, roster: state.roster)
+                ],
+                action: nil
             )
         )
     }

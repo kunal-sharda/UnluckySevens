@@ -36,8 +36,8 @@ What exists today:
 - the board shell is now live-resize rather than snapshot-freeze/remount during normal host drag
 - join intents can bridge back into inviter lobby state in some cases
 - fresh lobby joins now publish canonical lobby `STATE` on the game session instead of relying on a detached join intent path
-- current-player gameplay actions already use the same canonical game-session `STATE` path; the remaining non-canonical message work is now narrowed to responder-side trade/discard transport plus legacy recovery
-- targeted trade responses can auto-apply into canonical state when the response message is surfaced and the correct anchor state can be recovered, and `acceptTrade` now publishes that canonical state directly from the accepting device
+- current-player gameplay actions already use the same canonical game-session `STATE` path, and fresh responder gameplay now follows that same model for forced discard plus targeted trade responses
+- targeted `acceptTrade`, `declineTrade`, and `counterTrade` now publish canonical state directly from the responding device while preserving responder actor semantics
 - same-device local-ledger recovery now uses per-game keys instead of one global record
 - a per-game local ledger now persists the latest known canonical `STATE`, observed joiners, and last active game identity instead of splitting those concerns across one global cached-state record plus device-local pending-join overlays
 - active-context recovery and intent-context resolution now read from the same per-game ledger path rather than one global last-published-state record
@@ -45,8 +45,8 @@ What exists today:
 - trade-response selection now prefers recovered canonical state for the same game whenever the surfaced response cannot be auto-applied cleanly
 - canonical transport URLs now use `https://unluckysevens.app/...`; the earlier custom `unluckysevens://...` scheme was a protocol bug, not a harmless cosmetic choice
 - canonical `STATE` publishes now prefer the currently selected bubble's `MSSession` for the same game instead of relying only on the in-memory per-game cache; this keeps transcript updates anchored to the surfaced session chain more reliably after context churn
-- responder-side trade/discard transport now reuses the canonical game `MSSession` so remote responses stay inside the same game thread instead of forking into detached transcript artifacts
-- responder discard auto-apply now re-anchors stale surfaced submissions onto the newest valid `.pendingDiscards` state on the authority device, so multi-player seven flows do not stall after the first canonical discard publish
+- forced discard and targeted trade responses now publish canonical `STATE` on the same game `MSSession`, so fresh responder gameplay no longer depends on surfaced responder-envelope transport
+- multi-player discard is now serialized in locked roster order, so only the next pending discarder can publish and the queue advances deterministically without sibling-state races
 - the `didReceive` path now records durable callback diagnostics and only auto-activates messages for the currently active game; incoming updates for other games are stored for recovery instead of hijacking the open shell
 - freshly decoded incoming canonical `STATE` messages now write through into the per-game ledger immediately, so reopen/recovery does not depend only on locally published state
 - compact envelope framing now removes the extra outer JSON-envelope overhead for fresh transport sends while keeping backward decode support for the older JSON-wrapped format
@@ -57,7 +57,8 @@ What exists today:
 
 What is still broken or incomplete:
 
-- separate responder messages still need to be surfaced to the extension before they can be processed
+- simultaneous multi-recipient trade accept is still a sibling-state race; one accepted trade state will converge over the other, but the repo still does not enforce deterministic first-wins semantics
+- legacy responder / intent bubbles still need to be surfaced to the extension before they can be recovered cleanly; fresh discard and trade responses no longer depend on that path
 - transport still retains legacy summary-fallback decode compatibility for older bubbles, but fresh publishes are URL-only again. The remaining question is whether valid `https` URLs are now stable enough on hardware to let the repo delete the summary bridge entirely after revalidation.
 - the underlying diagnostics/probe code still exists for future troubleshooting, but it is no longer part of the default player-facing shell
 
@@ -112,20 +113,20 @@ Fallback if false:
 
 Assumption:
 
-- join and trade-response UX will remain poor while responder-side progression still depends on surfaced Messages delivery and selected-bubble authority
+- the host-side first-join lobby update will remain poor while it still depends on surfaced Messages delivery and selected-bubble authority
 
 Evidence:
 
 - current `LobbyDriverViewModel` / `MessagesViewController` delivery path
-- current join/trade failures on device when responder messages are not surfaced live
+- current join failures on device when the host stays on the initial post-send context instead of reopening the selected lobby bubble
 
 Disproof test:
 
-- rerun the open-bubble join/trade device scenarios after the canonical-lobby cleanup and session/transport fixes and confirm whether surfaced delivery is still the limiting factor
+- rerun the open-bubble host-join device scenario after the invite-dismiss cleanup and confirm whether host-side first-reply live update is still limited by surfaced delivery
 
 Fallback if false:
 
-- if open-bubble progression becomes robust after the current cleanup, reduce the remaining responder-transport work and keep `didReceive` as a best-effort optimization instead of redesigning around it
+- if host-side first-join live progression becomes robust after the current cleanup, keep `didReceive` as a best-effort optimization instead of redesigning around that lobby wait path
 
 ## Target End State
 
@@ -160,11 +161,11 @@ Acceptance boundary:
   - only then raw-intent fallback
 - eliminate device-local pending joins as canonical lobby authority
 
-### Stage 13.2 — Join and Trade Response Bridge
+### Stage 13.2 — Join and Responder-Flow Hardening
 
 - make inviter-side join handling resolve back into the active lobby/game context whenever possible
-- make current-player trade-response handling auto-progress into canonical state as soon as a surfaced response can be anchored
-- make stale surfaced responses prefer recovered latest state instead of intent-only shells
+- move fresh responder gameplay off surfaced-response transport where the rules allow direct canonical publication
+- make stale surfaced legacy responses prefer recovered latest state instead of intent-only shells
 - document and handle first-wins trade-response race semantics explicitly
 
 ### Stage 13.3 — Transport Reliability Program
@@ -239,7 +240,7 @@ Automated lane still unresolved in this environment:
 Manual signoff still required before phase exit:
 
 - real two-device join progression without bubble hopping
-- real two-device trade accept/decline/counter progression on surfaced response bubbles
+- real two-device trade accept/decline/counter progression with responder-side canonical publish
 - stale-bubble reopen and active-games recovery on hardware
 - full standard-match pass on real devices after the host/transport overhaul
 
@@ -259,6 +260,12 @@ Manual signoff still required before phase exit:
 - 2026-04-16: stage 13.2 no longer exposes a proposer-side "Apply Selected Response" gameplay path. Trade-response intents are still an internal authority primitive, but normal trade UI should either auto-resolve them into canonical `STATE` or stay on the state-driven trade surface.
 - 2026-04-16: stage 13.2 completed its recovery-bridge hardening. Join intents now recover into the best available canonical state for the same game whenever possible, local-ledger recovery falls back per game rather than globally, and surfaced trade responses now prefer recovered state when auto-apply cannot happen cleanly instead of dropping into raw intent/open-game shells.
 - 2026-04-19: the legacy cleanup slice removed the remaining live product fallbacks from the audit: lobby `canStart` / participant UI no longer consume observed join overlays, the discard panel no longer exposes manual responder application, and the obsolete non-join/non-trade legacy debug senders were deleted while preserving lobby join and trade debugging surfaces.
+- 2026-04-22: fresh responder gameplay is now canonical-first. `acceptTrade`, `declineTrade`, `counterTrade`, and forced discard all publish canonical `STATE` directly from the responding device while preserving the responder/discarder as the validation actor and keeping `currentPlayer` unchanged.
+- 2026-04-22: forced discard now resolves in locked roster order. Only the next pending discarder may publish, which removes sibling pending-discard races instead of trying to merge simultaneous discard states after the fact.
+- 2026-04-22: focused validation for canonical responder gameplay passed:
+  - `swift test --package-path Packages/ULS_CoreGame --filter TurnRollSevenV1Tests`
+  - `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`
+  - `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:MessagesExtensionTests/GameDiscardPanelModelBuilderTests -only-testing:MessagesExtensionTests/TurnInteractionResolverTests -only-testing:MessagesExtensionTests/TradeResponsePublicationResolverTests -only-testing:MessagesExtensionTests/TurnIntentPublishActorResolverTests -only-testing:MessagesExtensionTests/TurnIntentContextResolverTests test`
 - 2026-04-20: multi-player discard progression was hardened without changing the current authority model. Responder discard messages still travel as internal transport on the game session, but the authority device now re-anchors stale surfaced discard responses onto the latest valid `.pendingDiscards` state when the discarding player has not yet submitted in canonical state.
 - 2026-04-20: targeted `acceptTrade` now publishes canonical state directly from the accepting device. The engine already treats `acceptTrade` as an atomic trade-execution transition, so sending it as a responder envelope was mismatched with rules behavior and left the table stale whenever proposer-side surfacing failed.
 - 2026-04-16: stage 13.3 started with compact envelope framing in `ULS_Transport`. Fresh sends now use a smaller binary-framed base64url envelope while decode remains backward-compatible with the older JSON-wrapped transport payloads.

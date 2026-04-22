@@ -19,7 +19,7 @@ final class TradeResponsePublicationResolverTests: XCTestCase {
         )
     }
 
-    func testDeclineAndCounterStayOnResponderEnvelopePath() {
+    func testDeclineAndCounterPublishCanonicalState() {
         let declineIntent = ULS_Transport.TurnIntentV1(
             declineTradePlayer: "guest",
             offerHash: "offer-1",
@@ -41,11 +41,11 @@ final class TradeResponsePublicationResolverTests: XCTestCase {
 
         XCTAssertEqual(
             TradeResponsePublicationResolver.resolve(declineIntent),
-            .responderEnvelope
+            .canonicalState
         )
         XCTAssertEqual(
             TradeResponsePublicationResolver.resolve(counterIntent),
-            .responderEnvelope
+            .canonicalState
         )
     }
 

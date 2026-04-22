@@ -930,7 +930,19 @@ final class ScriptedFullMatchesV1Tests: XCTestCase {
 
     private func applyTurnIntent(_ intent: TurnIntentV1, state: inout CoreGameStateV1) throws {
         let from = state
-        let actor = from.currentPlayer
+        let actor: String
+        switch intent {
+        case let .submitDiscard(player, _):
+            actor = player
+        case let .acceptTrade(acceptingPlayer, _):
+            actor = acceptingPlayer
+        case let .declineTrade(decliningPlayer, _):
+            actor = decliningPlayer
+        case let .counterTrade(counteringPlayer, _, _, _):
+            actor = counteringPlayer
+        default:
+            actor = from.currentPlayer
+        }
         let to = try apply(intent: intent, to: from, actor: actor)
         try validateTransition(from: from, to: to, actor: actor)
         state = to

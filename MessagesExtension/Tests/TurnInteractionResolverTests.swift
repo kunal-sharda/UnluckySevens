@@ -139,6 +139,29 @@ final class TurnInteractionResolverTests: XCTestCase {
         )
     }
 
+    func testDraftDiscardIntentRejectsOutOfOrderDiscarder() {
+        let state = makeTurnState(
+            resourcesByPlayer: [
+                "A": ResourceHandV1(wood: 4),
+                "B": ResourceHandV1(brick: 4),
+                "C": ResourceHandV1(ore: 4),
+            ],
+            turnState: TurnStateV1(
+                step: .pendingDiscards,
+                lastRoll: DiceRollV1(d1: 3, d2: 4),
+                discardRequirementsByPlayer: ["B": 4, "C": 4]
+            )
+        )
+
+        XCTAssertNil(
+            TurnInteractionResolver.draftDiscardIntent(
+                state: state,
+                actingAs: "C",
+                discarded: ResourceHandV1(ore: 4)
+            )
+        )
+    }
+
     func testDraftRobberMoveIntentForLegalTile() throws {
         let state = makeTurnState(
             resourcesByPlayer: ["A": .zero, "B": .zero],

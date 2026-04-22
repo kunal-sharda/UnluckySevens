@@ -867,8 +867,7 @@ struct GameShellView: View {
         }
 
         switch panel.action {
-        case let .publishDiscard(requiredCount, availableHand),
-             let .sendDiscard(requiredCount, availableHand):
+        case let .publishDiscard(requiredCount, availableHand):
             return (requiredCount, availableHand)
         case .none:
             return nil

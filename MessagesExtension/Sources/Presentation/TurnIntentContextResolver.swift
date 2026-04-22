@@ -97,14 +97,32 @@ enum TurnIntentContextResolver {
             return nil
         }
 
-        if turnIntent.kind == .submitDiscard,
-           let recovered = resolution.bestAvailable,
-           isNewerRecoveredState(recovered.state, than: turnIntent) {
-            return canReanchorDiscardResponderMessage(
-                turnIntent,
-                onto: recovered.state,
-                localParticipant: localParticipant
-            ) ? recovered : nil
+        if turnIntent.kind == .submitDiscard {
+            if let recovered = resolution.bestAvailable,
+               isNewerRecoveredState(recovered.state, than: turnIntent) {
+                guard
+                    canApplyDiscardResponderMessage(
+                        turnIntent,
+                        onto: recovered.state,
+                        localParticipant: localParticipant
+                    )
+                else {
+                    return nil
+                }
+
+                return recovered
+            }
+
+            if let anchorMatched = resolution.anchorMatched,
+               canApplyDiscardResponderMessage(
+                   turnIntent,
+                   onto: anchorMatched.state,
+                   localParticipant: localParticipant
+               ) {
+                return anchorMatched
+            }
+
+            return nil
         }
 
         if let anchorMatched = resolution.anchorMatched,
@@ -114,7 +132,7 @@ enum TurnIntentContextResolver {
 
         guard
             let recovered = resolution.bestAvailable,
-            canReanchorDiscardResponderMessage(
+            canApplyDiscardResponderMessage(
                 turnIntent,
                 onto: recovered.state,
                 localParticipant: localParticipant
@@ -176,7 +194,7 @@ enum TurnIntentContextResolver {
         state.currentPlayer == localParticipant && state.roster.contains(localParticipant)
     }
 
-    private static func canReanchorDiscardResponderMessage(
+    private static func canApplyDiscardResponderMessage(
         _ turnIntent: ULS_Transport.TurnIntentV1,
         onto state: CoreGameStateV1,
         localParticipant: String
@@ -189,14 +207,14 @@ enum TurnIntentContextResolver {
             isAuthorityContext(state, localParticipant: localParticipant),
             let discardPlayer = turnIntent.discardPlayer,
             discardPlayer == turnIntent.actor,
+            PendingDiscardOrderResolver.nextPendingPlayer(in: state) == discardPlayer,
             let turnState = state.turnState,
             turnState.discardRequirementsByPlayer[discardPlayer] != nil,
             turnState.submittedDiscardsByPlayer[discardPlayer] == nil
         else {
             return false
         }
-
-        return state.rev > turnIntent.anchorRev || state.stateHash != turnIntent.anchorHash
+        return true
     }
 
     private static func isNewerRecoveredState(
