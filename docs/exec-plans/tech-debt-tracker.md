@@ -23,7 +23,7 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - Why it matters: the engine is well covered, but transcript selection, payload-carrier loss, delayed selection metadata, reopen/lifecycle behavior, and participant identity still rely on manual smoke checks.
 - Current cost or risk: regressions at the Messages host boundary can break real-device gameplay even while simulator and engine tests stay green.
 - Proposed fix shape: add simulator transcript-selection and reopen harnesses plus an operator-assisted device lane that captures payload source, selection lifecycle, session, and identity diagnostics.
-- When to address: phase 13.
+- When to address: phase 14 or 15, depending on how much external testing pressure accumulates after TestFlight starts.
 - Links: [QA](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/qa.md)
 
 ### TD-002 — Production board visual assertions are still shallow
@@ -39,8 +39,8 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 
 - Area: UI architecture
 - Why it matters: the engine boundaries are clean, but the extension target is still vulnerable to becoming monolithic and mixing product authority, transcript recovery, board update coordination, and debug tooling.
-- Current cost or risk: slower UI iteration, board redraw churn, product gating that can accidentally depend on debug fallbacks, and harder reviewability when host-boundary logic and feature logic live in the same places.
-- Proposed fix shape: split the extension internally by host lifecycle/context recovery, transport adaptation, lobby/game orchestration, board-scene coordination, and debug/operator surfaces so debug-only fallbacks cannot leak back into product flow.
+- Current cost or risk: slower UI iteration, board redraw churn, and harder reviewability when host-boundary logic and feature logic live in the same places.
+- Proposed fix shape: split the extension internally by host lifecycle/context recovery, transport adaptation, lobby/game orchestration, board-scene coordination, and debug/operator surfaces.
 - When to address: phase 15.
 - Links: [ARCHITECTURE.md](/Users/kunalsharda/Documents/Code/UnluckySevens/ARCHITECTURE.md)
 
@@ -51,40 +51,40 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - Current cost or risk: the workspace test lane emits a persistent warning, and the duplicated-source setup makes future test architecture changes easier to get wrong.
 - Proposed fix shape: extract the testable presentation/board seams into a shared library target the extension and tests can both depend on, then remove the duplicated extension sources from the test target.
 - When to address: phase 15.
-- Links: [ARCHITECTURE.md](/Users/kunalsharda/Documents/Code/UnluckySevens/ARCHITECTURE.md), [Phase 12 Plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/active/phase-12-gameplay-flows.md)
+- Links: [ARCHITECTURE.md](/Users/kunalsharda/Documents/Code/UnluckySevens/ARCHITECTURE.md)
 
-### TD-005 — Lobby roster assembly still depends on device-local pending joins
+### TD-005 — Lobby roster assembly still depends on observed-join merge
 
 - Area: lobby authority, multiplayer flow
 - Why it matters: fresh join now advances canonical lobby `STATE`, but concurrent joins from the same older lobby rev can still arrive as sibling lobby states. The host currently converges those at `Start Game` time by unioning the latest visible lobby roster with the local observed-join ledger.
-- Current cost or risk: the lobby can still show an incomplete roster transiently until the host sees both sibling join states or starts from a merged roster, so lobby convergence is better than before but not yet fully transcript-authoritative.
-- Proposed fix shape: replace the remaining observed-join merge with an explicit transcript-authoritative lobby reconciliation model so concurrent joins converge before start, not only at start time.
-- When to address: post-phase 13 if real-device concurrency still shows lobby skew.
-- Links: [Phase 12 Plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/active/phase-12-gameplay-flows.md), [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift)
-
-### TD-006 — Full-state transcript transport still depends on unstable Messages carriers
-
-- Area: transport, Messages host integration
-- Why it matters: the current transcript helper still relies on full payloads surviving in `message.url` and, during the temporary phase-12 production fallback, a one-line mirrored `summaryText`, even though real-device selection has already shown carrier loss and delayed metadata.
-- Current cost or risk: cross-device state recovery can succeed or fail depending on Messages host behavior rather than only on app logic, making signoff fragile and regressions hard to localize.
-- Proposed fix shape: move toward compact transcript tokens plus durable rehydration, with URL and summary integrity checks during the transition, instead of treating transcript selection as full-fidelity state persistence. The concrete working plan now lives in [TD-008](#td-008--transport-reliability-plan-for-msmessageurl) and the 2026-04-13 audit it links.
-- When to address: phase 13.
-- Links: [docs/decisions.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/decisions.md), [Phase 12 Plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/active/phase-12-gameplay-flows.md), [TD-008](#td-008--transport-reliability-plan-for-msmessageurl)
+- Current cost or risk: the lobby can still show an incomplete roster transiently until the host sees both sibling join states or starts from a merged roster.
+- Proposed fix shape: replace the remaining observed-join merge with an explicit transcript-authoritative lobby reconciliation model so concurrent joins converge before start, not only at start.
+- When to address: phase 14 if real-device concurrency shows visible lobby skew; otherwise later.
+- Links: [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift), [docs/product-specs/ui-flows.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/product-specs/ui-flows.md)
 
 ### TD-007 — Board and shell render paths rebuild shared inputs on every update
 
 - Area: `MessagesExtension` board rendering, `ULS_CoreGame` query economy, SwiftUI projection churn
-- Why it matters: the 2026-04-12 render/perf audit traced observable device lag to a stack of pure rebuilds that happen on every state update, every tap, and every overlay change. `StandardBoardTopologyV1.standard()` and `.renderGeometry()` are plain functions called repeatedly from every legal-move query, `GameBoardLayout` re-derives every tile/node position on every property access, `GameBoardRenderModelBuilder` has no memoization, and `GameShellProjection` bundles ~36 debug strings alongside the render model so `removeDuplicates()` walks all of them on every publish. `LobbyDriverViewModel` also still declares 29 `@Published` fields, most of which are debug telemetry.
-- Current cost or risk: phase 12.8 has been compensating with board freezes, watchdogs, snapshot fallbacks, and an `SKView` host wrapper. Those fixes mask the amplification but do not remove it. Real-device responsiveness will remain worse than necessary until the topology/layout/projection allocations are eliminated, and every new board or shell feature pays the same amplifier.
-- Proposed fix shape: work the audit's ordered list — cache `StandardBoardTopologyV1.standard` and `.renderGeometry` as `static let`, precompute `GameBoardLayout` in `init`, add adjacency tables to `BoardGraphV1`, memoize `GameBoardRenderModelBuilder` by `state.stateHash`, split debug and render projections, and reduce `LobbyDriverViewModel`'s `@Published` surface to the fields the shell actually reads.
-- When to address: phase 15 — structural performance and decomposition. `F1` in the audit (`static let` topology) is a one-line change and can be pulled forward into phase 12.8 if real-device device QA still feels chunky after the current freeze/shield hardening; the rest of the list belongs with the structural decomposition slice.
-- Links: [2026-04-12 render/perf audit](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-12-render-performance.md), [Phase 12 Plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/active/phase-12-gameplay-flows.md)
+- Why it matters: the 2026-04-12 render/perf audit traced observable device lag to a stack of pure rebuilds that happen on every state update, every tap, and every overlay change.
+- Current cost or risk: real-device responsiveness will remain worse than necessary until the topology/layout/projection allocations are eliminated, and every new board or shell feature pays the same amplification.
+- Proposed fix shape: work the ordered audit list — cache topology/render geometry, precompute layout, memoize render-model building, split debug and render projections, and reduce the published debug surface that the shell does not actually read.
+- When to address: phase 15.
+- Links: [2026-04-12 render/perf audit](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-12-render-performance.md)
 
-### TD-008 — Transport reliability plan for `MSMessage.url`
+### TD-009 — Simultaneous targeted trade accept is still nondeterministic
 
-- Area: `ULS_Transport`, `MessagesExtension` transcript support, Messages host integration
-- Why it matters: the 2026-04-13 transport-reliability plan documents the full channel inventory on `MSMessage` and confirms that `MSMessage.url` is the only real data channel. Everything else is either user-visible (leak risk) or not a data channel at all. The current system is either leaky (when the `summaryText` mirror is on) or broken (when it is off) past the ~1–2 KB size cliff seen on real devices.
-- Current cost or risk: every phase-12 transport fix so far has been incremental hardening on top of the same unreliable carrier. Cross-device reliability, pruned-bubble recovery, and SMS-fallback behavior cannot be solved with one more carrier-level tweak; they need the shrinkage program and the local cache together.
-- Proposed fix shape: execute the seven-phase plan in order — Phase 1 measure → Phase 2 compact board → Phase 5 persistent local cache → Phase 3 delta-encode STATE → Phase 4 CBOR codec → Phase 6 delete `summaryText` fallback → Phase 7 SMS-fallback detection plus resync UX. Do not skip Phase 1; optimize against the measured baseline rather than intuition.
-- When to address: phase 13. This replaces the vague "compact transcript tokens plus durable rehydration" phase-13 scope bullet with a concrete pre-plan that already has acceptance criteria per phase.
-- Links: [2026-04-13 transport reliability plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-13-transport-reliability.md), [2026-04-12 render/perf audit](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-12-render-performance.md), [docs/decisions.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/decisions.md), [Phase 12 Plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/active/phase-12-gameplay-flows.md), [TD-006](#td-006--full-state-transcript-transport-still-depends-on-unstable-messages-carriers)
+- Area: trade authority, multiplayer flow
+- Why it matters: two targeted recipients can still accept the same live offer from stale copies of the same state before either sees the other's accepted state.
+- Current cost or risk: the game should still converge, but which accept wins is currently delivery-order-driven rather than deterministic first-wins.
+- Proposed fix shape: add latest-known-state gating before authoring `Accept`, then choose a durable resolution model: deterministic tie-break or explicit serialized authority.
+- When to address: phase 16 unless TestFlight exposes it as a material player-facing problem sooner.
+- Links: [TradeInteractionResolver.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/TradeInteractionResolver.swift), [TranscriptStateSelection.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/TranscriptStateSelection.swift)
+
+### TD-010 — Session continuity can still fork after sessionless recovery
+
+- Area: transcript continuity, Messages host integration
+- Why it matters: if a publish happens from recovered canonical state with neither a selected same-game session nor a cached session, the transport helper still creates a fresh `MSSession`.
+- Current cost or risk: transcript collapse/readability can degrade even though the underlying game state remains valid.
+- Proposed fix shape: persist or derive stronger same-game session continuity so recovery-published `STATE` prefers the existing game chain instead of falling back to a fresh session.
+- When to address: phase 15 unless real-device TestFlight feedback shows transcript clutter becoming materially confusing sooner.
+- Links: [TranscriptTransportSupport.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/TranscriptTransportSupport.swift)
