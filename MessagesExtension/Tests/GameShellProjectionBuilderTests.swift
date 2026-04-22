@@ -1,6 +1,5 @@
 import XCTest
 import ULS_CoreGame
-import ULS_Transport
 @testable import MessagesExtension
 
 final class GameShellProjectionBuilderTests: XCTestCase {
@@ -86,44 +85,6 @@ final class GameShellProjectionBuilderTests: XCTestCase {
         )
 
         XCTAssertNil(discardProjection.discardPanelModel?.action)
-    }
-
-    func testBuildIntentProjectionsUseOpenGameFallbackShells() {
-        let joinIntent = JoinIntentV1(
-            gameId: "game-1",
-            anchorRev: 0,
-            anchorHash: "hash-0",
-            actor: "guest"
-        )
-        let joinProjection = GameShellProjectionBuilder.build(joinIntent: joinIntent)
-
-        XCTAssertEqual(joinProjection.kind, "LEGACY_JOIN")
-        XCTAssertEqual(joinProjection.gameScreenModel.header.statusLine.title, "Open game")
-
-        let turnIntent = TurnIntentV1(
-            kind: .rollDice,
-            gameId: "game-1",
-            anchorRev: 1,
-            anchorHash: "hash-1",
-            actor: "guest"
-        )
-        let turnProjection = GameShellProjectionBuilder.build(turnIntent: turnIntent)
-
-        XCTAssertEqual(turnProjection.kind, "LEGACY_INTENT(rollDice)")
-        XCTAssertEqual(turnProjection.turnIntent, "kind: rollDice")
-        XCTAssertTrue(turnProjection.robberVictimOptions.isEmpty)
-
-        let discardResponse = TurnIntentV1(
-            submitDiscardFor: "guest",
-            discarded: TransportResourceHandV1(wood: 2),
-            gameId: "game-1",
-            anchorRev: 2,
-            anchorHash: "hash-2",
-            actor: "guest"
-        )
-        let discardProjection = GameShellProjectionBuilder.build(turnIntent: discardResponse)
-
-        XCTAssertEqual(discardProjection.kind, "RESPONSE(discard)")
     }
 
     private func makeTurnState(

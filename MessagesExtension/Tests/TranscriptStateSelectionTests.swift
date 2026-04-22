@@ -32,13 +32,13 @@ final class TranscriptStateSelectionTests: XCTestCase {
             latestKnownStatesByGameId: ["state-selection": stateV2],
             activeState: stateV2,
             activeSource: .selectedBubble,
-            source: .summaryFallback,
+            source: .url,
             trigger: .didSelect
         )
 
         XCTAssertEqual(result.preferredState.rev, 2)
         XCTAssertFalse(result.shouldActivate)
-        XCTAssertEqual(result.selectionStatus, "Opened latest STATE rev2 via summary fallback")
+        XCTAssertEqual(result.selectionStatus, "Opened latest STATE rev2 via URL")
         XCTAssertTrue(result.shouldShowLatestUpdateNotice)
         XCTAssertTrue(result.redirectedToLatestKnown)
     }

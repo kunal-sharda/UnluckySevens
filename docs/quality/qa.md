@@ -138,26 +138,19 @@ How to apply this going forward:
 
 ### 1b. Transcript transport is not perfectly faithful on selection and reopen
 
-This lesson originally described the symptoms traced back to the scheme bug above. The summary-fallback transport was built as a workaround when the root cause (scheme validation) was not yet understood. It is preserved here because:
-
-1. Even with a correct `https://` URL, real-device Messages still has rare cases where `selectedMessage?.url` is not hydrated in `viewDidLoad`/`willBecomeActive`. The authoritative read is always the `message` argument in `didSelect(_:conversation:)` / `didReceive(_:conversation:)`.
-2. The historical summary-fallback decode path (`ulsenv:` prefix on a second summary line) still needs to exist for older bubbles that were published while the scheme bug was live. Those bubbles have no usable `url`; their payload survives only on `summaryText`.
+This lesson originally described the symptoms traced back to the scheme bug above. After the `https` fix, the remaining real lesson is narrower: even with a correct URL, transcript re-selection is not perfectly faithful on reopen.
 
 What we learned:
 
 - Transport publication and transcript re-selection are not the same reliability boundary inside Messages, but most of the pain we attributed to that boundary was actually scheme validation.
-- We need to distinguish `URL`, `summary fallback`, and `missing` payload sources during triage instead of assuming one decode path.
+- Even with the correct scheme, the most authoritative payload read is still the `message` argument in `didSelect(_:conversation:)` / `didReceive(_:conversation:)`, not `selectedMessage` during early lifecycle callbacks.
 
 Current repo answer:
 
 - Canonical payload prefers `message.url` now that the scheme is correct.
-- Fresh sends are URL-only again after the `https` scheme fix; legacy summary-fallback decode remains enabled to recover bubbles from the pre-fix era and to keep fallback observability while hardware retesting completes.
-- The temporary transport badge and debug surfaces expose which source actually decoded, so triage can tell "URL worked" from "fell back to summary" at a glance.
+- Fresh sends are URL-only again after the `https` scheme fix.
 - Compact envelope framing plus `compactStateV2` keep the worst-case canonical STATE stress path under the URL budget in tests.
-
-Still temporary:
-
-- Incoming `summary fallback` decode remains a bridge path for legacy transcript bubbles sent before the scheme fix. Phase 13 still owns retiring that compatibility path once device validation shows URL-only publication is stable on the corrected scheme across enough real-device sessions to be confident.
+- The app treats pre-TestFlight dev-era summary-mirrored bubbles as intentionally unsupported after the phase-13 cleanup. The compatibility boundary starts with TestFlight builds, not older development transcripts.
 
 ### 1c. Lobby join `didReceive` fires for gameplay moves but not for the lobby host (open investigation)
 
@@ -308,7 +301,7 @@ Current repo answer:
 - Active-context recovery and intent-context resolution now consult that ledger instead of a separate global cached-state bridge.
 - Device-local pending joins are no longer the canonical lobby assembly surface.
 
-### 7a. Lobby join should be canonical state; legacy join intents are recovery-only
+### 7a. Lobby join should be canonical state only
 
 What went wrong:
 
@@ -318,15 +311,13 @@ What went wrong:
 What we learned:
 
 - Fresh join should publish updated lobby `STATE` on the canonical game session.
-- Legacy join intents should be treated as a recovery trigger first, not as a player-facing surface.
-- If the app can recover canonical state for the same game, it should reopen that state and only preserve join-specific behavior where the local participant is actually the lobby host.
+- The app should not keep product logic around pre-TestFlight legacy join bubbles once the protocol boundary is reset for TestFlight.
+- If the app can recover canonical state for the same game, it should reopen that state rather than rendering a join-specific fallback shell.
 
 Current repo answer:
 
 - Fresh `Join Game` publishes canonical lobby `STATE` and advances lobby rev instead of emitting a detached join bubble.
 - `Start Game` uses the latest lobby rev, not a hard-coded `rev0` invite assumption.
-- Recoverable legacy join selections still resolve against the same per-game recovery context as trade responses.
-- Recoverable join selections reopen the best available canonical state for that game.
 - Start-roster assembly merges the visible lobby roster with observed joiners so concurrent join states can still converge when the host starts.
 
 ### 7b. Current-player gameplay should not masquerade as generic intent transport
@@ -339,15 +330,14 @@ What went wrong:
 What we learned:
 
 - The clean product model is: new game creates the game session once, and lobby/current-player gameplay keep reusing that session for canonical `STATE`.
-- Trade/discard responder transport is still the exception logically, but it should ride that same per-game session so the game transcript remains one thread.
-- Legacy setup/turn intents can remain for debug and backward transcript decode, but the code and UI should label them as legacy, not as the normal gameplay path.
+- Trade/discard responder actions should also stay on that same per-game session when they publish canonical `STATE`.
+- Pre-TestFlight legacy setup/current-turn intent bubbles are not worth preserving once the fresh protocol path is stable enough for TestFlight.
 
 Current repo answer:
 
 - Fresh lobby join and current-player gameplay publish canonical `STATE` on the canonical game session.
-- Forced discard and targeted trade responses now also publish canonical `STATE` on that same game session, while legacy responder artifacts remain compatibility-only.
+- Forced discard and targeted trade responses now also publish canonical `STATE` on that same game session.
 - The per-game ledger must record decoded incoming `STATE` as well as locally published `STATE`; otherwise recovery becomes asymmetrically worse on receiving devices, which is exactly where Messages host churn already hurts the most.
-- Recovery/fallback shells distinguish responder messages from legacy intent bubbles so operator tooling does not imply generic intent transport is the normal player UX.
 
 ### 8. Active-game recovery needs a player-visible affordance, not only invisible cache logic
 
@@ -704,16 +694,15 @@ Use this only on the disposable debug branch when a selected transcript bubble d
    - `payloadLength: > 0`
    - `decodeSource: URL`
 8. Prefer `url: present` plus `payloadQuery: present`. If they are missing, treat it as a transport publication or host-selection failure rather than a lobby-state bug.
-5. During the temporary transport fallback, `decodeSource: summary fallback` is acceptable evidence that the mirrored summary carrier recovered the payload; capture it as a host-fidelity defect and keep phase 13 responsible for removing that fallback.
-6. The temporary in-app diagnostics slice is now gated off by default. Re-enable it only on a troubleshooting branch; normal release-readiness validation should not depend on a visible `Reload Board` control or transport badge.
-7. If lobby `STATE` decodes but `Join Game` is still missing on the receiving device, inspect:
+9. The temporary in-app diagnostics slice is now gated off by default. Re-enable it only on a troubleshooting branch; normal release-readiness validation should not depend on a visible `Reload Board` control or transport badge.
+10. If lobby `STATE` decodes but `Join Game` is still missing on the receiving device, inspect:
    - `localParticipant`
    - `resolvedActor`
    - `localInRoster`
    - `localPendingJoin`
    - `canJoin`
    - `isInviter`
-8. Capture the debug HUD state as the primary repro artifact before retrying with a new bubble or escalating the issue into the stability phase.
+11. Capture the debug HUD state as the primary repro artifact before retrying with a new bubble or escalating the issue into the stability phase.
 
 ## What Is Already Covered Well
 
@@ -737,8 +726,8 @@ Use this only on the disposable debug branch when a selected transcript bubble d
 - realistic transport stress test for canonical STATE payload budget and roundtrip decode
 - shared `ULS_CoreGame` view/query helpers for legal default actions and viewer-scoped secrecy-safe projections
 - focused core tests covering the new query/projection surface against reducer legality and secrecy expectations
-- transport diagnostics in the debug HUD so selected-message failures show URL, payload, summary, session, and decode-source facts instead of only the empty-state shell
-- sender-side compact canonical STATE transport plus sender-side cached-state recovery, with legacy mirrored-summary decode retained only for backward compatibility during the phase-13 rollout
+- transport diagnostics in the debug HUD so selected-message failures show URL, payload, session, and decode-source facts instead of only the empty-state shell
+- sender-side compact canonical STATE transport plus sender-side cached-state recovery on top of URL-only publication
 
 ## Remaining High-Value Gaps
 

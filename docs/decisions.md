@@ -30,7 +30,7 @@ If a change is desired, update this file **first**, then update code/tests.
 
 - Two message types:
   - **STATE**: authoritative snapshot (canonical truth).
-  - **INTENT**: legacy or compatibility-only request anchored to a specific base state.
+  - **INTENT**: internal authoring or compatibility-only request anchored to a specific base state. Fresh player-facing transcript flow must not depend on intent bubbles.
 - The lobby is part of the canonical game timeline:
   - invite/start/join all progress through canonical lobby `STATE` updates on the game session
   - joining is not a detached draft flow or side intent in fresh publishes
@@ -39,7 +39,7 @@ If a change is desired, update this file **first**, then update code/tests.
   - can view the game and their own hand
   - may publish canonical `STATE` directly for rules-defined responder actions that do not advance turn ownership
   - forced discard and targeted trade responses validate as the **responding player's** action while `currentPlayer` stays on the turn owner
-- Legacy join/setup/current-player turn `INTENT` decode remains supported only for backward transcript compatibility, debug tools, and bridge recovery.
+- Pre-TestFlight legacy join/setup/current-player transcript intents are intentionally unsupported in the app runtime. The compatibility boundary starts with TestFlight builds, not earlier dev-era transcripts.
 
 ---
 
@@ -95,14 +95,14 @@ Recommended canonical state cadence per turn:
 - Fresh lobby joins publish updated lobby `STATE` on that same canonical game session.
 - Fresh current-player gameplay actions publish updated canonical `STATE` on that same canonical game session.
 - Fresh forced-discard and targeted trade-response publishes also stay on that same canonical game session so the game transcript remains one thread.
-- Legacy responder or intent bubbles may still decode for backward transcript compatibility, but when the shell can recover canonical `STATE` for that game it should prefer recovered game state over showing a raw legacy shell.
+- If the shell can recover canonical `STATE` for a game, it should prefer recovered game state over any raw responder artifact or stale transcript selection.
 
 Current transition rule:
 - Preferred transport source is always message URL query `payload`.
-- Legacy transcript recovery may still decode mirrored payloads from older `summaryText` values, but fresh publishes are URL-only again after the `https` scheme fix.
+- Fresh publishes are URL-only after the `https` scheme fix.
+- The app runtime no longer decodes mirrored payloads from `summaryText`; pre-TestFlight dev transcripts that depended on that bridge are intentionally unsupported after the phase-13 cleanup.
 - Sender-side cached last-published state may smooth same-device reopen UX when transcript selection drops to `nil`, but it is never cross-device authority and must not replace transcript transport.
-- UI must label payload source (`URL` vs `summary fallback`) during decode so fallback use is visible.
-- Phase 13 owns proving that URL-only publication is stable enough on hardware to retire the remaining legacy summary decode bridge entirely.
+- Payload-source diagnostics are debug/troubleshooting-only and must not be part of the default player shell.
 
 ---
 

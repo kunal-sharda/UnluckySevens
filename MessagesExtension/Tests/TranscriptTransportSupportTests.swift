@@ -1,29 +1,18 @@
 import Messages
-import ULS_Transport
 import XCTest
 @testable import MessagesExtension
 
 final class TranscriptTransportSupportTests: XCTestCase {
     func testBuildMessageIncludesPayloadQueryAndPreservesSessionPolicy() throws {
-        let intent = JoinIntentV1(
-            gameId: "game-1",
-            anchorRev: 0,
-            anchorHash: "hash-0",
-            actor: "actor-1"
-        )
-        let payload = try jsonString(intent)
-        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
-        let encodedEnvelope = try encode(envelope)
+        let encodedEnvelope = "encoded-payload"
         let session = MSSession()
 
         let builtMessage = try TranscriptTransportSupport.buildMessage(
             encodedEnvelope: encodedEnvelope,
-            caption: "ULS INTENT join",
-            summaryLabel: "INTENT actor=actor-1 kind=join a=r0",
+            caption: "ULS STATE rev4",
+            summaryLabel: "STATE r4 p=turn",
             session: session,
-            sessionPolicy: .state(gameId: "game-1"),
-            summaryPayloadPrefix: "ulsenv:",
-            includeSummaryPayloadMirror: false
+            sessionPolicy: .state(gameId: "game-1")
         )
 
         let payloadQuery = try XCTUnwrap(
@@ -40,122 +29,21 @@ final class TranscriptTransportSupportTests: XCTestCase {
         XCTAssertEqual(builtMessage.payloadLength, encodedEnvelope.count)
         XCTAssertEqual(builtMessage.mirroredPayloadLength, 0)
         XCTAssertEqual(builtMessage.sessionPolicy, .state(gameId: "game-1"))
-        XCTAssertEqual(builtMessage.summaryText, "INTENT actor=actor-1 kind=join a=r0")
+        XCTAssertEqual(builtMessage.summaryText, "STATE r4 p=turn")
     }
 
-    func testBuildMessageMirrorsPayloadIntoMultilineSummaryWhenRequested() throws {
-        let intent = JoinIntentV1(
-            gameId: "game-1",
-            anchorRev: 0,
-            anchorHash: "hash-0",
-            actor: "actor-1"
-        )
-        let payload = try jsonString(intent)
-        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
-        let encodedEnvelope = try encode(envelope)
-
-        let builtMessage = try TranscriptTransportSupport.buildMessage(
-            encodedEnvelope: encodedEnvelope,
-            caption: "ULS INTENT join",
-            summaryLabel: "INTENT actor=actor-1 kind=join a=r0",
-            session: MSSession(),
-            sessionPolicy: .new,
-            summaryPayloadPrefix: "ulsenv:",
-            includeSummaryPayloadMirror: true
-        )
-
-        XCTAssertEqual(
-            builtMessage.summaryText,
-            "INTENT actor=actor-1 kind=join a=r0\nulsenv:\(encodedEnvelope)"
-        )
-        XCTAssertEqual(builtMessage.mirroredPayloadLength, encodedEnvelope.count)
-    }
-
-    func testDecodePayloadOnlyUsesSummaryFallbackWhenExplicitlyAllowed() {
-        let encodedEnvelope = try! encodedJoinEnvelope()
-        let summaryText = "ulsenv:\(encodedEnvelope) INTENT actor=actor-1 kind=join a=r0"
-
-        let disabledFallback = TranscriptTransportSupport.decodePayload(
-            from: nil,
-            summaryText: summaryText,
-            summaryPayloadPrefix: "ulsenv:",
-            allowSummaryFallback: false
-        )
-        let enabledFallback = TranscriptTransportSupport.decodePayload(
-            from: nil,
-            summaryText: summaryText,
-            summaryPayloadPrefix: "ulsenv:",
-            allowSummaryFallback: true
-        )
-
-        XCTAssertNil(disabledFallback)
-        XCTAssertEqual(enabledFallback?.payload, encodedEnvelope)
-        XCTAssertEqual(enabledFallback?.source, .summaryFallback)
-    }
-
-    func testDecodePayloadPrefersURLWhenSummaryMirrorAlsoExists() {
+    func testDecodePayloadReadsURLQuery() {
         let url = URL(string: "https://unluckysevens.app/msg?payload=url-payload")
 
-        let decoded = TranscriptTransportSupport.decodePayload(
-            from: url,
-            summaryText: "STATE r0 p=lobby ulsenv:summary-payload",
-            summaryPayloadPrefix: "ulsenv:",
-            allowSummaryFallback: true
-        )
+        let decoded = TranscriptTransportSupport.decodePayload(from: url)
 
         XCTAssertEqual(decoded?.payload, "url-payload")
         XCTAssertEqual(decoded?.source, .url)
     }
 
-    func testDecodePayloadStillSupportsOlderMultilineSummaryMirror() {
-        let encodedEnvelope = try! encodedJoinEnvelope()
-        let decoded = TranscriptTransportSupport.decodePayload(
-            from: nil,
-            summaryText: "STATE r0 p=lobby\nulsenv:\(encodedEnvelope)",
-            summaryPayloadPrefix: "ulsenv:",
-            allowSummaryFallback: true
-        )
-
-        XCTAssertEqual(decoded?.payload, encodedEnvelope)
-        XCTAssertEqual(decoded?.source, .summaryFallback)
-    }
-
-    func testDecodePayloadTrimsAppendedSummaryLabelFromMirroredPayload() throws {
-        let encodedEnvelope = try encodedJoinEnvelope()
-
-        let decoded = TranscriptTransportSupport.decodePayload(
-            from: nil,
-            summaryText: "ulsenv:\(encodedEnvelope) INTENT actor=actor-1 kind=join a=r0",
-            summaryPayloadPrefix: "ulsenv:",
-            allowSummaryFallback: true
-        )
-
-        XCTAssertEqual(decoded?.payload, encodedEnvelope)
-        XCTAssertEqual(decoded?.source, .summaryFallback)
-    }
-
-    func testDecodePayloadIgnoresWhitespaceInsertedIntoMirroredSummaryPayload() throws {
-        let intent = JoinIntentV1(
-            gameId: "game-1",
-            anchorRev: 0,
-            anchorHash: "hash-0",
-            actor: "actor-1"
-        )
-        let payload = try jsonString(intent)
-        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
-        let encodedEnvelope = try encode(envelope)
-        let midpoint = encodedEnvelope.index(encodedEnvelope.startIndex, offsetBy: encodedEnvelope.count / 2)
-        let spacedPayload = String(encodedEnvelope[..<midpoint]) + " \n" + String(encodedEnvelope[midpoint...])
-
-        let decoded = TranscriptTransportSupport.decodePayload(
-            from: nil,
-            summaryText: "ulsenv:\(spacedPayload) INTENT actor=actor-1 kind=join a=r0",
-            summaryPayloadPrefix: "ulsenv:",
-            allowSummaryFallback: true
-        )
-
-        XCTAssertEqual(decoded?.payload, encodedEnvelope)
-        XCTAssertEqual(decoded?.source, .summaryFallback)
+    func testDecodePayloadReturnsNilWithoutURLPayload() {
+        XCTAssertNil(TranscriptTransportSupport.decodePayload(from: nil))
+        XCTAssertNil(TranscriptTransportSupport.decodePayload(from: URL(string: "https://unluckysevens.app/msg")))
     }
 
     func testResolveSessionPolicyLeavesRequestedPolicyAloneWhenDebugOverrideDisabled() {
@@ -199,28 +87,15 @@ final class TranscriptTransportSupportTests: XCTestCase {
         XCTAssertEqual(resolvedSession, cachedSession)
     }
 
-    private func jsonString<T: Encodable>(_ value: T) throws -> String {
-        let data = try JSONEncoder().encode(value)
-        guard let string = String(data: data, encoding: .utf8) else {
-            XCTFail("Expected UTF-8 JSON string")
-            throw TestError.invalidJSONString
-        }
-        return string
-    }
+    func testSelectionSnapshotReportsURLDecodeSource() throws {
+        let message = MSMessage(session: MSSession())
+        message.url = URL(string: "https://unluckysevens.app/msg?payload=state-payload")
 
-    private func encodedJoinEnvelope() throws -> String {
-        let intent = JoinIntentV1(
-            gameId: "game-1",
-            anchorRev: 0,
-            anchorHash: "hash-0",
-            actor: "actor-1"
-        )
-        let payload = try jsonString(intent)
-        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
-        return try encode(envelope)
-    }
+        let snapshot = TranscriptTransportSupport.selectionSnapshot(for: message)
 
-    private enum TestError: Error {
-        case invalidJSONString
+        XCTAssertEqual(snapshot.messagePresence, "present")
+        XCTAssertEqual(snapshot.payloadQueryPresence, "present")
+        XCTAssertEqual(snapshot.payloadLength, "13")
+        XCTAssertEqual(snapshot.decodeSource, TranscriptPayloadSource.url.label)
     }
 }

@@ -1,5 +1,4 @@
 import ULS_CoreGame
-import ULS_Transport
 
 enum LobbyScreenModelBuilder {
     static func build(context: LobbyScreenContext) -> LobbyScreenModel {
@@ -10,10 +9,6 @@ enum LobbyScreenModelBuilder {
                 return buildInviteWaitingModel(context: context, state: state, warningText: warningText)
             }
             return buildLobbyStateModel(context: context, state: state, warningText: warningText)
-        }
-
-        if let joinIntent = context.selectedJoinIntent {
-            return buildJoinIntentModel(context: context, joinIntent: joinIntent, warningText: warningText)
         }
 
         return LobbyScreenModel(
@@ -105,43 +100,6 @@ enum LobbyScreenModelBuilder {
         )
     }
 
-    private static func buildJoinIntentModel(
-        context: LobbyScreenContext,
-        joinIntent: JoinIntentV1,
-        warningText: String?
-    ) -> LobbyScreenModel {
-        let isLocalJoin = context.localActor == joinIntent.actor
-        let title = isLocalJoin ? "Join Sent" : "Join Intent"
-        let subtitle = isLocalJoin
-            ? "Waiting for the host to continue from the latest lobby state."
-            : "\(displayName(joinIntent.actor, gameID: joinIntent.gameId, roster: lobbyRoster(context: context, joinIntent: joinIntent))) joined the lobby and is waiting for the host."
-
-        return LobbyScreenModel(
-            showsInviteEntryHero: false,
-            title: title,
-            subtitle: subtitle,
-            metaText: context.contextMeta,
-            warningText: warningText,
-            participantsTitle: "Recent Join",
-            participants: [
-                LobbyParticipantSummary(
-                    id: joinIntent.actor,
-                    displayName: displayName(joinIntent.actor, gameID: joinIntent.gameId, roster: lobbyRoster(context: context, joinIntent: joinIntent)),
-                    detailText: isLocalJoin ? "You joined" : "Joined",
-                    isHost: false,
-                    isLocalActor: isLocalJoin
-                )
-            ],
-            participantsEmptyTitle: "Recent Join",
-            participantsEmptySystemImage: "person.badge.plus",
-            participantsEmptyDescription: "Open the latest lobby state bubble to continue.",
-            inviteButton: nil,
-            joinButton: nil,
-            startButton: nil,
-            helperText: "This is a legacy join bubble. Open the latest lobby state to continue."
-        )
-    }
-
     private static func participantSummaries(
         for state: CoreGameStateV1,
         context: LobbyScreenContext,
@@ -160,17 +118,6 @@ enum LobbyScreenModelBuilder {
         }
     }
 
-    private static func uniquePlayers(_ players: [String]) -> [String] {
-        var seen: Set<String> = []
-        var result: [String] = []
-
-        for player in players where seen.insert(player).inserted {
-            result.append(player)
-        }
-
-        return result
-    }
-
     private static func normalizedWarning(context: LobbyScreenContext) -> String? {
         if context.staleWarning != "-" {
             return context.staleWarning
@@ -181,23 +128,8 @@ enum LobbyScreenModelBuilder {
         return nil
     }
 
-    private static func lobbyRoster(context: LobbyScreenContext, joinIntent: JoinIntentV1) -> [String] {
-        uniquePlayers([joinIntent.actor, context.localActor])
-    }
-
     private static func displayName(_ actor: String?, gameID: String?, roster: [String]) -> String {
         PlayerPseudonymResolver.displayName(for: actor, gameID: gameID, roster: roster)
-    }
-
-    private static func uniquePlayers(_ players: [String?]) -> [String] {
-        var seen: Set<String> = []
-        var result: [String] = []
-
-        for player in players.compactMap({ $0 }) where seen.insert(player).inserted {
-            result.append(player)
-        }
-
-        return result
     }
 
     private static func shouldShowHostWaitingState(

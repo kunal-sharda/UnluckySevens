@@ -60,9 +60,7 @@ final class CompactStateTransportTests: XCTestCase {
             caption: "ULS STATE rev\(state.rev)",
             summaryLabel: "STATE rev\(state.rev)",
             session: MSSession(),
-            sessionPolicy: .state(gameId: state.gameId),
-            summaryPayloadPrefix: "ulsenv:",
-            includeSummaryPayloadMirror: false
+            sessionPolicy: .state(gameId: state.gameId)
         )
 
         XCTAssertLessThan(compactPayload.count, try rawJSONString(from: state).count)

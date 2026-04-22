@@ -6,15 +6,13 @@ struct LobbyDriverView: View {
 
     // Manual QA Checklist:
     // 1) Tap a STATE bubble, open extension, and verify Active Context banner shows rev/phase/current.
-    // 2) Use Join / Record Join / Clear Observed Joiners and verify lobby debug output changes.
-    // 3) Use Propose / Accept / Execute trade debug tools and verify transcript/session behavior.
-    // 4) Switch Acting As to current player, tap Apply Selected Legacy Turn INTENT -> STATE, and verify rev increments.
-    // 5) Send a new STATE and verify Active Context updates immediately without reselecting.
-    // 6) Toggle single-session debug on/off and verify transcript threading behavior changes.
-    // 7) Clear Context and verify action buttons disable with "No Active Context" reason.
-    // 8) Select a newer STATE and tap Reload; verify stale warning clears.
-    // 9) Confirm in-UI Debug Log appends decode/send/apply/error events.
-    // 10) Confirm opponents are shown as counts only (no composition leakage).
+    // 2) Use Invite / Join / Start Game / Clear Observed Joiners and verify lobby diagnostics stay coherent.
+    // 3) Send a new STATE and verify Active Context updates immediately without reselecting.
+    // 4) Toggle single-session debug on/off and verify transcript threading behavior changes.
+    // 5) Clear Context and verify action buttons disable with "No Active Context" reason.
+    // 6) Select a newer STATE and tap Reload; verify stale warning clears.
+    // 7) Confirm in-UI Debug Log appends decode/send/apply/error events.
+    // 8) Confirm opponents are shown as counts only (no composition leakage).
 
     var body: some View {
         ScrollView {
@@ -216,53 +214,11 @@ struct LobbyDriverView: View {
                     }
 
                     actionButton(
-                        "Record Join",
-                        requiresCurrentPlayer: false,
-                        isEnabled: viewModel.canRecordJoin
-                    ) {
-                        viewModel.recordJoin()
-                    }
-
-                    actionButton(
                         "Start Game",
                         requiresCurrentPlayer: true,
                         isEnabled: viewModel.canStartGame
                     ) {
                         viewModel.startGame()
-                    }
-
-                    actionButton(
-                        "Apply Selected Legacy Turn INTENT -> STATE",
-                        requiresCurrentPlayer: true,
-                        isEnabled: viewModel.canApplySelectedTurnIntentAsState
-                    ) {
-                        viewModel.applySelectedTurnIntentAsState()
-                    }
-
-                    if viewModel.isTurnSelectedState {
-                        actionButton(
-                            "Propose Trade",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendProposeTradeIntentDebug
-                        ) {
-                            viewModel.sendProposeTradeIntentDebug()
-                        }
-
-                        actionButton(
-                            "Accept Trade",
-                            requiresCurrentPlayer: false,
-                            isEnabled: viewModel.canSendAcceptTradeIntentDebug
-                        ) {
-                            viewModel.sendAcceptTradeIntentDebug()
-                        }
-
-                        actionButton(
-                            "Execute Trade Accept (Current Player)",
-                            requiresCurrentPlayer: true,
-                            isEnabled: viewModel.canSendExecuteTradeIntentDebug
-                        ) {
-                            viewModel.sendExecuteTradeIntentDebug()
-                        }
                     }
 
                     actionButton(

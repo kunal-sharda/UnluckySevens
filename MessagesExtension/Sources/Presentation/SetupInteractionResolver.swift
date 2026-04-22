@@ -1,5 +1,4 @@
 import ULS_CoreGame
-import ULS_Transport
 
 enum SetupInteractionResolver {
     static func guidanceText(
@@ -30,7 +29,7 @@ enum SetupInteractionResolver {
         state: CoreGameStateV1?,
         actingAs: String?,
         target: GameBoardTarget
-    ) -> SetupPlacementIntentV1? {
+    ) -> SetupIntentV1? {
         guard
             let state,
             state.phase == .setup,
@@ -46,24 +45,12 @@ enum SetupInteractionResolver {
             guard state.legalSetupSettlementNodes(for: actingAs).contains(nodeID) else {
                 return nil
             }
-            return SetupPlacementIntentV1(
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: actingAs,
-                node: nodeID
-            )
+            return .placeSetupSettlement(node: nodeID)
         case let (.placeRoad, .edge(edgeID)):
             guard state.legalSetupRoadEdges(for: actingAs).contains(edgeID) else {
                 return nil
             }
-            return SetupPlacementIntentV1(
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: actingAs,
-                edge: edgeID
-            )
+            return .placeSetupRoad(edge: edgeID)
         default:
             return nil
         }

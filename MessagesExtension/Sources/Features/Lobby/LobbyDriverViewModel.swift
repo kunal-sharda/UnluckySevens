@@ -55,7 +55,6 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published private(set) var recoveredGames: [ActiveGameRecoverySummary] = []
     @Published private(set) var dismissRequestToken: Int = 0
 
-    private let summaryPayloadPrefix = "ulsenv:"
     private let boardStrategyKey = "uls.boardStrategy"
     private let userDefaults: UserDefaults
     private let gameLedgerStore: TranscriptGameLedgerStore
@@ -67,9 +66,6 @@ final class LobbyDriverViewModel: ObservableObject {
     private weak var activeConversation: MSConversation?
     var onRequestDismiss: (() -> Void)?
     private var selectedState: CoreGameStateV1?
-    private var selectedJoinIntent: JoinIntentV1?
-    private var selectedSetupIntent: SetupPlacementIntentV1?
-    private var selectedTurnIntent: ULS_Transport.TurnIntentV1?
     private var latestKnownStatesByGameId: [String: CoreGameStateV1] = [:]
     private var latestUpdateNoticeToken: Int = 0
     private var activeUpdatedAt: Date?
@@ -259,19 +255,6 @@ final class LobbyDriverViewModel: ObservableObject {
         set { mutateGameplayShellProjection { $0.turnIntent = newValue } }
     }
 
-    private var allowIncomingSummaryPayloadFallback: Bool {
-        // Legacy decode support stays enabled until repeated device validation
-        // proves the old mirrored payload carrier can be retired safely.
-        true
-    }
-
-    private var includeOutgoingSummaryPayloadMirror: Bool {
-        // Fresh publishes are URL-only again after the `https` scheme fix.
-        // Legacy decode support stays enabled separately for older bubbles that
-        // were published while the broken custom-scheme transport was live.
-        false
-    }
-
     var canInvite: Bool {
         activeConversation != nil
     }
@@ -288,7 +271,6 @@ final class LobbyDriverViewModel: ObservableObject {
         LobbyScreenModelBuilder.build(
             context: LobbyScreenContext(
                 selectedState: selectedState,
-                selectedJoinIntent: selectedJoinIntent,
                 localActor: localParticipantIdentifier(),
                 activeContextSource: activeContextSource,
                 contextMeta: activeContextMeta,
@@ -541,20 +523,12 @@ final class LobbyDriverViewModel: ObservableObject {
         )
     }
 
-    var canRecordJoin: Bool {
-        diagnosticsEnabled && selectedJoinIntent != nil
-    }
-
     var canReloadSelectedBubble: Bool {
         activeConversation?.selectedMessage != nil
     }
 
     var canClearActiveContext: Bool {
         selectedState != nil
-    }
-
-    var isTurnSelectedState: Bool {
-        selectedState?.phase == .turn
     }
 
     private var canPublishRollState: Bool {
@@ -629,57 +603,6 @@ final class LobbyDriverViewModel: ObservableObject {
             return false
         }
         return firstUpgradeableCityNode(for: actor, in: state) != nil
-    }
-
-    var canSendProposeTradeIntentDebug: Bool {
-        guard
-            let state = selectedState,
-            state.phase == .turn,
-            state.turnState?.step == .afterRoll,
-            state.activeTradeOffer == nil,
-            let actor = localActorIdentifier(),
-            actor == state.currentPlayer
-        else {
-            return false
-        }
-        return defaultTradeProposal(for: actor, from: state) != nil
-    }
-
-    var canSendAcceptTradeIntentDebug: Bool {
-        guard
-            let state = selectedState,
-            state.phase == .turn,
-            state.turnState?.step == .afterRoll,
-            let offer = state.activeTradeOffer,
-            let actor = localActorIdentifier(),
-            actor != state.currentPlayer,
-            offer.recipients.contains(actor),
-            !state.tradeResponses.contains(where: { $0.respondingPlayer == actor && $0.offerHash == offer.offerHash })
-        else {
-            return false
-        }
-        let hand = state.resourcesByPlayer[actor] ?? .zero
-        return hand.wood >= offer.receive.wood
-            && hand.brick >= offer.receive.brick
-            && hand.sheep >= offer.receive.sheep
-            && hand.wheat >= offer.receive.wheat
-            && hand.ore >= offer.receive.ore
-    }
-
-    var canSendExecuteTradeIntentDebug: Bool {
-        guard
-            let state = selectedState,
-            state.phase == .turn,
-            state.turnState?.step == .afterRoll,
-            let offer = state.activeTradeOffer,
-            let actor = localActorIdentifier()
-        else {
-            return false
-        }
-        return actor == state.currentPlayer
-            && state.tradeResponses.contains {
-                $0.offerHash == offer.offerHash && $0.kind == .accept
-            }
     }
 
     private var canPublishDevCardPurchaseState: Bool {
@@ -780,20 +703,6 @@ final class LobbyDriverViewModel: ObservableObject {
         activeConversation?.selectedMessage != nil || currentGameId() != nil
     }
 
-    var canApplySelectedTurnIntentAsState: Bool {
-        guard
-            let state = selectedState,
-            let intent = selectedTurnIntent,
-            let actor = localActorIdentifier(),
-            actor == state.currentPlayer
-        else {
-            return false
-        }
-        return intent.gameId == state.gameId &&
-            intent.anchorRev == state.rev &&
-            intent.anchorHash == state.stateHash
-    }
-
     var hasBoardDebug: Bool {
         selectedState?.board != nil
     }
@@ -884,9 +793,7 @@ final class LobbyDriverViewModel: ObservableObject {
         clearLatestUpdateNotice()
         gameLedgerStore.markActiveGame(nil)
         refreshRecoveredGames()
-        if selectedTurnIntent == nil, selectedSetupIntent == nil, selectedJoinIntent == nil {
-            resetDisplayedFields()
-        }
+        resetDisplayedFields()
         selectionStatus = "Active context cleared"
         selectedDecodeResult = selectionStatus
         refreshParticipantIdentityDebug()
@@ -973,22 +880,6 @@ final class LobbyDriverViewModel: ObservableObject {
         } catch {
             setLastError("Join failed: \(error.localizedDescription)")
         }
-    }
-
-    func recordJoin() {
-        guard diagnosticsEnabled else {
-            setLastError("Debug join tools are disabled on this branch.")
-            return
-        }
-        guard let intent = selectedJoinIntent else {
-            setLastError("Select a JOIN intent first.")
-            return
-        }
-
-        rememberObservedJoiner(intent.actor, for: intent.gameId)
-        refreshObservedJoinersDebug(for: intent.gameId)
-        selectionStatus = "Recorded join actor: \(intent.actor)"
-        setLastError(nil)
     }
 
     func startGame() {
@@ -1089,149 +980,6 @@ final class LobbyDriverViewModel: ObservableObject {
         selectionStatus = "Cleared observed joiners for \(gameId)"
         setLastError(nil)
     }
-
-    func sendProposeTradeIntentDebug() {
-        guard let state = selectedState else {
-            setLastError("Select a turn STATE first.")
-            return
-        }
-        guard state.phase == .turn, state.turnState?.step == .afterRoll else {
-            setLastError("Propose trade intent is only available in post-roll step.")
-            return
-        }
-        guard state.activeTradeOffer == nil else {
-            setLastError("An active trade offer already exists.")
-            return
-        }
-        guard let actor = localActorIdentifier(), actor == state.currentPlayer else {
-            setLastError("Only current player can propose a trade.")
-            return
-        }
-        guard let proposal = defaultTradeProposal(for: actor, from: state) else {
-            setLastError("No valid default trade proposal available.")
-            return
-        }
-        let recipients = state.roster
-            .filter { $0 != actor }
-            .sorted()
-        guard !recipients.isEmpty else {
-            setLastError("No eligible trade recipients are available.")
-            return
-        }
-
-        let intent = ULS_Transport.TurnIntentV1(
-            proposeTradeGive: proposal.give,
-            receive: proposal.receive,
-            targetPlayers: recipients,
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actor
-        )
-
-        do {
-            let payload = try jsonString(from: intent)
-            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
-            try sendEnvelope(envelope, caption: "ULS LEGACY INTENT proposeTrade", sessionPolicy: .new)
-            selectionStatus = "Propose trade legacy intent sent"
-            setLastError(nil)
-        } catch {
-            setLastError("Propose trade intent failed: \(error.localizedDescription)")
-        }
-    }
-
-    func sendAcceptTradeIntentDebug() {
-        guard let state = selectedState else {
-            setLastError("Select a turn STATE first.")
-            return
-        }
-        guard state.phase == .turn, state.turnState?.step == .afterRoll else {
-            setLastError("Accept trade intent is only available in post-roll step.")
-            return
-        }
-        guard let offer = state.activeTradeOffer else {
-            setLastError("No active trade offer to accept.")
-            return
-        }
-        guard let actor = localActorIdentifier(), actor != state.currentPlayer else {
-            setLastError("Only non-current players can send accept trade intent.")
-            return
-        }
-        guard offer.recipients.contains(actor) else {
-            setLastError("Only targeted recipients can accept a trade.")
-            return
-        }
-        guard !state.tradeResponses.contains(where: { $0.respondingPlayer == actor && $0.offerHash == offer.offerHash }) else {
-            setLastError("You already responded to this trade.")
-            return
-        }
-
-        let intent = ULS_Transport.TurnIntentV1(
-            acceptTradePlayer: actor,
-            offerHash: offer.offerHash,
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actor
-        )
-
-        do {
-            let payload = try jsonString(from: intent)
-            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
-            try sendEnvelope(envelope, caption: "ULS TRADE RESPONSE accept", sessionPolicy: .new)
-            selectionStatus = "Accept trade response sent"
-            setLastError(nil)
-        } catch {
-            setLastError("Accept trade intent failed: \(error.localizedDescription)")
-        }
-    }
-
-    func sendExecuteTradeIntentDebug() {
-        guard let state = selectedState else {
-            setLastError("Select a turn STATE first.")
-            return
-        }
-        guard state.phase == .turn, state.turnState?.step == .afterRoll else {
-            setLastError("Execute trade intent is only available in post-roll step.")
-            return
-        }
-        guard let offer = state.activeTradeOffer else {
-            setLastError("No active trade offer to execute.")
-            return
-        }
-        guard let actor = localActorIdentifier(), actor == state.currentPlayer else {
-            setLastError("Only current player can execute a trade accept.")
-            return
-        }
-        guard let acceptPlayer = state.tradeResponses
-            .filter({ $0.offerHash == offer.offerHash && $0.kind == .accept })
-            .sorted(by: { $0.respondingPlayer < $1.respondingPlayer })
-            .first?.respondingPlayer
-        else {
-            setLastError("No pending trade accepts to execute.")
-            return
-        }
-
-        let intent = ULS_Transport.TurnIntentV1(
-            executeTradePlayer: acceptPlayer,
-            offerHash: offer.offerHash,
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actor
-        )
-
-        do {
-            let payload = try jsonString(from: intent)
-            let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
-            try sendEnvelope(envelope, caption: "ULS LEGACY INTENT executeTrade", sessionPolicy: .new)
-            selectionStatus = "Execute trade legacy intent sent"
-            setLastError(nil)
-        } catch {
-            setLastError("Execute trade intent failed: \(error.localizedDescription)")
-        }
-    }
-
 
     @discardableResult
     func publishSetupState(for target: GameBoardTarget) -> Bool {
@@ -1622,13 +1370,12 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func applyAndPublishSetupIntent(
-        _ setupIntent: SetupPlacementIntentV1,
+        _ setupIntent: SetupIntentV1,
         from fromState: CoreGameStateV1,
         actor: String,
         successStatus: String
     ) throws {
-        let coreIntent = try setupIntentForTransport(setupIntent)
-        let toState = try ULS_CoreGame.apply(intent: coreIntent, to: fromState, actor: actor)
+        let toState = try ULS_CoreGame.apply(intent: setupIntent, to: fromState, actor: actor)
         try validateTransition(from: fromState, to: toState, actor: actor)
 
         let payload = try jsonString(from: toState)
@@ -1638,67 +1385,9 @@ final class LobbyDriverViewModel: ObservableObject {
             caption: "ULS STATE rev\(toState.rev)",
             sessionPolicy: .state(gameId: toState.gameId)
         )
-        selectedSetupIntent = nil
         setActiveContext(toState, source: .lastSentState)
         selectionStatus = "\(successStatus) rev\(toState.rev)"
         setLastError(nil)
-    }
-
-    func applySelectedTurnIntentAsState() {
-        guard let fromState = selectedState else {
-            setLastError("No Active Context — tap a STATE bubble.")
-            return
-        }
-        guard let turnIntent = selectedTurnIntent else {
-            setLastError("Select a turn intent bubble first.")
-            return
-        }
-        guard turnIntent.gameId == fromState.gameId,
-              turnIntent.anchorRev == fromState.rev,
-              turnIntent.anchorHash == fromState.stateHash else {
-            setLastError("Selected turn intent anchor does not match Active Context.")
-            return
-        }
-        guard let actor = localActorIdentifier(), actor == fromState.currentPlayer else {
-            setLastError("Only current player can publish canonical STATE.")
-            return
-        }
-
-        do {
-            try applyAndPublishTurnIntent(turnIntent, successStatus: "Applied turn intent into STATE")
-        } catch {
-            setLastError("Apply turn intent failed: \(error.localizedDescription)")
-        }
-    }
-
-    @discardableResult
-    func publishSelectedTurnIntentState() -> Bool {
-        guard let turnIntent = selectedTurnIntent else {
-            setLastError("Select a turn intent bubble first.")
-            return false
-        }
-
-        guard let fromState = selectedState else {
-            setLastError("No Active Context — tap a STATE bubble.")
-            return false
-        }
-
-        guard
-            turnIntent.gameId == fromState.gameId,
-            turnIntent.anchorRev == fromState.rev,
-            turnIntent.anchorHash == fromState.stateHash
-        else {
-            setLastError("Selected turn intent anchor does not match Active Context.")
-            return false
-        }
-
-        do {
-            try applyAndPublishTurnIntent(turnIntent, successStatus: successStatus(for: turnIntent.kind))
-            return true
-        } catch {
-            setLastError("Apply turn intent failed: \(error.localizedDescription)")
-            return false
-        }
     }
 
     private func decodeSelectedMessage(
@@ -1835,9 +1524,6 @@ final class LobbyDriverViewModel: ObservableObject {
             gameLedgerStore.record(state: state, payload: payload)
             refreshRecoveredGames()
             stateSessionsByGameId[state.gameId] = message.session
-            selectedJoinIntent = nil
-            selectedSetupIntent = nil
-            selectedTurnIntent = nil
             let transcriptActiveSource: TranscriptActiveContextSource?
             switch activeSource {
             case .selectedBubble:
@@ -1917,135 +1603,15 @@ final class LobbyDriverViewModel: ObservableObject {
             }
             refreshStaleContextWarning()
         case let .intent(payload):
-            if let setupIntent = try? decodePayload(SetupPlacementIntentV1.self, from: payload) {
-                selectedSetupIntent = setupIntent
-                selectedJoinIntent = nil
-                selectedTurnIntent = nil
-                render(setupIntent: setupIntent, source: source)
-                return
-            }
-
-            if let turnIntent = try? decodePayload(ULS_Transport.TurnIntentV1.self, from: payload) {
-                let didReceiveDisposition = didReceiveDisposition(
-                    for: turnIntent.gameId,
-                    trigger: trigger
-                )
-                if didReceiveDisposition == .storeForRecoveryOnly {
-                    selectionStatus = "Stored received \(turnIntent.kind.rawValue) for another game"
-                    selectedDecodeResult = selectionStatus
-                    if trigger == .didReceive {
-                        recordDidReceiveOutcome(
-                            incomingGameId: turnIntent.gameId,
-                            disposition: didReceiveDisposition,
-                            outcome: "stored \(turnIntent.kind.rawValue) for other game"
-                        )
-                    }
-                    return
-                }
-
-                let contextResolution = TurnIntentContextResolver.resolve(
-                    turnIntent: turnIntent,
-                    selectedState: selectedState,
-                    latestKnownStatesByGameId: latestKnownStatesByGameId,
-                    localLedgerState: localLedgerStateForIntentContext(gameId: turnIntent.gameId)
-                )
-                recoverActiveContextIfNeeded(for: turnIntent, resolution: contextResolution)
-
-                if autoApplyTurnIntentIfPossible(
-                    turnIntent,
-                    resolution: contextResolution,
-                    source: source,
-                    trigger: trigger
-                ) {
-                    if trigger == .didReceive {
-                        recordDidReceiveOutcome(
-                            incomingGameId: turnIntent.gameId,
-                            disposition: didReceiveDisposition,
-                            outcome: "auto-applied \(turnIntent.kind.rawValue)"
-                        )
-                    }
-                    return
-                }
-
-                if shouldPreferRecoveredState(
-                    for: turnIntent,
-                    resolution: contextResolution
-                ) {
-                    selectedTurnIntent = nil
-                    selectedSetupIntent = nil
-                    selectedJoinIntent = nil
-                    let recoveredRev = contextResolution.bestAvailable?.state.rev ?? turnIntent.anchorRev
-                    selectionStatus = "Opened latest STATE rev\(recoveredRev) via \(source.label)"
-                    selectedDecodeResult = selectionStatus
-                    appendLog(
-                        "Ignored stale \(turnIntent.kind.rawValue) response anchorRev=\(turnIntent.anchorRev) latestRev=\(recoveredRev)"
-                    )
-                    refreshObservedJoinersDebug(for: turnIntent.gameId)
-                    if trigger == .didReceive {
-                        recordDidReceiveOutcome(
-                            incomingGameId: turnIntent.gameId,
-                            disposition: didReceiveDisposition,
-                            outcome: "preferred recovered state for \(turnIntent.kind.rawValue)"
-                        )
-                    }
-                    return
-                }
-
-                selectedTurnIntent = turnIntent
-                selectedSetupIntent = nil
-                selectedJoinIntent = nil
-                render(turnIntent: turnIntent, source: source)
-                if trigger == .didReceive {
-                    recordDidReceiveOutcome(
-                        incomingGameId: turnIntent.gameId,
-                        disposition: didReceiveDisposition,
-                        outcome: "rendered \(turnIntent.kind.rawValue) responder transport"
-                    )
-                }
-                return
-            }
-
-            let intent = try decodePayload(JoinIntentV1.self, from: payload)
-            let didReceiveDisposition = didReceiveDisposition(
-                for: intent.gameId,
-                trigger: trigger
-            )
-            if didReceiveDisposition == .storeForRecoveryOnly {
-                rememberObservedJoiner(intent.actor, for: intent.gameId)
-                selectionStatus = "Stored received legacy join for another game"
-                selectedDecodeResult = selectionStatus
-                if trigger == .didReceive {
-                    recordDidReceiveOutcome(
-                        incomingGameId: intent.gameId,
-                        disposition: didReceiveDisposition,
-                        outcome: "stored legacy join actor=\(shortIdentifier(intent.actor))"
-                    )
-                }
-                return
-            }
-            if bridgeJoinIntentIfPossible(
-                intent,
-                source: source,
-                trigger: trigger
-            ) {
-                if trigger == .didReceive {
-                    recordDidReceiveOutcome(
-                        incomingGameId: intent.gameId,
-                        disposition: didReceiveDisposition,
-                        outcome: "bridged legacy join actor=\(shortIdentifier(intent.actor))"
-                    )
-                }
-                return
-            }
-            selectedJoinIntent = intent
-            selectedSetupIntent = nil
-            selectedTurnIntent = nil
-            render(joinIntent: intent, source: source)
+            _ = payload
+            selectionStatus = "Selected message uses retired legacy transport"
+            selectedDecodeResult = selectionStatus
+            appendLog("Ignored legacy intent bubble via \(source.label)")
             if trigger == .didReceive {
                 recordDidReceiveOutcome(
-                    incomingGameId: intent.gameId,
-                    disposition: didReceiveDisposition,
-                    outcome: "rendered legacy join bubble"
+                    incomingGameId: nil,
+                    disposition: .applyToActiveContext,
+                    outcome: "ignored retired legacy transport"
                 )
             }
         }
@@ -2126,11 +1692,7 @@ final class LobbyDriverViewModel: ObservableObject {
         guard diagnosticsEnabled else {
             return
         }
-        let snapshot = TranscriptTransportSupport.selectionSnapshot(
-            for: message,
-            summaryPayloadPrefix: summaryPayloadPrefix,
-            allowSummaryFallback: allowIncomingSummaryPayloadFallback
-        )
+        let snapshot = TranscriptTransportSupport.selectionSnapshot(for: message)
         selectedTrigger = trigger.label
         selectedMessagePresence = snapshot.messagePresence
         selectedURLPresence = snapshot.urlPresence
@@ -2315,9 +1877,6 @@ final class LobbyDriverViewModel: ObservableObject {
             return
         }
 
-        selectedJoinIntent = nil
-        selectedSetupIntent = nil
-        selectedTurnIntent = nil
         setActiveContext(recoveredState, source: .localLedgerState)
         selectionStatus = "Recovered latest STATE rev\(recoveredState.rev)"
         selectedDecodeSource = TranscriptPayloadSource.localCache.label
@@ -2457,172 +2016,6 @@ final class LobbyDriverViewModel: ObservableObject {
             )
         )
         refreshObservedJoinersDebug(for: state.gameId)
-    }
-
-    private func render(joinIntent: JoinIntentV1, source: TranscriptPayloadSource) {
-        rememberObservedJoiner(joinIntent.actor, for: joinIntent.gameId)
-        selectionStatus = "Decoded legacy join bubble via \(source.label)"
-        selectedDecodeResult = selectionStatus
-        updateGameplayShellProjection(GameShellProjectionBuilder.build(joinIntent: joinIntent))
-        refreshObservedJoinersDebug(for: joinIntent.gameId)
-        appendLog("Decoded LEGACY_JOIN actor=\(shortIdentifier(joinIntent.actor))")
-    }
-
-    private func render(setupIntent: SetupPlacementIntentV1, source: TranscriptPayloadSource) {
-        selectionStatus = "Decoded legacy setup bubble via \(source.label)"
-        selectedDecodeResult = selectionStatus
-        updateGameplayShellProjection(GameShellProjectionBuilder.build(setupIntent: setupIntent))
-        refreshObservedJoinersDebug(for: setupIntent.gameId)
-        appendLog("Decoded LEGACY_SETUP kind=\(setupIntent.kind.rawValue) actor=\(shortIdentifier(setupIntent.actor))")
-    }
-
-    private func render(turnIntent decodedTurnIntent: ULS_Transport.TurnIntentV1, source: TranscriptPayloadSource) {
-        switch TurnIntentTransportRoleResolver.resolve(decodedTurnIntent) {
-        case .responderMessage(.discardResponse):
-            selectionStatus = "Decoded discard response via \(source.label)"
-        case .responderMessage(.tradeResponse):
-            selectionStatus = "Decoded trade response via \(source.label)"
-        case .legacyIntent:
-            selectionStatus = "Decoded legacy \(decodedTurnIntent.kind.rawValue) intent via \(source.label)"
-        }
-        selectedDecodeResult = selectionStatus
-        if let selectedState, selectedState.gameId == decodedTurnIntent.gameId {
-            updateGameplayShellProjection(
-                GameShellProjectionBuilder.build(
-                    state: selectedState,
-                    actingAs: localActorIdentifier(),
-                    actionAvailability: shellActionAvailability,
-                    modeAvailability: shellModeAvailability,
-                    contextBanner: activeContextBanner,
-                    contextMeta: activeContextMeta
-                )
-            )
-        } else {
-            updateGameplayShellProjection(GameShellProjectionBuilder.build(turnIntent: decodedTurnIntent))
-        }
-        refreshObservedJoinersDebug(for: decodedTurnIntent.gameId)
-        switch TurnIntentTransportRoleResolver.resolve(decodedTurnIntent) {
-        case .responderMessage(.discardResponse):
-            appendLog("Decoded DISCARD_RESPONSE actor=\(shortIdentifier(decodedTurnIntent.actor))")
-        case .responderMessage(.tradeResponse):
-            appendLog("Decoded TRADE_RESPONSE actor=\(shortIdentifier(decodedTurnIntent.actor)) kind=\(decodedTurnIntent.kind.rawValue)")
-        case .legacyIntent:
-            appendLog("Decoded LEGACY_INTENT kind=\(decodedTurnIntent.kind.rawValue) actor=\(shortIdentifier(decodedTurnIntent.actor))")
-        }
-    }
-
-    private func bridgeJoinIntentIfPossible(
-        _ joinIntent: JoinIntentV1,
-        source: TranscriptPayloadSource,
-        trigger: TranscriptSelectionTrigger
-    ) -> Bool {
-        let decision = JoinIntentContextResolver.resolve(
-            joinIntent: joinIntent,
-            selectedState: selectedState,
-            latestKnownStatesByGameId: latestKnownStatesByGameId,
-            localLedgerState: localLedgerStateForIntentContext(gameId: joinIntent.gameId),
-            localParticipant: localParticipantIdentifier()
-        )
-
-        guard let recovered = decision.recoveredContext else {
-            return false
-        }
-
-        if shouldRecoverActiveContext(to: recovered.state) {
-            setActiveContext(recovered.state, source: resolvedActiveContextSource(for: recovered.source))
-        }
-
-        selectedJoinIntent = nil
-        selectedSetupIntent = nil
-        selectedTurnIntent = nil
-
-        if decision.shouldRecordJoiner {
-            rememberObservedJoiner(joinIntent.actor, for: joinIntent.gameId)
-            setActiveContext(recovered.state, source: resolvedActiveContextSource(for: recovered.source))
-            refreshObservedJoinersDebug(for: joinIntent.gameId)
-            selectionStatus = "Updated lobby from join via \(source.label)"
-            appendLog(
-                "Selection \(trigger.label): bridged join actor=\(shortIdentifier(joinIntent.actor)) rev=\(recovered.state.rev) via \(source.label)"
-            )
-        } else {
-            refreshObservedJoinersDebug(for: recovered.state.gameId)
-            selectionStatus = "Opened latest STATE rev\(recovered.state.rev) via \(source.label)"
-            appendLog(
-                "Selection \(trigger.label): recovered state for join actor=\(shortIdentifier(joinIntent.actor)) rev=\(recovered.state.rev) via \(source.label)"
-            )
-        }
-
-        selectedDecodeResult = selectionStatus
-        setLastError(nil)
-        return true
-    }
-
-    private func recoverActiveContextIfNeeded(
-        for turnIntent: ULS_Transport.TurnIntentV1,
-        resolution: TurnIntentContextResolution
-    ) {
-        guard let recovered = resolution.bestAvailable else {
-            return
-        }
-        guard shouldRecoverActiveContext(to: recovered.state) else {
-            return
-        }
-
-        setActiveContext(recovered.state, source: resolvedActiveContextSource(for: recovered.source))
-        appendLog(
-            "Recovered context for \(turnIntent.kind.rawValue) rev=\(recovered.state.rev) source=\(recovered.source)"
-        )
-    }
-
-    private func autoApplyTurnIntentIfPossible(
-        _ turnIntent: ULS_Transport.TurnIntentV1,
-        resolution: TurnIntentContextResolution,
-        source: TranscriptPayloadSource,
-        trigger: TranscriptSelectionTrigger
-    ) -> Bool {
-        guard
-            let applyContext = TurnIntentContextResolver.autoApplyContext(
-                turnIntent,
-                resolution: resolution,
-                localParticipant: localParticipantIdentifier()
-            )
-        else {
-            return false
-        }
-
-        if shouldRecoverActiveContext(to: applyContext.state) {
-            setActiveContext(applyContext.state, source: resolvedActiveContextSource(for: applyContext.source))
-        }
-
-        do {
-            let rebasedIntent = try discardIntentReanchoredIfNeeded(turnIntent, to: applyContext.state)
-            try applyAndPublishTurnIntent(rebasedIntent, successStatus: successStatus(for: turnIntent.kind))
-            let reanchored = rebasedIntent.anchorRev != turnIntent.anchorRev
-                || rebasedIntent.anchorHash != turnIntent.anchorHash
-            appendLog(
-                reanchored
-                    ? "Selection \(trigger.label): auto-applied \(turnIntent.kind.rawValue) via \(source.label) reanchored r\(turnIntent.anchorRev)->r\(rebasedIntent.anchorRev)"
-                    : "Selection \(trigger.label): auto-applied \(turnIntent.kind.rawValue) via \(source.label)"
-            )
-            return true
-        } catch {
-            appendLog(
-                "Auto-apply failed kind=\(turnIntent.kind.rawValue) error=\(error.localizedDescription)"
-            )
-            setLastError("Automatic intent apply failed: \(error.localizedDescription)")
-            return false
-        }
-    }
-
-    private func shouldPreferRecoveredState(
-        for turnIntent: ULS_Transport.TurnIntentV1,
-        resolution: TurnIntentContextResolution
-    ) -> Bool {
-        TurnIntentContextResolver.shouldPreferRecoveredState(
-            turnIntent,
-            resolution: resolution,
-            localParticipant: localParticipantIdentifier()
-        )
     }
 
     private func resetDisplayedFields() {
@@ -2849,19 +2242,6 @@ final class LobbyDriverViewModel: ObservableObject {
         return state.defaultDiscard(for: actor).map(transportHand(from:))
     }
 
-    private func defaultTradeProposal(
-        for actor: String,
-        from state: CoreGameStateV1
-    ) -> (give: TransportResourceHandV1, receive: TransportResourceHandV1)? {
-        guard let proposal = state.defaultTradeProposal(for: actor) else {
-            return nil
-        }
-        return (
-            give: transportHand(from: proposal.give),
-            receive: transportHand(from: proposal.receive)
-        )
-    }
-
     private func defaultMaritimeTrade(
         for actor: String,
         from state: CoreGameStateV1
@@ -2904,12 +2284,7 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func payloadValue(from message: MSMessage) -> TranscriptDecodedPayload? {
-        TranscriptTransportSupport.decodePayload(
-            from: message.url,
-            summaryText: message.summaryText,
-            summaryPayloadPrefix: summaryPayloadPrefix,
-            allowSummaryFallback: allowIncomingSummaryPayloadFallback
-        )
+        TranscriptTransportSupport.decodePayload(from: message.url)
     }
 
     private func sendEnvelope(
@@ -2934,14 +2309,12 @@ final class LobbyDriverViewModel: ObservableObject {
             caption: caption,
             summaryLabel: summaryLabel(for: envelope),
             session: session(for: resolvedPolicy),
-            sessionPolicy: resolvedPolicy,
-            summaryPayloadPrefix: summaryPayloadPrefix,
-            includeSummaryPayloadMirror: includeOutgoingSummaryPayloadMirror
+            sessionPolicy: resolvedPolicy
         )
         let localLedgerStateRecord = localLedgerStateRecord(from: envelope)
 
         appendLog(
-            "Publish \(envelope.kind.rawValue) session=\(builtMessage.sessionPolicy.label) payload=\(builtMessage.payloadLength) summaryPayload=\(builtMessage.mirroredPayloadLength) url=\(builtMessage.urlString)"
+            "Publish \(envelope.kind.rawValue) session=\(builtMessage.sessionPolicy.label) payload=\(builtMessage.payloadLength) url=\(builtMessage.urlString)"
         )
         appendLog("Publish summary: \(builtMessage.summaryText)")
 
@@ -3018,11 +2391,7 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         let selectedMessage = activeConversation?.selectedMessage
-        let snapshot = TranscriptTransportSupport.selectionSnapshot(
-            for: selectedMessage,
-            summaryPayloadPrefix: summaryPayloadPrefix,
-            allowSummaryFallback: allowIncomingSummaryPayloadFallback
-        )
+        let snapshot = TranscriptTransportSupport.selectionSnapshot(for: selectedMessage)
         let selectedSessionID = selectedMessage?.session.map(Self.sessionIdentity) ?? "-"
         let matchesSentSession =
             sentSessionID != "-" && selectedSessionID == sentSessionID ? "yes" : "no"
@@ -3063,43 +2432,8 @@ final class LobbyDriverViewModel: ObservableObject {
                 return "STATE r\(state.rev) p=\(state.phase.rawValue) cur=\(shortIdentifier(state.currentPlayer)) step=\(step)"
             }
             return "STATE"
-        case let .intent(payload):
-            if let turnIntent = try? decodePayload(ULS_Transport.TurnIntentV1.self, from: payload) {
-                if TurnIntentContextResolver.isTradeResponse(turnIntent.kind) {
-                    return "TRADE_RESPONSE actor=\(shortIdentifier(turnIntent.actor)) kind=\(turnIntent.kind.rawValue) a=r\(turnIntent.anchorRev)"
-                }
-                if case .responderMessage(.discardResponse) = TurnIntentTransportRoleResolver.resolve(turnIntent) {
-                    return "DISCARD_RESPONSE actor=\(shortIdentifier(turnIntent.actor)) a=r\(turnIntent.anchorRev)"
-                }
-                return "LEGACY_INTENT actor=\(shortIdentifier(turnIntent.actor)) kind=\(turnIntent.kind.rawValue) a=r\(turnIntent.anchorRev)"
-            }
-            if let setupIntent = try? decodePayload(SetupPlacementIntentV1.self, from: payload) {
-                return "LEGACY_SETUP actor=\(shortIdentifier(setupIntent.actor)) kind=\(setupIntent.kind.rawValue) a=r\(setupIntent.anchorRev)"
-            }
-            if let joinIntent = try? decodePayload(JoinIntentV1.self, from: payload) {
-                return "LEGACY_JOIN actor=\(shortIdentifier(joinIntent.actor)) a=r\(joinIntent.anchorRev)"
-            }
-            return "LEGACY_INTENT"
-        }
-    }
-
-    private func setupIntentForTransport(_ intent: SetupPlacementIntentV1) throws -> SetupIntentV1 {
-        switch intent.kind {
-        case .placeSetupSettlement:
-            guard let node = intent.node else {
-                throw SendError.invalidIntentPayload
-            }
-            return .placeSetupSettlement(node: node)
-        case .placeSetupRoad:
-            guard let edge = intent.edge else {
-                throw SendError.invalidIntentPayload
-            }
-            return .placeSetupRoad(edge: edge)
-        case .placeSetupPair:
-            guard let node = intent.node, let edge = intent.edge else {
-                throw SendError.invalidIntentPayload
-            }
-            return .placeSetupPair(settlementNode: node, roadEdge: edge)
+        case .intent:
+            return "INTENT"
         }
     }
 
@@ -3305,19 +2639,6 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func resolvedActiveContextSource(
-        for source: TurnIntentContextCandidateSource
-    ) -> ActiveContextSource {
-        switch source {
-        case .selectedState:
-            return activeSource ?? .selectedBubble
-        case .latestKnownState:
-            return .latestKnownState
-        case .localLedgerState:
-            return .localLedgerState
-        }
-    }
-
-    private func resolvedActiveContextSource(
         for source: ActionAuthoringStateSource
     ) -> ActiveContextSource {
         switch source {
@@ -3342,19 +2663,7 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func currentGameId() -> String? {
-        if let state = selectedState {
-            return state.gameId
-        }
-        if let intent = selectedJoinIntent {
-            return intent.gameId
-        }
-        if let setupIntent = selectedSetupIntent {
-            return setupIntent.gameId
-        }
-        if let turnIntent = selectedTurnIntent {
-            return turnIntent.gameId
-        }
-        return nil
+        selectedState?.gameId
     }
 
     private func refreshObservedJoinersDebug(for gameId: String?) {
@@ -3431,7 +2740,6 @@ final class LobbyDriverViewModel: ObservableObject {
             caption: "ULS STATE rev\(toState.rev)",
             sessionPolicy: .state(gameId: toState.gameId)
         )
-        selectedTurnIntent = nil
         setActiveContext(toState, source: .lastSentState)
         selectionStatus = "\(successStatus) rev\(toState.rev)"
         setLastError(nil)

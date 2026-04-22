@@ -22,26 +22,6 @@ final class TransportBadgeModelTests: XCTestCase {
         XCTAssertEqual(badge.tone, .url)
     }
 
-    func testBuildUsesSummaryToneWhenSummaryFallbackDecodes() {
-        let badge = TransportBadgeModel.build(
-            triggerLabel: TranscriptSelectionTrigger.didReceive.label,
-            snapshot: TranscriptSelectionSnapshot(
-                messagePresence: "present",
-                urlPresence: "missing",
-                urlString: "-",
-                payloadQueryPresence: "missing",
-                payloadLength: "12",
-                summaryText: "STATE ulsenv:payload",
-                layoutCaption: "-",
-                sessionPresence: "present",
-                decodeSource: TranscriptPayloadSource.summaryFallback.label
-            )
-        )
-
-        XCTAssertEqual(badge.text, "SUMMARY · didReceive")
-        XCTAssertEqual(badge.tone, .summary)
-    }
-
     func testBuildUsesMissingToneWhenNoPayloadIsAvailable() {
         let badge = TransportBadgeModel.build(
             triggerLabel: TranscriptSelectionTrigger.selectionPoll.label,

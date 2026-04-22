@@ -1,5 +1,4 @@
 import ULS_CoreGame
-import ULS_Transport
 import XCTest
 
 final class SetupInteractionResolverTests: XCTestCase {
@@ -38,13 +37,7 @@ final class SetupInteractionResolverTests: XCTestCase {
 
         XCTAssertEqual(
             intent,
-            SetupPlacementIntentV1(
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: "A",
-                node: node
-            )
+            .placeSetupSettlement(node: node)
         )
     }
 
@@ -67,13 +60,7 @@ final class SetupInteractionResolverTests: XCTestCase {
 
         XCTAssertEqual(
             intent,
-            SetupPlacementIntentV1(
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: "A",
-                edge: edge
-            )
+            .placeSetupRoad(edge: edge)
         )
     }
 

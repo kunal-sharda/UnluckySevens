@@ -19,7 +19,6 @@ enum TranscriptSessionPolicy: Equatable {
 
 enum TranscriptPayloadSource: Equatable {
     case url
-    case summaryFallback
     case local
     case localCache
 
@@ -27,8 +26,6 @@ enum TranscriptPayloadSource: Equatable {
         switch self {
         case .url:
             return "URL"
-        case .summaryFallback:
-            return "summary fallback"
         case .local:
             return "local"
         case .localCache:
@@ -131,9 +128,7 @@ enum TranscriptTransportSupport {
         caption: String,
         summaryLabel: String,
         session: MSSession,
-        sessionPolicy: TranscriptSessionPolicy,
-        summaryPayloadPrefix: String,
-        includeSummaryPayloadMirror: Bool
+        sessionPolicy: TranscriptSessionPolicy
     ) throws -> TranscriptBuiltMessage {
         var components = URLComponents()
         // MSMessage.url requires http/https; custom schemes are stripped on the wire.
@@ -153,30 +148,13 @@ enum TranscriptTransportSupport {
         layout.caption = caption
         message.layout = layout
 
-        message.summaryText = buildSummaryText(
-            summaryLabel: summaryLabel,
-            encodedEnvelope: encodedEnvelope,
-            summaryPayloadPrefix: summaryPayloadPrefix,
-            includeSummaryPayloadMirror: includeSummaryPayloadMirror
-        )
-
-        let mirroredPayloadLength: Int
-        if
-            let mirroredPayload = mirroredPayloadValue(
-                from: message.summaryText,
-                summaryPayloadPrefix: summaryPayloadPrefix
-            )
-        {
-            mirroredPayloadLength = mirroredPayload.count
-        } else {
-            mirroredPayloadLength = 0
-        }
+        message.summaryText = summaryLabel
 
         return TranscriptBuiltMessage(
             message: message,
             urlString: url.absoluteString,
             payloadLength: encodedEnvelope.count,
-            mirroredPayloadLength: mirroredPayloadLength,
+            mirroredPayloadLength: 0,
             summaryText: message.summaryText ?? "-",
             layoutCaption: caption,
             sessionPolicy: sessionPolicy
@@ -184,34 +162,16 @@ enum TranscriptTransportSupport {
     }
 
     static func decodePayload(
-        from url: URL?,
-        summaryText: String?,
-        summaryPayloadPrefix: String,
-        allowSummaryFallback: Bool
+        from url: URL?
     ) -> TranscriptDecodedPayload? {
         if let urlPayload = payloadQueryValue(from: url), !urlPayload.isEmpty {
             return TranscriptDecodedPayload(payload: urlPayload, source: .url)
         }
 
-        guard allowSummaryFallback else {
-            return nil
-        }
-
-        guard let payload = mirroredPayloadValue(
-            from: summaryText,
-            summaryPayloadPrefix: summaryPayloadPrefix
-        ) else {
-            return nil
-        }
-
-        return TranscriptDecodedPayload(payload: payload, source: .summaryFallback)
+        return nil
     }
 
-    static func selectionSnapshot(
-        for message: MSMessage?,
-        summaryPayloadPrefix: String,
-        allowSummaryFallback: Bool
-    ) -> TranscriptSelectionSnapshot {
+    static func selectionSnapshot(for message: MSMessage?) -> TranscriptSelectionSnapshot {
         guard let message else {
             return TranscriptSelectionSnapshot(
                 messagePresence: "missing",
@@ -228,12 +188,7 @@ enum TranscriptTransportSupport {
 
         let urlString = message.url?.absoluteString ?? "-"
         let payloadQuery = payloadQueryValue(from: message.url)
-        let decodedPayload = decodePayload(
-            from: message.url,
-            summaryText: message.summaryText,
-            summaryPayloadPrefix: summaryPayloadPrefix,
-            allowSummaryFallback: allowSummaryFallback
-        )
+        let decodedPayload = decodePayload(from: message.url)
         let layoutCaption = (message.layout as? MSMessageTemplateLayout)?.caption ?? "-"
         let sessionStatus = String(describing: message.session) == "nil" ? "missing" : "present"
 
@@ -263,114 +218,4 @@ enum TranscriptTransportSupport {
             .value
     }
 
-    private static func mirroredPayloadValue(
-        from summaryText: String?,
-        summaryPayloadPrefix: String
-    ) -> String? {
-        guard
-            let summaryText,
-            let prefixRange = summaryText.range(of: summaryPayloadPrefix)
-        else {
-            return nil
-        }
-
-        return mirroredPayloadCandidate(from: summaryText[prefixRange.upperBound...])
-    }
-
-    private static func buildSummaryText(
-        summaryLabel: String,
-        encodedEnvelope: String,
-        summaryPayloadPrefix: String,
-        includeSummaryPayloadMirror: Bool
-    ) -> String {
-        guard includeSummaryPayloadMirror else {
-            return summaryLabel
-        }
-
-        guard !summaryLabel.isEmpty else {
-            return "\(summaryPayloadPrefix)\(encodedEnvelope)"
-        }
-
-        // Keep the human summary first so transcript snippets remain readable,
-        // then append the mirrored payload on a second line for fallback decode.
-        return "\(summaryLabel)\n\(summaryPayloadPrefix)\(encodedEnvelope)"
-    }
-
-    private static func mirroredPayloadCandidate(
-        from suffix: Substring
-    ) -> String? {
-        let allowedCharacters = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
-        var scalars: [UnicodeScalar] = []
-        var encounteredPayloadCharacter = false
-
-        for scalar in suffix.unicodeScalars {
-            if CharacterSet.whitespacesAndNewlines.contains(scalar) {
-                continue
-            }
-
-            if allowedCharacters.contains(scalar) {
-                scalars.append(scalar)
-                encounteredPayloadCharacter = true
-                continue
-            }
-
-            if encounteredPayloadCharacter {
-                break
-            }
-        }
-
-        let candidate = String(String.UnicodeScalarView(scalars))
-        guard !candidate.isEmpty else {
-            return nil
-        }
-
-        return recoverDecodableEnvelopePrefix(from: candidate)
-    }
-
-    private static func recoverDecodableEnvelopePrefix(
-        from candidate: String
-    ) -> String? {
-        guard !candidate.isEmpty else {
-            return nil
-        }
-
-        if isExactDecodableEnvelope(candidate) {
-            return candidate
-        }
-
-        var endIndex = candidate.endIndex
-        while endIndex > candidate.startIndex {
-            endIndex = candidate.index(before: endIndex)
-            let prefix = String(candidate[..<endIndex])
-            if isExactDecodableEnvelope(prefix) {
-                return prefix
-            }
-        }
-
-        return nil
-    }
-
-    private static func isExactDecodableEnvelope(_ candidate: String) -> Bool {
-        guard let envelope = try? decode(candidate) else {
-            return false
-        }
-
-        guard let reencoded = try? encode(envelope) else {
-            return false
-        }
-
-        guard reencoded == candidate else {
-            return false
-        }
-
-        switch envelope.body {
-        case let .state(payload):
-            return (try? CompactStateTransport.decode(payload)) != nil
-        case let .intent(payload):
-            let data = Data(payload.utf8)
-            return (try? JSONDecoder().decode(ULS_Transport.TurnIntentV1.self, from: data)) != nil
-                || (try? JSONDecoder().decode(JoinIntentV1.self, from: data)) != nil
-                || (try? JSONDecoder().decode(SetupPlacementIntentV1.self, from: data)) != nil
-        }
-    }
 }
