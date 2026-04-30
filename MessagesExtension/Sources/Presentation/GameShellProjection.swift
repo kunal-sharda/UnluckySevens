@@ -106,7 +106,7 @@ enum GameShellProjectionBuilder {
         actionAvailability: GameActionAvailability = .none,
         modeAvailability: GameModeAvailability = .none,
         contextBanner: String = "Active Context: none",
-        contextMeta: String = "Source: -"
+        contextMeta: String = ""
     ) -> GameShellProjection {
         let screenModel = GameScreenModelBuilder.build(
             context: GameScreenContext(

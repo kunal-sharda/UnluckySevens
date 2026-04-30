@@ -5,9 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/roadmap.md` for future sequencing. This file is retrospective evidence, not the source of current implementation status.
+Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/roadmap.md` for future sequencing. This file is the compact phase history, not the source of current implementation status.
 
 ## [Unreleased]
+
+### Changed
+- Pre-TestFlight cleanup replaced the Messages transport action draft DTO path with `TurnActionDraft`, which wraps core reducer intents with actor and state-anchor metadata before publishing canonical `STATE`.
+
+### Removed
+- Removed `ULS_Transport.TurnIntentV1`, transport resource/dev-card action draft helpers, obsolete action-draft transport tests, and the unused summary-payload mirror length field.
 
 ### Added
 - Stage 0.A bootstrap scaffolding for `Tuist/`, `App/`, `MessagesExtension/`, `Packages/`, and `scripts/`.
@@ -164,6 +170,7 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 - Phase 12.8 audit artifacts: added `docs/quality/audits/2026-04-12-render-performance.md` (board/shell render-path amplification findings F1–F21) and `docs/quality/audits/2026-04-13-transport-reliability.md` (seven-phase `MSMessage.url` reliability plan). Both are now tracked as `TD-007` and `TD-008` in `docs/exec-plans/tech-debt-tracker.md` and linked from the relevant phase-13 and phase-15 roadmap entries.
 
 ### Changed
+- Pre-TestFlight docs cleanup moved the ExecPlan contract to `docs/exec-plans/PLANS.md`, moved this changelog to `docs/exec-plans/CHANGELOG.md`, and slimmed `README.md`, `AGENTS.md`, and the ExecPlan rules into separate reference roles.
 - `README.md` is now the tracked human-facing repo entrypoint; `AGENTS.md` is local-only for agents.
 - `README.md` is slimmed to onboarding and stable commands, carries the minimal tracked repo contract for humans, and now links directly to the architecture, QA, and product-spec owner docs.
 - CoreGame test organization now separates fast package tests (`ULS_CoreGameTests`) from deterministic full-match evals (`ULS_CoreGameEvals`).
@@ -172,4 +179,5 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 - Docs upkeep follow-up: the tracked docs now explicitly require stage-end owner-doc updates, and README/QA wording reflects that the product shell is primary while phase 12 remains in late hardening plus the required hardware pass.
 
 ### Removed
+- Redundant `docs/quality/golden-principles.md` reference surface; its core rules are owned by `ARCHITECTURE.md`, `docs/decisions.md`, `README.md`, and `AGENTS.md`.
 - Separate `docs/index.md` and split `docs/architecture/*` tracked entrypoints; the repo now uses `README.md` as the tracked entrypoint and root `ARCHITECTURE.md` as the single architecture document.

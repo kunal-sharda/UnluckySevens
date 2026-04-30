@@ -33,10 +33,10 @@ enum GameScreenModelBuilder {
         let state = context.selectedState
         let currentPlayer = state?.currentPlayer
         let currentPlayerDisplay = currentPlayer.map {
-            PlayerPseudonymResolver.displayName(for: $0, gameID: state?.gameId, roster: state?.roster ?? [])
+            PlayerPseudonymResolver.displayName(for: $0, in: state)
         } ?? "player"
         let winnerDisplay = state?.winnerPlayer.map {
-            PlayerPseudonymResolver.displayName(for: $0, gameID: state?.gameId, roster: state?.roster ?? [])
+            PlayerPseudonymResolver.displayName(for: $0, in: state)
         }
 
         return GameShellStatusLineResolver.resolve(
@@ -95,7 +95,7 @@ enum GameScreenModelBuilder {
 
             return GameOpponentSummary(
                 id: player,
-                displayName: PlayerPseudonymResolver.displayName(for: player, gameID: state.gameId, roster: state.roster),
+                displayName: PlayerPseudonymResolver.displayName(for: player, in: state),
                 playerTint: playerTint(for: player, roster: state.roster),
                 victoryPoints: victoryPoints[player] ?? 0,
                 handCount: handCounts[player] ?? 0,
@@ -205,7 +205,7 @@ enum GameScreenModelBuilder {
 
     private static func finalScoreSummary(for state: CoreGameStateV1) -> String {
         let scoreLine = state.roster
-            .map { "\(PlayerPseudonymResolver.displayName(for: $0, gameID: state.gameId, roster: state.roster)) \(victoryPoints(for: $0, in: state))" }
+            .map { "\(PlayerPseudonymResolver.displayName(for: $0, in: state)) \(victoryPoints(for: $0, in: state))" }
             .joined(separator: " | ")
         return "Final score: \(scoreLine)"
     }
@@ -232,7 +232,7 @@ enum GameScreenModelBuilder {
             return nil
         }
 
-        return "Last turn: \(PlayerPseudonymResolver.displayName(for: recap.actor, gameID: state.gameId, roster: state.roster)) \(parts.joined(separator: ", "))"
+        return "Last turn: \(PlayerPseudonymResolver.displayName(for: recap.actor, in: state)) \(parts.joined(separator: ", "))"
     }
 
     private static func actionLabel(_ action: AuditActionV1) -> String {
@@ -259,8 +259,6 @@ enum GameScreenModelBuilder {
             return "declined trade"
         case .counterTrade:
             return "countered trade"
-        case .executeTrade:
-            return "executed trade"
         case .maritimeTrade:
             return "maritime trade"
         case .buyDevCard:

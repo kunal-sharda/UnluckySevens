@@ -7,7 +7,7 @@ Unlucky Sevens is an iMessage-first async Catan implementation. The architecture
 - clear separation between game rules, message transport, and UI
 - enough structure that future UI work does not re-implement game logic
 
-This document explains the major pieces, how they collaborate, where new code should go, and how the `STATE` / `INTENT` protocol boundary protects the game from desync. Locked product decisions remain in [`docs/decisions.md`](docs/decisions.md).
+This document explains the major pieces, how they collaborate, where new code should go, and how the state-first protocol boundary protects the game from desync. Locked product decisions remain in [`docs/decisions.md`](docs/decisions.md).
 
 ## System Shape
 
@@ -16,7 +16,7 @@ There are three runtime layers:
 1. `ULS_CoreGame`
    - pure game rules, reducers, validation, board generation, economy, awards, victory, and viewer-safe query helpers
 2. `ULS_Transport`
-   - message envelope encoding/decoding, intent/state payload transport, hashing helpers, and payload-size handling
+   - message envelope encoding/decoding, canonical `STATE` payload transport, hashing helpers, and payload-size handling
 3. `MessagesExtension`
    - iMessage lifecycle, transcript selection, message send/receive orchestration, and UI rendering
 
@@ -55,14 +55,14 @@ Examples:
 - setup sequencing and legality
 - turn step transitions
 - resource and bank invariants
-- trade execution and expiry
+- trade acceptance resolution and expiry
 - dev-card effects
 - awards and victory
 - secrecy-safe projections and legal-action queries
 
 ### Message protocol
 
-Anything about how a `STATE` or `INTENT` is encoded, decoded, versioned, or size-checked belongs in `ULS_Transport`.
+Anything about how canonical `STATE` is encoded, decoded, versioned, or size-checked belongs in `ULS_Transport`.
 
 Examples:
 
@@ -81,22 +81,23 @@ Examples:
 - transcript selection and session handling
 - screen state and mode switching
 - SwiftUI and SpriteKit presentation
-- local debug harness behavior
+- recovery and transcript selection behavior
 
 ## Protocol Model
 
-The game protocol uses two logical message classes:
+The shipped transcript/runtime is `STATE`-only:
 
 - `STATE`
   - authoritative canonical snapshot of the game at a specific revision
-- `INTENT`
-  - non-authoritative request anchored to a specific base state
 
-Only the current player may publish a new canonical `STATE`.
+`SetupIntentV1` and `ULS_CoreGame.TurnIntentV1` are engine reducer inputs, not transcript compatibility payloads. Messages authoring wraps turn actions in a `TurnActionDraft` with actor and state-anchor metadata, then immediately applies the core reducer and publishes the resulting canonical `STATE`. `ULS_Transport` does not own action draft DTOs.
 
-Other players are effectively read-only except when they are allowed to send an intent relevant to the current player's turn, such as accepting a trade offer. An intent has no effect unless the current player incorporates it into a later canonical state.
+Turn-advancing actions are still constrained by game rules:
 
-This asymmetric model is deliberate. It reduces desync risk in an async Messages environment where users can open stale bubbles or act from delayed transcript context.
+- the current player publishes canonical `STATE` for normal turn progression
+- responder actors may also publish canonical `STATE` directly for rules-defined off-turn actions that do not change `currentPlayer`, such as forced discard or targeted trade responses
+
+This keeps the wire/runtime model simpler while preserving the asymmetric authority semantics that reduce desync risk in async Messages play.
 
 ## Revision, Anchor, and Session Rules
 
@@ -105,16 +106,13 @@ A canonical state transition is valid only when the usual chain holds:
 - `rev == prior.rev + 1`
 - `prevHash == prior.stateHash`
 - roster is unchanged after the game starts
-- actor matches the prior current player
+- actor semantics match the validated transition rules
 
-An intent must be anchored to the current canonical base via revision and/or hash. Stale or mismatched intents remain inert.
+Internal authoring actions must still be anchored to the current canonical base via revision/hash before publication. Stale authoring inputs should resolve against the newest known canonical state for that game or fail validation.
 
-The Messages UX uses two session patterns:
+The Messages UX uses one `MSSession` per game for canonical `STATE` updates so the main game bubble stays grouped across lobby, setup, turn play, responder actions, and game over.
 
-- one `MSSession` per game for canonical `STATE` updates so the main game bubble stays grouped
-- a fresh `MSSession` per trade offer so offers appear as distinct bubbles
-
-The protocol source of truth is the message URL payload. Any debug-build fallback behavior is debug support, not canonical protocol behavior.
+The protocol source of truth is the message URL payload. Pre-TestFlight dev-era summary mirroring, legacy envelopes, and retired transcript debug surfaces are intentionally unsupported on the current branch.
 
 ## Invariants That Shape the Codebase
 

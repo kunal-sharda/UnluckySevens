@@ -4,6 +4,10 @@ import ULS_CoreGame
 
 @MainActor
 final class LobbyDriverViewModelIdentityTests: XCTestCase {
+    func testDefaultBoardStrategyPrefersBalancedNewGames() {
+        XCTAssertEqual(BoardStrategyDefaults.newGame, .noRedAdjacentV1)
+    }
+
     func testCanJoinLobbyUsesActualLocalParticipant() {
         let state = makeLobbyState(host: "host-player")
 

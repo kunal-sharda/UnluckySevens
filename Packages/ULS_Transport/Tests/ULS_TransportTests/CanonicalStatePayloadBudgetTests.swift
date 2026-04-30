@@ -171,7 +171,6 @@ final class CanonicalStatePayloadBudgetTests: XCTestCase {
             .buildRoad,
             .proposeTrade,
             .acceptTrade,
-            .executeTrade,
             .buyDevCard,
             .playKnight,
             .maritimeTrade,

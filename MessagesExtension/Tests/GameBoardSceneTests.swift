@@ -1,10 +1,11 @@
 import CoreGraphics
+import SpriteKit
 import ULS_CoreGame
 import XCTest
 @testable import MessagesExtension
 
 final class GameBoardSceneTests: XCTestCase {
-    func testOverlayUpdatesDoNotRebuildBaseSceneTree() {
+    func testOverlayUpdatesDoNotRebuildBaseSceneTree() throws {
         let renderModel = makeRenderModel()
         let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
 
@@ -15,8 +16,9 @@ final class GameBoardSceneTests: XCTestCase {
             overlayModel: .empty
         )
 
-        let baseIdentifier = scene.debugBaseNodeIdentifier
-        let baseChildCount = scene.debugBaseChildCount
+        let baseNode = try XCTUnwrap(baseContentNode(in: scene))
+        let baseIdentifier = ObjectIdentifier(baseNode)
+        let baseChildCount = baseNode.children.count
 
         scene.updateOverlay(
             renderModel: renderModel,
@@ -31,23 +33,28 @@ final class GameBoardSceneTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(scene.debugBaseNodeIdentifier, baseIdentifier)
-        XCTAssertEqual(scene.debugBaseChildCount, baseChildCount)
-        XCTAssertGreaterThan(scene.debugOverlayChildCount, 0)
+        let updatedBaseNode = try XCTUnwrap(baseContentNode(in: scene))
+        let overlayNode = try XCTUnwrap(overlayContentNode(in: scene))
+
+        XCTAssertEqual(ObjectIdentifier(updatedBaseNode), baseIdentifier)
+        XCTAssertEqual(updatedBaseNode.children.count, baseChildCount)
+        XCTAssertGreaterThan(overlayNode.children.count, 0)
     }
 
-    func testCameraUpdatesStayInSceneState() {
+    func testCameraUpdatesStayInSceneState() throws {
         let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
         let state = GameBoardCameraState(zoom: 1.8, offset: CGSize(width: 24, height: -18))
 
         scene.updateCamera(state: state, viewportSize: CGSize(width: 320, height: 240))
 
-        XCTAssertEqual(scene.debugCameraState, state)
-        XCTAssertEqual(scene.debugCameraNodePosition.x, 160 - (24 / 1.8), accuracy: 0.001)
-        XCTAssertEqual(scene.debugCameraNodePosition.y, 120 + (-18 / 1.8), accuracy: 0.001)
+        let camera = try XCTUnwrap(scene.camera)
+        XCTAssertEqual(camera.xScale, 1 / 1.8, accuracy: 0.001)
+        XCTAssertEqual(camera.yScale, 1 / 1.8, accuracy: 0.001)
+        XCTAssertEqual(camera.position.x, 160 - (24 / 1.8), accuracy: 0.001)
+        XCTAssertEqual(camera.position.y, 120 + (-18 / 1.8), accuracy: 0.001)
     }
 
-    func testViewportResizeDoesNotRebuildBaseSceneTree() {
+    func testViewportResizeDoesNotRebuildBaseSceneTree() throws {
         let renderModel = makeRenderModel()
         let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
 
@@ -58,16 +65,18 @@ final class GameBoardSceneTests: XCTestCase {
             overlayModel: .empty
         )
 
-        let baseIdentifier = scene.debugBaseNodeIdentifier
-        let baseChildCount = scene.debugBaseChildCount
+        let baseNode = try XCTUnwrap(baseContentNode(in: scene))
+        let baseIdentifier = ObjectIdentifier(baseNode)
+        let baseChildCount = baseNode.children.count
 
         scene.updateViewport(viewportSize: CGSize(width: 320, height: 180))
 
-        XCTAssertEqual(scene.debugBaseNodeIdentifier, baseIdentifier)
-        XCTAssertEqual(scene.debugBaseChildCount, baseChildCount)
+        let updatedBaseNode = try XCTUnwrap(baseContentNode(in: scene))
+        XCTAssertEqual(ObjectIdentifier(updatedBaseNode), baseIdentifier)
+        XCTAssertEqual(updatedBaseNode.children.count, baseChildCount)
     }
 
-    func testViewportResizeDoesNotChangeBoardWorldCoordinates() {
+    func testViewportResizeDoesNotChangeBoardWorldCoordinates() throws {
         let renderModel = makeRenderModel()
         let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
 
@@ -78,28 +87,37 @@ final class GameBoardSceneTests: XCTestCase {
             overlayModel: .empty
         )
 
-        let baseline = scene.debugScenePoint(forLayoutPoint: CGPoint(x: 40, y: 20))
+        let initialTileNode = try XCTUnwrap(tileNode(forTileID: 0, in: scene, renderModel: renderModel))
+        let baseline = initialTileNode.position
 
         scene.updateViewport(viewportSize: CGSize(width: 320, height: 180))
 
+        let resizedTileNode = try XCTUnwrap(self.tileNode(forTileID: 0, in: scene, renderModel: renderModel))
         XCTAssertEqual(
-            scene.debugScenePoint(forLayoutPoint: CGPoint(x: 40, y: 20)),
+            resizedTileNode.position,
             baseline,
             "Board world coordinates should stay fixed when only the visible viewport changes."
         )
     }
 
-    func testScenePointsUseTopLeftBoardCoordinates() {
+    func testTileNodesUseTopLeftBoardCoordinates() throws {
+        let renderModel = makeRenderModel()
         let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
 
-        XCTAssertEqual(
-            scene.debugScenePoint(forLayoutPoint: CGPoint(x: 40, y: 20)),
-            CGPoint(x: 40, y: 220)
+        scene.update(
+            renderModel: renderModel,
+            referenceSize: CGSize(width: 320, height: 240),
+            viewportSize: CGSize(width: 320, height: 240),
+            overlayModel: .empty
         )
-        XCTAssertEqual(
-            scene.debugScenePoint(forLayoutPoint: CGPoint(x: 120, y: 200)),
-            CGPoint(x: 120, y: 40)
-        )
+
+        let layout = GameBoardLayout(size: CGSize(width: 320, height: 240), geometry: renderModel.geometry)
+        let tileCenter = layout.tileCenter(for: 0)
+        let expectedPosition = CGPoint(x: tileCenter.x, y: 240 - tileCenter.y)
+        let tileNode = try XCTUnwrap(self.tileNode(forTileID: 0, in: scene, renderModel: renderModel))
+
+        XCTAssertEqual(tileNode.position.x, expectedPosition.x, accuracy: 0.001)
+        XCTAssertEqual(tileNode.position.y, expectedPosition.y, accuracy: 0.001)
     }
 
     private func makeRenderModel() -> GameBoardRenderModel {
@@ -143,5 +161,36 @@ final class GameBoardSceneTests: XCTestCase {
         ).rehashed()
 
         return GameBoardRenderModelBuilder.build(state: state)!
+    }
+
+    private func baseContentNode(in scene: GameBoardScene) -> SKNode? {
+        contentRootNode(in: scene)?.children.first(where: { $0.zPosition == 0 })
+    }
+
+    private func overlayContentNode(in scene: GameBoardScene) -> SKNode? {
+        contentRootNode(in: scene)?.children.first(where: { $0.zPosition == 90 })
+    }
+
+    private func contentRootNode(in scene: GameBoardScene) -> SKNode? {
+        scene.children.first(where: { $0 !== scene.camera })
+    }
+
+    private func tileLayerNode(in scene: GameBoardScene, renderModel: GameBoardRenderModel) -> SKNode? {
+        baseContentNode(in: scene)?.children.first(where: { $0.children.count == renderModel.tiles.count })
+    }
+
+    private func tileNode(
+        forTileID tileID: Int,
+        in scene: GameBoardScene,
+        renderModel: GameBoardRenderModel
+    ) -> SKNode? {
+        let layout = GameBoardLayout(size: CGSize(width: 320, height: 240), geometry: renderModel.geometry)
+        let tileCenter = layout.tileCenter(for: tileID)
+        let expectedPosition = CGPoint(x: tileCenter.x, y: 240 - tileCenter.y)
+
+        return tileLayerNode(in: scene, renderModel: renderModel)?.children.first(where: {
+            abs($0.position.x - expectedPosition.x) < 0.001
+                && abs($0.position.y - expectedPosition.y) < 0.001
+        })
     }
 }

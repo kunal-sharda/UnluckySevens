@@ -71,6 +71,90 @@ final class TurnRollSevenV1Tests: XCTestCase {
         }
     }
 
+    func testDiscardMustFollowRosterOrder() throws {
+        let initial = makeTurnState(
+            diceSeed: Self.rollSevenSeed,
+            resourcesByPlayer: [
+                "A": ResourceHandV1(wood: 8),
+                "B": ResourceHandV1(brick: 8),
+                "C": .zero,
+            ]
+        )
+        let rolled = try apply(intent: .rollDice, to: initial, actor: "A")
+
+        XCTAssertThrowsError(
+            try apply(intent: .submitDiscard(player: "B", discarded: ResourceHandV1(brick: 4)), to: rolled, actor: "B")
+        ) { error in
+            XCTAssertEqual(error as? CoreGameError, .discardSubmissionOutOfOrder)
+        }
+    }
+
+    func testTransitionValidationRejectsOutOfOrderDiscardState() throws {
+        let initial = makeTurnState(
+            diceSeed: Self.rollSevenSeed,
+            resourcesByPlayer: [
+                "A": ResourceHandV1(wood: 8),
+                "B": ResourceHandV1(brick: 8),
+                "C": .zero,
+            ]
+        )
+        let rolled = try apply(intent: .rollDice, to: initial, actor: "A")
+
+        let forged = CoreGameStateV1(
+            gameId: rolled.gameId,
+            rev: rolled.rev + 1,
+            prevHash: rolled.stateHash,
+            stateHash: "",
+            roster: rolled.roster,
+            currentPlayer: rolled.currentPlayer,
+            playerDisplayNamesByPlayer: rolled.playerDisplayNamesByPlayer,
+            phase: rolled.phase,
+            seed: rolled.seed,
+            diceRngState: rolled.diceRngState,
+            robberRngState: rolled.robberRngState,
+            resourcesByPlayer: [
+                "A": ResourceHandV1(wood: 8),
+                "B": ResourceHandV1(brick: 4),
+                "C": .zero,
+            ],
+            bankResources: ResourceHandV1(wood: 19, brick: 23, sheep: 19, wheat: 19, ore: 19),
+            devDeck: rolled.devDeck,
+            devCardsByPlayer: rolled.devCardsByPlayer,
+            newDevCardsByPlayer: rolled.newDevCardsByPlayer,
+            revealedVictoryPointsByPlayer: rolled.revealedVictoryPointsByPlayer,
+            devCardActionPlayedThisTurn: rolled.devCardActionPlayedThisTurn,
+            knightsPlayedByPlayer: rolled.knightsPlayedByPlayer,
+            largestArmyOwner: rolled.largestArmyOwner,
+            largestArmySize: rolled.largestArmySize,
+            longestRoadOwner: rolled.longestRoadOwner,
+            longestRoadLength: rolled.longestRoadLength,
+            winnerPlayer: rolled.winnerPlayer,
+            winningVictoryPoints: rolled.winningVictoryPoints,
+            auditLog: rolled.auditLog,
+            lastTurnRecap: rolled.lastTurnRecap,
+            activeTradeOffer: rolled.activeTradeOffer,
+            tradeResponses: rolled.tradeResponses,
+            settlementsByNode: rolled.settlementsByNode,
+            citiesByNode: rolled.citiesByNode,
+            roadsByEdge: rolled.roadsByEdge,
+            boardRules: rolled.boardRules,
+            board: rolled.board,
+            setupState: rolled.setupState,
+            turnState: TurnStateV1(
+                step: .pendingDiscards,
+                lastRoll: rolled.turnState?.lastRoll,
+                discardRequirementsByPlayer: rolled.turnState?.discardRequirementsByPlayer ?? [:],
+                submittedDiscardsByPlayer: ["B": ResourceHandV1(brick: 4)]
+            )
+        ).rehashed()
+
+        XCTAssertThrowsError(
+            try validateTransition(from: rolled, to: forged, actor: "B")
+        ) { error in
+            XCTAssertEqual(error as? CoreGameError, .discardSubmissionOutOfOrder)
+        }
+    }
+
     func testDiscardCompletionGatesNeedsRobberMove() throws {
         let initial = makeTurnState(
             diceSeed: Self.rollSevenSeed,

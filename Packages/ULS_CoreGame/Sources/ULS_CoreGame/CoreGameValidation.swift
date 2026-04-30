@@ -7,6 +7,7 @@ public enum CoreGameError: Error, Equatable {
     case prevHashMismatch
     case actorMismatch
     case rosterChanged
+    case playerDisplayNamesChanged
     case seedChanged
     case boardRulesChanged
     case boardChanged
@@ -37,6 +38,7 @@ public enum CoreGameError: Error, Equatable {
     case gameIdMismatch
     case discardSubmissionNotRequired
     case discardAlreadySubmitted
+    case discardSubmissionOutOfOrder
     case discardCountMismatch
     case insufficientResourcesForDiscard
     case invalidRobberTile
@@ -54,7 +56,6 @@ public enum CoreGameError: Error, Equatable {
     case tradeOfferAnchorMismatch
     case tradeAcceptPlayerInvalid
     case tradeAcceptAlreadySubmitted
-    case tradeAcceptMissing
     case tradeExecutionInsufficientResources
     case maritimeTradeInvalid
     case maritimeTradeInsufficientResources
@@ -150,6 +151,12 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
             }
         } else if !isOnlyRobberTileChanged(from: from.board, to: to.board) {
             throw CoreGameError.boardChanged
+        }
+    }
+
+    if !(from.phase == .lobby && to.phase == .lobby) {
+        guard to.playerDisplayNamesByPlayer == from.playerDisplayNamesByPlayer else {
+            throw CoreGameError.playerDisplayNamesChanged
         }
     }
 
@@ -433,9 +440,6 @@ private func expectedAuditActionForTransition(from: CoreGameStateV1, to: CoreGam
             case .counter:
                 return .counterTrade
             }
-        }
-        if from.activeTradeOffer != nil, to.activeTradeOffer == nil {
-            return .executeTrade
         }
     }
 
@@ -1207,6 +1211,9 @@ private func validateTurnStepTransition(from: CoreGameStateV1, to: CoreGameState
         }
         guard fromTurn.discardRequirementsByPlayer[newPlayer] != nil else {
             throw CoreGameError.turnStepMismatch
+        }
+        guard nextPendingDiscardPlayer(roster: from.roster, turnState: fromTurn) == newPlayer else {
+            throw CoreGameError.discardSubmissionOutOfOrder
         }
         guard toSubmitted.count == fromSubmitted.count + 1 else {
             throw CoreGameError.turnStepMismatch
@@ -2423,6 +2430,7 @@ private func validationStateWithRoads(state: CoreGameStateV1, roadsByEdge: [Edge
         stateHash: state.stateHash,
         roster: state.roster,
         currentPlayer: state.currentPlayer,
+        playerDisplayNamesByPlayer: state.playerDisplayNamesByPlayer,
         phase: state.phase,
         seed: state.seed,
         diceRngState: state.diceRngState,

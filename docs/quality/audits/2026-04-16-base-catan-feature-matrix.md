@@ -1,5 +1,7 @@
 # 2026-04-16 Base Catan Feature Matrix
 
+Supersession note: this matrix is a historical phase-13 snapshot. Several rows describe temporary `summaryText`, raw-intent, pending-join, and response-application constraints that have since been removed or changed. Use the owner docs, active ExecPlan, QA runbook, and [2026-04-27 Pre-TestFlight Repo Cleanup Audit](./2026-04-27-pre-testflight-repo-cleanup-audit.md) for current TestFlight readiness.
+
 ## Summary
 
 This document is the strict feature matrix for the current MVP promise:

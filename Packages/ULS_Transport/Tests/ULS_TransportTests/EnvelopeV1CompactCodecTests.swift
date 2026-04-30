@@ -2,27 +2,26 @@ import XCTest
 @testable import ULS_Transport
 
 final class EnvelopeV1CompactCodecTests: XCTestCase {
-    func testDecodeSupportsLegacyJSONEnvelopeEncoding() throws {
+    func testDecodeRejectsJSONEnvelopeEncoding() throws {
         let envelope = EnvelopeV1(
-            kind: .intent,
-            body: .intent(payload: #"{"kind":"join","gameId":"game-1","anchorRev":0,"anchorHash":"hash-0","actor":"player-a"}"#)
+            kind: .state,
+            body: .state(payload: #"{"gameId":"game-1","rev":0}"#)
         )
 
-        let legacyData = try JSONEncoder().encode(envelope)
-        let legacyEncoded = base64URLEncode(legacyData)
-        let decoded = try decode(legacyEncoded)
+        let jsonData = try JSONEncoder().encode(envelope)
+        let jsonEncoded = base64URLEncode(jsonData)
 
-        XCTAssertEqual(decoded, envelope)
+        XCTAssertThrowsError(try decode(jsonEncoded))
     }
 
-    func testCompactEncodingIsSmallerThanLegacyJSONEncoding() throws {
-        let payload = String(repeating: #"{"gameId":"game-1","anchorRev":17,"anchorHash":"hash-17","actor":"player-a","kind":"acceptTrade","tradeOfferHash":"offer-1"}"#, count: 3)
-        let envelope = EnvelopeV1(kind: .intent, body: .intent(payload: payload))
+    func testCompactEncodingIsSmallerThanJSONEncoding() throws {
+        let payload = String(repeating: #"{"gameId":"game-1","rev":17,"phase":"turn","currentPlayer":"player-a","stateHash":"hash-17"}"#, count: 3)
+        let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
 
         let compactEncoded = try encode(envelope)
-        let legacyEncoded = base64URLEncode(try JSONEncoder().encode(envelope))
+        let jsonEncoded = base64URLEncode(try JSONEncoder().encode(envelope))
 
-        XCTAssertLessThan(compactEncoded.count, legacyEncoded.count)
+        XCTAssertLessThan(compactEncoded.count, jsonEncoded.count)
     }
 
     func testLargePayloadUsesCompressedCompactEncoding() throws {
@@ -44,7 +43,7 @@ final class EnvelopeV1CompactCodecTests: XCTestCase {
     private func uncompressedCompactEncoding(of envelope: EnvelopeV1) throws -> String {
         let payload: String
         switch envelope.body {
-        case let .state(value), let .intent(value):
+        case let .state(value):
             payload = value
         }
 
@@ -54,7 +53,7 @@ final class EnvelopeV1CompactCodecTests: XCTestCase {
 
         var data = Data()
         data.append(UInt8(envelope.v))
-        data.append(envelope.kind == .state ? 0x53 : 0x49)
+        data.append(0x53)
         data.append(payloadData)
         return base64URLEncode(data)
     }

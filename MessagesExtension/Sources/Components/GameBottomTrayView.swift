@@ -188,6 +188,7 @@ private struct LowerRailHandleBand: View {
                 .clipShape(Capsule())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Open shelf")
 
             Spacer(minLength: 0)
         }

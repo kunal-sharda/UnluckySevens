@@ -19,13 +19,13 @@ enum GameBoardTarget: Equatable {
         case (.robberMove, .tile), (.devCardKnightMove, .tile):
             return "Robber tile selected"
         case (.idle, _):
-            return debugLabel
+            return defaultLabel
         default:
-            return debugLabel
+            return defaultLabel
         }
     }
 
-    var debugLabel: String {
+    var defaultLabel: String {
         switch self {
         case let .tile(id):
             return "Tile \(id)"

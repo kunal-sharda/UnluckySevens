@@ -13,7 +13,6 @@ struct BoardSceneHostView: UIViewRepresentable {
     let interactionController: BoardSceneInteractionController
     let isInteractionEnabled: Bool
     let onInteractionChanged: ((Bool) -> Void)?
-    let onGestureEvent: ((HostGestureEvent) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
     func makeCoordinator() -> Coordinator {
@@ -35,7 +34,6 @@ struct BoardSceneHostView: UIViewRepresentable {
             interactionController: interactionController,
             isInteractionEnabled: isInteractionEnabled,
             onInteractionChanged: onInteractionChanged,
-            onGestureEvent: onGestureEvent,
             onTargetTap: onTargetTap
         )
         view.presentScene(scene)
@@ -59,7 +57,6 @@ struct BoardSceneHostView: UIViewRepresentable {
             interactionController: interactionController,
             isInteractionEnabled: isInteractionEnabled,
             onInteractionChanged: onInteractionChanged,
-            onGestureEvent: onGestureEvent,
             onTargetTap: onTargetTap
         )
         uiView.isUserInteractionEnabled = isInteractionEnabled
@@ -89,7 +86,6 @@ struct BoardSceneHostView: UIViewRepresentable {
         private var isInteractionEnabled = true
         private var onTargetTap: ((GameBoardTarget) -> Void)?
         private var onInteractionChanged: ((Bool) -> Void)?
-        private var onGestureEvent: ((HostGestureEvent) -> Void)?
         private var panGestureRecognizer: UIPanGestureRecognizer?
         private var pinchGestureRecognizer: UIPinchGestureRecognizer?
         private var tapGestureRecognizer: UITapGestureRecognizer?
@@ -133,7 +129,6 @@ struct BoardSceneHostView: UIViewRepresentable {
             interactionController: BoardSceneInteractionController,
             isInteractionEnabled: Bool,
             onInteractionChanged: ((Bool) -> Void)?,
-            onGestureEvent: ((HostGestureEvent) -> Void)?,
             onTargetTap: ((GameBoardTarget) -> Void)?
         ) {
             self.scene = scene
@@ -146,7 +141,6 @@ struct BoardSceneHostView: UIViewRepresentable {
             self.interactionController = interactionController
             self.isInteractionEnabled = isInteractionEnabled
             self.onInteractionChanged = onInteractionChanged
-            self.onGestureEvent = onGestureEvent
             self.onTargetTap = onTargetTap
             interactionController.onInteractionChanged = onInteractionChanged
             view?.isUserInteractionEnabled = isInteractionEnabled
@@ -164,7 +158,6 @@ struct BoardSceneHostView: UIViewRepresentable {
             switch recognizer.state {
             case .began:
                 interactionController.beginDrag()
-                onGestureEvent?(HostGestureEvent(kind: .boardPanBegan, detail: "viewport=\(Int(viewportSize.width.rounded()))x\(Int(viewportSize.height.rounded()))"))
                 fallthrough
             case .changed:
                 interactionController.updateDrag(
@@ -175,7 +168,6 @@ struct BoardSceneHostView: UIViewRepresentable {
                 )
             case .ended, .cancelled, .failed:
                 interactionController.endDrag()
-                onGestureEvent?(HostGestureEvent(kind: .boardPanEnded, detail: ""))
             default:
                 break
             }
@@ -192,7 +184,6 @@ struct BoardSceneHostView: UIViewRepresentable {
             switch recognizer.state {
             case .began:
                 interactionController.beginPinch()
-                onGestureEvent?(HostGestureEvent(kind: .boardPinchBegan, detail: "viewport=\(Int(viewportSize.width.rounded()))x\(Int(viewportSize.height.rounded()))"))
                 fallthrough
             case .changed:
                 interactionController.updatePinch(
@@ -203,7 +194,6 @@ struct BoardSceneHostView: UIViewRepresentable {
                 )
             case .ended, .cancelled, .failed:
                 interactionController.endPinch()
-                onGestureEvent?(HostGestureEvent(kind: .boardPinchEnded, detail: ""))
             default:
                 break
             }
@@ -230,7 +220,6 @@ struct BoardSceneHostView: UIViewRepresentable {
                 return
             }
 
-            onGestureEvent?(HostGestureEvent(kind: .boardTap, detail: "\(target)"))
             onTargetTap(target)
         }
 

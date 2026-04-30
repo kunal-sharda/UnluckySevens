@@ -6,7 +6,6 @@ final class MessagesHostResizeShield: NSObject, UIGestureRecognizerDelegate {
     private weak var protectedView: UIView?
     private var topExclusionHeight: CGFloat = 0
     private var linkedAncestorPans: [UIPanGestureRecognizer] = []
-    var onEvent: ((HostGestureEvent) -> Void)?
 
     override init() {
         super.init()
@@ -14,7 +13,6 @@ final class MessagesHostResizeShield: NSObject, UIGestureRecognizerDelegate {
         captureRecognizer.cancelsTouchesInView = false
         captureRecognizer.delaysTouchesBegan = false
         captureRecognizer.delaysTouchesEnded = false
-        captureRecognizer.addTarget(self, action: #selector(handleCaptureRecognizerStateChange(_:)))
     }
 
     func attach(to view: UIView, topExclusionHeight: CGFloat) {
@@ -70,20 +68,6 @@ final class MessagesHostResizeShield: NSObject, UIGestureRecognizerDelegate {
                 linkedAncestorPans.append(panGestureRecognizer)
             }
             ancestor = current.superview
-        }
-    }
-
-    @objc
-    private func handleCaptureRecognizerStateChange(_ recognizer: UIGestureRecognizer) {
-        switch recognizer.state {
-        case .began:
-            onEvent?(HostGestureEvent(kind: .hostShieldBegan, detail: "protected-area"))
-        case .ended:
-            onEvent?(HostGestureEvent(kind: .hostShieldEnded, detail: "protected-area"))
-        case .cancelled, .failed:
-            onEvent?(HostGestureEvent(kind: .hostShieldCancelled, detail: "protected-area"))
-        default:
-            break
         }
     }
 }

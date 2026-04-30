@@ -30,6 +30,19 @@ final class PlayerPseudonymResolverTests: XCTestCase {
         XCTAssertEqual(Set(mapping.values), Self.aliasPool)
     }
 
+    func testCustomNamesOverrideAliasFallback() {
+        let roster = ["host-player", "guest-player", "guest-two"]
+        let mapping = PlayerPseudonymResolver.displayNames(
+            for: "game-1",
+            roster: roster,
+            customNames: ["guest-player": "Kunal"]
+        )
+
+        XCTAssertEqual(mapping["guest-player"], "Kunal")
+        XCTAssertTrue(mapping["host-player"].map(Self.aliasPool.contains) ?? false)
+        XCTAssertTrue(mapping["guest-two"].map(Self.aliasPool.contains) ?? false)
+    }
+
     private static let aliasPool: Set<String> = [
         "SheepGrazer",
         "BrickLayer",

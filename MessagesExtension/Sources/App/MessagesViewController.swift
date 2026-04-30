@@ -11,9 +11,6 @@ final class MessagesViewController: MSMessagesAppViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        hostResizeShield.onEvent = { [weak self] event in
-            self?.viewModel.recordHostGestureEvent(event)
-        }
         viewModel.onRequestDismiss = { [weak self] in
             self?.dismiss()
         }
@@ -48,14 +45,10 @@ final class MessagesViewController: MSMessagesAppViewController {
             to: view,
             topExclusionHeight: resizeGrabberExclusionHeight
         )
-        viewModel.recordHostGestureHierarchySnapshot(
-            HostGestureHierarchySnapshot.capture(from: view)
-        )
     }
 
     override func willBecomeActive(with conversation: MSConversation) {
         super.willBecomeActive(with: conversation)
-        viewModel.recordLifecycleEvent("willBecomeActive")
         requestExpandedPresentationIfNeeded()
         refreshContextAndMaybePoll(
             conversation: conversation,
@@ -66,7 +59,6 @@ final class MessagesViewController: MSMessagesAppViewController {
 
     override func didBecomeActive(with conversation: MSConversation) {
         super.didBecomeActive(with: conversation)
-        viewModel.recordLifecycleEvent("didBecomeActive")
         requestExpandedPresentationIfNeeded()
         refreshContextAndMaybePoll(
             conversation: conversation,
@@ -107,22 +99,7 @@ final class MessagesViewController: MSMessagesAppViewController {
 
     override func willResignActive(with conversation: MSConversation) {
         super.willResignActive(with: conversation)
-        viewModel.recordLifecycleEvent("willResignActive")
         cancelSelectionPolling()
-    }
-
-    override func didTransition(to presentationStyle: MSMessagesAppPresentationStyle) {
-        super.didTransition(to: presentationStyle)
-        viewModel.recordLifecycleEvent("didTransition:\(label(for: presentationStyle))")
-    }
-
-    private func label(for presentationStyle: MSMessagesAppPresentationStyle) -> String {
-        switch presentationStyle {
-        case .compact: return "compact"
-        case .expanded: return "expanded"
-        case .transcript: return "transcript"
-        @unknown default: return "unknown"
-        }
     }
 
     private func startSelectionPolling(conversation: MSConversation) {

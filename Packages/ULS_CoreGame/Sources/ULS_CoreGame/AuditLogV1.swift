@@ -12,7 +12,6 @@ public enum AuditActionV1: String, Codable, Equatable {
     case acceptTrade
     case declineTrade
     case counterTrade
-    case executeTrade
     case maritimeTrade
     case buyDevCard
     case playKnight

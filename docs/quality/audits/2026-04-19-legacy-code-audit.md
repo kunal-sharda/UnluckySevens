@@ -1,5 +1,7 @@
 # 2026-04-19 Legacy Code Audit
 
+Supersession note: this is a historical audit snapshot. Phase 13/14 cleanup has since removed the pre-TestFlight runtime compatibility and debug surfaces called out below, and the release line now assumes games created before the first TestFlight build will be deleted. Use the current owner docs plus [2026-04-27 Pre-TestFlight Repo Cleanup Audit](./2026-04-27-pre-testflight-repo-cleanup-audit.md) for current readiness decisions.
+
 ## Scope
 
 Audit the repo for code that is still carrying legacy behavior, transitional compatibility, or dormant debug/operator surfaces after the phase-13 transport/session overhaul.

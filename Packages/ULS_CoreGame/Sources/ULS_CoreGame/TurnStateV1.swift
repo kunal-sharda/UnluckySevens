@@ -61,6 +61,32 @@ public struct TurnStateV1: Codable, Equatable {
     }
 }
 
+func orderedPendingDiscardPlayers(
+    roster: [String],
+    turnState: TurnStateV1
+) -> [String] {
+    let submittedPlayers = Set(turnState.submittedDiscardsByPlayer.keys)
+    let requiredPlayers = Set(turnState.discardRequirementsByPlayer.keys)
+
+    var orderedPlayers = roster.filter { player in
+        requiredPlayers.contains(player) && !submittedPlayers.contains(player)
+    }
+
+    let remainingPlayers = requiredPlayers
+        .subtracting(orderedPlayers)
+        .subtracting(submittedPlayers)
+        .sorted()
+    orderedPlayers.append(contentsOf: remainingPlayers)
+    return orderedPlayers
+}
+
+func nextPendingDiscardPlayer(
+    roster: [String],
+    turnState: TurnStateV1
+) -> String? {
+    orderedPendingDiscardPlayers(roster: roster, turnState: turnState).first
+}
+
 extension DiceRollV1 {
     internal func canonicalJSONValue() -> [String: Any] {
         [

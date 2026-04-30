@@ -18,7 +18,7 @@ final class TranscriptStateSelectionTests: XCTestCase {
 
         XCTAssertEqual(result.preferredState.rev, 2)
         XCTAssertTrue(result.shouldActivate)
-        XCTAssertEqual(result.selectionStatus, "Decoded STATE rev2 via URL")
+        XCTAssertEqual(result.selectionStatus, "Decoded game rev2 via URL")
         XCTAssertTrue(result.shouldShowLatestUpdateNotice)
         XCTAssertFalse(result.redirectedToLatestKnown)
     }
@@ -38,7 +38,7 @@ final class TranscriptStateSelectionTests: XCTestCase {
 
         XCTAssertEqual(result.preferredState.rev, 2)
         XCTAssertFalse(result.shouldActivate)
-        XCTAssertEqual(result.selectionStatus, "Opened latest STATE rev2 via URL")
+        XCTAssertEqual(result.selectionStatus, "Opened latest game rev2 via URL")
         XCTAssertTrue(result.shouldShowLatestUpdateNotice)
         XCTAssertTrue(result.redirectedToLatestKnown)
     }

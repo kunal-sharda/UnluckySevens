@@ -1,7 +1,5 @@
 import Foundation
 import Messages
-import ULS_CoreGame
-import ULS_Transport
 
 enum TranscriptSessionPolicy: Equatable {
     case new
@@ -55,7 +53,6 @@ struct TranscriptBuiltMessage {
     let message: MSMessage
     let urlString: String
     let payloadLength: Int
-    let mirroredPayloadLength: Int
     let summaryText: String
     let layoutCaption: String
     let sessionPolicy: TranscriptSessionPolicy
@@ -105,24 +102,6 @@ enum TranscriptTransportSupport {
         return MSSession()
     }
 
-    static func resolveSessionPolicy(
-        requestedPolicy: TranscriptSessionPolicy,
-        envelopeKind: EnvelopeV1.Kind,
-        useSingleSessionDebug: Bool,
-        currentGameId: String?
-    ) -> TranscriptSessionPolicy {
-        guard
-            useSingleSessionDebug,
-            envelopeKind == .intent,
-            case .new = requestedPolicy,
-            let currentGameId
-        else {
-            return requestedPolicy
-        }
-
-        return .state(gameId: currentGameId)
-    }
-
     static func buildMessage(
         encodedEnvelope: String,
         caption: String,
@@ -154,7 +133,6 @@ enum TranscriptTransportSupport {
             message: message,
             urlString: url.absoluteString,
             payloadLength: encodedEnvelope.count,
-            mirroredPayloadLength: 0,
             summaryText: message.summaryText ?? "-",
             layoutCaption: caption,
             sessionPolicy: sessionPolicy

@@ -3,7 +3,7 @@
 This file records **locked product + architecture decisions** for the MVP.  
 If a change is desired, update this file **first**, then update code/tests.
 
-**Last updated:** 2026-04-22
+**Last updated:** 2026-04-23
 
 ---
 
@@ -28,9 +28,9 @@ If a change is desired, update this file **first**, then update code/tests.
 
 ## 3) Authority model (anti-desync)
 
-- Two message types:
+- Shipped transcript/runtime is **STATE-only**:
   - **STATE**: authoritative snapshot (canonical truth).
-  - **INTENT**: internal authoring or compatibility-only request anchored to a specific base state. Fresh player-facing transcript flow must not depend on intent bubbles.
+  - Reducer intents are internal engine inputs only. Fresh player-facing transcript flow must not depend on action bubbles.
 - The lobby is part of the canonical game timeline:
   - invite/start/join all progress through canonical lobby `STATE` updates on the game session
   - joining is not a detached draft flow or side intent in fresh publishes
@@ -51,6 +51,7 @@ If a change is desired, update this file **first**, then update code/tests.
 - Targeted responder actions may be **Accept**, **Decline**, or **Counter**.
 - Fresh targeted trade responses publish canonical `STATE` directly from the responding device; normal product UX must not expose a manual "apply selected response" step.
 - Trade-response transitions must validate as the **responding player's action**, not as a synthetic current-player action. The current player remains the turn owner, but the response actor stays the responder for rules/audit semantics.
+- `acceptTrade` is the only trade-resolution intent. There is no separate `executeTrade` or current-player commit step.
 - Player-trade offers may target any non-empty subset of opponents.
 - Non-targeted players may still inspect the live offer read-only in the group thread and shell.
 - The first applied **Accept** from a targeted player resolves the trade atomically and closes the offer.
@@ -102,7 +103,7 @@ Current transition rule:
 - Fresh publishes are URL-only after the `https` scheme fix.
 - The app runtime no longer decodes mirrored payloads from `summaryText`; pre-TestFlight dev transcripts that depended on that bridge are intentionally unsupported after the phase-13 cleanup.
 - Sender-side cached last-published state may smooth same-device reopen UX when transcript selection drops to `nil`, but it is never cross-device authority and must not replace transcript transport.
-- Payload-source diagnostics are debug/troubleshooting-only and must not be part of the default player shell.
+- Payload-source diagnostics and transport debug surfaces are intentionally removed from the shipped player shell on the pre-TestFlight branch.
 
 ---
 

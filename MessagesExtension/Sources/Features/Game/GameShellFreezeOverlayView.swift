@@ -61,8 +61,6 @@ struct GameShellFreezeOverlayView: View {
                     frozenBoardImage: snapshot.boardImage,
                     reloadToken: 0,
                     onInteractionChanged: nil,
-                    onDiagnosticsChanged: nil,
-                    onGestureEvent: nil,
                     onResizeFreezeChanged: nil,
                     onFreezeRecoveryReloadRequested: nil,
                     onTargetTap: nil

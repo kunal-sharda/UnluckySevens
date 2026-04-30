@@ -9,7 +9,6 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
                 selectedState: nil,
                 localActor: nil,
                 activeContextSource: "-",
-                contextMeta: "Source: test",
                 staleWarning: "-",
                 lastError: "-",
                 canInvite: true,
@@ -34,7 +33,6 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
                 selectedState: state,
                 localActor: host,
                 activeContextSource: "selectedBubble",
-                contextMeta: "Source: test",
                 staleWarning: "-",
                 lastError: "-",
                 canInvite: true,
@@ -61,7 +59,6 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
                 selectedState: state,
                 localActor: host,
                 activeContextSource: "selectedBubble",
-                contextMeta: "Source: test",
                 staleWarning: "-",
                 lastError: "-",
                 canInvite: true,
@@ -86,7 +83,6 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
                 selectedState: state,
                 localActor: host,
                 activeContextSource: "lastSentState",
-                contextMeta: "Source: test",
                 staleWarning: "-",
                 lastError: "-",
                 canInvite: true,
@@ -111,7 +107,6 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
                 selectedState: state,
                 localActor: guest,
                 activeContextSource: "selectedBubble",
-                contextMeta: "Source: test",
                 staleWarning: "-",
                 lastError: "-",
                 canInvite: true,
@@ -126,11 +121,40 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
         XCTAssertNil(model.startButton)
     }
 
+    func testBuildForJoinedLobbyShowsNameEditorAndCustomDisplayName() {
+        let host = "host-player"
+        let guest = "guest-player"
+        let state = makeLobbyState(
+            roster: [host, guest],
+            currentPlayer: host,
+            rev: 1,
+            customNames: [guest: "Kunal"]
+        )
+
+        let model = LobbyScreenModelBuilder.build(
+            context: LobbyScreenContext(
+                selectedState: state,
+                localActor: guest,
+                activeContextSource: "selectedBubble",
+                staleWarning: "-",
+                lastError: "-",
+                canInvite: true,
+                canJoin: false,
+                canStartGame: false
+            )
+        )
+
+        XCTAssertEqual(model.participants.last?.displayName, "Kunal")
+        XCTAssertEqual(model.nameEditor?.title, "Your Name")
+        XCTAssertEqual(model.nameEditor?.saveButton?.title, "Save Name")
+    }
+
     private func makeLobbyState(
         roster: [String],
         currentPlayer: String,
         rev: Int,
-        prevHash: String? = nil
+        prevHash: String? = nil,
+        customNames: [String: String] = [:]
     ) -> CoreGameStateV1 {
         CoreGameStateV1(
             gameId: "game-1",
@@ -139,6 +163,7 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
             stateHash: "",
             roster: roster,
             currentPlayer: currentPlayer,
+            playerDisplayNamesByPlayer: customNames,
             phase: .lobby,
             seed: nil,
             diceRngState: nil,

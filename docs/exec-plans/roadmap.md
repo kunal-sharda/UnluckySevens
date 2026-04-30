@@ -11,39 +11,19 @@ Use the tracked planning surfaces this way:
 
 ## Current Position
 
-### Phase 13 — Complete
+### Phase 14 — Active
 
-- Closeout record: [Phase 13 Plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/active/phase-13-host-stability-and-release-readiness.md)
-- Result:
-  - canonical per-game ledger and recovery landed
-  - canonical responder publication landed
-  - URL-only transport landed
-  - pre-TestFlight legacy transcript runtime paths retired
-  - remaining risks are now narrow and explicitly documented instead of being substrate-wide blockers
+- Active plan: [Phase 14 Plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/active/phase-14-ui-design-bubble-polish-and-trust-surfaces.md)
+- Current slice:
+  - product-style transcript bubble copy landed for fresh lobby, setup, and turn state publishes
+  - canonical lobby display names landed with alias fallback
+  - same-device preferred-name prefill landed
+  - pre-TestFlight legacy transcript/runtime handling and shipped debug surfaces were purged from the branch
+  - broader UI/bubble polish remains the active focus for the phase
 
-The immediate next step is not another architecture phase. It is real-device TestFlight validation on the current build.
+The next broad phase after this active polish work remains structural cleanup, unless TestFlight evidence forces a different priority.
 
 ## Sequenced Next Phases
-
-### Phase 14 — UI Design, Bubble Polish, and Trust Surfaces
-
-Why this phase is next:
-
-- the biggest remaining work is product polish, not substrate repair
-- the lobby/game flows are finally stable enough to justify investing in visual clarity, transcript trust, and bubble quality
-- external testers will judge the app primarily through clarity, confidence, and fit-and-finish, not by the host-boundary work that already landed
-
-Priority focus:
-
-- transcript bubble presentation and board-preview polish
-- clearer win-state, recap, and trust surfaces
-- visual coherence across lobby, game shell, shelves, trade, and end-game states
-- motion and interaction polish now that the flow model is stable
-
-Primary debt links:
-
-- [TD-001](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
-- [TD-005](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
 
 ### Phase 15 — Extension Decomposition, Test Architecture, and Structural Performance
 
@@ -67,6 +47,7 @@ Primary debt links:
 - [TD-004](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
 - [TD-007](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
 - [TD-010](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
+- [TD-011](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
 
 ### Phase 16 — Beta-Driven Follow-On
 
@@ -88,7 +69,7 @@ Potential debt links:
 
 If time is constrained, prioritize remaining work in this order:
 
-1. Real-device TestFlight gate on the current phase-13 build.
+1. Real-device TestFlight gate on the current build.
 2. Phase 14 product polish that improves player trust and first-use clarity.
 3. Phase 15 structural cleanup that improves long-term iteration speed and regression safety.
 4. Phase 16 only if beta evidence forces it.

@@ -15,6 +15,7 @@ public struct CoreGameStateV1: Codable, Equatable {
     public let stateHash: String
     public let roster: [String]
     public let currentPlayer: String
+    public let playerDisplayNamesByPlayer: [String: String]
     public let phase: PhaseV1
     public let seed: UInt64?
     public let diceRngState: UInt64?
@@ -52,6 +53,7 @@ public struct CoreGameStateV1: Codable, Equatable {
         stateHash: String,
         roster: [String],
         currentPlayer: String,
+        playerDisplayNamesByPlayer: [String: String] = [:],
         phase: PhaseV1,
         seed: UInt64?,
         diceRngState: UInt64?,
@@ -88,6 +90,10 @@ public struct CoreGameStateV1: Codable, Equatable {
         self.stateHash = stateHash
         self.roster = roster
         self.currentPlayer = currentPlayer
+        self.playerDisplayNamesByPlayer = Self.normalizedDisplayNamesMap(
+            playerDisplayNamesByPlayer,
+            roster: roster
+        )
         self.phase = phase
         self.seed = seed
         self.diceRngState = diceRngState
@@ -133,6 +139,7 @@ public struct CoreGameStateV1: Codable, Equatable {
             stateHash: canonicalStateHash(),
             roster: roster,
             currentPlayer: currentPlayer,
+            playerDisplayNamesByPlayer: playerDisplayNamesByPlayer,
             phase: phase,
             seed: seed,
             diceRngState: diceRngState,
@@ -183,6 +190,7 @@ public struct CoreGameStateV1: Codable, Equatable {
             "prevHash": prevHash ?? NSNull(),
             "roster": roster,
             "currentPlayer": currentPlayer,
+            "playerDisplayNamesByPlayer": playerDisplayNamesByPlayer,
             "phase": phase.rawValue,
             "seed": seed ?? NSNull(),
             "diceRngState": diceRngState ?? NSNull(),
@@ -247,5 +255,36 @@ public struct CoreGameStateV1: Codable, Equatable {
             return nil
         }
         return roster.contains(value) ? value : nil
+    }
+
+    public static func normalizedPlayerDisplayName(_ value: String?) -> String? {
+        guard let value else {
+            return nil
+        }
+
+        let collapsedWhitespace = value
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        let trimmed = collapsedWhitespace.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return nil
+        }
+
+        return String(trimmed.prefix(24))
+    }
+
+    private static func normalizedDisplayNamesMap(
+        _ value: [String: String],
+        roster: [String]
+    ) -> [String: String] {
+        var result: [String: String] = [:]
+        for player in roster {
+            guard let normalized = normalizedPlayerDisplayName(value[player]) else {
+                continue
+            }
+            result[player] = normalized
+        }
+        return result
     }
 }

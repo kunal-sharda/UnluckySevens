@@ -125,12 +125,6 @@ struct GameShellView: View {
                                 frozenBoardImage: nil,
                                 reloadToken: viewModel.boardReloadToken,
                                 onInteractionChanged: nil,
-                                onDiagnosticsChanged: { snapshot in
-                                    viewModel.recordBoardDiagnosticsSnapshot(snapshot)
-                                },
-                                onGestureEvent: { event in
-                                    viewModel.recordHostGestureEvent(event)
-                                },
                                 onResizeFreezeChanged: { freezeState in
                                     if freezeState.isFrozen {
                                         clearBoardSelection()
@@ -1528,6 +1522,7 @@ private struct GameOverlayShelfView<Content: View>: View {
                 .clipShape(Circle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Close shelf")
     }
 
     private var usesScrollContainer: Bool {
@@ -1697,6 +1692,7 @@ struct GameTradeOverlayView: View {
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Close trade panel")
         }
     }
 
@@ -2286,6 +2282,7 @@ struct GameTradePendingBannerView: View {
             .clipShape(RoundedRectangle(cornerRadius: GameTheme.mediumRadius))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(text)
     }
 }
 

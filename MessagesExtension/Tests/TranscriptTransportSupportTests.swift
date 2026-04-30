@@ -9,8 +9,8 @@ final class TranscriptTransportSupportTests: XCTestCase {
 
         let builtMessage = try TranscriptTransportSupport.buildMessage(
             encodedEnvelope: encodedEnvelope,
-            caption: "ULS STATE rev4",
-            summaryLabel: "STATE r4 p=turn",
+            caption: "Unlucky Sevens: Road built",
+            summaryLabel: "Alex built a road.",
             session: session,
             sessionPolicy: .state(gameId: "game-1")
         )
@@ -27,9 +27,8 @@ final class TranscriptTransportSupportTests: XCTestCase {
         XCTAssertEqual(builtURL.host, "unluckysevens.app")
         XCTAssertEqual(builtURL.path, "/msg")
         XCTAssertEqual(builtMessage.payloadLength, encodedEnvelope.count)
-        XCTAssertEqual(builtMessage.mirroredPayloadLength, 0)
         XCTAssertEqual(builtMessage.sessionPolicy, .state(gameId: "game-1"))
-        XCTAssertEqual(builtMessage.summaryText, "STATE r4 p=turn")
+        XCTAssertEqual(builtMessage.summaryText, "Alex built a road.")
     }
 
     func testDecodePayloadReadsURLQuery() {
@@ -44,17 +43,6 @@ final class TranscriptTransportSupportTests: XCTestCase {
     func testDecodePayloadReturnsNilWithoutURLPayload() {
         XCTAssertNil(TranscriptTransportSupport.decodePayload(from: nil))
         XCTAssertNil(TranscriptTransportSupport.decodePayload(from: URL(string: "https://unluckysevens.app/msg")))
-    }
-
-    func testResolveSessionPolicyLeavesRequestedPolicyAloneWhenDebugOverrideDisabled() {
-        let policy = TranscriptTransportSupport.resolveSessionPolicy(
-            requestedPolicy: .new,
-            envelopeKind: .intent,
-            useSingleSessionDebug: false,
-            currentGameId: "game-1"
-        )
-
-        XCTAssertEqual(policy, .new)
     }
 
     func testPreferredStateSessionUsesSelectedBubbleSessionForMatchingGame() {

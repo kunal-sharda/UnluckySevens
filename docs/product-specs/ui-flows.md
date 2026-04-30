@@ -9,8 +9,12 @@ This document summarizes the player-facing flows the UI must support in the curr
 - Immediately after sending the initial invite, the extension dismisses back to the Messages thread instead of pretending the local post-send shell is a live lobby.
 - Other players join before the host starts.
 - Joining should feel like a game action, not a draft-composition flow. A player should not need an extra manual send step after choosing `Join`.
+- A player may enter a custom display name before joining, and joined players may update that name later while the lobby is still open.
+- The app should remember the local player's preferred lobby name on that device and prefill future invite/join drafts from that preference.
+- Lobby-entered display names are table-local canonical metadata. If no custom name is set, the UI falls back to deterministic per-game aliases.
 - Reopening a real lobby bubble should show the normal lobby roster/start surface, even if no guest has joined yet. The host waits and starts from that selected bubble path, not from a synthetic post-send shell.
 - The roster locks when the host starts the game.
+- New games should default to seeded balanced board generation that avoids adjacent `6`/`8` number tokens. Fully random board rules may remain protocol-supported for tests or already-persisted state, but they are not the default first-beta product path.
 - Lobby UX should stay on the canonical game-state chain:
   - one invite `STATE`
   - joining publishes updated lobby `STATE`
@@ -128,6 +132,7 @@ This document summarizes the player-facing flows the UI must support in the curr
 ## Bubble Experience
 
 - The transcript bubble should carry enough information to understand the current moment at a glance.
+- Fresh transcript bubbles should use product copy in the form `Unlucky Sevens: <descriptive title>` plus a short summary of the latest lobby, setup, or turn change.
 - The expanded Messages view should remain the place for richer actions and board interaction.
 - The primary shell status language should stay compact and direct:
   - `Your turn`
@@ -135,7 +140,7 @@ This document summarizes the player-facing flows the UI must support in the curr
 - The top shell summary should show dice state during turn play:
   - `Roll pending`
   - `Roll: 4 + 3 = 7`
-- Player-facing names in the shell should use deterministic per-game aliases until explicit player naming exists.
+- Player-facing names in the shell should prefer the lobby-set custom name for that table, with deterministic per-game aliases as the fallback.
 - The main screen should avoid persistent stacked cards; hand, bank, player summaries, build choices, and dev-card inventory should appear through the shared lower shelf instead.
 - Utility shelves should stay only slightly taller than needed for their content; `Players` may scroll, but `Hand` and `Bank` should remain compact in the normal host size.
 - The board should not resize when the lower shelf opens. The shelf should slide over the bottom of the board while the board and dock remain fixed.

@@ -23,6 +23,7 @@ final class TurnTradeExecutionV1Tests: XCTestCase {
         XCTAssertNil(executed.activeTradeOffer)
         XCTAssertEqual(executed.tradeResponses.map(\.kind), [.accept])
         XCTAssertEqual(executed.tradeResponses.map(\.respondingPlayer), ["B"])
+        XCTAssertEqual(executed.auditLog.last?.action, .acceptTrade)
         XCTAssertNoThrow(try validateTransition(from: state, to: executed, actor: "B"))
     }
 
@@ -46,59 +47,7 @@ final class TurnTradeExecutionV1Tests: XCTestCase {
         }
     }
 
-    func testLegacyExecuteTradeStillSupportsAcceptedResponses() throws {
-        let state = makeStateWithOffer(
-            proposerHand: ResourceHandV1(wood: 2, brick: 1),
-            acceptorHand: ResourceHandV1(brick: 2, sheep: 1),
-            offerGive: ResourceHandV1(wood: 1),
-            offerReceive: ResourceHandV1(brick: 1),
-            tradeResponses: [
-                TradeResponseV1(
-                    respondingPlayer: "B",
-                    offerHash: "legacy-offer-placeholder",
-                    kind: .accept,
-                    respondedAtRev: 52
-                )
-            ]
-        )
-        let offerHash = try XCTUnwrap(state.activeTradeOffer?.offerHash)
-        let replayable = CoreGameStateV1(
-            gameId: state.gameId,
-            rev: state.rev,
-            prevHash: state.prevHash,
-            stateHash: "",
-            roster: state.roster,
-            currentPlayer: state.currentPlayer,
-            phase: state.phase,
-            seed: state.seed,
-            diceRngState: state.diceRngState,
-            robberRngState: state.robberRngState,
-            resourcesByPlayer: state.resourcesByPlayer,
-            bankResources: state.bankResources,
-            activeTradeOffer: state.activeTradeOffer,
-            tradeResponses: [
-                TradeResponseV1(
-                    respondingPlayer: "B",
-                    offerHash: offerHash,
-                    kind: .accept,
-                    respondedAtRev: state.rev + 2
-                )
-            ],
-            turnState: state.turnState
-        ).rehashed()
-
-        let executed = try apply(
-            intent: .executeTrade(acceptingPlayer: "B", offerHash: offerHash),
-            to: replayable,
-            actor: "A"
-        )
-
-        XCTAssertNil(executed.activeTradeOffer)
-        XCTAssertEqual(executed.tradeResponses.map(\.kind), [.accept])
-        XCTAssertEqual(executed.tradeResponses.map(\.respondingPlayer), ["B"])
-    }
-
-    func testExecuteTradeRejectsWhenOfferExpired() {
+    func testAcceptTradeRejectsWhenOfferExpired() {
         let state = CoreGameStateV1(
             gameId: "game-trade-exec-expired",
             rev: 60,
@@ -123,9 +72,9 @@ final class TurnTradeExecutionV1Tests: XCTestCase {
 
         XCTAssertThrowsError(
             try apply(
-                intent: .executeTrade(acceptingPlayer: "B", offerHash: "expired-offer"),
+                intent: .acceptTrade(acceptingPlayer: "B", offerHash: "expired-offer"),
                 to: state,
-                actor: "A"
+                actor: "B"
             )
         ) { error in
             XCTAssertEqual(error as? CoreGameError, .tradeOfferMissing)

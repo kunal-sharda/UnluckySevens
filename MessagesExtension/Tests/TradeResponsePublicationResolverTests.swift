@@ -1,17 +1,10 @@
-import ULS_Transport
+import ULS_CoreGame
 import XCTest
 @testable import MessagesExtension
 
 final class TradeResponsePublicationResolverTests: XCTestCase {
     func testAcceptTradePublishesCanonicalState() {
-        let intent = ULS_Transport.TurnIntentV1(
-            acceptTradePlayer: "guest",
-            offerHash: "offer-1",
-            gameId: "game-1",
-            anchorRev: 3,
-            anchorHash: "hash-3",
-            actor: "guest"
-        )
+        let intent = TurnIntentV1.acceptTrade(acceptingPlayer: "guest", offerHash: "offer-1")
 
         XCTAssertEqual(
             TradeResponsePublicationResolver.resolve(intent),
@@ -20,23 +13,12 @@ final class TradeResponsePublicationResolverTests: XCTestCase {
     }
 
     func testDeclineAndCounterPublishCanonicalState() {
-        let declineIntent = ULS_Transport.TurnIntentV1(
-            declineTradePlayer: "guest",
+        let declineIntent = TurnIntentV1.declineTrade(decliningPlayer: "guest", offerHash: "offer-1")
+        let counterIntent = TurnIntentV1.counterTrade(
+            counteringPlayer: "guest",
             offerHash: "offer-1",
-            gameId: "game-1",
-            anchorRev: 3,
-            anchorHash: "hash-3",
-            actor: "guest"
-        )
-        let counterIntent = ULS_Transport.TurnIntentV1(
-            counterTradePlayer: "guest",
-            offerHash: "offer-1",
-            counterGive: TransportResourceHandV1(brick: 1),
-            receive: TransportResourceHandV1(ore: 1),
-            gameId: "game-1",
-            anchorRev: 3,
-            anchorHash: "hash-3",
-            actor: "guest"
+            give: ResourceHandV1(brick: 1),
+            receive: ResourceHandV1(ore: 1)
         )
 
         XCTAssertEqual(
@@ -50,13 +32,7 @@ final class TradeResponsePublicationResolverTests: XCTestCase {
     }
 
     func testNonTradeIntentHasNoTradePublicationMode() {
-        let intent = ULS_Transport.TurnIntentV1(
-            kind: .rollDice,
-            gameId: "game-1",
-            anchorRev: 3,
-            anchorHash: "hash-3",
-            actor: "host"
-        )
+        let intent = TurnIntentV1.rollDice
 
         XCTAssertNil(TradeResponsePublicationResolver.resolve(intent))
     }

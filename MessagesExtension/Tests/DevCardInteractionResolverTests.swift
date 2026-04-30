@@ -1,5 +1,4 @@
 import ULS_CoreGame
-import ULS_Transport
 import XCTest
 @testable import MessagesExtension
 
@@ -14,7 +13,7 @@ final class DevCardInteractionResolverTests: XCTestCase {
             actingAs: "A"
         )
 
-        XCTAssertEqual(intent?.kind, .buyDevCard)
+        XCTAssertEqual(intent?.intent, .buyDevCard)
         XCTAssertEqual(intent?.actor, "A")
     }
 
@@ -36,10 +35,7 @@ final class DevCardInteractionResolverTests: XCTestCase {
             victimPlayer: victimPlayer
         )
 
-        XCTAssertEqual(intent?.kind, .playDevCard)
-        XCTAssertEqual(intent?.devCardPlayKind, .knight)
-        XCTAssertEqual(intent?.devCardTileID, tileID)
-        XCTAssertEqual(intent?.devCardVictimPlayer, victimPlayer)
+        XCTAssertEqual(intent?.intent, .playKnight(tileID: tileID, victimPlayer: victimPlayer))
     }
 
     func testDraftPlayKnightIntentBeforeRollingIsLegalForCurrentPlayer() throws {
@@ -60,9 +56,7 @@ final class DevCardInteractionResolverTests: XCTestCase {
             victimPlayer: state.legalKnightVictims(for: tileID, actor: "A").first
         )
 
-        XCTAssertEqual(intent?.kind, .playDevCard)
-        XCTAssertEqual(intent?.devCardPlayKind, .knight)
-        XCTAssertEqual(intent?.devCardTileID, tileID)
+        XCTAssertEqual(intent?.intent, .playKnight(tileID: tileID, victimPlayer: state.legalKnightVictims(for: tileID, actor: "A").first))
     }
 
     func testDraftPlayYearOfPlentyIntentUsesExplicitPair() {
@@ -78,9 +72,7 @@ final class DevCardInteractionResolverTests: XCTestCase {
             secondResource: .wood
         )
 
-        XCTAssertEqual(intent?.devCardPlayKind, .yearOfPlenty)
-        XCTAssertEqual(intent?.devCardFirstResource, .wood)
-        XCTAssertEqual(intent?.devCardSecondResource, .wood)
+        XCTAssertEqual(intent?.intent, .playYearOfPlenty(first: .wood, second: .wood))
     }
 
     func testDraftPlayRoadBuildingIntentRequiresExplicitLegalEdges() throws {
@@ -101,9 +93,7 @@ final class DevCardInteractionResolverTests: XCTestCase {
             secondEdgeID: secondEdgeID
         )
 
-        XCTAssertEqual(intent?.devCardPlayKind, .roadBuilding)
-        XCTAssertEqual(intent?.devCardFirstEdgeID, firstEdgeID)
-        XCTAssertEqual(intent?.devCardSecondEdgeID, secondEdgeID)
+        XCTAssertEqual(intent?.intent, .playRoadBuilding(firstEdgeID: firstEdgeID, secondEdgeID: secondEdgeID))
     }
 
     func testDraftRevealVictoryPointIntentRequiresWinningThreshold() {
@@ -128,7 +118,7 @@ final class DevCardInteractionResolverTests: XCTestCase {
             actingAs: "A"
         )
 
-        XCTAssertEqual(winningIntent?.devCardPlayKind, .revealVictoryPoint)
+        XCTAssertEqual(winningIntent?.intent, .revealVictoryPoint)
     }
 
     private func makeState(

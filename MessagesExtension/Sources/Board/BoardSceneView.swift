@@ -8,15 +8,12 @@ struct BoardSceneView: View, Equatable {
     let interactionMode: GameMode
     let reloadToken: Int
     let onInteractionChanged: ((Bool) -> Void)?
-    let onDiagnosticsChanged: ((BoardInteractionDiagnosticsSnapshot) -> Void)?
-    let onGestureEvent: ((HostGestureEvent) -> Void)?
     let onResizeFreezeChanged: ((BoardResizeFreezeState) -> Void)?
     let onFreezeRecoveryReloadRequested: ((String) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
     @State private var scene = GameBoardScene(size: CGSize(width: 320, height: 240))
     @State private var interactionController = BoardSceneInteractionController()
-    @State private var isBoardInteracting: Bool = false
     @State private var stableBoardReferenceSize: CGSize?
     @State private var largestSettledViewportSize: CGSize?
     @State private var lastViewportUpdateSize: CGSize?
@@ -53,11 +50,8 @@ struct BoardSceneView: View, Equatable {
                     interactionController: interactionController,
                     isInteractionEnabled: true,
                     onInteractionChanged: { active in
-                        isBoardInteracting = active
                         onInteractionChanged?(active)
-                        emitDiagnosticsSnapshot(viewportSize: geometry.size)
                     },
-                    onGestureEvent: onGestureEvent,
                     onTargetTap: onTargetTap
                 )
                 .id("board-host-\(reloadToken)-\(boardHostReloadGeneration)")
@@ -78,7 +72,6 @@ struct BoardSceneView: View, Equatable {
                     viewportSize: geometry.size
                 )
                 lastViewportUpdateSize = geometry.size
-                emitDiagnosticsSnapshot(viewportSize: geometry.size)
             }
             .onChange(of: renderModel) { _, newValue in
                 pendingRenderModel = newValue
@@ -97,7 +90,6 @@ struct BoardSceneView: View, Equatable {
                     viewportSize: geometry.size,
                     overlayModel: newValue
                 )
-                emitDiagnosticsSnapshot(viewportSize: geometry.size)
             }
             .onChange(of: geometry.size) { _, newValue in
                 handleLiveViewportResize(
@@ -110,8 +102,7 @@ struct BoardSceneView: View, Equatable {
                 rebuildBoardSurface(
                     viewportSize: geometry.size,
                     renderModel: renderModel,
-                    overlayModel: overlayModel,
-                    reason: "manual"
+                    overlayModel: overlayModel
                 )
             }
             .onDisappear {
@@ -138,7 +129,6 @@ struct BoardSceneView: View, Equatable {
             contentFrame: referenceLayout.contentFrame,
             scene: scene
         )
-        emitDiagnosticsSnapshot(viewportSize: viewportSize)
         scheduleResizeSettle()
     }
 
@@ -201,7 +191,6 @@ struct BoardSceneView: View, Equatable {
         )
         lastViewportUpdateSize = viewportSize
         largestSettledViewportSize = promotedLargestSettledViewportSize(with: viewportSize)
-        emitDiagnosticsSnapshot(viewportSize: viewportSize)
     }
 
     private func applySceneUpdate(
@@ -227,8 +216,7 @@ struct BoardSceneView: View, Equatable {
     private func rebuildBoardSurface(
         viewportSize: CGSize,
         renderModel: GameBoardRenderModel,
-        overlayModel: GameBoardOverlayModel,
-        reason: String
+        overlayModel: GameBoardOverlayModel
     ) {
         let preservedCameraState = interactionController.cameraState
         let rebuiltScene = GameBoardScene(size: viewportSize)
@@ -256,38 +244,6 @@ struct BoardSceneView: View, Equatable {
             contentFrame: referenceLayout.contentFrame,
             scene: rebuiltScene
         )
-        onGestureEvent?(
-            HostGestureEvent(
-                kind: .boardSurfaceReloaded,
-                detail: "\(reason) viewport=\(describe(size: viewportSize))"
-            )
-        )
-    }
-
-    private func emitDiagnosticsSnapshot(viewportSize: CGSize?) {
-        onDiagnosticsChanged?(
-            BoardInteractionDiagnosticsSnapshot(
-                isBoardInteracting: isBoardInteracting,
-                isResizeFrozen: false,
-                viewportSize: viewportSize ?? lastViewportUpdateSize,
-                largestSettledViewportSize: largestSettledViewportSize
-            )
-        )
-    }
-
-    private func diagnosticDetail(
-        viewportSize: CGSize?,
-        largestSettledViewportSize: CGSize?
-    ) -> String {
-        "viewport=\(describe(size: viewportSize)) largest=\(describe(size: largestSettledViewportSize))"
-    }
-
-    private func describe(size: CGSize?) -> String {
-        guard let size else {
-            return "-"
-        }
-
-        return "\(Int(size.width.rounded()))x\(Int(size.height.rounded()))"
     }
 
     private func resolvedReferenceSize(for viewportSize: CGSize) -> CGSize {

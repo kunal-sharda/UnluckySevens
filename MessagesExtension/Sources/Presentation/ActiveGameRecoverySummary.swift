@@ -16,11 +16,7 @@ enum ActiveGameRecoveryModelBuilder {
         isLastActive: Bool,
         isCurrentSelection: Bool
     ) -> ActiveGameRecoverySummary {
-        let currentPlayerName = PlayerPseudonymResolver.displayName(
-            for: state.currentPlayer,
-            gameID: state.gameId,
-            roster: state.roster
-        )
+        let currentPlayerName = PlayerPseudonymResolver.displayName(for: state.currentPlayer, in: state)
 
         let title: String
         switch state.phase {
@@ -31,11 +27,7 @@ enum ActiveGameRecoveryModelBuilder {
         case .turn:
             title = "\(currentPlayerName)'s turn"
         case .gameOver:
-            let winnerName = PlayerPseudonymResolver.displayName(
-                for: state.winnerPlayer,
-                gameID: state.gameId,
-                roster: state.roster
-            )
+            let winnerName = PlayerPseudonymResolver.displayName(for: state.winnerPlayer, in: state)
             title = "\(winnerName) won"
         }
 

@@ -1,3 +1,5 @@
+import ULS_CoreGame
+
 enum PlayerPseudonymResolver {
     private static let aliasPool = [
         "SheepGrazer",
@@ -7,16 +9,42 @@ enum PlayerPseudonymResolver {
         "WheatFarmer",
     ]
 
-    static func displayName(for playerID: String?, gameID: String?, roster: [String]) -> String {
+    static func displayName(
+        for playerID: String?,
+        gameID: String?,
+        roster: [String],
+        customNames: [String: String] = [:]
+    ) -> String {
         guard let playerID else {
             return "the host"
         }
 
-        let mapping = displayNames(for: gameID, roster: roster + [playerID])
+        if let customName = customNames[playerID] {
+            return customName
+        }
+
+        let mapping = displayNames(for: gameID, roster: roster + [playerID], customNames: customNames)
         return mapping[playerID] ?? fallbackName(for: playerID)
     }
 
-    static func displayNames(for gameID: String?, roster: [String]) -> [String: String] {
+    static func displayName(for playerID: String?, in state: CoreGameStateV1?) -> String {
+        guard let state else {
+            return displayName(for: playerID, gameID: nil, roster: [])
+        }
+
+        return displayName(
+            for: playerID,
+            gameID: state.gameId,
+            roster: state.roster,
+            customNames: state.playerDisplayNamesByPlayer
+        )
+    }
+
+    static func displayNames(
+        for gameID: String?,
+        roster: [String],
+        customNames: [String: String] = [:]
+    ) -> [String: String] {
         let uniqueRoster = uniquePlayers(in: roster)
         guard !uniqueRoster.isEmpty else {
             return [:]
@@ -30,8 +58,16 @@ enum PlayerPseudonymResolver {
 
         let assignmentCount = min(playerOrder.count, aliasOrder.count)
         var mapping: [String: String] = [:]
+        for player in uniqueRoster {
+            if let customName = customNames[player] {
+                mapping[player] = customName
+            }
+        }
         for index in 0..<assignmentCount {
-            mapping[playerOrder[index]] = aliasOrder[index]
+            let player = playerOrder[index]
+            if mapping[player] == nil {
+                mapping[player] = aliasOrder[index]
+            }
         }
 
         return mapping

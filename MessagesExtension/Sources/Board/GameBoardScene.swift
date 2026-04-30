@@ -170,30 +170,6 @@ final class GameBoardScene: SKScene {
         )
     }
 
-    var debugBaseNodeIdentifier: ObjectIdentifier {
-        ObjectIdentifier(baseContentNode)
-    }
-
-    var debugBaseChildCount: Int {
-        baseContentNode.children.count
-    }
-
-    var debugOverlayChildCount: Int {
-        overlayContentNode.children.count
-    }
-
-    var debugCameraState: GameBoardCameraState {
-        currentCameraState
-    }
-
-    var debugCameraNodePosition: CGPoint {
-        cameraNode.position
-    }
-
-    func debugScenePoint(forLayoutPoint point: CGPoint) -> CGPoint {
-        scenePoint(for: point)
-    }
-
     func updateCamera(state: GameBoardCameraState, viewportSize: CGSize) {
         if self.size != viewportSize {
             self.size = viewportSize

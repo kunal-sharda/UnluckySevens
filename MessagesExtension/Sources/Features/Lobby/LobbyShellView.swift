@@ -21,7 +21,7 @@ struct LobbyShellView: View {
                                     title: model.title,
                                     subtitle: model.subtitle
                                 ),
-                                metaText: model.metaText
+                                metaText: ""
                             )
                         )
 
@@ -150,6 +150,10 @@ struct LobbyShellView: View {
 
     private func actionsSection(model: LobbyScreenModel) -> some View {
         VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+            if let nameEditor = model.nameEditor {
+                lobbyNameEditor(nameEditor)
+            }
+
             if let inviteButton = model.inviteButton {
                 actionButton(inviteButton, accent: false) {
                     viewModel.inviteNewGame()
@@ -182,6 +186,54 @@ struct LobbyShellView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: GameTheme.mediumRadius))
         .shadow(color: GameTheme.sectionShadow, radius: 8, x: 0, y: 2)
+    }
+
+    private func lobbyNameEditor(_ model: LobbyNameEditorModel) -> some View {
+        VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+            Text(model.title)
+                .font(GameTheme.headingFont)
+                .foregroundStyle(GameTheme.ink)
+
+            TextField(model.placeholder, text: $viewModel.lobbyDisplayNameDraft)
+                .textInputAutocapitalization(.words)
+                .disableAutocorrection(true)
+                .submitLabel(.done)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: GameTheme.mediumRadius)
+                        .fill(GameTheme.surfaceRaised.opacity(0.95))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: GameTheme.mediumRadius)
+                        .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
+                )
+                .foregroundStyle(GameTheme.ink)
+                .onSubmit {
+                    if viewModel.canPublishLobbyDisplayName {
+                        viewModel.publishLobbyDisplayName()
+                    }
+                }
+
+            if let saveButton = model.saveButton {
+                actionButton(
+                    LobbyActionButtonModel(
+                        title: saveButton.title,
+                        systemImage: saveButton.systemImage,
+                        isEnabled: viewModel.canPublishLobbyDisplayName
+                    ),
+                    accent: false
+                ) {
+                    viewModel.publishLobbyDisplayName()
+                }
+            }
+
+            Text(model.helperText)
+                .font(GameTheme.metaFont)
+                .foregroundStyle(GameTheme.mutedInk)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.bottom, 2)
     }
 
     private func actionButton(

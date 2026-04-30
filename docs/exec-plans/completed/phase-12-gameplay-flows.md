@@ -1,5 +1,9 @@
 # Phase 12 — Core Gameplay Flows
 
+## Completion Note
+
+This plan is historical. Phase 12's remaining gameplay/signoff tail was absorbed into the phase-13 host-stability and release-readiness work, and current execution now lives in the active phase-14 plan plus the owner docs.
+
 ## Summary
 
 Build the first complete player-facing gameplay flows on top of the phase 10 shell and phase 11 board.

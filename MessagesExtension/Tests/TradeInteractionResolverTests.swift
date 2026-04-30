@@ -1,5 +1,4 @@
 import ULS_CoreGame
-import ULS_Transport
 import XCTest
 @testable import MessagesExtension
 
@@ -22,14 +21,14 @@ final class TradeInteractionResolverTests: XCTestCase {
 
         XCTAssertEqual(
             intent,
-            TurnIntentV1(
-                proposeTradeGive: TransportResourceHandV1(wood: 1),
-                receive: TransportResourceHandV1(brick: 1),
-                targetPlayers: ["B", "C"],
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: "A"
+            TurnActionDraft(
+                intent: .proposeTrade(
+                    give: ResourceHandV1(wood: 1),
+                    receive: ResourceHandV1(brick: 1),
+                    recipients: ["B", "C"]
+                ),
+                actor: "A",
+                state: state
             )
         )
     }
@@ -56,13 +55,10 @@ final class TradeInteractionResolverTests: XCTestCase {
 
         XCTAssertEqual(
             intent,
-            TurnIntentV1(
-                acceptTradePlayer: "B",
-                offerHash: offer.offerHash,
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: "B"
+            TurnActionDraft(
+                intent: .acceptTrade(acceptingPlayer: "B", offerHash: offer.offerHash),
+                actor: "B",
+                state: state
             )
         )
     }
@@ -89,13 +85,10 @@ final class TradeInteractionResolverTests: XCTestCase {
 
         XCTAssertEqual(
             intent,
-            TurnIntentV1(
-                declineTradePlayer: "B",
-                offerHash: offer.offerHash,
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: "B"
+            TurnActionDraft(
+                intent: .declineTrade(decliningPlayer: "B", offerHash: offer.offerHash),
+                actor: "B",
+                state: state
             )
         )
     }
@@ -124,15 +117,15 @@ final class TradeInteractionResolverTests: XCTestCase {
 
         XCTAssertEqual(
             intent,
-            TurnIntentV1(
-                counterTradePlayer: "B",
-                offerHash: offer.offerHash,
-                counterGive: TransportResourceHandV1(brick: 1),
-                receive: TransportResourceHandV1(ore: 1),
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: "B"
+            TurnActionDraft(
+                intent: .counterTrade(
+                    counteringPlayer: "B",
+                    offerHash: offer.offerHash,
+                    give: ResourceHandV1(brick: 1),
+                    receive: ResourceHandV1(ore: 1)
+                ),
+                actor: "B",
+                state: state
             )
         )
     }
@@ -200,7 +193,7 @@ final class TradeInteractionResolverTests: XCTestCase {
             receive: ResourceHandV1(brick: 1)
         )
 
-        XCTAssertEqual(intent?.kind, .maritimeTrade)
+        XCTAssertEqual(intent?.intent, .maritimeTrade(give: ResourceHandV1(wood: 3), receive: ResourceHandV1(brick: 1)))
         XCTAssertEqual(intent?.actor, "A")
     }
 

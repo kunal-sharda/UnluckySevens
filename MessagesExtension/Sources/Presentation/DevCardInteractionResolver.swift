@@ -1,11 +1,10 @@
 import ULS_CoreGame
-import ULS_Transport
 
 enum DevCardInteractionResolver {
     static func draftBuyDevCardIntent(
         state: CoreGameStateV1?,
         actingAs: String?
-    ) -> ULS_Transport.TurnIntentV1? {
+    ) -> TurnActionDraft? {
         guard
             let state,
             state.phase == .turn,
@@ -22,12 +21,10 @@ enum DevCardInteractionResolver {
             return nil
         }
 
-        return ULS_Transport.TurnIntentV1(
-            kind: .buyDevCard,
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actingAs
+        return TurnActionDraft(
+            intent: .buyDevCard,
+            actor: actingAs,
+            state: state
         )
     }
 
@@ -36,7 +33,7 @@ enum DevCardInteractionResolver {
         actingAs: String?,
         tileID: TileID,
         victimPlayer: String?
-    ) -> ULS_Transport.TurnIntentV1? {
+    ) -> TurnActionDraft? {
         guard
             let state,
             state.phase == .turn,
@@ -55,14 +52,10 @@ enum DevCardInteractionResolver {
             return nil
         }
 
-        return ULS_Transport.TurnIntentV1(
-            playDevCardKind: .knight,
-            tileID: tileID,
-            victimPlayer: victimPlayer,
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actingAs
+        return TurnActionDraft(
+            intent: .playKnight(tileID: tileID, victimPlayer: victimPlayer),
+            actor: actingAs,
+            state: state
         )
     }
 
@@ -70,7 +63,7 @@ enum DevCardInteractionResolver {
         state: CoreGameStateV1?,
         actingAs: String?,
         resource: ResourceV1
-    ) -> ULS_Transport.TurnIntentV1? {
+    ) -> TurnActionDraft? {
         guard
             let state,
             state.phase == .turn,
@@ -84,13 +77,10 @@ enum DevCardInteractionResolver {
             return nil
         }
 
-        return ULS_Transport.TurnIntentV1(
-            playDevCardKind: .monopoly,
-            resource: transportResource(from: resource),
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actingAs
+        return TurnActionDraft(
+            intent: .playMonopoly(resource: resource),
+            actor: actingAs,
+            state: state
         )
     }
 
@@ -99,7 +89,7 @@ enum DevCardInteractionResolver {
         actingAs: String?,
         firstResource: ResourceV1,
         secondResource: ResourceV1
-    ) -> ULS_Transport.TurnIntentV1? {
+    ) -> TurnActionDraft? {
         guard
             let state,
             state.phase == .turn,
@@ -130,14 +120,10 @@ enum DevCardInteractionResolver {
             }
         }
 
-        return ULS_Transport.TurnIntentV1(
-            playDevCardKind: .yearOfPlenty,
-            firstResource: transportResource(from: firstResource),
-            secondResource: transportResource(from: secondResource),
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actingAs
+        return TurnActionDraft(
+            intent: .playYearOfPlenty(first: firstResource, second: secondResource),
+            actor: actingAs,
+            state: state
         )
     }
 
@@ -146,7 +132,7 @@ enum DevCardInteractionResolver {
         actingAs: String?,
         firstEdgeID: EdgeID,
         secondEdgeID: EdgeID
-    ) -> ULS_Transport.TurnIntentV1? {
+    ) -> TurnActionDraft? {
         guard
             let state,
             state.phase == .turn,
@@ -161,21 +147,17 @@ enum DevCardInteractionResolver {
             return nil
         }
 
-        return ULS_Transport.TurnIntentV1(
-            playDevCardKind: .roadBuilding,
-            firstEdgeID: firstEdgeID,
-            secondEdgeID: secondEdgeID,
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actingAs
+        return TurnActionDraft(
+            intent: .playRoadBuilding(firstEdgeID: firstEdgeID, secondEdgeID: secondEdgeID),
+            actor: actingAs,
+            state: state
         )
     }
 
     static func draftRevealVictoryPointIntent(
         state: CoreGameStateV1?,
         actingAs: String?
-    ) -> ULS_Transport.TurnIntentV1? {
+    ) -> TurnActionDraft? {
         guard
             let state,
             state.phase == .turn,
@@ -187,29 +169,10 @@ enum DevCardInteractionResolver {
             return nil
         }
 
-        return ULS_Transport.TurnIntentV1(
-            playDevCardKind: .revealVictoryPoint,
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actingAs
+        return TurnActionDraft(
+            intent: .revealVictoryPoint,
+            actor: actingAs,
+            state: state
         )
-    }
-
-    private static func transportResource(from resource: ResourceV1) -> TransportResourceV1 {
-        switch resource {
-        case .wood:
-            return .wood
-        case .brick:
-            return .brick
-        case .sheep:
-            return .sheep
-        case .wheat:
-            return .wheat
-        case .ore:
-            return .ore
-        case .desert:
-            return .wood
-        }
     }
 }

@@ -1,5 +1,4 @@
 import ULS_CoreGame
-import ULS_Transport
 import XCTest
 
 final class TurnInteractionResolverTests: XCTestCase {
@@ -27,12 +26,10 @@ final class TurnInteractionResolverTests: XCTestCase {
 
         XCTAssertEqual(
             intent,
-            TurnIntentV1(
-                buildRoadEdgeID: edge,
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: "A"
+            TurnActionDraft(
+                intent: .buildRoad(edgeID: edge),
+                actor: "A",
+                state: state
             )
         )
     }
@@ -69,12 +66,10 @@ final class TurnInteractionResolverTests: XCTestCase {
 
         XCTAssertEqual(
             intent,
-            TurnIntentV1(
-                buildSettlementNodeID: node,
-                gameId: settlementState.gameId,
-                anchorRev: settlementState.rev,
-                anchorHash: settlementState.stateHash,
-                actor: "A"
+            TurnActionDraft(
+                intent: .buildSettlement(nodeID: node),
+                actor: "A",
+                state: settlementState
             )
         )
     }
@@ -97,12 +92,10 @@ final class TurnInteractionResolverTests: XCTestCase {
 
         XCTAssertEqual(
             intent,
-            TurnIntentV1(
-                buildCityNodeID: 0,
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: "A"
+            TurnActionDraft(
+                intent: .buildCity(nodeID: 0),
+                actor: "A",
+                state: state
             )
         )
     }
@@ -128,13 +121,10 @@ final class TurnInteractionResolverTests: XCTestCase {
 
         XCTAssertEqual(
             intent,
-            TurnIntentV1(
-                submitDiscardFor: "A",
-                discarded: TransportResourceHandV1(wood: 1, brick: 1),
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: "A"
+            TurnActionDraft(
+                intent: .submitDiscard(player: "A", discarded: ResourceHandV1(wood: 1, brick: 1)),
+                actor: "A",
+                state: state
             )
         )
     }
@@ -177,12 +167,10 @@ final class TurnInteractionResolverTests: XCTestCase {
 
         XCTAssertEqual(
             intent,
-            TurnIntentV1(
-                moveRobberTileID: tile,
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: "A"
+            TurnActionDraft(
+                intent: .moveRobber(tileID: tile),
+                actor: "A",
+                state: state
             )
         )
     }
@@ -211,12 +199,10 @@ final class TurnInteractionResolverTests: XCTestCase {
 
         XCTAssertEqual(
             intent,
-            TurnIntentV1(
-                selectStealVictimPlayer: "B",
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: "A"
+            TurnActionDraft(
+                intent: .selectStealVictim(victimPlayer: "B"),
+                actor: "A",
+                state: state
             )
         )
     }

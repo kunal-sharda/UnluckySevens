@@ -96,8 +96,8 @@ enum TranscriptStateSelection {
                 source: source
             ),
             selectionStatus: redirectedToLatestKnown
-                ? "Opened latest STATE rev\(preferredState.rev) via \(source.label)"
-                : "Decoded STATE rev\(preferredState.rev) via \(source.label)",
+                ? "Opened latest game rev\(preferredState.rev) via \(source.label)"
+                : "Decoded game rev\(preferredState.rev) via \(source.label)",
             shouldShowLatestUpdateNotice: shouldShowLatestUpdateNotice,
             redirectedToLatestKnown: redirectedToLatestKnown
         )

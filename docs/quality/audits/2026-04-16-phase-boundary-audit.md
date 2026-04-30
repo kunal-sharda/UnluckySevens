@@ -27,7 +27,7 @@ This audit reviewed:
 
 - current code under `MessagesExtension/`, `Packages/ULS_CoreGame`, and `Packages/ULS_Transport`
 - current tests under `MessagesExtension/Tests`
-- [phase-12-gameplay-flows.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/active/phase-12-gameplay-flows.md)
+- [phase-12-gameplay-flows.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/completed/phase-12-gameplay-flows.md)
 - [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/roadmap.md)
 - [tech-debt-tracker.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/tech-debt-tracker.md)
 - [qa.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/qa.md)

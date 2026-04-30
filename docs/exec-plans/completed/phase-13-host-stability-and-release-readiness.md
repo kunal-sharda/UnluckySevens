@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 13 is complete from a code-and-docs standpoint and is now the TestFlight-prep closeout record.
+Phase 13 is complete from a code-and-docs standpoint and is now a historical TestFlight-prep closeout record.
 
 The remaining work before external testing is not more architecture churn. It is focused manual device validation on the current build.
 
@@ -64,7 +64,7 @@ Phase 13 also retired the remaining pre-TestFlight legacy runtime paths that wer
 - raw legacy fallback shells removed from normal player flow
 - old typed `JoinIntentV1` / `SetupPlacementIntentV1` transport models removed from `ULS_Transport`
 
-The only intentionally preserved residue is lower-level generic intent-envelope support plus inert tombstone source files that still exist solely because the checked-in Xcode target graph points at those paths and generated project files are not committed here.
+The only intentionally preserved residue is lower-level internal action-draft naming, tracked as phase-15 structural cleanup debt rather than runtime compatibility support.
 
 ## Known Remaining Risks
 
@@ -107,7 +107,7 @@ Focused validation used during the closeout slices:
 swift test --package-path Packages/ULS_CoreGame --filter TurnRollSevenV1Tests
 xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build
 xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:MessagesExtensionTests/GameDiscardPanelModelBuilderTests -only-testing:MessagesExtensionTests/TurnInteractionResolverTests -only-testing:MessagesExtensionTests/TradeResponsePublicationResolverTests -only-testing:MessagesExtensionTests/TurnIntentPublishActorResolverTests test
-xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:MessagesExtensionTests/LobbyScreenModelBuilderTests -only-testing:MessagesExtensionTests/TranscriptTransportSupportTests -only-testing:MessagesExtensionTests/SetupInteractionResolverTests -only-testing:MessagesExtensionTests/GameShellProjectionBuilderTests -only-testing:MessagesExtensionTests/TranscriptStateSelectionTests -only-testing:MessagesExtensionTests/TransportBadgeModelTests -only-testing:MessagesExtensionTests/CompactStateTransportTests test
+xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:MessagesExtensionTests/LobbyScreenModelBuilderTests -only-testing:MessagesExtensionTests/TranscriptTransportSupportTests -only-testing:MessagesExtensionTests/SetupInteractionResolverTests -only-testing:MessagesExtensionTests/GameShellProjectionBuilderTests -only-testing:MessagesExtensionTests/TranscriptStateSelectionTests -only-testing:MessagesExtensionTests/CompactStateTransportTests test
 git diff --check
 ```
 

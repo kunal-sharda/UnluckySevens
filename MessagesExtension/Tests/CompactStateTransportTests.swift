@@ -16,6 +16,7 @@ final class CompactStateTransportTests: XCTestCase {
         XCTAssertEqual(decoded.prevHash, state.prevHash)
         XCTAssertEqual(decoded.roster, state.roster)
         XCTAssertEqual(decoded.currentPlayer, state.currentPlayer)
+        XCTAssertEqual(decoded.playerDisplayNamesByPlayer, state.playerDisplayNamesByPlayer)
         XCTAssertEqual(decoded.phase, state.phase)
         XCTAssertEqual(decoded.resourcesByPlayer, state.resourcesByPlayer)
         XCTAssertEqual(decoded.bankResources, state.bankResources)
@@ -57,8 +58,8 @@ final class CompactStateTransportTests: XCTestCase {
 
         let builtMessage = try TranscriptTransportSupport.buildMessage(
             encodedEnvelope: compactEncoded,
-            caption: "ULS STATE rev\(state.rev)",
-            summaryLabel: "STATE rev\(state.rev)",
+            caption: "Unlucky Sevens: Game updated",
+            summaryLabel: "Latest game state is ready.",
             session: MSSession(),
             sessionPolicy: .state(gameId: state.gameId)
         )
@@ -66,8 +67,7 @@ final class CompactStateTransportTests: XCTestCase {
         XCTAssertLessThan(compactPayload.count, try rawJSONString(from: state).count)
         XCTAssertLessThan(compactEncoded.count, 2048)
         XCTAssertLessThan(builtMessage.urlString.count, 2300)
-        XCTAssertEqual(builtMessage.summaryText, "STATE rev\(state.rev)")
-        XCTAssertEqual(builtMessage.mirroredPayloadLength, 0)
+        XCTAssertEqual(builtMessage.summaryText, "Latest game state is ready.")
     }
 
     private func rawJSONString(from state: CoreGameStateV1) throws -> String {
@@ -101,6 +101,10 @@ final class CompactStateTransportTests: XCTestCase {
             stateHash: "",
             roster: roster,
             currentPlayer: "A",
+            playerDisplayNamesByPlayer: [
+                "A": "Host Alpha",
+                "B": "Trader Beta",
+            ],
             phase: .turn,
             seed: seed,
             diceRngState: SeedDeriver(masterSeed: seed).seed(for: .dice),
@@ -229,7 +233,6 @@ final class CompactStateTransportTests: XCTestCase {
                 .buildRoad,
                 .proposeTrade,
                 .acceptTrade,
-                .executeTrade,
                 .buyDevCard,
                 .playKnight,
                 .maritimeTrade,

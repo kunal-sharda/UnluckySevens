@@ -11,8 +11,6 @@ struct BoardContainerView: View {
     let frozenBoardImage: UIImage?
     let reloadToken: Int
     let onInteractionChanged: ((Bool) -> Void)?
-    let onDiagnosticsChanged: ((BoardInteractionDiagnosticsSnapshot) -> Void)?
-    let onGestureEvent: ((HostGestureEvent) -> Void)?
     let onResizeFreezeChanged: ((BoardResizeFreezeState) -> Void)?
     let onFreezeRecoveryReloadRequested: ((String) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
@@ -118,8 +116,6 @@ struct BoardContainerView: View {
                         interactionMode: interactionMode,
                         reloadToken: reloadToken,
                         onInteractionChanged: onInteractionChanged,
-                        onDiagnosticsChanged: onDiagnosticsChanged,
-                        onGestureEvent: onGestureEvent,
                         onResizeFreezeChanged: onResizeFreezeChanged,
                         onFreezeRecoveryReloadRequested: onFreezeRecoveryReloadRequested,
                         onTargetTap: onTargetTap

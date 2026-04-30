@@ -41,20 +41,14 @@ public func encodedByteCount(of envelope: EnvelopeV1) throws -> Int {
 
 private enum CompactEnvelopeKindCode: UInt8 {
     case state = 0x53 // S
-    case intent = 0x49 // I
     case stateCompressed = 0x73 // s
-    case intentCompressed = 0x69 // i
 
     init(kind: EnvelopeV1.Kind, compressed: Bool) {
         switch (kind, compressed) {
         case (.state, false):
             self = .state
-        case (.intent, false):
-            self = .intent
         case (.state, true):
             self = .stateCompressed
-        case (.intent, true):
-            self = .intentCompressed
         }
     }
 
@@ -62,16 +56,14 @@ private enum CompactEnvelopeKindCode: UInt8 {
         switch self {
         case .state, .stateCompressed:
             return .state
-        case .intent, .intentCompressed:
-            return .intent
         }
     }
 
     var compressed: Bool {
         switch self {
-        case .stateCompressed, .intentCompressed:
+        case .stateCompressed:
             return true
-        case .state, .intent:
+        case .state:
             return false
         }
     }
@@ -81,8 +73,6 @@ private func compactEnvelopeData(from envelope: EnvelopeV1) throws -> Data {
     let payload: String
     switch envelope.body {
     case let .state(payloadValue):
-        payload = payloadValue
-    case let .intent(payloadValue):
         payload = payloadValue
     }
 
@@ -102,14 +92,6 @@ private func compactEnvelopeData(from envelope: EnvelopeV1) throws -> Data {
 }
 
 private func decodeEnvelope(from data: Data) throws -> EnvelopeV1 {
-    if let firstByte = data.first, firstByte == 0x7B { // {
-        do {
-            return try JSONDecoder().decode(EnvelopeV1.self, from: data)
-        } catch {
-            throw TransportError.invalidJSON
-        }
-    }
-
     guard data.count >= 2 else {
         throw TransportError.invalidJSON
     }
@@ -136,8 +118,6 @@ private func decodeEnvelope(from data: Data) throws -> EnvelopeV1 {
     switch kind {
     case .state:
         body = .state(payload: payload)
-    case .intent:
-        body = .intent(payload: payload)
     }
 
     return EnvelopeV1(v: version, kind: kind, body: body)

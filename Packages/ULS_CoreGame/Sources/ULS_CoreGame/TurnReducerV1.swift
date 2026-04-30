@@ -14,7 +14,6 @@ public enum TurnIntentV1: Codable, Equatable {
     case acceptTrade(acceptingPlayer: String, offerHash: String)
     case declineTrade(decliningPlayer: String, offerHash: String)
     case counterTrade(counteringPlayer: String, offerHash: String, give: ResourceHandV1, receive: ResourceHandV1)
-    case executeTrade(acceptingPlayer: String, offerHash: String)
     case maritimeTrade(give: ResourceHandV1, receive: ResourceHandV1)
     case buyDevCard
     case playKnight(tileID: Int, victimPlayer: String?)
@@ -105,12 +104,10 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         return responses.allSatisfy { $0.kind == .decline }
     }
 
-    func executeAcceptedTrade(
+    func applyAcceptedTrade(
         offer: TradeOfferV1,
         acceptingPlayer: String,
         offerHash: String,
-        requiresExistingAcceptResponse: Bool,
-        appendAcceptResponse: Bool,
         intent: TurnIntentV1
     ) throws -> CoreGameStateV1 {
         guard offer.offerHash == offerHash else {
@@ -119,16 +116,8 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         guard canTradeRespond(player: acceptingPlayer, offer: offer) else {
             throw CoreGameError.tradeAcceptPlayerInvalid
         }
-        if requiresExistingAcceptResponse {
-            guard state.tradeResponses.contains(where: {
-                $0.respondingPlayer == acceptingPlayer && $0.offerHash == offerHash && $0.kind == .accept
-            }) else {
-                throw CoreGameError.tradeAcceptMissing
-            }
-        } else {
-            guard existingTradeResponse(for: acceptingPlayer) == nil else {
-                throw CoreGameError.tradeAcceptAlreadySubmitted
-            }
+        guard existingTradeResponse(for: acceptingPlayer) == nil else {
+            throw CoreGameError.tradeAcceptAlreadySubmitted
         }
 
         let proposer = state.currentPlayer
@@ -148,16 +137,14 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             offer.give
         )
 
-        let responses = appendAcceptResponse
-            ? state.tradeResponses + [
-                TradeResponseV1(
-                    respondingPlayer: acceptingPlayer,
-                    offerHash: offer.offerHash,
-                    kind: .accept,
-                    respondedAtRev: state.rev + 1
-                )
-            ]
-            : state.tradeResponses
+        let responses = state.tradeResponses + [
+            TradeResponseV1(
+                respondingPlayer: acceptingPlayer,
+                offerHash: offer.offerHash,
+                kind: .accept,
+                respondedAtRev: state.rev + 1
+            )
+        ]
 
         return baseNextTurnState(
             from: state,
@@ -238,6 +225,10 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
 
         guard turnState.submittedDiscardsByPlayer[player] == nil else {
             throw CoreGameError.discardAlreadySubmitted
+        }
+
+        guard nextPendingDiscardPlayer(roster: state.roster, turnState: turnState) == player else {
+            throw CoreGameError.discardSubmissionOutOfOrder
         }
 
         guard discarded.totalCount == requiredCount else {
@@ -570,12 +561,10 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         guard let offer = state.activeTradeOffer else {
             throw CoreGameError.tradeOfferMissing
         }
-        return try executeAcceptedTrade(
+        return try applyAcceptedTrade(
             offer: offer,
             acceptingPlayer: acceptingPlayer,
             offerHash: offerHash,
-            requiresExistingAcceptResponse: false,
-            appendAcceptResponse: true,
             intent: intent
         )
 
@@ -663,22 +652,6 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             turnState: turnState,
             activeTradeOffer: .some(offer),
             tradeResponses: .some(responses)
-        )
-
-    case let .executeTrade(acceptingPlayer, offerHash):
-        guard turnState.step == .afterRoll else {
-            throw CoreGameError.turnStepMismatch
-        }
-        guard let offer = state.activeTradeOffer else {
-            throw CoreGameError.tradeOfferMissing
-        }
-        return try executeAcceptedTrade(
-            offer: offer,
-            acceptingPlayer: acceptingPlayer,
-            offerHash: offerHash,
-            requiresExistingAcceptResponse: true,
-            appendAcceptResponse: false,
-            intent: intent
         )
 
     case let .maritimeTrade(give, receive):
@@ -963,6 +936,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
                 stateHash: workingState.stateHash,
                 roster: workingState.roster,
                 currentPlayer: workingState.currentPlayer,
+                playerDisplayNamesByPlayer: workingState.playerDisplayNamesByPlayer,
                 phase: workingState.phase,
                 seed: workingState.seed,
                 diceRngState: workingState.diceRngState,
@@ -1114,6 +1088,7 @@ private func baseNextTurnState(
         stateHash: "",
         roster: state.roster,
         currentPlayer: currentPlayer,
+        playerDisplayNamesByPlayer: state.playerDisplayNamesByPlayer,
         phase: .turn,
         seed: state.seed,
         diceRngState: diceRngState,
@@ -1164,6 +1139,7 @@ private func stateByApplyingAwards(_ state: CoreGameStateV1, awards: AwardStateV
         stateHash: state.stateHash,
         roster: state.roster,
         currentPlayer: state.currentPlayer,
+        playerDisplayNamesByPlayer: state.playerDisplayNamesByPlayer,
         phase: state.phase,
         seed: state.seed,
         diceRngState: state.diceRngState,
@@ -1220,6 +1196,7 @@ private func stateByApplyingGameOver(
         stateHash: state.stateHash,
         roster: state.roster,
         currentPlayer: winner,
+        playerDisplayNamesByPlayer: state.playerDisplayNamesByPlayer,
         phase: .gameOver,
         seed: state.seed,
         diceRngState: state.diceRngState,
@@ -1276,6 +1253,7 @@ private func stateByAppendingAuditEntry(
         stateHash: next.stateHash,
         roster: next.roster,
         currentPlayer: next.currentPlayer,
+        playerDisplayNamesByPlayer: next.playerDisplayNamesByPlayer,
         phase: next.phase,
         seed: next.seed,
         diceRngState: next.diceRngState,
@@ -1351,8 +1329,6 @@ private func auditAction(for intent: TurnIntentV1) -> AuditActionV1 {
         return .declineTrade
     case .counterTrade:
         return .counterTrade
-    case .executeTrade:
-        return .executeTrade
     case .maritimeTrade:
         return .maritimeTrade
     case .buyDevCard:

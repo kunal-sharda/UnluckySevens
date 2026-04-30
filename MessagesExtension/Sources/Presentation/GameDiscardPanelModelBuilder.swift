@@ -66,7 +66,7 @@ enum GameDiscardPanelModelBuilder {
     }
 
     private static func playerName(_ playerID: String, in state: CoreGameStateV1) -> String {
-        PlayerPseudonymResolver.displayName(for: playerID, gameID: state.gameId, roster: state.roster)
+        PlayerPseudonymResolver.displayName(for: playerID, in: state)
     }
 
     private static func handChips(from hand: ResourceHandV1) -> [GameHandChip] {

@@ -22,7 +22,7 @@ enum GameRobberVictimOptionBuilder {
         return (state.turnState?.eligibleStealVictims ?? []).sorted().map { victim in
             GameRobberVictimOption(
                 playerID: victim,
-                displayName: PlayerPseudonymResolver.displayName(for: victim, gameID: state.gameId, roster: state.roster),
+                displayName: PlayerPseudonymResolver.displayName(for: victim, in: state),
                 handCount: visibleHandCounts[victim] ?? 0
             )
         }

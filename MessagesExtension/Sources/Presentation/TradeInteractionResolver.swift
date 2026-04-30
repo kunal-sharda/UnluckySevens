@@ -1,5 +1,4 @@
 import ULS_CoreGame
-import ULS_Transport
 
 enum TradeInteractionResolver {
     static func draftTradeOfferIntent(
@@ -8,7 +7,7 @@ enum TradeInteractionResolver {
         give: ResourceHandV1,
         receive: ResourceHandV1,
         targetPlayers: [String]
-    ) -> ULS_Transport.TurnIntentV1? {
+    ) -> TurnActionDraft? {
         guard
             let state,
             state.phase == .turn,
@@ -19,14 +18,10 @@ enum TradeInteractionResolver {
             return nil
         }
 
-        return ULS_Transport.TurnIntentV1(
-            proposeTradeGive: transportHand(from: give),
-            receive: transportHand(from: receive),
-            targetPlayers: targetPlayers.sorted(),
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actingAs
+        return TurnActionDraft(
+            intent: .proposeTrade(give: give, receive: receive, recipients: targetPlayers.sorted()),
+            actor: actingAs,
+            state: state
         )
     }
 
@@ -35,7 +30,7 @@ enum TradeInteractionResolver {
         actingAs: String?,
         give: ResourceHandV1,
         receive: ResourceHandV1
-    ) -> ULS_Transport.TurnIntentV1? {
+    ) -> TurnActionDraft? {
         guard
             let state,
             state.phase == .turn,
@@ -46,20 +41,17 @@ enum TradeInteractionResolver {
             return nil
         }
 
-        return ULS_Transport.TurnIntentV1(
-            maritimeTradeGive: transportHand(from: give),
-            receive: transportHand(from: receive),
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actingAs
+        return TurnActionDraft(
+            intent: .maritimeTrade(give: give, receive: receive),
+            actor: actingAs,
+            state: state
         )
     }
 
     static func draftAcceptTradeIntent(
         state: CoreGameStateV1?,
         actingAs: String?
-    ) -> ULS_Transport.TurnIntentV1? {
+    ) -> TurnActionDraft? {
         guard
             let state,
             state.phase == .turn,
@@ -74,20 +66,17 @@ enum TradeInteractionResolver {
             return nil
         }
 
-        return ULS_Transport.TurnIntentV1(
-            acceptTradePlayer: actingAs,
-            offerHash: offer.offerHash,
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actingAs
+        return TurnActionDraft(
+            intent: .acceptTrade(acceptingPlayer: actingAs, offerHash: offer.offerHash),
+            actor: actingAs,
+            state: state
         )
     }
 
     static func draftDeclineTradeIntent(
         state: CoreGameStateV1?,
         actingAs: String?
-    ) -> ULS_Transport.TurnIntentV1? {
+    ) -> TurnActionDraft? {
         guard
             let state,
             state.phase == .turn,
@@ -101,13 +90,10 @@ enum TradeInteractionResolver {
             return nil
         }
 
-        return ULS_Transport.TurnIntentV1(
-            declineTradePlayer: actingAs,
-            offerHash: offer.offerHash,
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actingAs
+        return TurnActionDraft(
+            intent: .declineTrade(decliningPlayer: actingAs, offerHash: offer.offerHash),
+            actor: actingAs,
+            state: state
         )
     }
 
@@ -116,7 +102,7 @@ enum TradeInteractionResolver {
         actingAs: String?,
         give: ResourceHandV1,
         receive: ResourceHandV1
-    ) -> ULS_Transport.TurnIntentV1? {
+    ) -> TurnActionDraft? {
         guard
             let state,
             state.phase == .turn,
@@ -130,25 +116,15 @@ enum TradeInteractionResolver {
             return nil
         }
 
-        return ULS_Transport.TurnIntentV1(
-            counterTradePlayer: actingAs,
-            offerHash: offer.offerHash,
-            counterGive: transportHand(from: give),
-            receive: transportHand(from: receive),
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actingAs
-        )
-    }
-
-    private static func transportHand(from hand: ResourceHandV1) -> TransportResourceHandV1 {
-        TransportResourceHandV1(
-            wood: hand.wood,
-            brick: hand.brick,
-            sheep: hand.sheep,
-            wheat: hand.wheat,
-            ore: hand.ore
+        return TurnActionDraft(
+            intent: .counterTrade(
+                counteringPlayer: actingAs,
+                offerHash: offer.offerHash,
+                give: give,
+                receive: receive
+            ),
+            actor: actingAs,
+            state: state
         )
     }
 

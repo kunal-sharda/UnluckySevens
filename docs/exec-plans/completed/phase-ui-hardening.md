@@ -4,7 +4,7 @@
 
 - Backfilled on 2026-03-12.
 - Confidence: High.
-- Evidence is anchored by commits `b294a21`, `4e490cc`, `bd6ce19`, `1eee9bf`, `68b36f0`, `debc21d`, `4cf8bc1`, `8865f6a`, `17bcbb2`, `f86f297`, and `4c424f3`, plus the `CHANGELOG.md` entries and the current readiness docs.
+- Evidence is anchored by commits `b294a21`, `4e490cc`, `bd6ce19`, `1eee9bf`, `68b36f0`, `debc21d`, `4cf8bc1`, `8865f6a`, `17bcbb2`, `f86f297`, and `4c424f3`, plus the `docs/exec-plans/CHANGELOG.md` entries and the current readiness docs.
 
 ## Canonical Owner Docs
 

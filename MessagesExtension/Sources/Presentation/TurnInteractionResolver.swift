@@ -1,5 +1,4 @@
 import ULS_CoreGame
-import ULS_Transport
 
 enum TurnInteractionResolver {
     static func draftBuildIntent(
@@ -7,7 +6,7 @@ enum TurnInteractionResolver {
         actingAs: String?,
         mode: GameMode,
         target: GameBoardTarget
-    ) -> ULS_Transport.TurnIntentV1? {
+    ) -> TurnActionDraft? {
         guard
             let state,
             state.phase == .turn,
@@ -23,34 +22,28 @@ enum TurnInteractionResolver {
             guard state.legalBuildRoadEdges(for: actingAs).contains(edgeID) else {
                 return nil
             }
-            return ULS_Transport.TurnIntentV1(
-                buildRoadEdgeID: edgeID,
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: actingAs
+            return TurnActionDraft(
+                intent: .buildRoad(edgeID: edgeID),
+                actor: actingAs,
+                state: state
             )
         case let (.buildSettlement, .node(nodeID)):
             guard state.legalBuildSettlementNodes(for: actingAs).contains(nodeID) else {
                 return nil
             }
-            return ULS_Transport.TurnIntentV1(
-                buildSettlementNodeID: nodeID,
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: actingAs
+            return TurnActionDraft(
+                intent: .buildSettlement(nodeID: nodeID),
+                actor: actingAs,
+                state: state
             )
         case let (.buildCity, .node(nodeID)):
             guard state.legalBuildCityNodes(for: actingAs).contains(nodeID) else {
                 return nil
             }
-            return ULS_Transport.TurnIntentV1(
-                buildCityNodeID: nodeID,
-                gameId: state.gameId,
-                anchorRev: state.rev,
-                anchorHash: state.stateHash,
-                actor: actingAs
+            return TurnActionDraft(
+                intent: .buildCity(nodeID: nodeID),
+                actor: actingAs,
+                state: state
             )
         default:
             return nil
@@ -61,7 +54,7 @@ enum TurnInteractionResolver {
         state: CoreGameStateV1?,
         actingAs: String?,
         discarded: ResourceHandV1
-    ) -> ULS_Transport.TurnIntentV1? {
+    ) -> TurnActionDraft? {
         guard
             let state,
             state.phase == .turn,
@@ -86,19 +79,10 @@ enum TurnInteractionResolver {
             return nil
         }
 
-        return ULS_Transport.TurnIntentV1(
-            submitDiscardFor: actingAs,
-            discarded: TransportResourceHandV1(
-                wood: discarded.wood,
-                brick: discarded.brick,
-                sheep: discarded.sheep,
-                wheat: discarded.wheat,
-                ore: discarded.ore
-            ),
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actingAs
+        return TurnActionDraft(
+            intent: .submitDiscard(player: actingAs, discarded: discarded),
+            actor: actingAs,
+            state: state
         )
     }
 
@@ -106,7 +90,7 @@ enum TurnInteractionResolver {
         state: CoreGameStateV1?,
         actingAs: String?,
         target: GameBoardTarget
-    ) -> ULS_Transport.TurnIntentV1? {
+    ) -> TurnActionDraft? {
         guard
             let state,
             state.phase == .turn,
@@ -124,12 +108,10 @@ enum TurnInteractionResolver {
             return nil
         }
 
-        return ULS_Transport.TurnIntentV1(
-            moveRobberTileID: tileID,
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actingAs
+        return TurnActionDraft(
+            intent: .moveRobber(tileID: tileID),
+            actor: actingAs,
+            state: state
         )
     }
 
@@ -137,7 +119,7 @@ enum TurnInteractionResolver {
         state: CoreGameStateV1?,
         actingAs: String?,
         target: GameBoardTarget
-    ) -> ULS_Transport.TurnIntentV1? {
+    ) -> TurnActionDraft? {
         guard
             let state,
             state.phase == .turn,
@@ -169,7 +151,7 @@ enum TurnInteractionResolver {
         state: CoreGameStateV1?,
         actingAs: String?,
         victimPlayer: String
-    ) -> ULS_Transport.TurnIntentV1? {
+    ) -> TurnActionDraft? {
         guard
             let state,
             state.phase == .turn,
@@ -181,12 +163,10 @@ enum TurnInteractionResolver {
             return nil
         }
 
-        return ULS_Transport.TurnIntentV1(
-            selectStealVictimPlayer: victimPlayer,
-            gameId: state.gameId,
-            anchorRev: state.rev,
-            anchorHash: state.stateHash,
-            actor: actingAs
+        return TurnActionDraft(
+            intent: .selectStealVictim(victimPlayer: victimPlayer),
+            actor: actingAs,
+            state: state
         )
     }
 }

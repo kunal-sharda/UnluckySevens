@@ -45,7 +45,7 @@ struct GameModalHostView: View {
         if let boardCommitDraft {
             boardCommitContent(boardCommitDraft)
         } else {
-            legacyBodyContent(for: mode, fallbackMessage: fallbackMessage)
+            modeBodyContent(for: mode, fallbackMessage: fallbackMessage)
         }
     }
 
@@ -77,7 +77,7 @@ struct GameModalHostView: View {
     }
 
     @ViewBuilder
-    private func legacyBodyContent(for mode: GameMode, fallbackMessage: String) -> some View {
+    private func modeBodyContent(for mode: GameMode, fallbackMessage: String) -> some View {
         switch mode {
         case .discard:
             discardContent(fallbackMessage: fallbackMessage)

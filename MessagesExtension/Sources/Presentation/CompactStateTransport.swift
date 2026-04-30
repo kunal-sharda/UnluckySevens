@@ -76,7 +76,6 @@ private enum CompactStateCodec {
         case .acceptTrade: return 8
         case .declineTrade: return 9
         case .counterTrade: return 10
-        case .executeTrade: return 11
         case .maritimeTrade: return 12
         case .buyDevCard: return 13
         case .playKnight: return 14
@@ -101,7 +100,6 @@ private enum CompactStateCodec {
         case 8: return .acceptTrade
         case 9: return .declineTrade
         case 10: return .counterTrade
-        case 11: return .executeTrade
         case 12: return .maritimeTrade
         case 13: return .buyDevCard
         case 14: return .playKnight
@@ -643,6 +641,7 @@ private struct CompactStateTransportV1: Codable, Equatable {
     let prevHash: String?
     let stateHash: String
     let roster: [String]
+    let playerDisplayNames: [String?]?
     let currentPlayerIndex: Int
     let phaseCode: Int
     let seed: UInt64?
@@ -682,6 +681,8 @@ private struct CompactStateTransportV1: Codable, Equatable {
         prevHash = state.prevHash
         stateHash = state.stateHash
         roster = state.roster
+        let compactPlayerDisplayNames = state.roster.map { state.playerDisplayNamesByPlayer[$0] }
+        playerDisplayNames = compactPlayerDisplayNames.contains(where: { $0 != nil }) ? compactPlayerDisplayNames : nil
         currentPlayerIndex = try CompactStateCodec.index(for: state.currentPlayer, in: rosterIndexMap)
         phaseCode = CompactStateCodec.encodePhase(state.phase)
         seed = state.seed
@@ -724,6 +725,7 @@ private struct CompactStateTransportV1: Codable, Equatable {
         var newDevCardsByPlayer: [String: DevCardInventoryV1] = [:]
         var revealedVictoryPointsByPlayer: [String: Int] = [:]
         var knightsPlayedByPlayer: [String: Int] = [:]
+        var playerDisplayNamesByPlayer: [String: String] = [:]
 
         for (index, player) in roster.enumerated() {
             resourcesByPlayer[player] = resourcesByPlayerValue(at: index)
@@ -731,6 +733,9 @@ private struct CompactStateTransportV1: Codable, Equatable {
             newDevCardsByPlayer[player] = newDevCardsValue(at: index)
             revealedVictoryPointsByPlayer[player] = revealedVictoryPointsValue(at: index)
             knightsPlayedByPlayer[player] = knightsPlayedValue(at: index)
+            if let displayName = playerDisplayNameValue(at: index) {
+                playerDisplayNamesByPlayer[player] = displayName
+            }
         }
 
         return CoreGameStateV1(
@@ -740,6 +745,7 @@ private struct CompactStateTransportV1: Codable, Equatable {
             stateHash: stateHash,
             roster: roster,
             currentPlayer: try CompactStateCodec.player(at: currentPlayerIndex, in: roster),
+            playerDisplayNamesByPlayer: playerDisplayNamesByPlayer,
             phase: try CompactStateCodec.decodePhase(phaseCode),
             seed: seed,
             diceRngState: diceRngState,
@@ -777,6 +783,13 @@ private struct CompactStateTransportV1: Codable, Equatable {
             return .zero
         }
         return resourcesByPlayer[index].rehydrated()
+    }
+
+    private func playerDisplayNameValue(at index: Int) -> String? {
+        guard let playerDisplayNames, playerDisplayNames.indices.contains(index) else {
+            return nil
+        }
+        return playerDisplayNames[index]
     }
 
     private func devCardsValue(at index: Int) -> DevCardInventoryV1 {
@@ -866,6 +879,7 @@ private struct CompactStateTransportV1: Codable, Equatable {
         case prevHash = "p"
         case stateHash = "h"
         case roster = "o"
+        case playerDisplayNames = "N"
         case currentPlayerIndex = "c"
         case phaseCode = "x"
         case seed = "s"

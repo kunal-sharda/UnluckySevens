@@ -12,7 +12,7 @@ final class GameBoardTargetTests: XCTestCase {
         XCTAssertEqual(GameBoardTarget.tile(2).selectionLabel(for: .robberMove), "Robber tile selected")
     }
 
-    func testSelectionLabelsFallBackToDebugLabelsOutsideBoardFlows() {
+    func testSelectionLabelsFallBackToIdentifierLabelsOutsideBoardFlows() {
         XCTAssertEqual(GameBoardTarget.node(3).selectionLabel(for: .trade), "Node 3")
         XCTAssertEqual(GameBoardTarget.edge(4).selectionLabel(for: .idle), "Edge 4")
         XCTAssertEqual(GameBoardTarget.tile(2).selectionLabel(for: .idle), "Tile 2")

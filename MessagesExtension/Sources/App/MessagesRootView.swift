@@ -18,10 +18,5 @@ struct MessagesRootView: View {
         .overlay(alignment: .topLeading) {
             ActiveGamesOverlayView(viewModel: viewModel)
         }
-        .overlay(alignment: .topTrailing) {
-            if viewModel.shouldShowTemporaryDiagnosticsOverlay {
-                TemporaryDiagnosticsOverlayView(viewModel: viewModel)
-            }
-        }
     }
 }

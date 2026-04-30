@@ -3,13 +3,11 @@ import Foundation
 public struct EnvelopeV1: Codable, Equatable {
     public enum Kind: String, Codable, Equatable {
         case state = "STATE"
-        case intent = "INTENT"
     }
 
     public enum Body: Codable, Equatable {
         private enum CodingKeys: String, CodingKey {
             case state
-            case intent
         }
 
         private struct PayloadContainer: Codable, Equatable {
@@ -17,15 +15,9 @@ public struct EnvelopeV1: Codable, Equatable {
         }
 
         case state(payload: String)
-        case intent(payload: String)
 
         var kind: Kind {
-            switch self {
-            case .state:
-                return .state
-            case .intent:
-                return .intent
-            }
+            .state
         }
 
         public init(from decoder: Decoder) throws {
@@ -36,15 +28,10 @@ public struct EnvelopeV1: Codable, Equatable {
                 return
             }
 
-            if let intentPayload = try container.decodeIfPresent(PayloadContainer.self, forKey: .intent) {
-                self = .intent(payload: intentPayload.payload)
-                return
-            }
-
             throw DecodingError.dataCorruptedError(
                 forKey: .state,
                 in: container,
-                debugDescription: "Envelope body must contain state or intent payload."
+                debugDescription: "Envelope body must contain a state payload."
             )
         }
 
@@ -54,8 +41,6 @@ public struct EnvelopeV1: Codable, Equatable {
             switch self {
             case let .state(payload):
                 try container.encode(PayloadContainer(payload: payload), forKey: .state)
-            case let .intent(payload):
-                try container.encode(PayloadContainer(payload: payload), forKey: .intent)
             }
         }
     }
