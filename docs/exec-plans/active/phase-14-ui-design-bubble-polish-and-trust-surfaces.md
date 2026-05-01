@@ -5,11 +5,11 @@
 Phase 14 starts by tightening the two most visible trust surfaces in the shipped flow:
 
 - transcript bubble copy should read like a product message, not a transport/debug artifact
-- key transcript bubbles should show presentation-only snapshots so the thread reads like a game, not a log
+- key transcript bubbles should show polished presentation-only graphics so the thread reads like a game, not a log
 - players should be able to set a custom display name during lobby setup instead of being locked to aliases
 - the pre-TestFlight branch should stop carrying dev-only legacy transcript/runtime handling and shipped debug UI
 
-Success for this slice means fresh lobby/setup/turn bubbles use `Unlucky Sevens: <descriptive title>` plus a short human-readable summary, setup/turn/game-over state bubbles can carry board-backed presentation snapshots, lobby-entered names persist through canonical state, transport round-trips, and the transition into gameplay, and the local player’s preferred lobby name prefills future invite/join flows on the same device.
+Success for this slice means fresh lobby/setup/turn bubbles use `Unlucky Sevens: <descriptive title>` plus a short human-readable summary, setup/turn/game-over state bubbles can carry concise action-card graphics, lobby-entered names persist through canonical state, transport round-trips, and the transition into gameplay, and the local player’s preferred lobby name prefills future invite/join flows on the same device.
 
 ## Starting State
 
@@ -45,7 +45,8 @@ User-visible result:
 
 - Lobby, setup, and gameplay transcript bubbles use product copy with a stable `Unlucky Sevens:` prefix and short summaries that describe the most recent move or phase change.
 - The first lobby invite can include a deterministic programmatic Unlucky Sevens invite graphic; later join/name-update lobby bubbles stay text-only.
-- Setup, turn, and game-over state bubbles can include a board snapshot with a concise status band that mirrors the bubble copy.
+- Setup, turn, and game-over state bubbles can include concise action-card graphics keyed by move type.
+- The live board remains inside the expanded app; transcript bubbles should not attempt to thumbnail the full board state.
 - A player can set or update their display name while in the lobby. Joiners may carry that name into their join publish, and joined players may update it later from the lobby.
 - The local player's most recent lobby name is remembered on that device and prefills later invite/join drafts until the player changes it again.
 - Gameplay surfaces prefer the custom name when present and fall back to deterministic aliases otherwise.
@@ -90,8 +91,8 @@ Acceptance boundary:
    - compact control accessibility labels
 10. Add presentation-only transcript bubble images:
    - branded programmatic lobby invite graphic for the first invite bubble
-   - board snapshot plus status band for start/setup/turn/game-over state bubbles
-   - text-only fallback when snapshot rendering is unavailable
+   - concise action-card graphics for start/setup/turn/game-over state bubbles
+   - text-only fallback when image rendering is unavailable
 
 ## Validation
 
@@ -125,7 +126,7 @@ Latest transport-draft cleanup validation:
 - `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`
 - `git diff --check`
 
-Latest bubble-snapshot validation:
+Latest bubble-graphic validation:
 
 - `bash ./scripts/gen.sh`
 - `swift test --package-path Packages/ULS_Transport`
@@ -152,7 +153,8 @@ Latest bubble-snapshot validation:
 - [x] AGENTS.md now explicitly includes itself in kept-current docs and requires a doc-freshness pass before completion
 - [x] Transport-layer turn draft DTO removed; Messages now drafts core turn actions through `TurnActionDraft`
 - [x] Obsolete summary-payload mirror residue removed from transcript message metadata
-- [x] Presentation-only lobby invite and board/status bubble snapshots added with text-only fallback
+- [x] Presentation-only lobby invite and action-card bubble graphics added with text-only fallback
+- [x] Temporary generated `7` app icon added through the app asset catalog
 
 ## Decisions and Discoveries
 
@@ -169,9 +171,10 @@ Latest bubble-snapshot validation:
 - Turn actions are no longer authored as `ULS_Transport` payloads internally. Messages uses `TurnActionDraft` for actor/anchor metadata and core `TurnIntentV1` for reducer semantics, then publishes canonical `STATE`.
 - `randomV1` remains protocol-supported for already-persisted state and focused tests, but it is no longer the default first-beta product path.
 - Only phase 14 should remain in `docs/exec-plans/active/`; phase 12 and phase 13 are now completed/historical records.
-- Transcript bubble snapshots are presentation-only. `MSMessage.url` remains the only decode surface, and failed image rendering intentionally falls back to the same caption/summary text bubble.
+- Transcript bubble graphics are presentation-only. `MSMessage.url` remains the only decode surface, and failed image rendering intentionally falls back to the same caption/summary text bubble.
 - Lobby join and lobby name-update publishes remain text-only so the transcript does not become visually noisy during roster edits.
+- Full board thumbnails were intentionally replaced by per-action graphics because the board is too dense to read well inside an iMessage bubble.
 
 ## Outcome
 
-This transcript-copy, snapshot-backed bubble presentation, canonical lobby-naming, local preferred-name prefill, one-step trade-resolution cleanup, ordered-discard hardening, pre-TestFlight runtime/debug purge, repo cleanup, and basic feature audit slice is complete. Phase 14 remains active for broader UI/bubble polish beyond this slice.
+This transcript-copy, action-graphic bubble presentation, temporary app-icon, canonical lobby-naming, local preferred-name prefill, one-step trade-resolution cleanup, ordered-discard hardening, pre-TestFlight runtime/debug purge, repo cleanup, and basic feature audit slice is complete. Phase 14 remains active for broader UI/bubble polish beyond this slice.

@@ -28,19 +28,18 @@ final class TranscriptBubbleCopyTests: XCTestCase {
         XCTAssertEqual(renameCopy.visual, .none)
     }
 
-    func testStartGameUsesBoardVisual() throws {
+    func testStartGameUsesActionVisual() throws {
         let fromState = makeLobbyState(roster: ["A", "B"], customNames: [:])
         let toState = makeSetupState()
 
         let copy = TranscriptBubbleCopyBuilder.startGame(from: fromState, to: toState)
 
-        let visual = try XCTUnwrap(boardVisual(from: copy))
+        let visual = try XCTUnwrap(actionVisual(from: copy))
         XCTAssertEqual(visual.title, "Game Started")
-        XCTAssertEqual(visual.detail, "2 players are entering setup.")
-        XCTAssertEqual(visual.state.phase, .setup)
+        XCTAssertEqual(visual.kind, .gameStarted)
     }
 
-    func testSetupIntentUsesBoardVisual() throws {
+    func testSetupIntentUsesActionVisual() throws {
         let state = makeSetupState()
 
         let copy = TranscriptBubbleCopyBuilder.setupIntent(
@@ -49,9 +48,9 @@ final class TranscriptBubbleCopyTests: XCTestCase {
             actor: "A"
         )
 
-        let visual = try XCTUnwrap(boardVisual(from: copy))
+        let visual = try XCTUnwrap(actionVisual(from: copy))
         XCTAssertEqual(visual.title, "Settlement Placed")
-        XCTAssertEqual(visual.state.phase, .setup)
+        XCTAssertEqual(visual.kind, .setupSettlement)
     }
 
     func testTurnEndUsesNextPlayerSummary() {
@@ -62,10 +61,10 @@ final class TranscriptBubbleCopyTests: XCTestCase {
 
         XCTAssertEqual(copy.caption, "Unlucky Sevens: Turn Ended")
         XCTAssertEqual(copy.summary, "Next turn: Kunal.")
-        XCTAssertNotNil(boardVisual(from: copy))
+        XCTAssertEqual(actionVisual(from: copy)?.kind, .endTurn)
     }
 
-    func testGameOverUsesBoardVisual() throws {
+    func testGameOverUsesActionVisual() throws {
         let state = makeTurnState(
             currentPlayer: "A",
             customNames: ["A": "Avery"],
@@ -77,10 +76,10 @@ final class TranscriptBubbleCopyTests: XCTestCase {
 
         let copy = TranscriptBubbleCopyBuilder.turnIntent(.endTurn, actor: "A", resultingState: state)
 
-        let visual = try XCTUnwrap(boardVisual(from: copy))
+        let visual = try XCTUnwrap(actionVisual(from: copy))
         XCTAssertEqual(copy.caption, "Unlucky Sevens: Avery Wins")
         XCTAssertEqual(visual.title, "Avery Wins")
-        XCTAssertEqual(visual.state.phase, .gameOver)
+        XCTAssertEqual(visual.kind, .gameOver)
     }
 
     private func makeLobbyState(
@@ -161,8 +160,8 @@ final class TranscriptBubbleCopyTests: XCTestCase {
         ).rehashed()
     }
 
-    private func boardVisual(from copy: TranscriptBubbleCopy) -> TranscriptBoardBubbleVisual? {
-        guard case let .board(visual) = copy.visual else {
+    private func actionVisual(from copy: TranscriptBubbleCopy) -> TranscriptActionBubbleVisual? {
+        guard case let .action(visual) = copy.visual else {
             return nil
         }
         return visual

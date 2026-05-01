@@ -35,7 +35,7 @@ Run these validation commands serially. Do not run `swift test` or `xcodebuild` 
   - run the Real Device Lobby Smoke checklist
 - Any transcript-selection, bubble, session, or context-handling change:
   - run the full Practical Gate
-  - include focused `MessagesExtensionTests` coverage for transcript transport, bubble copy, and snapshot renderers when bubble presentation changes
+  - include focused `MessagesExtensionTests` coverage for transcript transport, bubble copy, and bubble image renderers when bubble presentation changes
   - run the Manual Simulator Runbook context check
   - run the Real Device Messages Lifecycle checklist
 - Any same-bubble recovery, board responsiveness, or setup-road interaction change:
@@ -605,7 +605,7 @@ Run this after any lobby join/start UX change.
 11. From device B, open the start `STATE` and confirm the extension resolves the new setup context cleanly.
 12. Confirm the fresh invite, join, rename, and start bubbles all use descriptive product copy instead of revision/debug text.
 13. Confirm the first invite bubble shows the branded Unlucky Sevens invite image, while join and rename bubbles remain text-only.
-14. Confirm the start bubble shows a board/status snapshot when the board exists.
+14. Confirm the start bubble shows a concise action-card graphic rather than a full board thumbnail.
 15. On both devices, if the thread now contains more than one recoverable game or stale lobby context, confirm the compact `Game` / `Games` recovery chip opens the correct latest known lobby or game context without requiring transcript hunting.
 
 ### Real Device Messages Lifecycle
@@ -634,7 +634,7 @@ Run this after any action-flow change that affects turns, trades, robber, or dev
    - `Roll pending` before the active player rolls
    - `Roll: <d1> + <d2> = <total>` after the active player rolls
 6. Confirm fresh turn/setup bubbles use `Unlucky Sevens: <descriptive title>` copy with a short human-readable summary instead of `ULS STATE` or revision text.
-7. Confirm setup, roll/build/trade/robber/end-turn, and game-over bubbles show a board/status snapshot when the board exists.
+7. Confirm setup, roll/build/trade/robber/end-turn, and game-over bubbles show concise action-card graphics with minimal in-image words.
 8. Reopen/select old bubbles and confirm payload still decodes from the URL-backed state, not from image or display text.
 9. Confirm no bubble or context step silently drops during cross-device play.
 
@@ -754,7 +754,7 @@ Run this after any change to product authority, board responsiveness, or setup-r
 ## Remaining High-Value Gaps
 
 - no automated transcript-level Messages UI checks yet
-- snapshot regression substrate exists, but visual assertions are still size/non-empty checks rather than golden image diffs
+- bubble image assertions are still size/non-empty checks rather than golden image diffs
 - no automated real-device lane; hardware validation is still manual
 
 ## Manual Simulator Runbook

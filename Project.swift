@@ -2,6 +2,9 @@ import Foundation
 import ProjectDescription
 
 let localSigningXcconfigPath = "Config/LocalSigning.xcconfig"
+let appIconSettings: SettingsDictionary = [
+    "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+]
 let localSigningSettings: Settings? = {
     let absolutePath = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         .appendingPathComponent(localSigningXcconfigPath)
@@ -12,6 +15,30 @@ let localSigningSettings: Settings? = {
     }
 
     return .settings(
+        configurations: [
+            .debug(
+                name: "Debug",
+                xcconfig: .relativeToRoot(localSigningXcconfigPath)
+            ),
+            .release(
+                name: "Release",
+                xcconfig: .relativeToRoot(localSigningXcconfigPath)
+            ),
+        ],
+        defaultSettings: .recommended
+    )
+}()
+let appTargetSettings: Settings = {
+    let absolutePath = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+        .appendingPathComponent(localSigningXcconfigPath)
+        .path
+
+    guard FileManager.default.fileExists(atPath: absolutePath) else {
+        return .settings(base: appIconSettings, defaultSettings: .recommended)
+    }
+
+    return .settings(
+        base: appIconSettings,
         configurations: [
             .debug(
                 name: "Debug",
@@ -42,14 +69,16 @@ let project = Project(
             infoPlist: .extendingDefault(
                 with: [
                     "CFBundleDisplayName": .string("Unlucky Sevens"),
+                    "CFBundleIconName": .string("AppIcon"),
                     "UILaunchScreen": .dictionary([:]),
                 ]
             ),
             sources: ["App/Sources/**"],
+            resources: ["App/Resources/**"],
             dependencies: [
                 .target(name: "MessagesExtension")
             ],
-            settings: localSigningSettings
+            settings: appTargetSettings
         ),
         .target(
             name: "MessagesExtension",

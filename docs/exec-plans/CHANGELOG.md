@@ -12,12 +12,14 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 ### Changed
 - Pre-TestFlight cleanup replaced the Messages transport action draft DTO path with `TurnActionDraft`, which wraps core reducer intents with actor and state-anchor metadata before publishing canonical `STATE`.
 - Transcript bubble publication now treats `MSMessageTemplateLayout.image` as an optional readability layer while keeping caption, summary text, and URL payload as the reliable transport surface; join and name-update lobby bubbles remain text-only.
+- Bubble visuals now use concise per-action graphics instead of full board thumbnails, keeping the board inside the expanded game surface where it remains readable.
 
 ### Removed
 - Removed `ULS_Transport.TurnIntentV1`, transport resource/dev-card action draft helpers, obsolete action-draft transport tests, and the unused summary-payload mirror length field.
 
 ### Added
-- Pre-TestFlight transcript bubbles can attach presentation-only images: a deterministic programmatic lobby invite graphic for the first invite, and board/status snapshots for setup, turn, and game-over `STATE` publishes.
+- Pre-TestFlight transcript bubbles can attach presentation-only images: a deterministic programmatic lobby invite graphic for the first invite, and action-card graphics for setup, turn, and game-over `STATE` publishes.
+- Temporary generated `7` app icon assets for the containing app.
 - Stage 0.A bootstrap scaffolding for `Tuist/`, `App/`, `MessagesExtension/`, `Packages/`, and `scripts/`.
 - Stage 0.A developer scripts: `scripts/gen.sh` and `scripts/clean.sh`.
 - Stage 0.A repository baseline files: `.gitignore`, `README.md`, and `Makefile`.
