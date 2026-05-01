@@ -133,6 +133,10 @@ This document summarizes the player-facing flows the UI must support in the curr
 
 - The transcript bubble should carry enough information to understand the current moment at a glance.
 - Fresh transcript bubbles should use product copy in the form `Unlucky Sevens: <descriptive title>` plus a short summary of the latest lobby, setup, or turn change.
+- The first lobby invite bubble may include a branded programmatic Unlucky Sevens image so the thread reads as an invitation before anyone joins.
+- Lobby join and lobby name-update bubbles should stay text-only to avoid noisy roster-edit snapshots.
+- Setup, turn, and game-over `STATE` bubbles may include a board snapshot with a compact status band that mirrors the bubble title and summary. The image is presentation only; the canonical state must still decode from the URL payload.
+- If snapshot rendering is unavailable, publishing should still send the same caption and summary as a text-only bubble.
 - The expanded Messages view should remain the place for richer actions and board interaction.
 - The primary shell status language should stay compact and direct:
   - `Your turn`

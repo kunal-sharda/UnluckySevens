@@ -1847,10 +1847,12 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         let encodedEnvelope = try encode(envelope)
+        let bubbleImage = TranscriptBubbleImageRenderer.render(visual: bubbleCopy.visual)
         let builtMessage = try TranscriptTransportSupport.buildMessage(
             encodedEnvelope: encodedEnvelope,
             caption: bubbleCopy.caption,
             summaryLabel: bubbleCopy.summary,
+            image: bubbleImage,
             session: session(for: sessionPolicy),
             sessionPolicy: sessionPolicy
         )

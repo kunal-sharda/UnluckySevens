@@ -1,4 +1,5 @@
 import Messages
+import UIKit
 import XCTest
 @testable import MessagesExtension
 
@@ -29,6 +30,27 @@ final class TranscriptTransportSupportTests: XCTestCase {
         XCTAssertEqual(builtMessage.payloadLength, encodedEnvelope.count)
         XCTAssertEqual(builtMessage.sessionPolicy, .state(gameId: "game-1"))
         XCTAssertEqual(builtMessage.summaryText, "Alex built a road.")
+        XCTAssertNil((builtMessage.message.layout as? MSMessageTemplateLayout)?.image)
+    }
+
+    func testBuildMessageSetsImageWhenProvided() throws {
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 24, height: 16)).image { _ in
+            UIColor.red.setFill()
+            UIRectFill(CGRect(x: 0, y: 0, width: 24, height: 16))
+        }
+
+        let builtMessage = try TranscriptTransportSupport.buildMessage(
+            encodedEnvelope: "encoded-payload",
+            caption: "Unlucky Sevens: Game Started",
+            summaryLabel: "4 players are entering setup.",
+            image: image,
+            session: MSSession(),
+            sessionPolicy: .state(gameId: "game-1")
+        )
+
+        let layout = try XCTUnwrap(builtMessage.message.layout as? MSMessageTemplateLayout)
+        XCTAssertEqual(layout.image?.size.width ?? 0, 24, accuracy: 0.5)
+        XCTAssertEqual(layout.image?.size.height ?? 0, 16, accuracy: 0.5)
     }
 
     func testDecodePayloadReadsURLQuery() {

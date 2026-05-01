@@ -5,10 +5,11 @@
 Phase 14 starts by tightening the two most visible trust surfaces in the shipped flow:
 
 - transcript bubble copy should read like a product message, not a transport/debug artifact
+- key transcript bubbles should show presentation-only snapshots so the thread reads like a game, not a log
 - players should be able to set a custom display name during lobby setup instead of being locked to aliases
 - the pre-TestFlight branch should stop carrying dev-only legacy transcript/runtime handling and shipped debug UI
 
-Success for this slice means fresh lobby/setup/turn bubbles use `Unlucky Sevens: <descriptive title>` plus a short human-readable summary, lobby-entered names persist through canonical state, transport round-trips, and the transition into gameplay, and the local player’s preferred lobby name prefills future invite/join flows on the same device.
+Success for this slice means fresh lobby/setup/turn bubbles use `Unlucky Sevens: <descriptive title>` plus a short human-readable summary, setup/turn/game-over state bubbles can carry board-backed presentation snapshots, lobby-entered names persist through canonical state, transport round-trips, and the transition into gameplay, and the local player’s preferred lobby name prefills future invite/join flows on the same device.
 
 ## Starting State
 
@@ -27,6 +28,7 @@ This slice does not depend on a new unstable Apple contract. It builds on the al
 
 - `MSMessage.url` remains the only canonical payload carrier.
 - Bubble copy is presentation metadata only (`MSMessageTemplateLayout.caption`, `MSMessage.summaryText`) and does not affect payload delivery.
+- Bubble images are presentation metadata only (`MSMessageTemplateLayout.image`) and must fail soft to text-only publication.
 - Canonical player naming must live inside `CoreGameStateV1` and compact state transport to survive transcript round-trips.
 
 Disproof test:
@@ -42,6 +44,8 @@ Fallback:
 User-visible result:
 
 - Lobby, setup, and gameplay transcript bubbles use product copy with a stable `Unlucky Sevens:` prefix and short summaries that describe the most recent move or phase change.
+- The first lobby invite can include a deterministic programmatic Unlucky Sevens invite graphic; later join/name-update lobby bubbles stay text-only.
+- Setup, turn, and game-over state bubbles can include a board snapshot with a concise status band that mirrors the bubble copy.
 - A player can set or update their display name while in the lobby. Joiners may carry that name into their join publish, and joined players may update it later from the lobby.
 - The local player's most recent lobby name is remembered on that device and prefills later invite/join drafts until the player changes it again.
 - Gameplay surfaces prefer the custom name when present and fall back to deterministic aliases otherwise.
@@ -59,6 +63,7 @@ Acceptance boundary:
 - Name changes survive join/start/reopen/device handoff.
 - Preferred-name prefill survives opening a new lobby on the same device.
 - Bubble copy no longer exposes debug revision text in fresh product flows.
+- Bubble image rendering never blocks gameplay publication; payload decode remains URL-only.
 
 ## Implementation Plan
 
@@ -83,6 +88,10 @@ Acceptance boundary:
    - balanced-board defaults
    - board highlighting feel
    - compact control accessibility labels
+10. Add presentation-only transcript bubble images:
+   - branded programmatic lobby invite graphic for the first invite bubble
+   - board snapshot plus status band for start/setup/turn/game-over state bubbles
+   - text-only fallback when snapshot rendering is unavailable
 
 ## Validation
 
@@ -116,6 +125,13 @@ Latest transport-draft cleanup validation:
 - `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`
 - `git diff --check`
 
+Latest bubble-snapshot validation:
+
+- `bash ./scripts/gen.sh`
+- `swift test --package-path Packages/ULS_Transport`
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`
+- Focused simulator tests for `TranscriptTransportSupportTests`, `TranscriptBubbleCopyTests`, and `TranscriptBubbleImageRendererTests` should be run on a simulator-capable machine before external TestFlight handoff.
+
 ## Progress
 
 - [x] Canonical name state/transport landed
@@ -136,6 +152,7 @@ Latest transport-draft cleanup validation:
 - [x] AGENTS.md now explicitly includes itself in kept-current docs and requires a doc-freshness pass before completion
 - [x] Transport-layer turn draft DTO removed; Messages now drafts core turn actions through `TurnActionDraft`
 - [x] Obsolete summary-payload mirror residue removed from transcript message metadata
+- [x] Presentation-only lobby invite and board/status bubble snapshots added with text-only fallback
 
 ## Decisions and Discoveries
 
@@ -152,7 +169,9 @@ Latest transport-draft cleanup validation:
 - Turn actions are no longer authored as `ULS_Transport` payloads internally. Messages uses `TurnActionDraft` for actor/anchor metadata and core `TurnIntentV1` for reducer semantics, then publishes canonical `STATE`.
 - `randomV1` remains protocol-supported for already-persisted state and focused tests, but it is no longer the default first-beta product path.
 - Only phase 14 should remain in `docs/exec-plans/active/`; phase 12 and phase 13 are now completed/historical records.
+- Transcript bubble snapshots are presentation-only. `MSMessage.url` remains the only decode surface, and failed image rendering intentionally falls back to the same caption/summary text bubble.
+- Lobby join and lobby name-update publishes remain text-only so the transcript does not become visually noisy during roster edits.
 
 ## Outcome
 
-This transcript-copy, canonical lobby-naming, local preferred-name prefill, one-step trade-resolution cleanup, ordered-discard hardening, pre-TestFlight runtime/debug purge, repo cleanup, and basic feature audit slice is complete. Phase 14 remains active for broader UI/bubble polish beyond this slice.
+This transcript-copy, snapshot-backed bubble presentation, canonical lobby-naming, local preferred-name prefill, one-step trade-resolution cleanup, ordered-discard hardening, pre-TestFlight runtime/debug purge, repo cleanup, and basic feature audit slice is complete. Phase 14 remains active for broader UI/bubble polish beyond this slice.

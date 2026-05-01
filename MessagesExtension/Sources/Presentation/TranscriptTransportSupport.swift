@@ -1,5 +1,6 @@
 import Foundation
 import Messages
+import UIKit
 
 enum TranscriptSessionPolicy: Equatable {
     case new
@@ -106,6 +107,7 @@ enum TranscriptTransportSupport {
         encodedEnvelope: String,
         caption: String,
         summaryLabel: String,
+        image: UIImage? = nil,
         session: MSSession,
         sessionPolicy: TranscriptSessionPolicy
     ) throws -> TranscriptBuiltMessage {
@@ -125,6 +127,7 @@ enum TranscriptTransportSupport {
 
         let layout = MSMessageTemplateLayout()
         layout.caption = caption
+        layout.image = image
         message.layout = layout
 
         message.summaryText = summaryLabel
