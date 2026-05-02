@@ -3,7 +3,7 @@
 This file records **locked product + architecture decisions** for the MVP.  
 If a change is desired, update this file **first**, then update code/tests.
 
-**Last updated:** 2026-04-23
+**Last updated:** 2026-05-01
 
 ---
 
@@ -13,7 +13,7 @@ If a change is desired, update this file **first**, then update code/tests.
 - No custom “twists” or house rules in MVP (twists come later).
 - Platform: iOS + iPadOS (Messages).
 - Product distribution target: **standalone iMessage app**.
-- The current repo may still carry a minimal containing-app shell for development or transitional project-shape reasons, but the intended shipped product is **only accessible within Messages**.
+- The shipped/generated app target is resource-only and patched after Tuist generation to Apple's standalone Messages-only product type (`com.apple.product-type.application.messages`). The playable surface remains **only accessible within Messages**.
 
 ---
 

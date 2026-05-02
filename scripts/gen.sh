@@ -33,3 +33,5 @@ if (( OPEN_XCODE > 0 )); then
 else
   tuist generate --no-open
 fi
+
+bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/scripts/patch-standalone-imessage-project.sh"

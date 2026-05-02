@@ -11,6 +11,7 @@ bash ./scripts/gen.sh
 swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals
 swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals
 swift test --package-path Packages/ULS_Transport
+xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevensApp -configuration Debug -destination 'generic/platform=iOS' -derivedDataPath DerivedData/MessagesOnlyValidation CODE_SIGNING_ALLOWED=NO build
 xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build
 xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' test
 ```
@@ -555,7 +556,7 @@ Treat this matrix as the baseline for async gameplay validation.
 
 Run this after shell, layout, presentation, or mode-system changes.
 
-1. Install the current development build on both devices. In the current repo shape this may still happen through the minimal containing-app shell, but the intended product surface is the Messages app drawer.
+1. Install the current development build on both devices. The local install pipeline builds the standalone iMessage app bundle; it installs as an app bundle, but the product surface is only the Messages app drawer.
    Recommended local pipeline:
    `bash ./scripts/install-connected-devices.sh`
 2. Open Messages and confirm Unlucky Sevens appears in the app drawer on both devices.

@@ -93,6 +93,7 @@ Acceptance boundary:
    - branded programmatic lobby invite graphic for the first invite bubble
    - concise action-card graphics for start/setup/turn/game-over state bubbles
    - text-only fallback when image rendering is unavailable
+11. Convert the generated packaging path to a standalone Messages-only app bundle before the first TestFlight boundary.
 
 ## Validation
 
@@ -133,6 +134,15 @@ Latest bubble-graphic validation:
 - `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`
 - Focused simulator tests for `TranscriptTransportSupportTests`, `TranscriptBubbleCopyTests`, and `TranscriptBubbleImageRendererTests` should be run on a simulator-capable machine before external TestFlight handoff.
 
+Latest standalone Messages packaging validation:
+
+- Xcode template inspection confirmed standalone iMessage apps use `com.apple.product-type.application.messages`.
+- Temporary generated-project spike confirmed the app bundle builds when the app target has no Swift sources and embeds `MessagesExtension.appex`.
+- `bash ./scripts/gen.sh`
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevensApp -configuration Debug -destination 'generic/platform=iOS' -derivedDataPath DerivedData/MessagesOnlyValidation CODE_SIGNING_ALLOWED=NO build`
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`
+- `git diff --check`
+
 ## Progress
 
 - [x] Canonical name state/transport landed
@@ -155,6 +165,7 @@ Latest bubble-graphic validation:
 - [x] Obsolete summary-payload mirror residue removed from transcript message metadata
 - [x] Presentation-only lobby invite and action-card bubble graphics added with text-only fallback
 - [x] Temporary generated `7` app icon added through the app asset catalog
+- [x] Local generation/install path converted to a standalone Messages-only app bundle
 
 ## Decisions and Discoveries
 
@@ -174,7 +185,9 @@ Latest bubble-graphic validation:
 - Transcript bubble graphics are presentation-only. `MSMessage.url` remains the only decode surface, and failed image rendering intentionally falls back to the same caption/summary text bubble.
 - Lobby join and lobby name-update publishes remain text-only so the transcript does not become visually noisy during roster edits.
 - Full board thumbnails were intentionally replaced by per-action graphics because the board is too dense to read well inside an iMessage bubble.
+- The installed Tuist `ProjectDescription.Product` enum exposes `.messagesExtension` but not a standalone messages application product. The repo now applies a narrow post-generation project patch to set `UnluckySevensApp` to `com.apple.product-type.application.messages` until Tuist can represent that product directly.
+- A standalone Messages-only app target must remain resource-only. If host-app Swift sources are generated into `UnluckySevensApp`, Xcode tries to produce both the Messages app stub executable and a linked app executable and the build fails with duplicate outputs.
 
 ## Outcome
 
-This transcript-copy, action-graphic bubble presentation, temporary app-icon, canonical lobby-naming, local preferred-name prefill, one-step trade-resolution cleanup, ordered-discard hardening, pre-TestFlight runtime/debug purge, repo cleanup, and basic feature audit slice is complete. Phase 14 remains active for broader UI/bubble polish beyond this slice.
+This transcript-copy, action-graphic bubble presentation, temporary app-icon, standalone Messages-only packaging, canonical lobby-naming, local preferred-name prefill, one-step trade-resolution cleanup, ordered-discard hardening, pre-TestFlight runtime/debug purge, repo cleanup, and basic feature audit slice is complete. Phase 14 remains active for broader UI/bubble polish beyond this slice.

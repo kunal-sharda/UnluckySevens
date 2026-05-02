@@ -80,7 +80,7 @@ These items should stay out of the main sequence until post-TestFlight evidence 
 
 - deferred product items in [docs/product-specs/deferred-prd-items.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/product-specs/deferred-prd-items.md)
 - non-MVP platform work such as analytics, crash reporting, localization, monetization, or privacy/compliance expansion
-- gameplay variants, 2-player support, AI fill-ins, or scenario-map work
+- gameplay variants, tabletop realism / hard mode, 2-player support, AI fill-ins, or scenario-map work
 
 ## Update Rules
 

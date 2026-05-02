@@ -73,7 +73,6 @@ let project = Project(
                     "UILaunchScreen": .dictionary([:]),
                 ]
             ),
-            sources: ["App/Sources/**"],
             resources: ["App/Resources/**"],
             dependencies: [
                 .target(name: "MessagesExtension")

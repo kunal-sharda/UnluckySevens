@@ -12,7 +12,7 @@ Unlucky Sevens is an iMessage-first implementation of standard Catan for 3-4 pla
 
 ```text
 .github/workflows/        # repo CI
-App/                      # minimal iOS host app for the Messages extension
+App/                      # standalone iMessage app resources
 MessagesExtension/        # iMessage UI and transcript glue
 Packages/
   ULS_CoreGame/           # pure Catan rules engine
@@ -34,7 +34,7 @@ ARCHITECTURE.md           # system architecture and protocol model
 bash ./scripts/gen.sh
 ```
 
-Run the `MessagesExtension` scheme, open Messages in Simulator, and launch Unlucky Sevens from the app drawer.
+Run the `MessagesExtension` scheme, open Messages in Simulator, and launch Unlucky Sevens from the app drawer. `scripts/gen.sh` patches Tuist's generated app target to Apple's standalone Messages-only product type because the installed Tuist manifest API does not expose that product directly.
 
 Optional helpers:
 
@@ -50,7 +50,7 @@ For attached hardware:
 bash ./scripts/install-connected-devices.sh --clean
 ```
 
-That flow regenerates the workspace, builds `UnluckySevensApp` for generic iOS, and installs it onto every connected iPhone/iPad it finds. Use `--launch` if you want the app opened after install, and `--device <udid>` to target specific hardware.
+That flow regenerates the workspace, builds the standalone iMessage app bundle, and installs it onto every connected iPhone/iPad it finds. Open Messages and select Unlucky Sevens from the app drawer after install. Use `--device <udid>` to target specific hardware.
 
 If device signing is not configured in Xcode, fill in your local team ID in the untracked file `Config/LocalSigning.xcconfig` first.
 
@@ -61,6 +61,7 @@ bash ./scripts/gen.sh
 swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals
 swift test --package-path Packages/ULS_CoreGame --filter ULS_CoreGameEvals
 swift test --package-path Packages/ULS_Transport
+xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevensApp -configuration Debug -destination 'generic/platform=iOS' -derivedDataPath DerivedData/MessagesOnlyValidation CODE_SIGNING_ALLOWED=NO build
 xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build
 ```
 

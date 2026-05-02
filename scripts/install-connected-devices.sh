@@ -7,7 +7,6 @@ DERIVED_DATA_PATH="$ROOT_DIR/DerivedData/DevicePipeline"
 LOCAL_SIGNING_XCCONFIG="$ROOT_DIR/Config/LocalSigning.xcconfig"
 SCHEME="UnluckySevensApp"
 CONFIGURATION="Debug"
-BUNDLE_ID="com.unluckysevens.app"
 RUN_CLEAN=0
 RUN_GEN=1
 SHOULD_LAUNCH=0
@@ -20,15 +19,15 @@ usage() {
   cat <<'EOF'
 Usage: bash ./scripts/install-connected-devices.sh [options]
 
-Builds the containing app for generic iOS, installs it onto every connected iPhone/iPad,
-and optionally launches it after install.
+Builds the standalone iMessage app bundle for generic iOS and installs it onto every
+connected iPhone/iPad. Open it from the Messages app drawer after install.
 
 Options:
   --debug                        Build/install the Debug configuration. Default.
   --release                      Build/install the Release configuration.
   --clean                        Remove generated Xcode files and DerivedData first.
   --skip-gen                     Skip workspace generation.
-  --launch                       Launch the app after install.
+  --launch                       Ignored for standalone iMessage apps.
   --no-launch                    Install only; do not launch the app after install.
   --allow-provisioning-updates   Pass -allowProvisioningUpdates to xcodebuild.
   --team <team-id>               Override DEVELOPMENT_TEAM for this build.
@@ -135,6 +134,11 @@ resolve_team_id() {
 
 TEAM_ID="$(resolve_team_id)"
 
+if (( SHOULD_LAUNCH > 0 )); then
+  echo "warning: standalone iMessage apps cannot be launched directly; ignoring --launch" >&2
+  SHOULD_LAUNCH=0
+fi
+
 if (( RUN_CLEAN > 0 )); then
   bash "$ROOT_DIR/scripts/clean.sh"
 fi
@@ -203,7 +207,7 @@ if (( ${#DEVICE_IDS[@]} == 0 )); then
   exit 1
 fi
 
-echo "==> Building $SCHEME ($CONFIGURATION) for generic iOS"
+echo "==> Building standalone iMessage app bundle $SCHEME ($CONFIGURATION) for generic iOS"
 BUILD_CMD=(
   xcodebuild
   -workspace "$WORKSPACE_PATH"
@@ -232,11 +236,7 @@ fi
 for device_id in "${DEVICE_IDS[@]}"; do
   echo "==> Installing on $device_id"
   xcrun devicectl device install app --device "$device_id" "$APP_PATH"
-
-  if (( SHOULD_LAUNCH > 0 )); then
-    echo "==> Launching $BUNDLE_ID on $device_id"
-    xcrun devicectl device process launch --device "$device_id" --terminate-existing "$BUNDLE_ID"
-  fi
 done
 
 echo "==> Done"
+echo "==> Open Messages and select Unlucky Sevens from the app drawer on each device"
