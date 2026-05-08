@@ -143,6 +143,24 @@ Latest standalone Messages packaging validation:
 - `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`
 - `git diff --check`
 
+Latest extension icon validation:
+
+- Xcode template inspection confirmed Messages extensions expect an extension-local `iMessage App Icon.stickersiconset`, not only the container app's `AppIcon.appiconset`.
+- `bash ./scripts/gen.sh`
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevensApp -configuration Debug -destination 'generic/platform=iOS' -derivedDataPath DerivedData/MessagesOnlyValidation CODE_SIGNING_ALLOWED=NO build`
+
+Latest core validation hardening:
+
+- Hidden Victory Point reveal gating now counts all hidden VP cards before deciding whether a reveal sequence can reach the winning goal, while each intent still reveals only one VP card.
+- Lobby join and rename publishes now call `validateTransition` before sending canonical `STATE`, and core validation has an explicit audit-neutral lobby-to-lobby path for actor-authored join/rename transitions.
+- `swift test --package-path Packages/ULS_CoreGame --filter TurnVictoryV1Tests`
+- `swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals`
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:MessagesExtensionTests/LobbyMembershipResolverTests test`
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`
+- `git diff --check`
+- `swift test --package-path Packages/ULS_CoreGame`
+
 ## Progress
 
 - [x] Canonical name state/transport landed
@@ -166,6 +184,9 @@ Latest standalone Messages packaging validation:
 - [x] Presentation-only lobby invite and action-card bubble graphics added with text-only fallback
 - [x] Temporary generated `7` app icon added through the app asset catalog
 - [x] Local generation/install path converted to a standalone Messages-only app bundle
+- [x] Extension-local iMessage icon assets wired into the Messages extension target
+- [x] Hidden multi-VP reveal gate fixed and covered
+- [x] Lobby join/rename `STATE` transition validation restored below Messages publishing
 
 ## Decisions and Discoveries
 
@@ -187,7 +208,10 @@ Latest standalone Messages packaging validation:
 - Full board thumbnails were intentionally replaced by per-action graphics because the board is too dense to read well inside an iMessage bubble.
 - The installed Tuist `ProjectDescription.Product` enum exposes `.messagesExtension` but not a standalone messages application product. The repo now applies a narrow post-generation project patch to set `UnluckySevensApp` to `com.apple.product-type.application.messages` until Tuist can represent that product directly.
 - A standalone Messages-only app target must remain resource-only. If host-app Swift sources are generated into `UnluckySevensApp`, Xcode tries to produce both the Messages app stub executable and a linked app executable and the build fails with duplicate outputs.
+- The app-drawer icon comes from the Messages extension's own `iMessage App Icon.stickersiconset`. The container app's `AppIcon.appiconset` is not sufficient for the extension surface.
+- Victory Point reveal affordances must count the player's full hidden VP inventory, not just one reveal, because the reducer intentionally reveals only one card per action and otherwise a player with multiple hidden VPs can be blocked from reaching a legal win.
+- Canonical lobby join and rename publishes are core state transitions even though they do not append turn audit actions. Messages must validate them through `ULS_CoreGame.validateTransition` before send, with only append-actor join and actor-owned display-name rename allowed.
 
 ## Outcome
 
-This transcript-copy, action-graphic bubble presentation, temporary app-icon, standalone Messages-only packaging, canonical lobby-naming, local preferred-name prefill, one-step trade-resolution cleanup, ordered-discard hardening, pre-TestFlight runtime/debug purge, repo cleanup, and basic feature audit slice is complete. Phase 14 remains active for broader UI/bubble polish beyond this slice.
+This transcript-copy, action-graphic bubble presentation, temporary app-icon, extension icon wiring, standalone Messages-only packaging, canonical lobby-naming, local preferred-name prefill, one-step trade-resolution cleanup, ordered-discard hardening, hidden-VP reveal hardening, lobby transition validation, pre-TestFlight runtime/debug purge, repo cleanup, and basic feature audit slice is complete. Phase 14 remains active for broader UI/bubble polish beyond this slice.

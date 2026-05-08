@@ -5,16 +5,20 @@ let localSigningXcconfigPath = "Config/LocalSigning.xcconfig"
 let appIconSettings: SettingsDictionary = [
     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
 ]
-let localSigningSettings: Settings? = {
+let messagesExtensionIconSettings: SettingsDictionary = [
+    "ASSETCATALOG_COMPILER_APPICON_NAME": "iMessage App Icon",
+]
+let messagesExtensionSettings: Settings = {
     let absolutePath = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         .appendingPathComponent(localSigningXcconfigPath)
         .path
 
     guard FileManager.default.fileExists(atPath: absolutePath) else {
-        return nil
+        return .settings(base: messagesExtensionIconSettings, defaultSettings: .recommended)
     }
 
     return .settings(
+        base: messagesExtensionIconSettings,
         configurations: [
             .debug(
                 name: "Debug",
@@ -100,11 +104,12 @@ let project = Project(
                 ]
             ),
             sources: ["MessagesExtension/Sources/**"],
+            resources: ["MessagesExtension/Resources/**"],
             dependencies: [
                 .package(product: "ULS_CoreGame"),
                 .package(product: "ULS_Transport"),
             ],
-            settings: localSigningSettings
+            settings: messagesExtensionSettings
         ),
         .target(
             name: "MessagesExtensionTests",

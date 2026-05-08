@@ -21,6 +21,7 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 ### Added
 - Pre-TestFlight transcript bubbles can attach presentation-only images: a deterministic programmatic lobby invite graphic for the first invite, and action-card graphics for setup, turn, and game-over `STATE` publishes.
 - Temporary generated `7` app icon assets for the standalone Messages app bundle.
+- Extension-scoped `iMessage App Icon.stickersiconset` assets so the standalone Messages app drawer uses the temporary `7` icon.
 - Stage 0.A bootstrap scaffolding for `Tuist/`, `App/`, `MessagesExtension/`, `Packages/`, and `scripts/`.
 - Stage 0.A developer scripts: `scripts/gen.sh` and `scripts/clean.sh`.
 - Stage 0.A repository baseline files: `.gitignore`, `README.md`, and `Makefile`.

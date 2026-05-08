@@ -733,6 +733,7 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         do {
+            try validateTransition(from: state, to: joinedState, actor: actor)
             let payload = try jsonString(from: joinedState)
             let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
             try sendEnvelope(
@@ -777,6 +778,7 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         do {
+            try validateTransition(from: state, to: renamedState, actor: actor)
             let payload = try jsonString(from: renamedState)
             let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
             try sendEnvelope(

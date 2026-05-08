@@ -73,6 +73,11 @@ public enum CoreGameError: Error, Equatable {
     case gameAlreadyOver
 }
 
+private enum LobbyTransitionKind {
+    case join(player: String)
+    case rename
+}
+
 public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor: String) throws {
     if from.phase == .gameOver {
         throw CoreGameError.gameAlreadyOver
@@ -128,6 +133,11 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
         }
     }
 
+    if try validateLobbyTransitionIfNeeded(from: from, to: to, actor: actor) != nil {
+        try validateStateHash(to)
+        return
+    }
+
     let isStartTransition = from.phase == .lobby && to.phase == .setup
     if !isStartTransition {
         guard to.roster == from.roster else {
@@ -181,10 +191,7 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
         throw CoreGameError.bankResourcesInvalid
     }
 
-    let expectedStateHash = to.rehashed().stateHash
-    guard to.stateHash == expectedStateHash else {
-        throw CoreGameError.invalidStateHash
-    }
+    try validateStateHash(to)
 }
 
 private func isAuthorizedActorForTransition(
@@ -192,6 +199,10 @@ private func isAuthorizedActorForTransition(
     to: CoreGameStateV1,
     actor: String
 ) -> Bool {
+    if from.phase == .lobby, to.phase == .lobby {
+        return isAuthorizedActorForLobbyTransition(from: from, to: to, actor: actor)
+    }
+
     guard let expectedAction = try? expectedAuditActionForTransition(from: from, to: to) else {
         return actor == from.currentPlayer
     }
@@ -238,6 +249,189 @@ private func isAuthorizedActorForTransition(
 
     default:
         return actor == from.currentPlayer
+    }
+}
+
+private func isAuthorizedActorForLobbyTransition(
+    from: CoreGameStateV1,
+    to: CoreGameStateV1,
+    actor: String
+) -> Bool {
+    let addedPlayers = Set(to.roster).subtracting(from.roster)
+    if addedPlayers.isEmpty {
+        return from.roster.contains(actor)
+    }
+
+    return addedPlayers == [actor] && !from.roster.contains(actor)
+}
+
+private func validateLobbyTransitionIfNeeded(
+    from: CoreGameStateV1,
+    to: CoreGameStateV1,
+    actor: String
+) throws -> LobbyTransitionKind? {
+    guard from.phase == .lobby, to.phase == .lobby else {
+        return nil
+    }
+
+    guard to.currentPlayer == from.currentPlayer else {
+        throw CoreGameError.actorMismatch
+    }
+    guard to.seed == from.seed else {
+        throw CoreGameError.seedChanged
+    }
+    guard to.boardRules == from.boardRules else {
+        throw CoreGameError.boardRulesChanged
+    }
+    guard to.board == from.board else {
+        throw CoreGameError.boardChanged
+    }
+    guard to.settlementsByNode == from.settlementsByNode else {
+        throw CoreGameError.settlementsByNodeInvalid
+    }
+    guard to.citiesByNode == from.citiesByNode else {
+        throw CoreGameError.citiesByNodeInvalid
+    }
+    guard to.roadsByEdge == from.roadsByEdge else {
+        throw CoreGameError.roadsByEdgeInvalid
+    }
+    guard to.bankResources == from.bankResources else {
+        throw CoreGameError.bankResourcesInvalid
+    }
+    guard to.devDeck == from.devDeck,
+          to.devCardActionPlayedThisTurn == from.devCardActionPlayedThisTurn
+    else {
+        throw CoreGameError.devDeckInvalid
+    }
+    guard to.largestArmyOwner == from.largestArmyOwner,
+          to.largestArmySize == from.largestArmySize,
+          to.longestRoadOwner == from.longestRoadOwner,
+          to.longestRoadLength == from.longestRoadLength
+    else {
+        throw CoreGameError.awardStateInvalid
+    }
+    guard to.winnerPlayer == from.winnerPlayer,
+          to.winningVictoryPoints == from.winningVictoryPoints
+    else {
+        throw CoreGameError.victoryStateInvalid
+    }
+    guard to.activeTradeOffer == from.activeTradeOffer,
+          to.tradeResponses == from.tradeResponses
+    else {
+        throw CoreGameError.tradeStateInvalid
+    }
+    guard to.auditLog == from.auditLog,
+          to.lastTurnRecap == from.lastTurnRecap,
+          to.lastTurnRecap == computeLastTurnRecap(from: to.auditLog)
+    else {
+        throw CoreGameError.auditLogInvalid
+    }
+
+    let transitionKind: LobbyTransitionKind
+    if to.roster == from.roster {
+        guard from.roster.contains(actor) else {
+            throw CoreGameError.actorMismatch
+        }
+        try validateLobbyRenameDisplayNames(from: from, to: to, actor: actor)
+        transitionKind = .rename
+    } else {
+        guard !from.roster.contains(actor), to.roster == from.roster + [actor] else {
+            throw CoreGameError.rosterChanged
+        }
+        try validateLobbyJoinDisplayNames(from: from, to: to, actor: actor)
+        transitionKind = .join(player: actor)
+    }
+
+    try validateLobbyDefaultMaps(from: from, to: to, transitionKind: transitionKind)
+    return transitionKind
+}
+
+private func validateLobbyJoinDisplayNames(
+    from: CoreGameStateV1,
+    to: CoreGameStateV1,
+    actor: String
+) throws {
+    for player in from.roster {
+        guard to.playerDisplayNamesByPlayer[player] == from.playerDisplayNamesByPlayer[player] else {
+            throw CoreGameError.playerDisplayNamesChanged
+        }
+    }
+
+    let allowedPlayers = Set(from.roster + [actor])
+    guard Set(to.playerDisplayNamesByPlayer.keys).isSubset(of: allowedPlayers) else {
+        throw CoreGameError.playerDisplayNamesChanged
+    }
+}
+
+private func validateLobbyRenameDisplayNames(
+    from: CoreGameStateV1,
+    to: CoreGameStateV1,
+    actor: String
+) throws {
+    var changedPlayers: [String] = []
+    for player in from.roster {
+        if to.playerDisplayNamesByPlayer[player] != from.playerDisplayNamesByPlayer[player] {
+            changedPlayers.append(player)
+        }
+    }
+
+    guard changedPlayers == [actor] else {
+        throw CoreGameError.playerDisplayNamesChanged
+    }
+    guard to.playerDisplayNamesByPlayer[actor] != nil else {
+        throw CoreGameError.playerDisplayNamesChanged
+    }
+    guard Set(to.playerDisplayNamesByPlayer.keys).isSubset(of: Set(from.roster)) else {
+        throw CoreGameError.playerDisplayNamesChanged
+    }
+}
+
+private func validateLobbyDefaultMaps(
+    from: CoreGameStateV1,
+    to: CoreGameStateV1,
+    transitionKind: LobbyTransitionKind
+) throws {
+    switch transitionKind {
+    case .join(let player):
+        guard mapAppendingDefault(from.resourcesByPlayer, player: player, defaultValue: .zero) == to.resourcesByPlayer else {
+            throw CoreGameError.resourcesByPlayerInvalid
+        }
+        guard mapAppendingDefault(from.devCardsByPlayer, player: player, defaultValue: .zero) == to.devCardsByPlayer,
+              mapAppendingDefault(from.newDevCardsByPlayer, player: player, defaultValue: .zero) == to.newDevCardsByPlayer,
+              mapAppendingDefault(from.revealedVictoryPointsByPlayer, player: player, defaultValue: 0) == to.revealedVictoryPointsByPlayer,
+              mapAppendingDefault(from.knightsPlayedByPlayer, player: player, defaultValue: 0) == to.knightsPlayedByPlayer
+        else {
+            throw CoreGameError.devDeckInvalid
+        }
+
+    case .rename:
+        guard from.resourcesByPlayer == to.resourcesByPlayer else {
+            throw CoreGameError.resourcesByPlayerInvalid
+        }
+        guard from.devCardsByPlayer == to.devCardsByPlayer,
+              from.newDevCardsByPlayer == to.newDevCardsByPlayer,
+              from.revealedVictoryPointsByPlayer == to.revealedVictoryPointsByPlayer,
+              from.knightsPlayedByPlayer == to.knightsPlayedByPlayer
+        else {
+            throw CoreGameError.devDeckInvalid
+        }
+    }
+}
+
+private func mapAppendingDefault<Value: Equatable>(
+    _ values: [String: Value],
+    player: String,
+    defaultValue: Value
+) -> [String: Value] {
+    var result = values
+    result[player] = defaultValue
+    return result
+}
+
+private func validateStateHash(_ state: CoreGameStateV1) throws {
+    let expectedStateHash = state.rehashed().stateHash
+    guard state.stateHash == expectedStateHash else {
+        throw CoreGameError.invalidStateHash
     }
 }
 

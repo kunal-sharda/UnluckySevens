@@ -24,6 +24,55 @@ final class TurnVictoryV1Tests: XCTestCase {
         XCTAssertNoThrow(try validateTransition(from: state, to: won, actor: "A"))
     }
 
+    func testRevealVictoryPointCountsAllHiddenVictoryPointsForWinningThreshold() throws {
+        let state = makeState(
+            currentPlayer: "A",
+            devCardsByPlayer: [
+                "A": DevCardInventoryV1(victoryPoint: 1),
+                "B": .zero,
+            ],
+            newDevCardsByPlayer: [
+                "A": DevCardInventoryV1(victoryPoint: 1),
+                "B": .zero,
+            ],
+            citiesByNode: [1: "A", 2: "A", 3: "A", 4: "A"]
+        )
+
+        let firstReveal = try apply(intent: .revealVictoryPoint, to: state, actor: "A")
+
+        XCTAssertEqual(firstReveal.phase, .turn)
+        XCTAssertEqual(firstReveal.revealedVictoryPointsByPlayer["A"], 1)
+        XCTAssertEqual(victoryPoints(for: "A", in: firstReveal), 9)
+        XCTAssertEqual(firstReveal.devCardsByPlayer["A"]?.victoryPoint, 0)
+        XCTAssertEqual(firstReveal.newDevCardsByPlayer["A"]?.victoryPoint, 1)
+        XCTAssertEqual(firstReveal.auditLog.last?.action, .revealVictoryPoint)
+
+        let secondReveal = try apply(intent: .revealVictoryPoint, to: firstReveal, actor: "A")
+
+        XCTAssertEqual(secondReveal.phase, .gameOver)
+        XCTAssertEqual(secondReveal.winnerPlayer, "A")
+        XCTAssertEqual(secondReveal.winningVictoryPoints, 10)
+        XCTAssertEqual(secondReveal.revealedVictoryPointsByPlayer["A"], 2)
+        XCTAssertEqual(secondReveal.newDevCardsByPlayer["A"]?.victoryPoint, 0)
+        XCTAssertNil(secondReveal.turnState)
+        XCTAssertNoThrow(try validateTransition(from: firstReveal, to: secondReveal, actor: "A"))
+    }
+
+    func testRevealVictoryPointStillRequiresHiddenTotalToReachWinningThreshold() throws {
+        let state = makeState(
+            currentPlayer: "A",
+            devCardsByPlayer: [
+                "A": DevCardInventoryV1(victoryPoint: 1),
+                "B": .zero,
+            ],
+            citiesByNode: [1: "A", 2: "A", 3: "A", 4: "A"]
+        )
+
+        XCTAssertThrowsError(try apply(intent: .revealVictoryPoint, to: state, actor: "A")) { error in
+            XCTAssertEqual(error as? CoreGameError, .victoryPointRevealNotWinning)
+        }
+    }
+
     func testNonCurrentPlayerAtTenDoesNotWinUntilTheirTurn() throws {
         let state = makeState(
             currentPlayer: "A",
@@ -68,6 +117,7 @@ final class TurnVictoryV1Tests: XCTestCase {
         phase: PhaseV1 = .turn,
         turnState: TurnStateV1? = TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 4, d2: 3)),
         devCardsByPlayer: [String: DevCardInventoryV1] = [:],
+        newDevCardsByPlayer: [String: DevCardInventoryV1] = [:],
         revealedVictoryPointsByPlayer: [String: Int] = [:],
         settlementsByNode: [NodeID: String] = [:],
         citiesByNode: [NodeID: String] = [:],
@@ -100,6 +150,7 @@ final class TurnVictoryV1Tests: XCTestCase {
             ],
             bankResources: .standardBank,
             devCardsByPlayer: devCardsByPlayer,
+            newDevCardsByPlayer: newDevCardsByPlayer,
             revealedVictoryPointsByPlayer: revealedVictoryPointsByPlayer,
             winnerPlayer: winnerPlayer,
             winningVictoryPoints: winningVictoryPoints,

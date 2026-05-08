@@ -313,12 +313,14 @@ What we learned:
 - Fresh join should publish updated lobby `STATE` on the canonical game session.
 - The app should not keep product logic around pre-TestFlight legacy join bubbles once the protocol boundary is reset for TestFlight.
 - If the app can recover canonical state for the same game, it should reopen that state rather than rendering a join-specific fallback shell.
+- Canonical lobby joins and renames are still core state transitions. They must pass `ULS_CoreGame.validateTransition` before Messages publishes the bubble, even though they are audit-neutral and happen before turn actions exist.
 
 Current repo answer:
 
 - Fresh `Join Game` publishes canonical lobby `STATE` and advances lobby rev instead of emitting a detached join bubble.
 - `Start Game` uses the latest lobby rev, not a hard-coded `rev0` invite assumption.
 - Start-roster assembly merges the visible lobby roster with observed joiners so concurrent join states can still converge when the host starts.
+- Core validation now explicitly accepts only two lobby-to-lobby mutations: appending the joining actor with normalized default maps, or changing the already-joined actor's display name. Wrong actors, roster reorder/removal, and editing another player's name are rejected below the Messages shell.
 
 ### 8. Player-facing names that must survive reopen or handoff belong in canonical state
 
@@ -458,12 +460,13 @@ What we learned:
 
 - The player needs to see dev-card inventory as cards first, then move into the minimal next choice for the selected card.
 - Visibility and actionability are separate concerns: VP cards should be visible to the owner without always being playable.
+- Winning-only VP reveal checks must count every hidden VP card the player owns. The reducer still reveals one card per action, so tests need to cover multi-card winning reveals that proceed from 8 visible points to 9 and then 10.
 
 Current repo answer:
 
 - `Play Dev` now opens a card-oriented dev shelf.
 - Knight, Monopoly, Year of Plenty, and Road Building stay action-driven from that card surface.
-- Victory Point cards are visible to the owning player and only become revealable when they would immediately win.
+- Victory Point cards are visible to the owning player and only become revealable when the player's total hidden VP inventory can reach the winning threshold.
 
 ### 13. Temporary diagnostics are justified for iMessage-host work, but they must stay temporary
 
@@ -559,7 +562,7 @@ Run this after shell, layout, presentation, or mode-system changes.
 1. Install the current development build on both devices. The local install pipeline builds the standalone iMessage app bundle; it installs as an app bundle, but the product surface is only the Messages app drawer.
    Recommended local pipeline:
    `bash ./scripts/install-connected-devices.sh`
-2. Open Messages and confirm Unlucky Sevens appears in the app drawer on both devices.
+2. Open Messages and confirm Unlucky Sevens appears in the app drawer on both devices with the temporary `7` icon.
 3. Open the same conversation between the two accounts.
 4. Open an existing canonical `STATE` bubble and confirm the extension requests expanded presentation and the shell renders:
    - header

@@ -323,7 +323,7 @@ public extension CoreGameStateV1 {
             return false
         }
 
-        return victoryPoints(for: actor, in: self) + 1 >= winningGoal
+        return victoryPoints(for: actor, in: self) + hiddenVictoryPoints >= winningGoal
     }
 
     func firstLegalRoadEdge(for player: String) -> EdgeID? {
