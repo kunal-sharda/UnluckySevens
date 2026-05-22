@@ -1,16 +1,46 @@
 import CryptoKit
 import Foundation
 
-public enum BoardGenStrategyV1: String, Codable, Equatable {
+public enum BoardGenStrategyV1: String, Codable, Equatable, Hashable, CaseIterable {
     case randomV1
     case noRedAdjacentV1
 }
 
+public enum BoardDesertPlacementV1: String, Codable, Equatable, Hashable, CaseIterable {
+    case anywhereV1
+    case borderV1
+}
+
 public struct BoardRulesV1: Codable, Equatable {
     public let strategy: BoardGenStrategyV1
+    public let desertPlacement: BoardDesertPlacementV1
 
-    public init(strategy: BoardGenStrategyV1 = .randomV1) {
+    public init(
+        strategy: BoardGenStrategyV1 = .randomV1,
+        desertPlacement: BoardDesertPlacementV1 = .anywhereV1
+    ) {
         self.strategy = strategy
+        self.desertPlacement = desertPlacement
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case strategy
+        case desertPlacement
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        strategy = try container.decode(BoardGenStrategyV1.self, forKey: .strategy)
+        desertPlacement = try container.decodeIfPresent(
+            BoardDesertPlacementV1.self,
+            forKey: .desertPlacement
+        ) ?? .anywhereV1
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(strategy, forKey: .strategy)
+        try container.encode(desertPlacement, forKey: .desertPlacement)
     }
 }
 
@@ -81,7 +111,10 @@ public struct BoardSetupV1: Codable, Equatable {
 
 extension BoardRulesV1 {
     internal func canonicalJSONValue() -> [String: Any] {
-        ["strategy": strategy.rawValue]
+        [
+            "strategy": strategy.rawValue,
+            "desertPlacement": desertPlacement.rawValue,
+        ]
     }
 }
 

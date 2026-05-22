@@ -8,6 +8,8 @@ public enum CoreGameError: Error, Equatable {
     case actorMismatch
     case rosterChanged
     case playerDisplayNamesChanged
+    case targetPlayerCountChanged
+    case targetPlayerCountInvalid
     case seedChanged
     case boardRulesChanged
     case boardChanged
@@ -139,9 +141,17 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
     }
 
     let isStartTransition = from.phase == .lobby && to.phase == .setup
+    if isStartTransition {
+        try validateStartSetupOptions(from: from, to: to)
+    }
+
     if !isStartTransition {
         guard to.roster == from.roster else {
             throw CoreGameError.rosterChanged
+        }
+
+        guard to.targetPlayerCount == from.targetPlayerCount else {
+            throw CoreGameError.targetPlayerCountChanged
         }
 
         guard to.seed == from.seed else {
@@ -277,6 +287,9 @@ private func validateLobbyTransitionIfNeeded(
     guard to.currentPlayer == from.currentPlayer else {
         throw CoreGameError.actorMismatch
     }
+    guard to.targetPlayerCount == from.targetPlayerCount else {
+        throw CoreGameError.targetPlayerCountChanged
+    }
     guard to.seed == from.seed else {
         throw CoreGameError.seedChanged
     }
@@ -340,6 +353,10 @@ private func validateLobbyTransitionIfNeeded(
         }
         try validateLobbyJoinDisplayNames(from: from, to: to, actor: actor)
         transitionKind = .join(player: actor)
+    }
+
+    if let targetPlayerCount = from.targetPlayerCount, to.roster.count > targetPlayerCount {
+        throw CoreGameError.targetPlayerCountInvalid
     }
 
     try validateLobbyDefaultMaps(from: from, to: to, transitionKind: transitionKind)
@@ -426,6 +443,45 @@ private func mapAppendingDefault<Value: Equatable>(
     var result = values
     result[player] = defaultValue
     return result
+}
+
+private func validateStartSetupOptions(from: CoreGameStateV1, to: CoreGameStateV1) throws {
+    guard to.targetPlayerCount == from.targetPlayerCount else {
+        throw CoreGameError.targetPlayerCountChanged
+    }
+
+    guard let targetPlayerCount = from.targetPlayerCount else {
+        return
+    }
+
+    guard from.roster.count == targetPlayerCount,
+          CoreGameStateV1.supportedTargetPlayerCounts.contains(targetPlayerCount)
+    else {
+        throw CoreGameError.targetPlayerCountInvalid
+    }
+
+    guard to.roster == from.roster else {
+        throw CoreGameError.rosterChanged
+    }
+
+    if let lockedBoardRules = from.boardRules {
+        guard to.boardRules == lockedBoardRules else {
+            throw CoreGameError.boardRulesChanged
+        }
+    }
+
+    guard let seed = to.seed,
+          let boardRules = to.boardRules,
+          let board = to.board
+    else {
+        throw CoreGameError.boardChanged
+    }
+
+    let expectedBoardSeed = SeedDeriver(masterSeed: seed).seed(for: .board)
+    let expectedBoard = StandardBoardGeneratorV1.generate(boardSeed: expectedBoardSeed, rules: boardRules)
+    guard board == expectedBoard else {
+        throw CoreGameError.boardChanged
+    }
 }
 
 private func validateStateHash(_ state: CoreGameStateV1) throws {
@@ -2624,6 +2680,7 @@ private func validationStateWithRoads(state: CoreGameStateV1, roadsByEdge: [Edge
         stateHash: state.stateHash,
         roster: state.roster,
         currentPlayer: state.currentPlayer,
+        targetPlayerCount: state.targetPlayerCount,
         playerDisplayNamesByPlayer: state.playerDisplayNamesByPlayer,
         phase: state.phase,
         seed: state.seed,

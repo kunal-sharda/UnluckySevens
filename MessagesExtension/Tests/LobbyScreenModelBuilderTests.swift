@@ -20,6 +20,8 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
         XCTAssertTrue(model.showsInviteEntryHero)
         XCTAssertEqual(model.title, "Invite Players to Unlucky Sevens")
         XCTAssertEqual(model.inviteButton?.title, "Invite Players")
+        XCTAssertEqual(model.setupOptions?.targetPlayerCount, BoardStrategyDefaults.targetPlayerCount)
+        XCTAssertEqual(model.setupOptions?.boardStrategy, BoardStrategyDefaults.newGame)
         XCTAssertNil(model.joinButton)
         XCTAssertNil(model.startButton)
     }
@@ -72,6 +74,7 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
         XCTAssertEqual(model.participants.count, 2)
         XCTAssertEqual(Set(model.participants.map(\.displayName)).count, 2)
         XCTAssertEqual(model.startButton?.title, "Start Game")
+        XCTAssertEqual(model.setupOptions?.summaryText, "3 players - Balanced Board - Desert Anywhere")
     }
 
     func testBuildForHostLastSentSinglePlayerLobbyShowsPassiveWaitingShell() {

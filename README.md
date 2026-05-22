@@ -4,7 +4,7 @@ Unlucky Sevens is an iMessage-first implementation of standard Catan for 3-4 pla
 
 ## Current Status
 
-- Phase 14 is active: transcript bubble polish, canonical lobby display names, same-device name prefill, and pre-TestFlight cleanup.
+- Phase 14 is active: transcript bubble polish, canonical lobby display names, pre-invite setup options, same-device name prefill, and pre-TestFlight cleanup.
 - The engine and transport packages are covered by Swift package tests; Messages extension validation runs through Xcode.
 - The current release focus is real-device TestFlight readiness.
 

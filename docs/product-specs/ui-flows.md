@@ -5,16 +5,18 @@ This document summarizes the player-facing flows the UI must support in the curr
 ## Lobby Flow
 
 - A player starts a game from Messages and sends an invite/game-state bubble into a thread.
-- Before the first invite is sent, the lobby surface should be a simple invite entry screen focused on one action: invite players to Unlucky Sevens.
+- Before the first invite is sent, the lobby surface should let the host choose the local display name, target player count, board generation style, and desert placement before inviting players to Unlucky Sevens.
 - Immediately after sending the initial invite, the extension dismisses back to the Messages thread instead of pretending the local post-send shell is a live lobby.
 - Other players join before the host starts.
 - Joining should feel like a game action, not a draft-composition flow. A player should not need an extra manual send step after choosing `Join`.
 - A player may enter a custom display name before joining, and joined players may update that name later while the lobby is still open.
 - The app should remember the local player's preferred lobby name on that device and prefill future invite/join drafts from that preference.
 - Lobby-entered display names are table-local canonical metadata. If no custom name is set, the UI falls back to deterministic per-game aliases.
+- The invite sends the chosen setup options as canonical lobby state. Other players should see a read-only setup summary, and the options lock for that game after invite publication.
+- The roster should stop accepting joins when the selected target player count is reached. Host start should become available only when the joined roster exactly matches the selected target count.
 - Reopening a real lobby bubble should show the normal lobby roster/start surface, even if no guest has joined yet. The host waits and starts from that selected bubble path, not from a synthetic post-send shell.
 - The roster locks when the host starts the game.
-- New games should default to seeded balanced board generation that avoids adjacent `6`/`8` number tokens. Fully random board rules may remain protocol-supported for tests or already-persisted state, but they are not the default first-beta product path.
+- New games should default to seeded balanced board generation that avoids adjacent `6`/`8` number tokens, and they may optionally use fully random generation or force the desert tile onto the board border. Fully random board rules may remain protocol-supported for tests or already-persisted state, but they are not the default first-beta product path.
 - Lobby UX should stay on the canonical game-state chain:
   - one invite `STATE`
   - joining publishes updated lobby `STATE`

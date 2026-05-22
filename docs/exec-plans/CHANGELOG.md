@@ -14,11 +14,13 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 - Transcript bubble publication now treats `MSMessageTemplateLayout.image` as an optional readability layer while keeping caption, summary text, and URL payload as the reliable transport surface; join and name-update lobby bubbles remain text-only.
 - Bubble visuals now use concise per-action graphics instead of full board thumbnails, keeping the board inside the expanded game surface where it remains readable.
 - Local generation now produces a standalone Messages-only app bundle by keeping the app target resource-only and patching Tuist's generated product type to `com.apple.product-type.application.messages`.
+- Lobby start now locks the invite-authored target player count and board rules, blocks joins beyond the target, and validates started boards against the selected deterministic generation options.
 
 ### Removed
 - Removed `ULS_Transport.TurnIntentV1`, transport resource/dev-card action draft helpers, obsolete action-draft transport tests, and the unused summary-payload mirror length field.
 
 ### Added
+- Pre-invite lobby setup controls for target player count, board generation style, and optional border-only desert placement, with compact transport roundtrip coverage.
 - Pre-TestFlight transcript bubbles can attach presentation-only images: a deterministic programmatic lobby invite graphic for the first invite, and action-card graphics for setup, turn, and game-over `STATE` publishes.
 - Temporary generated `7` app icon assets for the standalone Messages app bundle.
 - Extension-scoped `iMessage App Icon.stickersiconset` assets so the standalone Messages app drawer uses the temporary `7` icon.

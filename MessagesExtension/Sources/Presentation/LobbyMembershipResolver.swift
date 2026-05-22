@@ -1,6 +1,21 @@
 import ULS_CoreGame
 
 enum LobbyMembershipResolver {
+    static func targetPlayerCount(for state: CoreGameStateV1) -> Int {
+        state.targetPlayerCount ?? CoreGameStateV1.defaultTargetPlayerCount
+    }
+
+    private static func joinLimit(for state: CoreGameStateV1) -> Int {
+        state.targetPlayerCount ?? CoreGameStateV1.supportedTargetPlayerCounts.upperBound
+    }
+
+    private static func rosterIsReadyToStart(_ state: CoreGameStateV1) -> Bool {
+        if let targetPlayerCount = state.targetPlayerCount {
+            return state.roster.count == targetPlayerCount
+        }
+        return state.roster.count >= CoreGameStateV1.supportedTargetPlayerCounts.lowerBound
+    }
+
     static func canJoin(
         state: CoreGameStateV1?,
         localParticipant: String?
@@ -13,7 +28,8 @@ enum LobbyMembershipResolver {
             return false
         }
 
-        return !state.roster.contains(localParticipant)
+        return !state.roster.contains(localParticipant) &&
+            state.roster.count < joinLimit(for: state)
     }
 
     static func canStart(
@@ -29,7 +45,7 @@ enum LobbyMembershipResolver {
             return false
         }
 
-        return state.roster.count >= 2
+        return rosterIsReadyToStart(state)
     }
 
     static func joinedLobbyState(
@@ -41,7 +57,8 @@ enum LobbyMembershipResolver {
             let state,
             state.phase == .lobby,
             let localParticipant,
-            !state.roster.contains(localParticipant)
+            !state.roster.contains(localParticipant),
+            state.roster.count < joinLimit(for: state)
         else {
             return nil
         }
@@ -60,6 +77,7 @@ enum LobbyMembershipResolver {
             stateHash: "",
             roster: roster,
             currentPlayer: state.currentPlayer,
+            targetPlayerCount: state.targetPlayerCount,
             playerDisplayNamesByPlayer: playerDisplayNamesByPlayer,
             phase: .lobby,
             seed: state.seed,
@@ -119,6 +137,7 @@ enum LobbyMembershipResolver {
             stateHash: "",
             roster: state.roster,
             currentPlayer: state.currentPlayer,
+            targetPlayerCount: state.targetPlayerCount,
             playerDisplayNamesByPlayer: playerDisplayNamesByPlayer,
             phase: .lobby,
             seed: state.seed,

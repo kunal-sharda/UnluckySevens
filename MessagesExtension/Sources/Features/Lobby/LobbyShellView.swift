@@ -1,4 +1,5 @@
 import SwiftUI
+import ULS_CoreGame
 
 struct LobbyShellView: View {
     @ObservedObject var viewModel: LobbyDriverViewModel
@@ -27,6 +28,10 @@ struct LobbyShellView: View {
 
                         if let warningText = model.warningText {
                             warningCard(text: warningText)
+                        }
+
+                        if let setupOptions = model.setupOptions {
+                            setupOptionsSection(setupOptions)
                         }
 
                         participantsSection(model: model)
@@ -63,6 +68,11 @@ struct LobbyShellView: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
 
+            if let setupOptions = model.setupOptions {
+                setupOptionsSection(setupOptions)
+                    .padding(.top, 4)
+            }
+
             if let inviteButton = model.inviteButton {
                 actionButton(inviteButton, accent: true) {
                     viewModel.inviteNewGame()
@@ -79,6 +89,70 @@ struct LobbyShellView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius))
         .shadow(color: GameTheme.sectionShadow, radius: 10, x: 0, y: 3)
+    }
+
+    @ViewBuilder
+    private func setupOptionsSection(_ model: LobbySetupOptionsModel) -> some View {
+        VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+            HStack(spacing: GameTheme.inlineSpacing) {
+                Image(systemName: "slider.horizontal.3")
+                    .foregroundStyle(GameTheme.accent)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Game Setup")
+                        .font(GameTheme.headingFont)
+                        .foregroundStyle(GameTheme.ink)
+
+                    Text(model.summaryText)
+                        .font(GameTheme.metaFont)
+                        .foregroundStyle(GameTheme.mutedInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            if model.isEditable {
+                VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+                    Picker(
+                        "Players",
+                        selection: Binding(
+                            get: { viewModel.targetPlayerCount },
+                            set: { viewModel.setTargetPlayerCount($0) }
+                        )
+                    ) {
+                        ForEach(Array(CoreGameStateV1.supportedTargetPlayerCounts), id: \.self) { count in
+                            Text("\(count)").tag(count)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    Picker(
+                        "Board",
+                        selection: Binding(
+                            get: { viewModel.boardStrategy },
+                            set: { viewModel.setBoardStrategy($0) }
+                        )
+                    ) {
+                        ForEach(BoardGenStrategyV1.allCases, id: \.self) { strategy in
+                            Text(LobbyScreenModelBuilder.boardStrategyTitle(strategy)).tag(strategy)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    Toggle(
+                        isOn: Binding(
+                            get: { viewModel.boardDesertPlacement == .borderV1 },
+                            set: { viewModel.setBoardDesertPlacement($0 ? .borderV1 : .anywhereV1) }
+                        )
+                    ) {
+                        Label("Desert on Border", systemImage: "map.fill")
+                            .font(GameTheme.bodyFont)
+                            .foregroundStyle(GameTheme.ink)
+                    }
+                    .toggleStyle(.switch)
+                }
+            }
+        }
+        .padding(GameTheme.compactPadding)
     }
 
     @ViewBuilder

@@ -6,6 +6,8 @@ import ULS_CoreGame
 final class LobbyDriverViewModelIdentityTests: XCTestCase {
     func testDefaultBoardStrategyPrefersBalancedNewGames() {
         XCTAssertEqual(BoardStrategyDefaults.newGame, .noRedAdjacentV1)
+        XCTAssertEqual(BoardStrategyDefaults.desertPlacement, .anywhereV1)
+        XCTAssertEqual(BoardStrategyDefaults.targetPlayerCount, 3)
     }
 
     func testCanJoinLobbyUsesActualLocalParticipant() {

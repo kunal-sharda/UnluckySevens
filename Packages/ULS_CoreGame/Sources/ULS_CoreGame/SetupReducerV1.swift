@@ -306,6 +306,7 @@ private func nextState(
         stateHash: "",
         roster: state.roster,
         currentPlayer: currentPlayer,
+        targetPlayerCount: state.targetPlayerCount,
         playerDisplayNamesByPlayer: state.playerDisplayNamesByPlayer,
         phase: phase,
         seed: state.seed,

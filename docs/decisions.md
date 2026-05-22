@@ -3,7 +3,7 @@
 This file records **locked product + architecture decisions** for the MVP.  
 If a change is desired, update this file **first**, then update code/tests.
 
-**Last updated:** 2026-05-01
+**Last updated:** 2026-05-10
 
 ---
 
@@ -23,6 +23,8 @@ If a change is desired, update this file **first**, then update code/tests.
 - **No backend** for MVP. The iMessage thread is the “storage.”
 - If the message thread is deleted, the game is effectively lost (acceptable for MVP).
 - **Fixed roster** at game start: host invites → players join → host starts → roster locks.
+- The first invite carries canonical setup options: target player count, board generation strategy, and desert placement. The selected target gates joins and host start; board rules lock for the game and are materialized deterministically on start.
+- The default target player count is 3. The current implementation supports 2-4 as a lobby gate to preserve the existing two-player smoke/start path, but it does not introduce special two-player house rules.
 
 ---
 
@@ -34,6 +36,7 @@ If a change is desired, update this file **first**, then update code/tests.
 - The lobby is part of the canonical game timeline:
   - invite/start/join all progress through canonical lobby `STATE` updates on the game session
   - joining is not a detached draft flow or side intent in fresh publishes
+- Lobby setup options are canonical state, not local-only UI preferences. Joiners see the invite-authored setup summary read-only, and start validation rejects target-count or board-rule drift.
 - During active gameplay, the **current player** publishes canonical `STATE` for normal turn actions.
 - Non-current players:
   - can view the game and their own hand
@@ -78,6 +81,7 @@ Recommended canonical state cadence per turn:
 
 - Deterministic RNG with a shared **seed**.
 - Dice, dev deck order, robber steals, and any other random selections must be derived from (seed + deterministic indices).
+- Board generation strategy and desert-placement mode are canonical board rules. A lobby-to-setup start must generate the same board from the shared seed and selected rules on every device.
 - Do not use `Date()`, system RNG, or device-local randomness for game outcomes.
 
 ---

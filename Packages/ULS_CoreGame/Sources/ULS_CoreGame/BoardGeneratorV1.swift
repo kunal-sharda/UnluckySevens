@@ -14,12 +14,16 @@ public struct RandomBoardStrategyV1: BoardGenerationStrategyV1 {
     public func generate(
         rng: inout DeterministicRNG,
         topology: BoardGraphV1,
-        rules _: BoardRulesV1
+        rules: BoardRulesV1
     ) -> BoardSetupV1 {
         precondition(topology.tiles.count == 19, "Standard board generator expects 19 tiles.")
         precondition(topology.ports.count == 9, "Standard board generator expects 9 ports.")
 
-        let resources = shuffledResources(rng: &rng)
+        let resources = shuffledResources(
+            rng: &rng,
+            topology: topology,
+            desertPlacement: rules.desertPlacement
+        )
         let numbers = shuffledNumberTokens(rng: &rng)
         let ports = shuffledPorts(rng: &rng)
         return makeBoardSetup(
@@ -41,12 +45,16 @@ public struct NoRedAdjacentStrategyV1: BoardGenerationStrategyV1 {
     public func generate(
         rng: inout DeterministicRNG,
         topology: BoardGraphV1,
-        rules _: BoardRulesV1
+        rules: BoardRulesV1
     ) -> BoardSetupV1 {
         precondition(topology.tiles.count == 19, "Standard board generator expects 19 tiles.")
         precondition(topology.ports.count == 9, "Standard board generator expects 9 ports.")
 
-        let resources = shuffledResources(rng: &rng)
+        let resources = shuffledResources(
+            rng: &rng,
+            topology: topology,
+            desertPlacement: rules.desertPlacement
+        )
         let ports = shuffledPorts(rng: &rng)
         let adjacentTilePairs = tileAdjacencyPairs(for: topology)
 
@@ -118,9 +126,28 @@ private let portKinds: [PortKindV1] = [
     .twoToOne(.wood), .twoToOne(.brick), .twoToOne(.sheep), .twoToOne(.wheat), .twoToOne(.ore),
 ]
 
-private func shuffledResources(rng: inout DeterministicRNG) -> [ResourceV1] {
+private func shuffledResources(
+    rng: inout DeterministicRNG,
+    topology: BoardGraphV1,
+    desertPlacement: BoardDesertPlacementV1
+) -> [ResourceV1] {
     var resources = resourceTiles
     fisherYatesShuffle(&resources, rng: &rng)
+
+    guard desertPlacement == .borderV1,
+          let desertTile = resources.firstIndex(of: .desert),
+          !borderTileIDs(for: topology).contains(desertTile)
+    else {
+        return resources
+    }
+
+    let borderTiles = borderTileIDs(for: topology)
+    guard !borderTiles.isEmpty else {
+        return resources
+    }
+
+    let replacementIndex = Int(rng.nextUInt64() % UInt64(borderTiles.count))
+    resources.swapAt(desertTile, borderTiles[replacementIndex])
     return resources
 }
 
@@ -206,6 +233,14 @@ private func tileAdjacencyPairs(for topology: BoardGraphV1) -> [(TileID, TileID)
             if left.0 != right.0 { return left.0 < right.0 }
             return left.1 < right.1
         }
+}
+
+private func borderTileIDs(for topology: BoardGraphV1) -> [TileID] {
+    topology.tiles.indices.filter { tileID in
+        topology.tiles[tileID].edges.contains { edgeID in
+            topology.isCoastal(edge: edgeID)
+        }
+    }
 }
 
 private struct TilePair: Hashable {

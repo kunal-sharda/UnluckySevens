@@ -9,12 +9,16 @@ public enum PhaseV1: String, Codable, Equatable {
 }
 
 public struct CoreGameStateV1: Codable, Equatable {
+    public static let supportedTargetPlayerCounts: ClosedRange<Int> = 2...4
+    public static let defaultTargetPlayerCount = 3
+
     public let gameId: String
     public let rev: Int
     public let prevHash: String?
     public let stateHash: String
     public let roster: [String]
     public let currentPlayer: String
+    public let targetPlayerCount: Int?
     public let playerDisplayNamesByPlayer: [String: String]
     public let phase: PhaseV1
     public let seed: UInt64?
@@ -53,6 +57,7 @@ public struct CoreGameStateV1: Codable, Equatable {
         stateHash: String,
         roster: [String],
         currentPlayer: String,
+        targetPlayerCount: Int? = nil,
         playerDisplayNamesByPlayer: [String: String] = [:],
         phase: PhaseV1,
         seed: UInt64?,
@@ -90,6 +95,7 @@ public struct CoreGameStateV1: Codable, Equatable {
         self.stateHash = stateHash
         self.roster = roster
         self.currentPlayer = currentPlayer
+        self.targetPlayerCount = Self.normalizedTargetPlayerCount(targetPlayerCount)
         self.playerDisplayNamesByPlayer = Self.normalizedDisplayNamesMap(
             playerDisplayNamesByPlayer,
             roster: roster
@@ -139,6 +145,7 @@ public struct CoreGameStateV1: Codable, Equatable {
             stateHash: canonicalStateHash(),
             roster: roster,
             currentPlayer: currentPlayer,
+            targetPlayerCount: targetPlayerCount,
             playerDisplayNamesByPlayer: playerDisplayNamesByPlayer,
             phase: phase,
             seed: seed,
@@ -190,6 +197,7 @@ public struct CoreGameStateV1: Codable, Equatable {
             "prevHash": prevHash ?? NSNull(),
             "roster": roster,
             "currentPlayer": currentPlayer,
+            "targetPlayerCount": targetPlayerCount ?? NSNull(),
             "playerDisplayNamesByPlayer": playerDisplayNamesByPlayer,
             "phase": phase.rawValue,
             "seed": seed ?? NSNull(),
@@ -272,6 +280,11 @@ public struct CoreGameStateV1: Codable, Equatable {
         }
 
         return String(trimmed.prefix(24))
+    }
+
+    public static func normalizedTargetPlayerCount(_ value: Int?) -> Int? {
+        guard let value else { return nil }
+        return min(max(value, supportedTargetPlayerCounts.lowerBound), supportedTargetPlayerCounts.upperBound)
     }
 
     private static func normalizedDisplayNamesMap(

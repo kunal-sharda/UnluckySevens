@@ -89,6 +89,20 @@ final class BoardGeneratorV1Tests: XCTestCase {
         }
     }
 
+    func testBorderDesertPlacementPutsDesertOnCoastalTile() {
+        for strategy in BoardGenStrategyV1.allCases {
+            for boardSeed in UInt64(0)..<UInt64(64) {
+                let board = StandardBoardGeneratorV1.generate(
+                    boardSeed: boardSeed,
+                    rules: BoardRulesV1(strategy: strategy, desertPlacement: .borderV1),
+                    topology: topology
+                )
+
+                XCTAssertTrue(isBorderTile(board.robberTile), "Expected desert on border for seed \(boardSeed) and strategy \(strategy).")
+            }
+        }
+    }
+
     func testRandomStrategyCanProduceAdjacentSixOrEight() {
         let sampledSeeds = Array(0..<256).map(UInt64.init)
         let adjacentPairs = tileAdjacencyPairs()
@@ -137,6 +151,12 @@ final class BoardGeneratorV1Tests: XCTestCase {
                 if lhs.0 != rhs.0 { return lhs.0 < rhs.0 }
                 return lhs.1 < rhs.1
             }
+    }
+
+    private func isBorderTile(_ tileID: Int) -> Bool {
+        topology.tiles[tileID].edges.contains { edgeID in
+            topology.isCoastal(edge: edgeID)
+        }
     }
 
     private func isRed(_ value: Int) -> Bool {

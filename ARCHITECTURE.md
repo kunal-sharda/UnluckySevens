@@ -106,6 +106,7 @@ A canonical state transition is valid only when the usual chain holds:
 - `rev == prior.rev + 1`
 - `prevHash == prior.stateHash`
 - roster is unchanged after the game starts
+- invite-authored target player count and board rules do not drift across lobby joins or start
 - actor semantics match the validated transition rules
 
 Internal authoring actions must still be anchored to the current canonical base via revision/hash before publication. Stale authoring inputs should resolve against the newest known canonical state for that game or fail validation.
@@ -121,6 +122,7 @@ Several invariants explain why the code is split this way:
 - only one canonical `STATE` chain exists per game
 - only the current player publishes canonical `STATE`
 - random outcomes must be reproducible from persisted deterministic state
+- target player count and board generation rules are canonical core state, with Messages only authoring drafts before invite publication
 - the canonical state may contain hidden information, but the UI may only expose viewer-safe projections
 - transport is a boundary layer, not a rules engine
 - canonical `STATE` messages must stay within the payload budget

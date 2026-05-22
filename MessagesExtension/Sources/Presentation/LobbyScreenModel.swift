@@ -9,6 +9,7 @@ struct LobbyScreenModel: Equatable {
     let participantsEmptySystemImage: String
     let participantsEmptyDescription: String
     let nameEditor: LobbyNameEditorModel?
+    let setupOptions: LobbySetupOptionsModel?
     let inviteButton: LobbyActionButtonModel?
     let joinButton: LobbyActionButtonModel?
     let startButton: LobbyActionButtonModel?

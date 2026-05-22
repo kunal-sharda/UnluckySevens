@@ -11,12 +11,16 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var activeContextSource: String = "-"
     @Published var staleContextWarning: String = "-"
     @Published var boardStrategy: BoardGenStrategyV1
+    @Published var boardDesertPlacement: BoardDesertPlacementV1
+    @Published var targetPlayerCount: Int
     @Published private(set) var boardReloadToken: Int = 0
     @Published private(set) var recoveredGames: [ActiveGameRecoverySummary] = []
     @Published private(set) var dismissRequestToken: Int = 0
     @Published var lobbyDisplayNameDraft: String = ""
 
     private let boardStrategyKey = "uls.boardStrategy"
+    private let boardDesertPlacementKey = "uls.boardDesertPlacement"
+    private let targetPlayerCountKey = "uls.targetPlayerCount"
     private let userDefaults: UserDefaults
     private let gameLedgerStore: TranscriptGameLedgerStore
     private let lobbyDisplayNamePreferenceStore: LobbyDisplayNamePreferenceStore
@@ -46,6 +50,20 @@ final class LobbyDriverViewModel: ObservableObject {
             boardStrategy = parsed
         } else {
             boardStrategy = BoardStrategyDefaults.newGame
+        }
+
+        if let rawValue = userDefaults.string(forKey: boardDesertPlacementKey),
+           let parsed = BoardDesertPlacementV1(rawValue: rawValue) {
+            boardDesertPlacement = parsed
+        } else {
+            boardDesertPlacement = BoardStrategyDefaults.desertPlacement
+        }
+
+        if let storedTargetPlayerCount = userDefaults.object(forKey: targetPlayerCountKey) as? Int {
+            targetPlayerCount = CoreGameStateV1.normalizedTargetPlayerCount(storedTargetPlayerCount)
+                ?? BoardStrategyDefaults.targetPlayerCount
+        } else {
+            targetPlayerCount = BoardStrategyDefaults.targetPlayerCount
         }
         lobbyDisplayNameDraft = lobbyDisplayNamePreferenceStore.load() ?? ""
         let ledgerSnapshot = gameLedgerStore.bootstrapSnapshot()
@@ -232,7 +250,10 @@ final class LobbyDriverViewModel: ObservableObject {
                 lastError: lastError,
                 canInvite: canInvite,
                 canJoin: canJoin,
-                canStartGame: canStartGame
+                canStartGame: canStartGame,
+                draftTargetPlayerCount: targetPlayerCount,
+                draftBoardStrategy: boardStrategy,
+                draftDesertPlacement: boardDesertPlacement
             )
         )
     }
@@ -632,6 +653,22 @@ final class LobbyDriverViewModel: ObservableObject {
         userDefaults.set(strategy.rawValue, forKey: boardStrategyKey)
     }
 
+    func setBoardDesertPlacement(_ placement: BoardDesertPlacementV1) {
+        boardDesertPlacement = placement
+        userDefaults.set(placement.rawValue, forKey: boardDesertPlacementKey)
+    }
+
+    func setTargetPlayerCount(_ count: Int) {
+        let normalized = CoreGameStateV1.normalizedTargetPlayerCount(count)
+            ?? BoardStrategyDefaults.targetPlayerCount
+        targetPlayerCount = normalized
+        userDefaults.set(normalized, forKey: targetPlayerCountKey)
+    }
+
+    var draftBoardRules: BoardRulesV1 {
+        BoardRulesV1(strategy: boardStrategy, desertPlacement: boardDesertPlacement)
+    }
+
     @discardableResult
     func updateContext(
         conversation: MSConversation?,
@@ -679,12 +716,13 @@ final class LobbyDriverViewModel: ObservableObject {
             stateHash: "",
             roster: [actor],
             currentPlayer: actor,
+            targetPlayerCount: targetPlayerCount,
             playerDisplayNamesByPlayer: preferredDisplayName.map { [actor: $0] } ?? [:],
             phase: .lobby,
             seed: nil,
             diceRngState: nil,
             resourcesByPlayer: [actor: .zero],
-            boardRules: nil,
+            boardRules: draftBoardRules,
             board: nil
         ).rehashed()
 
@@ -823,8 +861,9 @@ final class LobbyDriverViewModel: ObservableObject {
 
         let finalRoster = fromState.roster
 
-        guard finalRoster.count >= 2 else {
-            setLastError("At least two players must be in the lobby before starting.")
+        let requiredPlayerCount = LobbyMembershipResolver.targetPlayerCount(for: fromState)
+        guard finalRoster.count == requiredPlayerCount else {
+            setLastError("Wait for \(requiredPlayerCount) players before starting this game.")
             return
         }
 
@@ -834,7 +873,7 @@ final class LobbyDriverViewModel: ObservableObject {
         let robberSeed = seedDeriver.seed(for: .robber)
         let boardSeed = seedDeriver.seed(for: .board)
         let devDeck = makeDeterministicDevDeck(masterSeed: masterSeed)
-        let rules = BoardRulesV1(strategy: boardStrategy)
+        let rules = fromState.boardRules ?? draftBoardRules
         let board = StandardBoardGeneratorV1.generate(boardSeed: boardSeed, rules: rules)
         let setupState = initializeSetupState(roster: finalRoster)
         guard let setupPlayer = setupState.order.first else {
@@ -849,6 +888,7 @@ final class LobbyDriverViewModel: ObservableObject {
             stateHash: "",
             roster: finalRoster,
             currentPlayer: setupPlayer,
+            targetPlayerCount: fromState.targetPlayerCount,
             playerDisplayNamesByPlayer: fromState.playerDisplayNamesByPlayer,
             phase: .setup,
             seed: masterSeed,

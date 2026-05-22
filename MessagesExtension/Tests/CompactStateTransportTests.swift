@@ -16,6 +16,7 @@ final class CompactStateTransportTests: XCTestCase {
         XCTAssertEqual(decoded.prevHash, state.prevHash)
         XCTAssertEqual(decoded.roster, state.roster)
         XCTAssertEqual(decoded.currentPlayer, state.currentPlayer)
+        XCTAssertEqual(decoded.targetPlayerCount, state.targetPlayerCount)
         XCTAssertEqual(decoded.playerDisplayNamesByPlayer, state.playerDisplayNamesByPlayer)
         XCTAssertEqual(decoded.phase, state.phase)
         XCTAssertEqual(decoded.resourcesByPlayer, state.resourcesByPlayer)
@@ -81,7 +82,7 @@ final class CompactStateTransportTests: XCTestCase {
     private func makeState() -> CoreGameStateV1 {
         let roster = ["A", "B", "C"]
         let seed: UInt64 = 0x1234ABCD
-        let rules = BoardRulesV1(strategy: .noRedAdjacentV1)
+        let rules = BoardRulesV1(strategy: .noRedAdjacentV1, desertPlacement: .borderV1)
         let boardSeed = SeedDeriver(masterSeed: seed).seed(for: .board)
         let board = StandardBoardGeneratorV1.generate(boardSeed: boardSeed, rules: rules)
 
@@ -101,6 +102,7 @@ final class CompactStateTransportTests: XCTestCase {
             stateHash: "",
             roster: roster,
             currentPlayer: "A",
+            targetPlayerCount: 3,
             playerDisplayNamesByPlayer: [
                 "A": "Host Alpha",
                 "B": "Trader Beta",
@@ -160,7 +162,7 @@ final class CompactStateTransportTests: XCTestCase {
         let masterSeed: UInt64 = 0xD00DFEED
         let gameId = "compact-transport-stress"
         let rev = 240
-        let boardRules = BoardRulesV1(strategy: .noRedAdjacentV1)
+        let boardRules = BoardRulesV1(strategy: .noRedAdjacentV1, desertPlacement: .borderV1)
         let boardSeed = SeedDeriver(masterSeed: masterSeed).seed(for: .board)
         let board = StandardBoardGeneratorV1.generate(boardSeed: boardSeed, rules: boardRules)
         let devDeck = Array(makeDeterministicDevDeck(masterSeed: masterSeed).dropFirst(20))
@@ -267,6 +269,7 @@ final class CompactStateTransportTests: XCTestCase {
             stateHash: "",
             roster: roster,
             currentPlayer: "A",
+            targetPlayerCount: 4,
             phase: .turn,
             seed: masterSeed,
             diceRngState: SeedDeriver(masterSeed: masterSeed).seed(for: .dice),

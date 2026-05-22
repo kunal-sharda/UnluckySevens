@@ -42,6 +42,21 @@ private enum CompactStateCodec {
         }
     }
 
+    static func encodeDesertPlacement(_ placement: BoardDesertPlacementV1) -> Int {
+        switch placement {
+        case .anywhereV1: return 0
+        case .borderV1: return 1
+        }
+    }
+
+    static func decodeDesertPlacement(_ code: Int) throws -> BoardDesertPlacementV1 {
+        switch code {
+        case 0: return .anywhereV1
+        case 1: return .borderV1
+        default: throw CompactStateTransportError.invalidPayload
+        }
+    }
+
     static func encodeDevCard(_ card: DevCardV1) -> Int {
         switch card {
         case .knight: return 0
@@ -641,6 +656,7 @@ private struct CompactStateTransportV1: Codable, Equatable {
     let prevHash: String?
     let stateHash: String
     let roster: [String]
+    let targetPlayerCount: Int?
     let playerDisplayNames: [String?]?
     let currentPlayerIndex: Int
     let phaseCode: Int
@@ -669,6 +685,7 @@ private struct CompactStateTransportV1: Codable, Equatable {
     let citiesByNode: [CompactOwnershipEntryV1]
     let roadsByEdge: [CompactOwnershipEntryV1]
     let boardStrategyCode: Int?
+    let boardDesertPlacementCode: Int?
     let compactBoard: CompactBoardTransportV1?
     let setupState: CompactSetupStateTransportV1?
     let turnState: CompactTurnStateTransportV1?
@@ -681,6 +698,7 @@ private struct CompactStateTransportV1: Codable, Equatable {
         prevHash = state.prevHash
         stateHash = state.stateHash
         roster = state.roster
+        targetPlayerCount = state.targetPlayerCount
         let compactPlayerDisplayNames = state.roster.map { state.playerDisplayNamesByPlayer[$0] }
         playerDisplayNames = compactPlayerDisplayNames.contains(where: { $0 != nil }) ? compactPlayerDisplayNames : nil
         currentPlayerIndex = try CompactStateCodec.index(for: state.currentPlayer, in: rosterIndexMap)
@@ -710,6 +728,7 @@ private struct CompactStateTransportV1: Codable, Equatable {
         citiesByNode = try Self.compactOwnershipMap(state.citiesByNode, rosterIndexMap: rosterIndexMap)
         roadsByEdge = try Self.compactOwnershipMap(state.roadsByEdge, rosterIndexMap: rosterIndexMap)
         boardStrategyCode = state.boardRules.map { CompactStateCodec.encodeBoardStrategy($0.strategy) }
+        boardDesertPlacementCode = state.boardRules.map { CompactStateCodec.encodeDesertPlacement($0.desertPlacement) }
         compactBoard = state.board.map { CompactBoardTransportV1(robberTile: $0.robberTile) }
         setupState = try state.setupState.map { try CompactSetupStateTransportV1(setupState: $0, roster: state.roster, rosterIndexMap: rosterIndexMap) }
         turnState = try state.turnState.map { try CompactTurnStateTransportV1(turnState: $0, roster: state.roster, rosterIndexMap: rosterIndexMap) }
@@ -745,6 +764,7 @@ private struct CompactStateTransportV1: Codable, Equatable {
             stateHash: stateHash,
             roster: roster,
             currentPlayer: try CompactStateCodec.player(at: currentPlayerIndex, in: roster),
+            targetPlayerCount: targetPlayerCount,
             playerDisplayNamesByPlayer: playerDisplayNamesByPlayer,
             phase: try CompactStateCodec.decodePhase(phaseCode),
             seed: seed,
@@ -824,7 +844,10 @@ private struct CompactStateTransportV1: Codable, Equatable {
         guard let boardStrategyCode else {
             return nil
         }
-        return BoardRulesV1(strategy: try CompactStateCodec.decodeBoardStrategy(boardStrategyCode))
+        return BoardRulesV1(
+            strategy: try CompactStateCodec.decodeBoardStrategy(boardStrategyCode),
+            desertPlacement: try boardDesertPlacementCode.map(CompactStateCodec.decodeDesertPlacement) ?? .anywhereV1
+        )
     }
 
     private func rehydratedBoard() throws -> BoardSetupV1? {
@@ -879,6 +902,7 @@ private struct CompactStateTransportV1: Codable, Equatable {
         case prevHash = "p"
         case stateHash = "h"
         case roster = "o"
+        case targetPlayerCount = "G"
         case playerDisplayNames = "N"
         case currentPlayerIndex = "c"
         case phaseCode = "x"
@@ -907,6 +931,7 @@ private struct CompactStateTransportV1: Codable, Equatable {
         case citiesByNode = "C"
         case roadsByEdge = "E"
         case boardStrategyCode = "B"
+        case boardDesertPlacementCode = "D"
         case compactBoard = "P"
         case setupState = "U"
         case turnState = "Y"

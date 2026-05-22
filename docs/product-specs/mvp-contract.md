@@ -13,6 +13,7 @@ The current MVP includes:
 - iMessage-first async play inside a group conversation
 - full standard Catan rules for setup, turns, building, trading, dev cards, awards, and victory
 - deterministic balanced board generation and gameplay randomness
+- pre-invite setup options for target player count, board generation style, and desert placement
 - a bubble-first experience where the game remains legible from transcript bubbles and the expanded view
 - secrecy-safe UI that shows opponents by hand size, not hand composition
 
@@ -32,6 +33,7 @@ The UI and engine should preserve these product qualities:
 - turns feel clear and low-friction in Messages
 - the async authority model avoids desync and partial updates
 - new games avoid adjacent red-number tokens by default while preserving seeded, deterministic board setup
+- hosts can lock setup options before sending the first invite; the default target is 3 players, the current setup gate supports 2-4 players without adding special two-player house rules, and board rules remain deterministic shared state
 - the board and audit surfaces explain the current state without leaking hidden information
 - common actions stay compact enough for an iMessage context
 

@@ -120,9 +120,57 @@ final class LobbyMembershipResolverTests: XCTestCase {
         }
     }
 
+    func testCanJoinStopsAtTargetPlayerCount() {
+        let state = makeLobbyState(
+            roster: ["host", "guest"],
+            customNames: [:],
+            targetPlayerCount: 2
+        )
+
+        XCTAssertFalse(
+            LobbyMembershipResolver.canJoin(
+                state: state,
+                localParticipant: "third-player"
+            )
+        )
+        XCTAssertNil(
+            LobbyMembershipResolver.joinedLobbyState(
+                state: state,
+                localParticipant: "third-player"
+            )
+        )
+    }
+
+    func testCanStartRequiresSelectedTargetPlayerCount() {
+        let waiting = makeLobbyState(
+            roster: ["host", "guest"],
+            customNames: [:],
+            targetPlayerCount: 3
+        )
+        let ready = makeLobbyState(
+            roster: ["host", "guest", "third"],
+            customNames: [:],
+            targetPlayerCount: 3
+        )
+
+        XCTAssertFalse(
+            LobbyMembershipResolver.canStart(
+                state: waiting,
+                localParticipant: "host"
+            )
+        )
+        XCTAssertTrue(
+            LobbyMembershipResolver.canStart(
+                state: ready,
+                localParticipant: "host"
+            )
+        )
+    }
+
     private func makeLobbyState(
         roster: [String],
-        customNames: [String: String]
+        customNames: [String: String],
+        targetPlayerCount: Int? = nil
     ) -> CoreGameStateV1 {
         CoreGameStateV1(
             gameId: "lobby-membership-tests",
@@ -131,6 +179,7 @@ final class LobbyMembershipResolverTests: XCTestCase {
             stateHash: "",
             roster: roster,
             currentPlayer: roster[0],
+            targetPlayerCount: targetPlayerCount,
             playerDisplayNamesByPlayer: customNames,
             phase: .lobby,
             seed: nil,
@@ -154,6 +203,7 @@ final class LobbyMembershipResolverTests: XCTestCase {
             stateHash: "",
             roster: nextRoster,
             currentPlayer: state.currentPlayer,
+            targetPlayerCount: state.targetPlayerCount,
             playerDisplayNamesByPlayer: customNames ?? state.playerDisplayNamesByPlayer,
             phase: .lobby,
             seed: state.seed,

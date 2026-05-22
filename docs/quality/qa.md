@@ -30,7 +30,7 @@ Run these validation commands serially. Do not run `swift test` or `xcodebuild` 
   - run the full Practical Gate
   - run the Manual Simulator Runbook smoke pass
   - run the Real Device Shell Smoke checklist
-- Any lobby join/start UX change:
+- Any lobby join/start or pre-invite setup-options UX change:
   - run the full Practical Gate
   - run the Manual Simulator Runbook smoke pass
   - run the Real Device Lobby Smoke checklist
@@ -596,21 +596,24 @@ Run this after shell, layout, presentation, or mode-system changes.
 
 Run this after any lobby join/start UX change.
 
-1. From device A, send an invite `STATE` into the thread.
+1. From device A, choose a target player count, board generation style, and desert placement before sending an invite `STATE` into the thread.
 2. On device A, confirm the extension dismisses back to the Messages thread immediately after the invite is sent.
 3. On device B, select the invite bubble and confirm the extension resolves the invite before joining.
-4. On device B, enter a custom lobby name before joining and then join from the invite bubble.
-5. Confirm joining does not require an extra manual send step after tapping `Join`.
-6. On device A, reopen the latest lobby bubble in the thread and confirm the lobby UI now reflects both the host and the joined guest. Reopening a real one-player lobby bubble before anyone joins should show the normal interactive lobby.
-7. Confirm the joined roster uses the custom lobby name when set and falls back to the deterministic alias when it is not.
-8. Update the joined player's name from the reopened lobby and confirm the renamed roster persists after closing and reopening the latest lobby bubble on both devices.
-9. Close the extension on both devices, start a fresh lobby from each device in turn, and confirm the local name field prefills from that device's saved preferred lobby name before any new join/rename publish.
-10. Confirm `Start Game` stays unavailable until at least two players appear in that reopened host lobby, then start from device A.
-11. From device B, open the start `STATE` and confirm the extension resolves the new setup context cleanly.
-12. Confirm the fresh invite, join, rename, and start bubbles all use descriptive product copy instead of revision/debug text.
-13. Confirm the first invite bubble shows the branded Unlucky Sevens invite image, while join and rename bubbles remain text-only.
-14. Confirm the start bubble shows a concise action-card graphic rather than a full board thumbnail.
-15. On both devices, if the thread now contains more than one recoverable game or stale lobby context, confirm the compact `Game` / `Games` recovery chip opens the correct latest known lobby or game context without requiring transcript hunting.
+4. Confirm device B sees a read-only setup summary that matches the invite options.
+5. On device B, enter a custom lobby name before joining and then join from the invite bubble.
+6. Confirm joining does not require an extra manual send step after tapping `Join`.
+7. On device A, reopen the latest lobby bubble in the thread and confirm the lobby UI now reflects both the host and the joined guest. Reopening a real one-player lobby bubble before anyone joins should show the normal interactive lobby.
+8. Confirm the joined roster uses the custom lobby name when set and falls back to the deterministic alias when it is not.
+9. Update the joined player's name from the reopened lobby and confirm the renamed roster persists after closing and reopening the latest lobby bubble on both devices.
+10. Close the extension on both devices, start a fresh lobby from each device in turn, and confirm the local name field prefills from that device's saved preferred lobby name before any new join/rename publish.
+11. Confirm `Start Game` stays unavailable until the joined roster exactly matches the selected target player count, and confirm additional joins are blocked once that target is reached.
+12. Start from device A after the target roster is complete.
+13. From device B, open the start `STATE` and confirm the extension resolves the new setup context cleanly.
+14. If `Desert on Border` was selected, confirm the generated board places the desert on a coastal tile; if balanced generation was selected, confirm adjacent `6`/`8` tokens are still avoided.
+15. Confirm the fresh invite, join, rename, and start bubbles all use descriptive product copy instead of revision/debug text.
+16. Confirm the first invite bubble shows the branded Unlucky Sevens invite image, while join and rename bubbles remain text-only.
+17. Confirm the start bubble shows a concise action-card graphic rather than a full board thumbnail.
+18. On both devices, if the thread now contains more than one recoverable game or stale lobby context, confirm the compact `Game` / `Games` recovery chip opens the correct latest known lobby or game context without requiring transcript hunting.
 
 ### Real Device Messages Lifecycle
 

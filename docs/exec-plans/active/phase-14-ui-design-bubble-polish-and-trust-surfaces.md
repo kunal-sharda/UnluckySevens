@@ -7,6 +7,7 @@ Phase 14 starts by tightening the two most visible trust surfaces in the shipped
 - transcript bubble copy should read like a product message, not a transport/debug artifact
 - key transcript bubbles should show polished presentation-only graphics so the thread reads like a game, not a log
 - players should be able to set a custom display name during lobby setup instead of being locked to aliases
+- hosts should be able to choose player count, board generation style, and desert placement before sending the first invite
 - the pre-TestFlight branch should stop carrying dev-only legacy transcript/runtime handling and shipped debug UI
 
 Success for this slice means fresh lobby/setup/turn bubbles use `Unlucky Sevens: <descriptive title>` plus a short human-readable summary, setup/turn/game-over state bubbles can carry concise action-card graphics, lobby-entered names persist through canonical state, transport round-trips, and the transition into gameplay, and the local player’s preferred lobby name prefills future invite/join flows on the same device.
@@ -50,6 +51,7 @@ User-visible result:
 - A player can set or update their display name while in the lobby. Joiners may carry that name into their join publish, and joined players may update it later from the lobby.
 - The local player's most recent lobby name is remembered on that device and prefills later invite/join drafts until the player changes it again.
 - Gameplay surfaces prefer the custom name when present and fall back to deterministic aliases otherwise.
+- The host can choose target player count, board strategy, and desert placement before sending the first invite. Those setup options become canonical lobby state, are read-only for joiners, gate further joins and host start, and deterministically produce the started board.
 
 Code and docs result:
 
@@ -94,6 +96,7 @@ Acceptance boundary:
    - concise action-card graphics for start/setup/turn/game-over state bubbles
    - text-only fallback when image rendering is unavailable
 11. Convert the generated packaging path to a standalone Messages-only app bundle before the first TestFlight boundary.
+12. Add canonical pre-invite setup options for target player count, board generation style, and desert placement before publishing the first lobby invite.
 
 ## Validation
 
@@ -161,6 +164,16 @@ Latest core validation hardening:
 - `git diff --check`
 - `swift test --package-path Packages/ULS_CoreGame`
 
+Latest lobby setup-options validation:
+
+- `swift test --package-path Packages/ULS_CoreGame --filter BoardGeneratorV1Tests`
+- `bash ./scripts/gen.sh`
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build -quiet`
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:MessagesExtensionTests/LobbyMembershipResolverTests -only-testing:MessagesExtensionTests/LobbyScreenModelBuilderTests -only-testing:MessagesExtensionTests/CompactStateTransportTests -only-testing:MessagesExtensionTests/LobbyDriverViewModelIdentityTests test -quiet`
+- `swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals`
+- `swift test --package-path Packages/ULS_Transport`
+- `git diff --check`
+
 ## Progress
 
 - [x] Canonical name state/transport landed
@@ -187,6 +200,7 @@ Latest core validation hardening:
 - [x] Extension-local iMessage icon assets wired into the Messages extension target
 - [x] Hidden multi-VP reveal gate fixed and covered
 - [x] Lobby join/rename `STATE` transition validation restored below Messages publishing
+- [x] Pre-invite setup options added for target player count, board generation style, and border-desert placement
 
 ## Decisions and Discoveries
 
@@ -211,7 +225,10 @@ Latest core validation hardening:
 - The app-drawer icon comes from the Messages extension's own `iMessage App Icon.stickersiconset`. The container app's `AppIcon.appiconset` is not sufficient for the extension surface.
 - Victory Point reveal affordances must count the player's full hidden VP inventory, not just one reveal, because the reducer intentionally reveals only one card per action and otherwise a player with multiple hidden VPs can be blocked from reaching a legal win.
 - Canonical lobby join and rename publishes are core state transitions even though they do not append turn audit actions. Messages must validate them through `ULS_CoreGame.validateTransition` before send, with only append-actor join and actor-owned display-name rename allowed.
+- Setup options belong in canonical lobby state rather than local UI draft state once the invite is sent. Target player count gates lobby joins and host start, while board rules are validated against deterministic board generation on the lobby-to-setup transition.
+- The current target-count control supports 2-4 players to preserve the existing two-player smoke/start path, but the first-beta default remains 3 players and no special two-player house rules were added.
+- `BoardRulesV1` remains backwards-decodable by defaulting missing desert-placement metadata to `anywhereV1`; compact state transport encodes the new value explicitly for new messages.
 
 ## Outcome
 
-This transcript-copy, action-graphic bubble presentation, temporary app-icon, extension icon wiring, standalone Messages-only packaging, canonical lobby-naming, local preferred-name prefill, one-step trade-resolution cleanup, ordered-discard hardening, hidden-VP reveal hardening, lobby transition validation, pre-TestFlight runtime/debug purge, repo cleanup, and basic feature audit slice is complete. Phase 14 remains active for broader UI/bubble polish beyond this slice.
+This transcript-copy, action-graphic bubble presentation, temporary app-icon, extension icon wiring, standalone Messages-only packaging, canonical lobby-naming, local preferred-name prefill, pre-invite setup-options, one-step trade-resolution cleanup, ordered-discard hardening, hidden-VP reveal hardening, lobby transition validation, pre-TestFlight runtime/debug purge, repo cleanup, and basic feature audit slice is complete. Phase 14 remains active for broader UI/bubble polish beyond this slice.
