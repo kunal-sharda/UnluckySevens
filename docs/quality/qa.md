@@ -30,6 +30,13 @@ Run these validation commands serially. Do not run `swift test` or `xcodebuild` 
   - run the full Practical Gate
   - run the Manual Simulator Runbook smoke pass
   - run the Real Device Shell Smoke checklist
+- Any visual-design iteration using the single-device UX Lab:
+  - run `bash ./scripts/gen.sh`
+  - run `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`
+  - run the focused `MessagesExtensionTests/UXTestingFixturesTests` simulator test
+  - run `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:UnluckySevensUITests/MessagesExtensionDesignSliceUITests/testOpenMessagesExtensionAndCaptureDesignSlices test` when repeatable simulator screenshots are useful for design review
+  - manually step through the Single-Device UX Lab fixtures on the target device or simulator
+  - still run the relevant real-device checklist before release or TestFlight handoff
 - Any lobby join/start UX change:
   - run the full Practical Gate
   - run the Manual Simulator Runbook smoke pass
@@ -542,6 +549,42 @@ Current repo answer:
 
 - The 2026-04-16 audit moved phase 13 to the front of the queue.
 - The remaining unfinished phase-12 gameplay/signoff work now rides at the tail of phase 13 instead of pretending gameplay can finish cleanly on top of an unstable host substrate.
+
+## Single-Device UX Lab
+
+DEBUG builds include a compact UX Lab overlay in the Messages extension so visual and interaction audit work can happen on one device without needing a live two-account table. The lab can also drive a local dummy table: state-producing actions are applied back into the preview state, and the actor picker can switch between the real local player and dummy players.
+
+Use it for fast design iteration only:
+
+1. Build and install a Debug build.
+2. Open Unlucky Sevens from the Messages app drawer.
+3. Tap the top-right `Preview` / `UX Lab` control.
+4. Choose a fixture and an `Acting as` player.
+5. Tap `Load`, inspect the shell, and interact with the visible actions.
+6. Tap `Exit` before validating normal transcript behavior.
+
+For a one-device playthrough, load `lobby-invite`, switch `Acting as` to Maya or Theo, and use the join action. Actor switching keeps the current local table instead of resetting the fixture, so you can return to Kunal to start and continue into setup/gameplay. Keep `Follow turn owner` enabled when you want the lab to auto-hop to the current player after a local action; disable it when you want to inspect another player's blocked or waiting view.
+
+Enable `Auto dummy turns` to make the lab move every actor except the selected `You` actor. The dummy policy is intentionally simple: it seats missing dummy players in the lobby, takes first legal setup placements, rolls dice, submits required discards, moves the robber/selects the first steal victim, and ends dummy turns after the roll. It does not build a real Catan strategy, author trades, buy/play development cards, or validate real Messages delivery.
+
+Current fixtures cover:
+
+- `lobby-invite`
+- `lobby-ready`
+- `setup-placement`
+- `turn-needs-roll`
+- `turn-after-roll`
+- `waiting-on-alice`
+- `pending-discard`
+- `robber-move`
+- `trade-offer`
+- `game-over`
+
+While UX Lab is active, the view model uses local fixture state and local actor override. It does not publish `MSMessage` bubbles; state-producing actions are applied back into the local preview path. That makes it useful for screen-by-screen design review and one-device dummy-user flow checks, but it does not validate transcript URL transport, bubble delivery, cross-device selection, same-session folding, or real Messages lifecycle behavior.
+
+The `UnluckySevensUITests` XCUITest harness can drive the simulator through Messages, open the Unlucky Sevens app drawer item, and attach screenshots of the invite slice plus the UX Lab panel to the `.xcresult` bundle. It is a design-review capture aid, not a replacement for the real-device Messages lane. The current harness expects Messages to have at least one existing simulator conversation and falls back to the first visible conversation if the seeded `+1 (888) 555-1212` thread is unavailable.
+
+Before TestFlight or any release claim, follow the relevant Real Device Lane checklist even if the UX Lab pass looked good.
 
 ## Real Device Lane
 

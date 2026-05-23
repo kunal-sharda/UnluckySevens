@@ -7,7 +7,7 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
         let model = LobbyScreenModelBuilder.build(
             context: LobbyScreenContext(
                 selectedState: nil,
-                localActor: nil,
+                localActor: "host-player",
                 activeContextSource: "-",
                 staleWarning: "-",
                 lastError: "-",
@@ -18,8 +18,9 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
         )
 
         XCTAssertTrue(model.showsInviteEntryHero)
-        XCTAssertEqual(model.title, "Invite Players to Unlucky Sevens")
-        XCTAssertEqual(model.inviteButton?.title, "Invite Players")
+        XCTAssertEqual(model.title, "Invite friends to play")
+        XCTAssertEqual(model.inviteButton?.title, "Create Invite")
+        XCTAssertEqual(model.nameEditor?.title, "Your name")
         XCTAssertNil(model.joinButton)
         XCTAssertNil(model.startButton)
     }

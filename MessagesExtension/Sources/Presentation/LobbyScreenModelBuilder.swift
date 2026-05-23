@@ -13,25 +13,25 @@ enum LobbyScreenModelBuilder {
 
         return LobbyScreenModel(
             showsInviteEntryHero: true,
-            title: "Invite Players to Unlucky Sevens",
-            subtitle: "Send the first bubble into this thread to open a lobby.",
+            title: "Invite friends to play",
+            subtitle: "Set up a Catan-style game in this Messages chat.",
             warningText: warningText,
             participantsTitle: "Lobby",
             participants: [],
             participantsEmptyTitle: "No Lobby Selected",
             participantsEmptySystemImage: "person.3.sequence.fill",
             participantsEmptyDescription: "Select an invite bubble or send a new one to open the lobby.",
-            nameEditor: nil,
+            nameEditor: buildInviteEntryNameEditor(context: context),
             inviteButton: context.canInvite
                 ? LobbyActionButtonModel(
-                    title: "Invite Players",
+                    title: "Create Invite",
                     systemImage: "plus.message.fill",
                     isEnabled: true
                 )
                 : nil,
             joinButton: nil,
             startButton: nil,
-            helperText: "The host sends the invite, everyone joins from the bubble, and the host starts when ready."
+            helperText: "Everyone joins from the Messages bubble. The host starts once the table is ready."
         )
     }
 
@@ -174,6 +174,21 @@ enum LobbyScreenModelBuilder {
         }
 
         return nil
+    }
+
+    private static func buildInviteEntryNameEditor(
+        context: LobbyScreenContext
+    ) -> LobbyNameEditorModel? {
+        guard context.canInvite, context.localActor != nil else {
+            return nil
+        }
+
+        return LobbyNameEditorModel(
+            title: "Your name",
+            placeholder: "Name at the table",
+            helperText: "Shown on this table and remembered for the next invite.",
+            saveButton: nil
+        )
     }
 
     private static func shouldShowHostWaitingState(

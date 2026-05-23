@@ -120,6 +120,8 @@ let project = Project(
             infoPlist: .default,
             sources: [
                 "MessagesExtension/Tests/**",
+                "MessagesExtension/Sources/Developer/UXTestFixture.swift",
+                "MessagesExtension/Sources/Developer/UXTestingAutoplayResolver.swift",
                 "MessagesExtension/Sources/Presentation/**",
                 "MessagesExtension/Sources/Board/GameBoardCameraController.swift",
                 "MessagesExtension/Sources/Board/GameBoardLayout.swift",
@@ -134,6 +136,18 @@ let project = Project(
             dependencies: [
                 .package(product: "ULS_CoreGame"),
                 .package(product: "ULS_Transport"),
+            ]
+        ),
+        .target(
+            name: "UnluckySevensUITests",
+            destinations: .iOS,
+            product: .uiTests,
+            bundleId: "com.unluckysevens.app.uitests",
+            deploymentTargets: .iOS("17.0"),
+            infoPlist: .default,
+            sources: ["UnluckySevensUITests/**"],
+            dependencies: [
+                .target(name: "UnluckySevensApp")
             ]
         ),
     ]

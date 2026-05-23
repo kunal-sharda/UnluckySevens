@@ -8,6 +8,7 @@ Phase 14 starts by tightening the two most visible trust surfaces in the shipped
 - key transcript bubbles should show polished presentation-only graphics so the thread reads like a game, not a log
 - players should be able to set a custom display name during lobby setup instead of being locked to aliases
 - the pre-TestFlight branch should stop carrying dev-only legacy transcript/runtime handling and shipped debug UI
+- design iteration should have a DEBUG-only single-device fixture path so UI/UX audit work can cover lobby, setup, turn, forced-flow, trade, and game-over states without carrying two devices; the same path should support dummy-player local playthroughs, not only static screenshots
 
 Success for this slice means fresh lobby/setup/turn bubbles use `Unlucky Sevens: <descriptive title>` plus a short human-readable summary, setup/turn/game-over state bubbles can carry concise action-card graphics, lobby-entered names persist through canonical state, transport round-trips, and the transition into gameplay, and the local player’s preferred lobby name prefills future invite/join flows on the same device.
 
@@ -50,6 +51,9 @@ User-visible result:
 - A player can set or update their display name while in the lobby. Joiners may carry that name into their join publish, and joined players may update it later from the lobby.
 - The local player's most recent lobby name is remembered on that device and prefills later invite/join drafts until the player changes it again.
 - Gameplay surfaces prefer the custom name when present and fall back to deterministic aliases otherwise.
+- DEBUG builds can open a compact UX Lab overlay that loads representative local fixtures and actor viewpoints for design audit without publishing Messages bubbles.
+- UX Lab can drive a local dummy table by applying state-producing actions back into the preview state, switching the acting player without resetting the table, and optionally following the current turn owner after each local action.
+- UX Lab can autoplay non-human dummy actors with a deliberately simple policy: join open dummy seats, place first legal setup pieces, roll, satisfy forced discard/robber steps, and end the dummy turn.
 
 Code and docs result:
 
@@ -58,6 +62,7 @@ Code and docs result:
 - A device-local preferred-name store prefills future lobby drafts without replacing canonical per-game state as shared truth.
 - Lobby UI exposes a small name editor.
 - Owner docs describe alias fallback plus custom-name precedence.
+- QA docs describe the single-device UX Lab as a fast visual-audit and dummy-user playthrough lane, including autoplay limits, with real two-device Messages testing still required before release.
 
 Acceptance boundary:
 
@@ -94,6 +99,8 @@ Acceptance boundary:
    - concise action-card graphics for start/setup/turn/game-over state bubbles
    - text-only fallback when image rendering is unavailable
 11. Convert the generated packaging path to a standalone Messages-only app bundle before the first TestFlight boundary.
+12. Add a DEBUG-only single-device UX Lab with fixture states for design iteration and a small overlay for switching state and local actor, including a dummy-user path that can play through local actions on one device.
+13. Add an XCUITest design-slice harness that opens Messages, finds the Unlucky Sevens app drawer item, and captures simulator screenshots of the invite slice plus UX Lab overlay as XCTest attachments.
 
 ## Validation
 
@@ -161,6 +168,20 @@ Latest core validation hardening:
 - `git diff --check`
 - `swift test --package-path Packages/ULS_CoreGame`
 
+Latest single-device UX Lab validation:
+
+- Lobby invite fixtures now expose dummy Maya/Theo actor options before they join, actor switching keeps the current local table instead of reloading the fixture, the `Follow turn owner` toggle can auto-switch the active lab actor after locally applied `STATE` publishes, and `Auto dummy turns` can advance every actor except the selected `You` actor through dummy joins, setup placements, rolls, forced discards/robber moves, and turn end.
+- `bash ./scripts/gen.sh`
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:MessagesExtensionTests/UXTestingFixturesTests test`
+- `git diff --check`
+
+Latest XCUITest design-slice validation:
+
+- `bash ./scripts/gen.sh`
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:UnluckySevensUITests/MessagesExtensionDesignSliceUITests/testOpenMessagesExtensionAndCaptureDesignSlices test`
+- The UI test opened Messages, selected Unlucky Sevens from the app drawer, and attached screenshots for the invite slice and UX Lab panel to the test result bundle.
+
 ## Progress
 
 - [x] Canonical name state/transport landed
@@ -187,6 +208,8 @@ Latest core validation hardening:
 - [x] Extension-local iMessage icon assets wired into the Messages extension target
 - [x] Hidden multi-VP reveal gate fixed and covered
 - [x] Lobby join/rename `STATE` transition validation restored below Messages publishing
+- [x] DEBUG-only single-device UX Lab added for visual/design audit and one-device dummy-player playthroughs across representative states
+- [x] XCUITest design-slice harness added for repeatable simulator capture of the Messages extension invite surface and UX Lab overlay
 
 ## Decisions and Discoveries
 
@@ -211,7 +234,11 @@ Latest core validation hardening:
 - The app-drawer icon comes from the Messages extension's own `iMessage App Icon.stickersiconset`. The container app's `AppIcon.appiconset` is not sufficient for the extension surface.
 - Victory Point reveal affordances must count the player's full hidden VP inventory, not just one reveal, because the reducer intentionally reveals only one card per action and otherwise a player with multiple hidden VPs can be blocked from reaching a legal win.
 - Canonical lobby join and rename publishes are core state transitions even though they do not append turn audit actions. Messages must validate them through `ULS_CoreGame.validateTransition` before send, with only append-actor join and actor-owned display-name rename allowed.
+- The single-device UX Lab is a design aid only. It is DEBUG-gated, loads local fixture `STATE` directly, and routes UX-lab actions back into local state instead of sending `MSMessage`; two-device transcript, selection, and delivery behavior still require the real-device QA lane.
+- The `lobby-invite` UX Lab fixture intentionally exposes dummy actor options before they are in the canonical roster so one device can simulate joiners, then continue through setup/gameplay by switching actor viewpoints.
+- UX Lab dummy autoplay is intentionally a flow skipper, not a product AI. It avoids strategic build/trade/dev-card choices and only takes deterministic first-legal setup, roll, forced-flow, and end-turn actions for non-human actors.
+- XCUITest sees SwiftUI-in-Messages leaf text and buttons more reliably than container-level identifiers. The design-slice harness therefore asserts on visible invite/lab text while still keeping accessibility identifiers on stable app controls for future expansion.
 
 ## Outcome
 
-This transcript-copy, action-graphic bubble presentation, temporary app-icon, extension icon wiring, standalone Messages-only packaging, canonical lobby-naming, local preferred-name prefill, one-step trade-resolution cleanup, ordered-discard hardening, hidden-VP reveal hardening, lobby transition validation, pre-TestFlight runtime/debug purge, repo cleanup, and basic feature audit slice is complete. Phase 14 remains active for broader UI/bubble polish beyond this slice.
+This transcript-copy, action-graphic bubble presentation, temporary app-icon, extension icon wiring, standalone Messages-only packaging, canonical lobby-naming, local preferred-name prefill, one-step trade-resolution cleanup, ordered-discard hardening, hidden-VP reveal hardening, lobby transition validation, single-device UX Lab with dummy-player playthrough and dummy-autoplay support, XCUITest design-slice capture harness, pre-TestFlight runtime/debug purge, repo cleanup, and basic feature audit slice is complete. Phase 14 remains active for broader UI/bubble polish beyond this slice.

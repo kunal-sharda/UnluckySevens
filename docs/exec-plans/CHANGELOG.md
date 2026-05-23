@@ -22,6 +22,8 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 - Pre-TestFlight transcript bubbles can attach presentation-only images: a deterministic programmatic lobby invite graphic for the first invite, and action-card graphics for setup, turn, and game-over `STATE` publishes.
 - Temporary generated `7` app icon assets for the standalone Messages app bundle.
 - Extension-scoped `iMessage App Icon.stickersiconset` assets so the standalone Messages app drawer uses the temporary `7` icon.
+- DEBUG-only single-device UX Lab fixtures and overlay for visual audit, one-device dummy-player playthroughs, and simple non-human dummy autoplay across lobby, setup, turn, forced-flow, trade, and game-over states without sending Messages bubbles.
+- XCUITest design-slice harness that drives Messages to the Unlucky Sevens extension and stores invite-slice plus UX Lab screenshots as test attachments.
 - Stage 0.A bootstrap scaffolding for `Tuist/`, `App/`, `MessagesExtension/`, `Packages/`, and `scripts/`.
 - Stage 0.A developer scripts: `scripts/gen.sh` and `scripts/clean.sh`.
 - Stage 0.A repository baseline files: `.gitignore`, `README.md`, and `Makefile`.

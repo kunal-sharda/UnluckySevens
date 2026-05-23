@@ -36,6 +36,15 @@ final class LobbyDriverViewModel: ObservableObject {
     private var cachedDevCardPanelModelValue: GameDevCardPanelModel??
     private var cachedBankTrayModelKey: BankTrayModelCacheKey?
     private var cachedBankTrayModelValue: GameBankTrayModel?
+    #if DEBUG
+    @Published var uxTestingSelectedFixtureID: String = UXTestFixtures.defaultFixtureID
+    @Published var uxTestingActorID: String = UXTestFixtures.defaultActorID
+    @Published var uxTestingHumanActorID: String = UXTestFixtures.defaultActorID
+    @Published var uxTestingFollowsTurnOwner: Bool = true
+    @Published var uxTestingAutoplaysDummyTurns: Bool = false
+    @Published private(set) var uxTestingIsActive: Bool = false
+    private var uxTestingAutoplayIsRunning = false
+    #endif
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
@@ -52,6 +61,213 @@ final class LobbyDriverViewModel: ObservableObject {
         latestKnownStatesByGameId = ledgerSnapshot.latestKnownStatesByGameId
         refreshRecoveredGames()
     }
+
+    #if DEBUG
+    var uxTestingFixtures: [UXTestFixture] {
+        UXTestFixtures.all
+    }
+
+    var uxTestingSelectedFixture: UXTestFixture {
+        UXTestFixtures.fixture(id: uxTestingSelectedFixtureID)
+    }
+
+    var uxTestingActorOptions: [String] {
+        var actorIDs = uxTestingSelectedFixture.actorIDs
+        if let selectedState {
+            for actorID in selectedState.roster where !actorIDs.contains(actorID) {
+                actorIDs.append(actorID)
+            }
+        }
+        return actorIDs
+    }
+
+    func uxTestingDisplayName(for actorID: String) -> String {
+        PlayerPseudonymResolver.displayName(
+            for: actorID,
+            in: selectedState ?? uxTestingSelectedFixture.state
+        )
+    }
+
+    func activateUXTestingFixture() {
+        activateUXTestingFixture(id: uxTestingSelectedFixtureID, actingAs: uxTestingActorID)
+    }
+
+    func activateUXTestingFixture(id: String, actingAs actorID: String? = nil) {
+        let fixture = UXTestFixtures.fixture(id: id)
+        uxTestingSelectedFixtureID = fixture.id
+        uxTestingHumanActorID = resolvedUXTestingActorID(
+            requestedActorID: uxTestingHumanActorID,
+            fixture: fixture
+        )
+        uxTestingActorID = resolvedUXTestingActorID(
+            requestedActorID: actorID ?? uxTestingActorID,
+            fixture: fixture
+        )
+        uxTestingIsActive = true
+        setActiveContext(fixture.state, source: .uxTesting)
+        selectionStatus = "UX Lab loaded \(fixture.title)"
+        setLastError(nil)
+        runUXTestingAutoplayIfNeeded()
+    }
+
+    func refreshUXTestingActorView() {
+        guard uxTestingIsActive, let state = selectedState else {
+            return
+        }
+        if !uxTestingActorOptions.contains(uxTestingActorID) {
+            uxTestingActorID = resolvedUXTestingActorID(
+                requestedActorID: uxTestingActorID,
+                fixture: uxTestingSelectedFixture
+            )
+        }
+        syncLobbyDisplayNameDraft(with: state)
+        refreshActiveContextMetadata()
+        render(state: state, source: .local)
+    }
+
+    func refreshUXTestingHumanActor() {
+        uxTestingHumanActorID = resolvedUXTestingActorID(
+            requestedActorID: uxTestingHumanActorID,
+            fixture: uxTestingSelectedFixture
+        )
+        guard uxTestingIsActive else {
+            return
+        }
+        if uxTestingActorID == uxTestingHumanActorID {
+            refreshUXTestingActorView()
+        }
+        runUXTestingAutoplayIfNeeded()
+    }
+
+    func refreshUXTestingAutoplay() {
+        runUXTestingAutoplayIfNeeded()
+    }
+
+    func exitUXTesting() {
+        uxTestingIsActive = false
+        clearActiveContext()
+        selectionStatus = "UX Lab exited"
+        setLastError(nil)
+    }
+
+    private func resolvedUXTestingActorID(
+        requestedActorID: String,
+        fixture: UXTestFixture
+    ) -> String {
+        if fixture.actorIDs.contains(requestedActorID) {
+            return requestedActorID
+        }
+        if fixture.actorIDs.contains(fixture.defaultActorID) {
+            return fixture.defaultActorID
+        }
+        return fixture.actorIDs.first ?? UXTestFixtures.defaultActorID
+    }
+
+    private func runUXTestingAutoplayIfNeeded() {
+        guard
+            uxTestingIsActive,
+            uxTestingAutoplaysDummyTurns,
+            !uxTestingAutoplayIsRunning
+        else {
+            return
+        }
+
+        uxTestingAutoplayIsRunning = true
+        defer {
+            uxTestingAutoplayIsRunning = false
+        }
+
+        let maxActions = 24
+        var appliedActions = 0
+        var stoppedErrorMessage: String?
+        while appliedActions < maxActions {
+            guard
+                let state = selectedState,
+                let action = UXTestingAutoplayResolver.nextAction(
+                    state: state,
+                    fixture: uxTestingSelectedFixture,
+                    humanActorID: uxTestingHumanActorID
+                )
+            else {
+                break
+            }
+
+            do {
+                try applyUXTestingAutoplayAction(action)
+                appliedActions += 1
+            } catch {
+                stoppedErrorMessage = "UX Lab autoplay stopped: \(error.localizedDescription)"
+                break
+            }
+        }
+
+        guard appliedActions > 0 else {
+            if let stoppedErrorMessage {
+                setLastError(stoppedErrorMessage)
+            }
+            return
+        }
+
+        if let stoppedErrorMessage {
+            setLastError(stoppedErrorMessage)
+        } else if appliedActions == maxActions {
+            setLastError("UX Lab autoplay paused after \(maxActions) actions.")
+        } else {
+            setLastError(nil)
+        }
+
+        if let state = selectedState, state.roster.contains(uxTestingHumanActorID) {
+            uxTestingActorID = uxTestingHumanActorID
+            refreshUXTestingActorView()
+        }
+        selectionStatus = "UX Lab autoplayed \(appliedActions) dummy action\(appliedActions == 1 ? "" : "s")"
+    }
+
+    private func applyUXTestingAutoplayAction(_ action: UXTestingAutoplayResolver.Action) throws {
+        switch action {
+        case let .joinDummy(actorID, displayName):
+            guard
+                let fromState = selectedState,
+                let joinedState = LobbyMembershipResolver.joinedLobbyState(
+                    state: fromState,
+                    localParticipant: actorID,
+                    displayName: displayName
+                )
+            else {
+                throw SendError.invalidIntentPayload
+            }
+
+            try validateTransition(from: fromState, to: joinedState, actor: actorID)
+            let payload = try jsonString(from: joinedState)
+            let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
+            try sendEnvelope(
+                envelope,
+                bubbleCopy: TranscriptBubbleCopyBuilder.lobbyJoin(
+                    to: joinedState,
+                    joiningPlayer: actorID
+                ),
+                sessionPolicy: .state(gameId: joinedState.gameId)
+            )
+        case let .setup(intent, actor):
+            guard let fromState = selectedState else {
+                throw SendError.invalidIntentPayload
+            }
+            uxTestingActorID = actor
+            try applyAndPublishSetupIntent(
+                intent,
+                from: fromState,
+                actor: actor,
+                successStatus: "UX Lab autoplayed setup"
+            )
+        case let .turn(draft):
+            uxTestingActorID = draft.actor
+            try applyAndPublishTurnIntent(
+                draft,
+                successStatus: "UX Lab autoplayed turn"
+            )
+        }
+    }
+    #endif
 
     private func mutateGameplayShellProjection(
         _ mutate: (inout GameShellProjection) -> Void
@@ -639,6 +855,12 @@ final class LobbyDriverViewModel: ObservableObject {
         trigger: TranscriptSelectionTrigger
     ) -> Bool {
         activeConversation = conversation
+        #if DEBUG
+        if uxTestingIsActive {
+            refreshActiveContextMetadata()
+            return false
+        }
+        #endif
         if
             trigger == .selectionPoll,
             let selectedMessage,
@@ -1387,6 +1609,8 @@ final class LobbyDriverViewModel: ObservableObject {
             transcriptActiveSource = .lastSentState
         case .localLedgerState:
             transcriptActiveSource = .localLedgerState
+        case .uxTesting:
+            transcriptActiveSource = nil
         case nil:
             transcriptActiveSource = nil
         }
@@ -1447,6 +1671,8 @@ final class LobbyDriverViewModel: ObservableObject {
             payloadSource = .local
         case .localLedgerState:
             payloadSource = .localCache
+        case .uxTesting:
+            payloadSource = .local
         }
         render(state: state, source: payloadSource)
     }
@@ -1844,6 +2070,13 @@ final class LobbyDriverViewModel: ObservableObject {
         sessionPolicy: TranscriptSessionPolicy,
         postPublishEffect: PostPublishEffect = .none
     ) throws {
+        #if DEBUG
+        if uxTestingIsActive {
+            try applyUXTestingEnvelope(envelope, bubbleCopy: bubbleCopy)
+            return
+        }
+        #endif
+
         guard let conversation = activeConversation else {
             throw SendError.noActiveConversation
         }
@@ -1869,6 +2102,29 @@ final class LobbyDriverViewModel: ObservableObject {
             postPublishEffect: postPublishEffect
         )
     }
+
+    #if DEBUG
+    private func applyUXTestingEnvelope(
+        _ envelope: EnvelopeV1,
+        bubbleCopy: TranscriptBubbleCopy
+    ) throws {
+        guard case let .state(payload) = envelope.body else {
+            setLastError("UX Lab only applies STATE publishes locally.")
+            return
+        }
+
+        let state = try decodePayload(CoreGameStateV1.self, from: payload)
+        if uxTestingFollowsTurnOwner, state.roster.contains(state.currentPlayer) {
+            uxTestingActorID = state.currentPlayer
+        } else if !state.roster.contains(uxTestingActorID) {
+            uxTestingActorID = state.roster.first ?? uxTestingActorID
+        }
+        setActiveContext(state, source: .uxTesting)
+        selectionStatus = "UX Lab applied \(bubbleCopy.caption)"
+        setLastError(nil)
+        runUXTestingAutoplayIfNeeded()
+    }
+    #endif
 
     private func publish(
         _ message: MSMessage,
@@ -1968,7 +2224,13 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func localActorIdentifier(for state: CoreGameStateV1?) -> String? {
-        ProductActorResolver.resolve(
+        #if DEBUG
+        if uxTestingIsActive, let state, state.roster.contains(uxTestingActorID) {
+            return uxTestingActorID
+        }
+        #endif
+
+        return ProductActorResolver.resolve(
             localParticipant: localParticipantIdentifier(),
             state: state
         )
@@ -1998,7 +2260,13 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func localParticipantIdentifier() -> String? {
-        activeConversation?.localParticipantIdentifier.uuidString
+        #if DEBUG
+        if uxTestingIsActive {
+            return uxTestingActorID
+        }
+        #endif
+
+        return activeConversation?.localParticipantIdentifier.uuidString
     }
 
     private func currentGameId() -> String? {
@@ -2177,6 +2445,7 @@ final class LobbyDriverViewModel: ObservableObject {
         case latestKnownState
         case lastSentState
         case localLedgerState
+        case uxTesting
 
         var label: String {
             switch self {
@@ -2190,6 +2459,8 @@ final class LobbyDriverViewModel: ObservableObject {
                 return "lastSentState"
             case .localLedgerState:
                 return "localLedgerState"
+            case .uxTesting:
+                return "uxTesting"
             }
         }
     }

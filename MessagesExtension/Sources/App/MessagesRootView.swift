@@ -18,5 +18,10 @@ struct MessagesRootView: View {
         .overlay(alignment: .topLeading) {
             ActiveGamesOverlayView(viewModel: viewModel)
         }
+        #if DEBUG
+        .overlay(alignment: .topTrailing) {
+            UXTestingControlsView(viewModel: viewModel)
+        }
+        #endif
     }
 }
