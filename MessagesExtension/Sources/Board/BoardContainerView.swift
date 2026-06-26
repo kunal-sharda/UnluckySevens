@@ -68,8 +68,8 @@ struct BoardContainerView: View {
             minHeight: renderModel == nil ? 260 : nil,
             alignment: .topLeading
         )
-        .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius + 10))
-        .shadow(color: .black.opacity(0.34), radius: 14, x: 0, y: 5)
+        .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius + 6))
+        .shadow(color: .black.opacity(0.24), radius: 9, x: 0, y: 3)
     }
 
     @ViewBuilder

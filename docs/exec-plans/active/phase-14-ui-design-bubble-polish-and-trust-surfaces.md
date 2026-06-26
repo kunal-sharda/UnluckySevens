@@ -210,15 +210,14 @@ Latest board-scene visual spike validation:
 Latest tabletop gameplay-surface validation:
 
 - The expanded setup gameplay surface now uses a continuous tabletop direction: dark felt app background, compact command card, SpriteKit board with cream rim/deep-teal water, permanent board-game grid pieces, terrain texture marks, and a bottom tray with resource cards plus a dev deck stack.
+- Latest iteration tightens the tabletop pass without a UIKit rewrite: the command card and lower rail are flatter and denser, the tray consumes less vertical real estate, the board rim/water/felt palette is cleaner, harbor badges sit closer to their owning edges while preserving geometry tests, and dense setup-node highlights are quieter so the tiles and number tokens read first.
 - The implementation remains SwiftUI shell plus hosted SpriteKit board. UIKit is not needed for this visual iteration because the visible gap was composition, board rendering, and tray styling, not a framework limitation.
 - UX Lab now has a DEBUG-only clean setup screenshot control that loads `setup-placement` and hides the UX Lab chrome before capture; the hidden restore affordance is accessibility-addressable as `uls.uxLab.restoreChrome`.
 - The clean setup gameplay screenshot harness passed on the booted iPhone 16e simulator, found the `Clean setup screenshot` control, waited for `Place settlement`, and asserted the UX Lab toggle was absent before attachment.
-- Manual simulator still: `/private/tmp/unluckysevens_tabletop_iteration_3.png`
-- `xcodebuild -workspace /Users/kunalsharda/Documents/Code/UnluckySevens/UnluckySevens.xcworkspace -scheme UnluckySevens -destination id=C8ECCA82-D595-46D0-BC8E-258B27C16F18 build`
-- `xcodebuild -workspace /Users/kunalsharda/Documents/Code/UnluckySevens/UnluckySevens.xcworkspace -scheme UnluckySevens -destination id=C8ECCA82-D595-46D0-BC8E-258B27C16F18 -only-testing:UnluckySevensUITests/MessagesExtensionDesignSliceUITests/testOpenMessagesExtensionAndCaptureDesignSlices test`
+- Manual simulator still: `/private/tmp/unluckysevens_iteration_visual_final.png`
+- `xcodebuild -workspace /Users/kunalsharda/Documents/Code/UnluckySevens/UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:MessagesExtensionTests/GameBoardLayoutTests -only-testing:MessagesExtensionTests/GameShellLayoutMetricsTests -only-testing:MessagesExtensionTests/GameBoardCameraControllerTests test`
 - `xcodebuild -workspace /Users/kunalsharda/Documents/Code/UnluckySevens/UnluckySevens.xcworkspace -scheme UnluckySevens -destination id=C8ECCA82-D595-46D0-BC8E-258B27C16F18 -only-testing:UnluckySevensUITests/MessagesExtensionDesignSliceUITests/testOpenMessagesExtensionAndCaptureCleanSetupGameplaySlice test`
-- `xcrun simctl io booted screenshot /private/tmp/unluckysevens_tabletop_iteration_3.png`
-- `xcrun simctl io booted screenshot /private/tmp/unluckysevens_clean_setup_no_debug.png`
+- `xcrun simctl io booted screenshot /private/tmp/unluckysevens_iteration_visual_final.png`
 
 ## Progress
 

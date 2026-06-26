@@ -8,14 +8,14 @@ final class GameShellLayoutMetricsTests: XCTestCase {
             spacing: 0
         )
 
-        XCTAssertEqual(metrics.headerHeight, 80, accuracy: 0.001)
-        XCTAssertEqual(metrics.boardHeight, 776, accuracy: 0.001)
-        XCTAssertEqual(metrics.trayHeight, 144, accuracy: 0.001)
-        XCTAssertEqual(metrics.lowerRail.handleBandHeight, 48, accuracy: 0.001)
-        XCTAssertEqual(metrics.lowerRail.dockHeight, 96, accuracy: 0.001)
+        XCTAssertEqual(metrics.headerHeight, 54, accuracy: 0.001)
+        XCTAssertEqual(metrics.boardHeight, 748, accuracy: 0.001)
+        XCTAssertEqual(metrics.trayHeight, 198, accuracy: 0.001)
+        XCTAssertEqual(metrics.lowerRail.handleBandHeight, 24, accuracy: 0.001)
+        XCTAssertEqual(metrics.lowerRail.dockHeight, 174, accuracy: 0.001)
         XCTAssertEqual(metrics.overlayShelf.totalHeight, 170, accuracy: 0.001)
-        XCTAssertEqual(metrics.overlayShelf.visibleInLowerRailHeight, 48, accuracy: 0.001)
-        XCTAssertEqual(metrics.overlayShelf.overlapIntoBoardHeight, 122, accuracy: 0.001)
+        XCTAssertEqual(metrics.overlayShelf.visibleInLowerRailHeight, 24, accuracy: 0.001)
+        XCTAssertEqual(metrics.overlayShelf.overlapIntoBoardHeight, 146, accuracy: 0.001)
     }
 
     func testPadLayoutUsesExpandedBoundedMetrics() {
@@ -66,9 +66,9 @@ final class GameShellLayoutMetricsTests: XCTestCase {
             spacing: 16
         )
 
-        XCTAssertEqual(metrics.headerHeight, 58, accuracy: 0.001)
-        XCTAssertEqual(metrics.trayHeight, 116, accuracy: 0.001)
-        XCTAssertEqual(metrics.lowerRail.handleBandHeight, 48, accuracy: 0.001)
+        XCTAssertEqual(metrics.headerHeight, 42, accuracy: 0.001)
+        XCTAssertEqual(metrics.trayHeight, 132, accuracy: 0.001)
+        XCTAssertEqual(metrics.lowerRail.handleBandHeight, 24, accuracy: 0.001)
         XCTAssertEqual(metrics.overlayShelf.totalHeight, 148, accuracy: 0.001)
         XCTAssertTrue(
             GameShellLayoutMetrics.supportsUtilityShelf(

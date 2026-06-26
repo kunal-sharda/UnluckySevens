@@ -5,10 +5,10 @@ struct GameBoardLayout {
     let size: CGSize
     let geometry: BoardRenderGeometryV1
 
-    private let padding: CGFloat = 12
-    private let horizontalSeaMultiplier: CGFloat = 1.08
-    private let topSeaMultiplier: CGFloat = 0.78
-    private let bottomSeaMultiplier: CGFloat = 0.92
+    private let padding: CGFloat = 8
+    private let horizontalSeaMultiplier: CGFloat = 0.82
+    private let topSeaMultiplier: CGFloat = 0.62
+    private let bottomSeaMultiplier: CGFloat = 0.74
 
     init(size: CGSize, geometry: BoardRenderGeometryV1) {
         self.size = size
@@ -28,7 +28,7 @@ struct GameBoardLayout {
     }
 
     var portBadgeSize: CGSize {
-        CGSize(width: max(tileRadius * 0.56, 20), height: max(tileRadius * 0.28, 13))
+        CGSize(width: max(tileRadius * 0.52, 19), height: max(tileRadius * 0.27, 12.5))
     }
 
     var boardCenter: CGPoint {
@@ -97,7 +97,7 @@ struct GameBoardLayout {
         let midpoint = edgeMidpoint(for: port.edgeID, topology: topology)
         let direction = outwardEdgeNormal(for: port.edgeID, topology: topology)
         let edgeLength = edgeLength(for: port.edgeID, topology: topology)
-        let desiredOffset = max(edgeLength * 0.78, 16)
+        let desiredOffset = max(edgeLength * 0.70, 15)
         let candidate = CGPoint(
             x: midpoint.x + (direction.dx * desiredOffset),
             y: midpoint.y + (direction.dy * desiredOffset)

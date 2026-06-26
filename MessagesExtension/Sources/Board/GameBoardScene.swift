@@ -201,9 +201,9 @@ final class GameBoardScene: SKScene {
 
         let shadowRect = outerRect.insetBy(dx: 8, dy: 8)
         let shadow = SKShapeNode(rect: shadowRect, cornerRadius: 31)
-        shadow.fillColor = .black.withAlphaComponent(0.20)
+        shadow.fillColor = .black.withAlphaComponent(0.13)
         shadow.strokeColor = .clear
-        shadow.position = CGPoint(x: 0, y: -3)
+        shadow.position = CGPoint(x: 0, y: -2)
         shadow.zPosition = 1
         root.addChild(shadow)
 
@@ -211,23 +211,23 @@ final class GameBoardScene: SKScene {
         let rim = SKShapeNode(rect: rimRect, cornerRadius: 31)
         rim.fillColor = GameBoardPalette.boardRim
         rim.strokeColor = GameBoardPalette.boardRimEdge
-        rim.lineWidth = 1.6
+        rim.lineWidth = 1.3
         rim.zPosition = 2
         root.addChild(rim)
 
-        let waterRect = outerRect.insetBy(dx: 13, dy: 13)
+        let waterRect = outerRect.insetBy(dx: 12, dy: 12)
         let water = SKShapeNode(rect: waterRect, cornerRadius: 22)
         water.fillColor = GameBoardPalette.water
         water.strokeColor = GameBoardPalette.waterEdge
-        water.lineWidth = 2.2
+        water.lineWidth = 1.6
         water.zPosition = 3
         root.addChild(water)
 
-        let inset = outerRect.insetBy(dx: 22, dy: 22)
+        let inset = outerRect.insetBy(dx: 20, dy: 20)
         let boardBase = SKShapeNode(rect: inset, cornerRadius: 24)
         boardBase.fillColor = GameBoardPalette.boardBase
         boardBase.strokeColor = GameBoardPalette.boardBaseEdge
-        boardBase.lineWidth = 1
+        boardBase.lineWidth = 0.8
         boardBase.zPosition = 4
         root.addChild(boardBase)
 
@@ -852,7 +852,7 @@ final class GameBoardScene: SKScene {
 
         let circleRadius: CGFloat
         if denseCluster {
-            circleRadius = isSelected ? max(radius * 0.70, 8) : max(radius * 0.46, 5)
+            circleRadius = isSelected ? max(radius * 0.70, 8) : max(radius * 0.38, 4.5)
         } else {
             circleRadius = radius + (isSelected ? 5 : 3)
         }
@@ -860,9 +860,11 @@ final class GameBoardScene: SKScene {
         let ring = SKShapeNode(circleOfRadius: circleRadius)
         ring.fillColor = isSelected
             ? GameBoardPalette.selectedHighlightFill
-            : GameBoardPalette.legalHighlightFill.withAlphaComponent(denseCluster ? 0.18 : 0.28)
-        ring.strokeColor = isSelected ? GameBoardPalette.selectedHighlight : GameBoardPalette.legalHighlight
-        ring.lineWidth = denseCluster ? (isSelected ? 3 : 1.5) : (isSelected ? 4 : 2.2)
+            : GameBoardPalette.legalHighlightFill.withAlphaComponent(denseCluster ? 0.06 : 0.26)
+        ring.strokeColor = isSelected
+            ? GameBoardPalette.selectedHighlight
+            : GameBoardPalette.legalHighlight.withAlphaComponent(denseCluster ? 0.60 : 1.0)
+        ring.lineWidth = denseCluster ? (isSelected ? 3 : 1.1) : (isSelected ? 4 : 2.2)
         node.addChild(ring)
 
         if isSelected {

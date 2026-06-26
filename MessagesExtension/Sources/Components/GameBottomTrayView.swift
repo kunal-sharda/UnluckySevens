@@ -10,18 +10,18 @@ struct GameBottomTrayView: View {
     let onToggleUtilityShelf: () -> Void
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             LowerRailHandleBand(action: onToggleUtilityShelf)
                 .frame(maxWidth: .infinity)
                 .frame(height: layout.handleBandHeight)
 
-            HStack(alignment: .top, spacing: 10) {
-                VStack(alignment: .leading, spacing: 7) {
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text("Hand")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(GameTheme.ink)
 
-                    HStack(spacing: 7) {
+                    HStack(spacing: 5) {
                         ForEach(handTray.chips) { chip in
                             TabletopResourceCardView(chip: chip)
                         }
@@ -31,16 +31,16 @@ struct GameBottomTrayView: View {
                 Rectangle()
                     .fill(GameTheme.outline.opacity(0.18))
                     .frame(width: 1)
-                    .padding(.top, 5)
+                    .padding(.top, 4)
 
-                VStack(alignment: .center, spacing: 7) {
+                VStack(alignment: .center, spacing: 6) {
                     Text("Dev")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(GameTheme.ink)
 
                     TabletopDevDeckView()
                 }
-                .frame(width: 54)
+                .frame(width: 48)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -55,13 +55,13 @@ struct GameBottomTrayView: View {
             )
             .frame(maxWidth: .infinity)
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 4)
-        .padding(.bottom, 12)
+        .padding(.horizontal, 12)
+        .padding(.top, 2)
+        .padding(.bottom, 10)
         .background(
             RoundedRectangle(cornerRadius: GameTheme.largeRadius)
-                .fill(GameTheme.surface.opacity(0.97))
-                .shadow(color: GameTheme.trayShadow.opacity(0.82), radius: 10, x: 0, y: -1)
+                .fill(GameTheme.surface.opacity(0.96))
+                .shadow(color: GameTheme.trayShadow.opacity(0.68), radius: 7, x: 0, y: -1)
         )
         .overlay(
             RoundedRectangle(cornerRadius: GameTheme.largeRadius)
@@ -79,30 +79,31 @@ private struct TabletopResourceCardView: View {
         ZStack(alignment: .bottomTrailing) {
             VStack(spacing: 3) {
                 Image(systemName: chip.resource.tabletopSymbolName)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(chip.resource.tabletopInk)
-                    .frame(height: 17)
+                    .frame(height: 15)
 
                 Text("\(chip.count)")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(GameTheme.ink)
             }
-            .frame(maxWidth: .infinity, minHeight: 56)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 6)
+            .frame(width: 42)
+            .frame(minHeight: 48)
+            .padding(.horizontal, 3)
+            .padding(.vertical, 4)
             .background(
                 RoundedRectangle(cornerRadius: 7)
                     .fill(chip.resource.tabletopCardFill)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 7)
-                    .stroke(GameTheme.outline.opacity(0.36), lineWidth: 1)
+                    .stroke(GameTheme.outline.opacity(0.30), lineWidth: 1)
             )
-            .shadow(color: .black.opacity(0.16), radius: 2, x: 0, y: 1)
+            .shadow(color: .black.opacity(0.10), radius: 1.5, x: 0, y: 1)
 
             RoundedRectangle(cornerRadius: 6)
                 .stroke(.white.opacity(0.25), lineWidth: 1)
-                .padding(4)
+                .padding(3.5)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(chip.shortLabel), \(chip.count)")
@@ -126,8 +127,8 @@ private struct TabletopDevDeckView: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(GameTheme.surface)
         }
-        .frame(width: 46, height: 58)
-        .shadow(color: .black.opacity(0.20), radius: 3, x: 0, y: 2)
+        .frame(width: 42, height: 52)
+        .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
         .accessibilityLabel("Development cards")
     }
 }
@@ -138,7 +139,7 @@ private struct TabletopActionDockView: View {
     let onSelect: (GameActionDockItem.Kind) -> Void
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 14) {
             Spacer(minLength: 0)
 
             ForEach(model.primaryItems) { item in
@@ -164,13 +165,13 @@ private struct TabletopActionPieceButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: item.systemImage)
-                .font(.system(size: 19, weight: .semibold))
+                .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(item.isEnabled ? pieceInk : GameTheme.mutedInk.opacity(0.62))
-                .frame(width: pieceWidth, height: 36)
+                .frame(width: pieceWidth, height: 40)
                 .background(pieceBackground)
                 .overlay(pieceOverlay)
                 .clipShape(pieceShape)
-                .shadow(color: .black.opacity(item.isEnabled ? 0.18 : 0.05), radius: 2, x: 0, y: 1)
+                .shadow(color: .black.opacity(item.isEnabled ? 0.12 : 0.04), radius: 1.5, x: 0, y: 1)
         }
         .buttonStyle(.plain)
         .disabled(!item.isEnabled)
@@ -183,16 +184,16 @@ private struct TabletopActionPieceButton: View {
     private var pieceWidth: CGFloat {
         switch item.kind {
         case .endTurn:
-            return 58
+            return 56
         case .build:
-            return 46
+            return 44
         case .roll, .trade, .devCards:
             return 40
         }
     }
 
     private var pieceInk: Color {
-        item.kind == .build ? Color(red: 0.05, green: 0.30, blue: 0.58) : GameTheme.ink
+        item.kind == .build ? GameTheme.surface.opacity(0.96) : GameTheme.ink
     }
 
     private var pieceBackground: some View {

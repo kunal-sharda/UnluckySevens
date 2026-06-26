@@ -26,16 +26,16 @@ enum GameTheme {
     static let wheat = Color(red: 0.87, green: 0.70, blue: 0.17)
     static let ore = Color(red: 0.39, green: 0.44, blue: 0.47)
 
-    static let sectionSpacing: CGFloat = 16
+    static let sectionSpacing: CGFloat = 12
     static let blockSpacing: CGFloat = 12
     static let inlineSpacing: CGFloat = 8
     static let chipSpacing: CGFloat = 6
-    static let shellPadding: CGFloat = 16
+    static let shellPadding: CGFloat = 14
     static let compactPadding: CGFloat = 12
 
-    static let largeRadius: CGFloat = 22
-    static let mediumRadius: CGFloat = 16
-    static let smallRadius: CGFloat = 12
+    static let largeRadius: CGFloat = 20
+    static let mediumRadius: CGFloat = 14
+    static let smallRadius: CGFloat = 10
 
     static let sectionShadow = Color.black.opacity(0.10)
     static let trayShadow = Color.black.opacity(0.16)
