@@ -6,6 +6,14 @@ struct UXTestingControlsView: View {
     @State private var isExpanded = false
 
     var body: some View {
+        if viewModel.uxTestingChromeHiddenForScreenshot {
+            restoreChromeButton
+        } else {
+            chrome
+        }
+    }
+
+    private var chrome: some View {
         VStack(alignment: .trailing, spacing: 8) {
             Button {
                 withAnimation(.snappy(duration: 0.18)) {
@@ -39,6 +47,19 @@ struct UXTestingControlsView: View {
         }
         .padding(.top, 10)
         .padding(.trailing, 10)
+    }
+
+    private var restoreChromeButton: some View {
+        Button {
+            viewModel.restoreUXTestingChrome()
+        } label: {
+            Color.clear
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Show UX Lab")
+        .accessibilityIdentifier("uls.uxLab.restoreChrome")
     }
 
     private var controlsPanel: some View {
@@ -154,6 +175,28 @@ struct UXTestingControlsView: View {
                     .font(GameTheme.metaFont)
                     .foregroundStyle(GameTheme.mutedInk)
             }
+
+            Spacer(minLength: 0)
+
+            Button {
+                viewModel.activateCleanUXTestingFixture(id: UXTestFixtures.setupPlacementID)
+            } label: {
+                Image(systemName: "camera.viewfinder")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(GameTheme.ink)
+                    .frame(width: 34, height: 34)
+                    .background(
+                        Circle()
+                            .fill(GameTheme.surfaceRaised.opacity(0.95))
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Clean setup screenshot")
+            .accessibilityIdentifier("uls.uxLab.cleanShot.setupPlacement")
         }
     }
 }

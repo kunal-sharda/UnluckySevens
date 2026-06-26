@@ -112,8 +112,22 @@ struct GameShellView: View {
                 ZStack(alignment: .topLeading) {
                     ZStack(alignment: .bottom) {
                         VStack(alignment: .leading, spacing: GameTheme.sectionSpacing) {
-                            GameHeaderView(model: headerModel)
-                                .frame(height: shellLayout.headerHeight, alignment: .topLeading)
+                            GameCommandBarView(
+                                title: tabletopCommandTitle(
+                                    mode: resolvedMode,
+                                    statusLine: headerModel.statusLine,
+                                    overlayModel: overlayModel
+                                ),
+                                progressIndex: tabletopProgressIndex(
+                                    mode: resolvedMode,
+                                    overlayModel: overlayModel
+                                ),
+                                progressCount: 4,
+                                onMenuTap: {
+                                    handleUtilityHandleToggle(canPresentUtilityShelf: canPresentUtilityShelf)
+                                }
+                            )
+                            .frame(height: shellLayout.headerHeight, alignment: .center)
 
                             BoardContainerView(
                                 model: boardModel,
@@ -181,6 +195,7 @@ struct GameShellView: View {
                             if !isGameOver {
                                 GameBottomTrayView(
                                     layout: shellLayout.lowerRail,
+                                    handTray: screenModel.handTray,
                                     actionDock: screenModel.actionDock,
                                     selectedDockKind: selectedDockKind,
                                     onSelectDock: { actionKind in
@@ -471,6 +486,60 @@ struct GameShellView: View {
                 ? (shellProjection.setupGuidanceText ?? mode.subtitle)
                 : mode.subtitle
         )
+    }
+
+    private func tabletopCommandTitle(
+        mode: GameMode,
+        statusLine: GameShellStatusLine,
+        overlayModel: GameBoardOverlayModel
+    ) -> String {
+        switch mode {
+        case .setup:
+            if !overlayModel.legalNodeIDs.isEmpty {
+                return "Place settlement"
+            }
+            if !overlayModel.legalEdgeIDs.isEmpty {
+                return "Place road"
+            }
+            return "Finish setup"
+        case .buildRoad, .devCardRoadBuildingFirst, .devCardRoadBuildingSecond:
+            return "Place road"
+        case .buildSettlement:
+            return "Place settlement"
+        case .buildCity:
+            return "Upgrade city"
+        case .robberMove, .devCardKnightMove:
+            return "Move robber"
+        case .robberVictim, .devCardKnightVictim:
+            return "Choose player"
+        case .discard:
+            return "Discard cards"
+        case .trade:
+            return "Trade cards"
+        case .playDevCard,
+             .devCardMonopoly,
+             .devCardYearOfPlenty:
+            return "Play dev card"
+        case .idle:
+            return statusLine.title
+        }
+    }
+
+    private func tabletopProgressIndex(
+        mode: GameMode,
+        overlayModel: GameBoardOverlayModel
+    ) -> Int? {
+        guard mode == .setup else {
+            return nil
+        }
+
+        if !overlayModel.legalNodeIDs.isEmpty {
+            return 0
+        }
+        if !overlayModel.legalEdgeIDs.isEmpty {
+            return 1
+        }
+        return 2
     }
 
     private func resolvedBoardHintText(

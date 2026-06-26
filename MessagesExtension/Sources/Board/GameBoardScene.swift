@@ -8,6 +8,7 @@ final class GameBoardScene: SKScene {
     private let overlayContentNode = SKNode()
     private let backdropContentNode = SKNode()
     private let tileContentNode = SKNode()
+    private let gridContentNode = SKNode()
     private let portContentNode = SKNode()
     private let roadContentNode = SKNode()
     private let structureContentNode = SKNode()
@@ -16,6 +17,7 @@ final class GameBoardScene: SKScene {
     private var boardWorldSize: CGSize
     private var cachedBackdropKey: BackdropLayerKey?
     private var cachedTileKey: TileLayerKey?
+    private var cachedGridKey: GridLayerKey?
     private var cachedPortKey: PortLayerKey?
     private var cachedRoadKey: RoadLayerKey?
     private var cachedStructureKey: StructureLayerKey?
@@ -25,7 +27,7 @@ final class GameBoardScene: SKScene {
         boardWorldSize = size
         super.init(size: size)
         scaleMode = .resizeFill
-        backgroundColor = GameBoardPalette.water
+        backgroundColor = GameBoardPalette.sceneBackground
         configureSceneRoots()
     }
 
@@ -33,7 +35,7 @@ final class GameBoardScene: SKScene {
         boardWorldSize = CGSize(width: 320, height: 240)
         super.init(coder: aDecoder)
         scaleMode = .resizeFill
-        backgroundColor = GameBoardPalette.water
+        backgroundColor = GameBoardPalette.sceneBackground
         configureSceneRoots()
     }
 
@@ -81,6 +83,13 @@ final class GameBoardScene: SKScene {
             for tile in renderModel.tiles {
                 tileContentNode.addChild(makeTileNode(tile: tile, layout: layout))
             }
+        }
+
+        let gridKey = GridLayerKey(referenceSize: referenceSize, topology: renderModel.topology)
+        if cachedGridKey != gridKey {
+            cachedGridKey = gridKey
+            gridContentNode.removeAllChildren()
+            gridContentNode.addChild(makeBoardGridNode(layout: layout, topology: renderModel.topology))
         }
 
         let portKey = PortLayerKey(
@@ -182,22 +191,124 @@ final class GameBoardScene: SKScene {
         let root = SKNode()
 
         let outerRect = CGRect(origin: .zero, size: size)
-        let water = SKShapeNode(rect: outerRect, cornerRadius: 24)
+        let felt = SKShapeNode(rect: outerRect, cornerRadius: 30)
+        felt.fillColor = GameBoardPalette.sceneBackground
+        felt.strokeColor = GameBoardPalette.sceneBackgroundEdge
+        felt.lineWidth = 1.5
+        felt.zPosition = 0
+        root.addChild(felt)
+        root.addChild(makeClothThreadNode(in: outerRect))
+
+        let shadowRect = outerRect.insetBy(dx: 8, dy: 8)
+        let shadow = SKShapeNode(rect: shadowRect, cornerRadius: 31)
+        shadow.fillColor = .black.withAlphaComponent(0.20)
+        shadow.strokeColor = .clear
+        shadow.position = CGPoint(x: 0, y: -3)
+        shadow.zPosition = 1
+        root.addChild(shadow)
+
+        let rimRect = outerRect.insetBy(dx: 7, dy: 7)
+        let rim = SKShapeNode(rect: rimRect, cornerRadius: 31)
+        rim.fillColor = GameBoardPalette.boardRim
+        rim.strokeColor = GameBoardPalette.boardRimEdge
+        rim.lineWidth = 1.6
+        rim.zPosition = 2
+        root.addChild(rim)
+
+        let waterRect = outerRect.insetBy(dx: 13, dy: 13)
+        let water = SKShapeNode(rect: waterRect, cornerRadius: 22)
         water.fillColor = GameBoardPalette.water
         water.strokeColor = GameBoardPalette.waterEdge
-        water.lineWidth = 2
-        water.zPosition = 0
+        water.lineWidth = 2.2
+        water.zPosition = 3
         root.addChild(water)
 
-        let inset = outerRect.insetBy(dx: 14, dy: 12)
-        let boardBase = SKShapeNode(rect: inset, cornerRadius: 28)
+        let inset = outerRect.insetBy(dx: 22, dy: 22)
+        let boardBase = SKShapeNode(rect: inset, cornerRadius: 24)
         boardBase.fillColor = GameBoardPalette.boardBase
         boardBase.strokeColor = GameBoardPalette.boardBaseEdge
-        boardBase.lineWidth = 2
-        boardBase.zPosition = 1
+        boardBase.lineWidth = 1
+        boardBase.zPosition = 4
         root.addChild(boardBase)
 
         return root
+    }
+
+    private func makeClothThreadNode(in rect: CGRect) -> SKNode {
+        let node = SKNode()
+        node.zPosition = 0.5
+
+        let spacing: CGFloat = 18
+        var y = rect.minY + spacing
+        while y < rect.maxY {
+            let path = CGMutablePath()
+            path.move(to: CGPoint(x: rect.minX + 14, y: y))
+            path.addLine(to: CGPoint(x: rect.maxX - 14, y: y + 3))
+
+            let thread = SKShapeNode(path: path)
+            thread.strokeColor = GameBoardPalette.clothThread
+            thread.lineWidth = 1
+            thread.lineCap = .round
+            node.addChild(thread)
+            y += spacing
+        }
+
+        return node
+    }
+
+    private func makeBoardGridNode(layout: GameBoardLayout, topology: BoardGraphV1) -> SKNode {
+        let node = SKNode()
+        node.zPosition = 32
+
+        for edgeID in topology.edges.indices {
+            let edgeLine = layout.edgeLine(for: edgeID, topology: topology)
+            let sceneStart = scenePoint(for: edgeLine.start)
+            let sceneEnd = scenePoint(for: edgeLine.end)
+
+            let shadowPath = CGMutablePath()
+            shadowPath.move(to: sceneStart)
+            shadowPath.addLine(to: sceneEnd)
+
+            let shadow = SKShapeNode(path: shadowPath)
+            shadow.strokeColor = .black.withAlphaComponent(0.18)
+            shadow.lineWidth = max(layout.roadWidth * 0.68, 5)
+            shadow.lineCap = .round
+            shadow.position = CGPoint(x: 0, y: -1.2)
+            node.addChild(shadow)
+
+            let edge = SKShapeNode(path: shadowPath)
+            edge.strokeColor = GameBoardPalette.gridStroke
+            edge.lineWidth = max(layout.roadWidth * 0.48, 4)
+            edge.lineCap = .round
+            node.addChild(edge)
+        }
+
+        for nodeID in 0..<topology.nodesCount {
+            let point = scenePoint(for: layout.nodePoint(for: nodeID))
+            let radius = max(layout.structureRadius * 0.68, 6)
+
+            let shadow = SKShapeNode(circleOfRadius: radius + 1.2)
+            shadow.position = CGPoint(x: point.x, y: point.y - 1.4)
+            shadow.fillColor = .black.withAlphaComponent(0.20)
+            shadow.strokeColor = .clear
+            node.addChild(shadow)
+
+            let cap = SKShapeNode(circleOfRadius: radius)
+            cap.position = point
+            cap.fillColor = GameBoardPalette.gridFill
+            cap.strokeColor = GameBoardPalette.portStroke.withAlphaComponent(0.56)
+            cap.lineWidth = 1
+            node.addChild(cap)
+
+            let inset = SKShapeNode(circleOfRadius: max(radius * 0.42, 2.5))
+            inset.position = point
+            inset.fillColor = .clear
+            inset.strokeColor = GameBoardPalette.portStroke.withAlphaComponent(0.42)
+            inset.lineWidth = 0.9
+            node.addChild(inset)
+        }
+
+        return node
     }
 
     private func makeTileNode(tile: GameBoardTileRenderModel, layout: GameBoardLayout) -> SKNode {
@@ -206,22 +317,24 @@ final class GameBoardScene: SKScene {
         tileNode.zPosition = 20
 
         let shadow = SKShapeNode(path: hexagonPath(radius: layout.tileRadius))
-        shadow.fillColor = .black.withAlphaComponent(0.10)
+        shadow.fillColor = .black.withAlphaComponent(0.12)
         shadow.strokeColor = .clear
-        shadow.position = CGPoint(x: 0, y: -max(layout.tileRadius * 0.08, 4))
+        shadow.position = CGPoint(x: 0, y: -max(layout.tileRadius * 0.05, 2))
         shadow.zPosition = 0
         tileNode.addChild(shadow)
 
         let hex = SKShapeNode(path: hexagonPath(radius: layout.tileRadius))
         hex.fillColor = GameBoardPalette.resourceFill(for: tile.resource)
         hex.strokeColor = GameBoardPalette.outline
-        hex.lineWidth = 1.4
+        hex.lineWidth = max(layout.tileRadius * 0.055, 2)
         hex.zPosition = 10
         tileNode.addChild(hex)
 
+        tileNode.addChild(makeTerrainDetailNode(resource: tile.resource, radius: layout.tileRadius, seed: tile.tileID))
+
         let innerRing = SKShapeNode(path: hexagonPath(radius: layout.tileRadius * 0.84))
         innerRing.fillColor = .clear
-        innerRing.strokeColor = .white.withAlphaComponent(0.12)
+        innerRing.strokeColor = .white.withAlphaComponent(0.10)
         innerRing.lineWidth = 1
         innerRing.zPosition = 11
         tileNode.addChild(innerRing)
@@ -235,6 +348,112 @@ final class GameBoardScene: SKScene {
         }
 
         return tileNode
+    }
+
+    private func makeTerrainDetailNode(resource: ResourceV1, radius: CGFloat, seed: Int) -> SKNode {
+        let node = SKNode()
+        node.zPosition = 12
+
+        switch resource {
+        case .wood:
+            let points = terrainPoints(radius: radius, seed: seed, count: 10)
+            for point in points {
+                let trunk = SKShapeNode(rectOf: CGSize(width: max(radius * 0.035, 1.5), height: max(radius * 0.16, 5)))
+                trunk.position = CGPoint(x: point.x, y: point.y - radius * 0.08)
+                trunk.fillColor = SKColor(red: 0.18, green: 0.12, blue: 0.06, alpha: 0.34)
+                trunk.strokeColor = .clear
+                node.addChild(trunk)
+
+                let tree = SKShapeNode(path: trianglePath(radius: max(radius * 0.13, 6)))
+                tree.position = point
+                tree.fillColor = SKColor(red: 0.10, green: 0.30, blue: 0.10, alpha: 0.42)
+                tree.strokeColor = .clear
+                node.addChild(tree)
+            }
+        case .brick:
+            for index in 0..<7 {
+                let path = CGMutablePath()
+                let y = (-radius * 0.48) + (CGFloat(index) * radius * 0.16)
+                path.move(to: CGPoint(x: -radius * 0.48, y: y))
+                path.addLine(to: CGPoint(x: radius * 0.48, y: y + ((index.isMultiple(of: 2) ? 1 : -1) * radius * 0.035)))
+
+                let ridge = SKShapeNode(path: path)
+                ridge.strokeColor = SKColor(red: 0.36, green: 0.12, blue: 0.07, alpha: 0.24)
+                ridge.lineWidth = max(radius * 0.018, 1)
+                ridge.lineCap = .round
+                node.addChild(ridge)
+            }
+        case .sheep:
+            let points = terrainPoints(radius: radius, seed: seed + 11, count: 9)
+            for point in points {
+                let body = SKShapeNode(ellipseOf: CGSize(width: radius * 0.16, height: radius * 0.10))
+                body.position = point
+                body.fillColor = SKColor(red: 0.93, green: 0.88, blue: 0.72, alpha: 0.34)
+                body.strokeColor = SKColor(red: 0.30, green: 0.38, blue: 0.16, alpha: 0.24)
+                body.lineWidth = 0.6
+                node.addChild(body)
+            }
+        case .wheat:
+            for index in 0..<13 {
+                let x = (-radius * 0.52) + (CGFloat(index) * radius * 0.085)
+                let path = CGMutablePath()
+                path.move(to: CGPoint(x: x, y: -radius * 0.46))
+                path.addLine(to: CGPoint(x: x + radius * 0.14, y: radius * 0.48))
+
+                let stalk = SKShapeNode(path: path)
+                stalk.strokeColor = SKColor(red: 0.98, green: 0.83, blue: 0.24, alpha: 0.24)
+                stalk.lineWidth = max(radius * 0.018, 1)
+                stalk.lineCap = .round
+                node.addChild(stalk)
+            }
+        case .ore:
+            for point in terrainPoints(radius: radius, seed: seed + 23, count: 5) {
+                let mountain = SKShapeNode(path: trianglePath(radius: radius * 0.22))
+                mountain.position = point
+                mountain.fillColor = SKColor(red: 0.20, green: 0.23, blue: 0.23, alpha: 0.30)
+                mountain.strokeColor = SKColor.white.withAlphaComponent(0.16)
+                mountain.lineWidth = 1
+                node.addChild(mountain)
+            }
+        case .desert:
+            for point in terrainPoints(radius: radius, seed: seed + 31, count: 13) {
+                let pebble = SKShapeNode(circleOfRadius: max(radius * 0.025, 1.5))
+                pebble.position = point
+                pebble.fillColor = SKColor(red: 0.40, green: 0.30, blue: 0.18, alpha: 0.24)
+                pebble.strokeColor = .clear
+                node.addChild(pebble)
+            }
+        }
+
+        return node
+    }
+
+    private func terrainPoints(radius: CGFloat, seed: Int, count: Int) -> [CGPoint] {
+        let anchors: [CGPoint] = [
+            CGPoint(x: -0.36, y: 0.24),
+            CGPoint(x: -0.12, y: 0.34),
+            CGPoint(x: 0.22, y: 0.28),
+            CGPoint(x: 0.42, y: 0.05),
+            CGPoint(x: 0.20, y: -0.22),
+            CGPoint(x: -0.12, y: -0.30),
+            CGPoint(x: -0.42, y: -0.06),
+            CGPoint(x: 0.02, y: 0.04),
+            CGPoint(x: -0.26, y: -0.18),
+            CGPoint(x: 0.34, y: -0.34),
+            CGPoint(x: -0.02, y: -0.48),
+            CGPoint(x: -0.48, y: 0.10),
+            CGPoint(x: 0.08, y: 0.50),
+        ]
+
+        return (0..<count).map { index in
+            let anchor = anchors[(index + seed) % anchors.count]
+            let jitterX = CGFloat(((seed * 17) + (index * 11)) % 9 - 4) * radius * 0.006
+            let jitterY = CGFloat(((seed * 13) + (index * 7)) % 9 - 4) * radius * 0.006
+            return CGPoint(
+                x: (anchor.x * radius) + jitterX,
+                y: (anchor.y * radius) + jitterY
+            )
+        }
     }
 
     private func makeTokenNode(number: Int, radius: CGFloat) -> SKNode {
@@ -679,6 +898,18 @@ final class GameBoardScene: SKScene {
         return path
     }
 
+    private func trianglePath(radius: CGFloat) -> CGPath {
+        let path = CGMutablePath()
+        let adjustedRadius = max(radius, 4)
+
+        path.move(to: CGPoint(x: 0, y: adjustedRadius))
+        path.addLine(to: CGPoint(x: -adjustedRadius * 0.78, y: -adjustedRadius * 0.58))
+        path.addLine(to: CGPoint(x: adjustedRadius * 0.78, y: -adjustedRadius * 0.58))
+        path.closeSubpath()
+
+        return path
+    }
+
     private func scenePoint(for point: CGPoint) -> CGPoint {
         CGPoint(x: point.x, y: boardWorldSize.height - point.y)
     }
@@ -696,13 +927,14 @@ final class GameBoardScene: SKScene {
             path.addLine(to: CGPoint(x: adjustedRadius * 0.70, y: -adjustedRadius * 0.58))
             path.closeSubpath()
         case .city:
-            path.move(to: CGPoint(x: -adjustedRadius * 0.84, y: -adjustedRadius * 0.60))
-            path.addLine(to: CGPoint(x: -adjustedRadius * 0.84, y: adjustedRadius * 0.18))
-            path.addLine(to: CGPoint(x: -adjustedRadius * 0.28, y: adjustedRadius * 0.64))
-            path.addLine(to: CGPoint(x: adjustedRadius * 0.18, y: adjustedRadius * 0.64))
-            path.addLine(to: CGPoint(x: adjustedRadius * 0.18, y: adjustedRadius * 0.18))
-            path.addLine(to: CGPoint(x: adjustedRadius * 0.84, y: adjustedRadius * 0.18))
-            path.addLine(to: CGPoint(x: adjustedRadius * 0.84, y: -adjustedRadius * 0.60))
+            path.move(to: CGPoint(x: -adjustedRadius * 0.90, y: -adjustedRadius * 0.62))
+            path.addLine(to: CGPoint(x: -adjustedRadius * 0.90, y: adjustedRadius * 0.20))
+            path.addLine(to: CGPoint(x: -adjustedRadius * 0.42, y: adjustedRadius * 0.20))
+            path.addLine(to: CGPoint(x: -adjustedRadius * 0.42, y: adjustedRadius * 0.66))
+            path.addLine(to: CGPoint(x: adjustedRadius * 0.10, y: adjustedRadius * 0.66))
+            path.addLine(to: CGPoint(x: adjustedRadius * 0.10, y: adjustedRadius * 0.30))
+            path.addLine(to: CGPoint(x: adjustedRadius * 0.90, y: adjustedRadius * 0.30))
+            path.addLine(to: CGPoint(x: adjustedRadius * 0.90, y: -adjustedRadius * 0.62))
             path.closeSubpath()
         }
 
@@ -720,11 +952,30 @@ final class GameBoardScene: SKScene {
             path.addLine(to: CGPoint(x: adjustedRadius * 0.52, y: adjustedRadius * 0.04))
             path.closeSubpath()
         case .city:
-            path.move(to: CGPoint(x: -adjustedRadius * 0.66, y: adjustedRadius * 0.08))
-            path.addLine(to: CGPoint(x: -adjustedRadius * 0.18, y: adjustedRadius * 0.44))
-            path.addLine(to: CGPoint(x: adjustedRadius * 0.52, y: adjustedRadius * 0.44))
-            path.addLine(to: CGPoint(x: adjustedRadius * 0.52, y: adjustedRadius * 0.08))
-            path.closeSubpath()
+            path.addRect(
+                CGRect(
+                    x: -adjustedRadius * 0.72,
+                    y: adjustedRadius * 0.08,
+                    width: adjustedRadius * 0.20,
+                    height: max(adjustedRadius * 0.10, 1.5)
+                )
+            )
+            path.addRect(
+                CGRect(
+                    x: -adjustedRadius * 0.24,
+                    y: adjustedRadius * 0.54,
+                    width: adjustedRadius * 0.22,
+                    height: max(adjustedRadius * 0.10, 1.5)
+                )
+            )
+            path.addRect(
+                CGRect(
+                    x: adjustedRadius * 0.28,
+                    y: adjustedRadius * 0.18,
+                    width: adjustedRadius * 0.38,
+                    height: max(adjustedRadius * 0.10, 1.5)
+                )
+            )
         }
 
         return path
@@ -749,6 +1000,10 @@ final class GameBoardScene: SKScene {
 
         if tileContentNode.parent == nil {
             baseContentNode.addChild(tileContentNode)
+        }
+
+        if gridContentNode.parent == nil {
+            baseContentNode.addChild(gridContentNode)
         }
 
         if portContentNode.parent == nil {
@@ -793,6 +1048,11 @@ final class GameBoardScene: SKScene {
     private struct TileLayerKey: Equatable {
         let referenceSize: CGSize
         let tiles: [GameBoardTileRenderModel]
+    }
+
+    private struct GridLayerKey: Equatable {
+        let referenceSize: CGSize
+        let topology: BoardGraphV1
     }
 
     private struct PortLayerKey: Equatable {

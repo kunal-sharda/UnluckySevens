@@ -39,3 +39,84 @@ struct GameHeaderView: View {
         .accessibilityElement(children: .combine)
     }
 }
+
+struct GameCommandBarView: View {
+    let title: String
+    let progressIndex: Int?
+    let progressCount: Int
+    let onMenuTap: () -> Void
+
+    var body: some View {
+        ZStack {
+            HStack {
+                Button(action: onMenuTap) {
+                    Image(systemName: "line.3.horizontal")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(GameTheme.ink)
+                        .frame(width: 38, height: 38)
+                        .background(
+                            Circle()
+                                .fill(GameTheme.surface)
+                                .shadow(color: .black.opacity(0.22), radius: 5, x: 0, y: 2)
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(GameTheme.outline.opacity(0.24), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open game tray")
+
+                Spacer(minLength: 0)
+            }
+
+            HStack(spacing: 10) {
+                Image(systemName: "cube.fill")
+                    .font(.system(size: 21, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.08, green: 0.47, blue: 0.78),
+                                Color(red: 0.05, green: 0.27, blue: 0.52),
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .shadow(color: .black.opacity(0.24), radius: 2, x: 0, y: 1)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(title)
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundStyle(GameTheme.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+
+                    if let progressIndex {
+                        HStack(spacing: 10) {
+                            ForEach(0..<max(progressCount, 1), id: \.self) { index in
+                                Circle()
+                                    .fill(index == progressIndex ? Color(red: 0.08, green: 0.42, blue: 0.72) : GameTheme.outline.opacity(0.25))
+                                    .frame(width: 7, height: 7)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, progressIndex == nil ? 10 : 8)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(GameTheme.surface)
+                    .shadow(color: .black.opacity(0.24), radius: 8, x: 0, y: 3)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(GameTheme.outline.opacity(0.22), lineWidth: 1)
+            )
+            .frame(maxWidth: 240)
+        }
+        .padding(.horizontal, GameTheme.shellPadding)
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+}

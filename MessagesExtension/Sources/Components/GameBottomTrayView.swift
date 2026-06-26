@@ -3,26 +3,61 @@ import ULS_CoreGame
 
 struct GameBottomTrayView: View {
     let layout: GameShellLayoutMetrics.LowerRailMetrics
+    let handTray: GameHandTrayModel
     let actionDock: GameActionDockModel
     let selectedDockKind: GameActionDockItem.Kind?
     let onSelectDock: (GameActionDockItem.Kind) -> Void
     let onToggleUtilityShelf: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 8) {
             LowerRailHandleBand(action: onToggleUtilityShelf)
-                .frame(maxWidth: .infinity, minHeight: layout.handleBandHeight, maxHeight: layout.handleBandHeight)
+                .frame(maxWidth: .infinity)
+                .frame(height: layout.handleBandHeight)
 
-            ActionDockView(
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("Hand")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(GameTheme.ink)
+
+                    HStack(spacing: 7) {
+                        ForEach(handTray.chips) { chip in
+                            TabletopResourceCardView(chip: chip)
+                        }
+                    }
+                }
+
+                Rectangle()
+                    .fill(GameTheme.outline.opacity(0.18))
+                    .frame(width: 1)
+                    .padding(.top, 5)
+
+                VStack(alignment: .center, spacing: 7) {
+                    Text("Dev")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(GameTheme.ink)
+
+                    TabletopDevDeckView()
+                }
+                .frame(width: 54)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Rectangle()
+                .fill(GameTheme.outline.opacity(0.18))
+                .frame(height: 1)
+
+            TabletopActionDockView(
                 model: actionDock,
                 selectedKind: selectedDockKind,
                 onSelect: onSelectDock
             )
-            .padding(.horizontal, GameTheme.compactPadding)
-            .padding(.top, 8)
-            .padding(.bottom, GameTheme.compactPadding)
-            .frame(maxWidth: .infinity, minHeight: layout.dockHeight, maxHeight: layout.dockHeight, alignment: .top)
+            .frame(maxWidth: .infinity)
         }
+        .padding(.horizontal, 14)
+        .padding(.top, 4)
+        .padding(.bottom, 12)
         .background(
             RoundedRectangle(cornerRadius: GameTheme.largeRadius)
                 .fill(GameTheme.surface.opacity(0.97))
@@ -34,6 +69,202 @@ struct GameBottomTrayView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius))
         .contentShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius))
+    }
+}
+
+private struct TabletopResourceCardView: View {
+    let chip: GameHandChip
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            VStack(spacing: 3) {
+                Image(systemName: chip.resource.tabletopSymbolName)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(chip.resource.tabletopInk)
+                    .frame(height: 17)
+
+                Text("\(chip.count)")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(GameTheme.ink)
+            }
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(chip.resource.tabletopCardFill)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 7)
+                    .stroke(GameTheme.outline.opacity(0.36), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.16), radius: 2, x: 0, y: 1)
+
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(.white.opacity(0.25), lineWidth: 1)
+                .padding(4)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(chip.shortLabel), \(chip.count)")
+    }
+}
+
+private struct TabletopDevDeckView: View {
+    var body: some View {
+        ZStack {
+            ForEach(0..<3, id: \.self) { index in
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(Color(red: 0.05, green: 0.33, blue: 0.52))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 7)
+                            .stroke(Color(red: 0.62, green: 0.78, blue: 0.82).opacity(0.50), lineWidth: 1)
+                    )
+                    .offset(x: CGFloat(index) * -1.8, y: CGFloat(index) * 1.8)
+            }
+
+            Image(systemName: "sparkle")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(GameTheme.surface)
+        }
+        .frame(width: 46, height: 58)
+        .shadow(color: .black.opacity(0.20), radius: 3, x: 0, y: 2)
+        .accessibilityLabel("Development cards")
+    }
+}
+
+private struct TabletopActionDockView: View {
+    let model: GameActionDockModel
+    let selectedKind: GameActionDockItem.Kind?
+    let onSelect: (GameActionDockItem.Kind) -> Void
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Spacer(minLength: 0)
+
+            ForEach(model.primaryItems) { item in
+                TabletopActionPieceButton(
+                    item: item,
+                    isSelected: selectedKind == item.kind
+                ) {
+                    guard item.isEnabled else { return }
+                    onSelect(item.kind)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+private struct TabletopActionPieceButton: View {
+    let item: GameActionDockItem
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: item.systemImage)
+                .font(.system(size: 19, weight: .semibold))
+                .foregroundStyle(item.isEnabled ? pieceInk : GameTheme.mutedInk.opacity(0.62))
+                .frame(width: pieceWidth, height: 36)
+                .background(pieceBackground)
+                .overlay(pieceOverlay)
+                .clipShape(pieceShape)
+                .shadow(color: .black.opacity(item.isEnabled ? 0.18 : 0.05), radius: 2, x: 0, y: 1)
+        }
+        .buttonStyle(.plain)
+        .disabled(!item.isEnabled)
+        .scaleEffect(isSelected ? GameTheme.pressedScale : 1)
+        .animation(GameTheme.quickAnimation, value: isSelected)
+        .accessibilityLabel(item.title)
+        .accessibilityHint(item.isEnabled ? "Selects \(item.title)" : "\(item.title) is not available")
+    }
+
+    private var pieceWidth: CGFloat {
+        switch item.kind {
+        case .endTurn:
+            return 58
+        case .build:
+            return 46
+        case .roll, .trade, .devCards:
+            return 40
+        }
+    }
+
+    private var pieceInk: Color {
+        item.kind == .build ? Color(red: 0.05, green: 0.30, blue: 0.58) : GameTheme.ink
+    }
+
+    private var pieceBackground: some View {
+        Group {
+            if item.kind == .build {
+                RoundedRectangle(cornerRadius: 5)
+                    .fill(Color(red: 0.08, green: 0.47, blue: 0.78))
+            } else {
+                pieceShape
+                    .fill(item.isEnabled ? GameTheme.surfaceRaised.opacity(0.82) : GameTheme.surfaceRaised.opacity(0.35))
+            }
+        }
+    }
+
+    private var pieceOverlay: some View {
+        pieceShape
+            .stroke(
+                isSelected ? GameTheme.accent.opacity(0.85) : GameTheme.outline.opacity(item.isEnabled ? 0.24 : 0.10),
+                lineWidth: isSelected ? 2 : 1
+            )
+    }
+
+    private var pieceShape: AnyShape {
+        if item.kind == .roll || item.kind == .trade {
+            return AnyShape(Circle())
+        }
+        return AnyShape(RoundedRectangle(cornerRadius: item.kind == .endTurn ? 5 : 7))
+    }
+}
+
+private extension ResourceV1 {
+    var tabletopSymbolName: String {
+        switch self {
+        case .wood:
+            return "tree.fill"
+        case .brick:
+            return "cube.fill"
+        case .sheep:
+            return "cloud.fill"
+        case .wheat:
+            return "leaf.fill"
+        case .ore:
+            return "mountain.2.fill"
+        case .desert:
+            return "circle.dotted"
+        }
+    }
+
+    var tabletopCardFill: Color {
+        switch self {
+        case .wood:
+            return Color(red: 0.43, green: 0.30, blue: 0.15)
+        case .brick:
+            return Color(red: 0.73, green: 0.31, blue: 0.20)
+        case .sheep:
+            return Color(red: 0.56, green: 0.66, blue: 0.31)
+        case .wheat:
+            return Color(red: 0.86, green: 0.64, blue: 0.18)
+        case .ore:
+            return Color(red: 0.39, green: 0.43, blue: 0.43)
+        case .desert:
+            return Color(red: 0.68, green: 0.55, blue: 0.34)
+        }
+    }
+
+    var tabletopInk: Color {
+        switch self {
+        case .ore:
+            return GameTheme.surface.opacity(0.90)
+        default:
+            return GameTheme.ink.opacity(0.86)
+        }
     }
 }
 

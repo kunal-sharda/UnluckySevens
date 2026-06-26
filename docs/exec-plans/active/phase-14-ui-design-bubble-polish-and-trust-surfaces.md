@@ -101,6 +101,12 @@ Acceptance boundary:
 11. Convert the generated packaging path to a standalone Messages-only app bundle before the first TestFlight boundary.
 12. Add a DEBUG-only single-device UX Lab with fixture states for design iteration and a small overlay for switching state and local actor, including a dummy-user path that can play through local actions on one device.
 13. Add an XCUITest design-slice harness that opens Messages, finds the Unlucky Sevens app drawer item, and captures simulator screenshots of the invite slice plus UX Lab overlay as XCTest attachments.
+14. Reset the first invite surface away from a decorated form and toward a board-game rules/setup card metaphor:
+   - table/game-box surface background
+   - printed rule-card hierarchy
+   - compact setup facts instead of generic chips
+   - RSVP-style player-name line
+   - single `Send Invite` action
 
 ## Validation
 
@@ -181,6 +187,38 @@ Latest XCUITest design-slice validation:
 - `bash ./scripts/gen.sh`
 - `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:UnluckySevensUITests/MessagesExtensionDesignSliceUITests/testOpenMessagesExtensionAndCaptureDesignSlices test`
 - The UI test opened Messages, selected Unlucky Sevens from the app drawer, and attached screenshots for the invite slice and UX Lab panel to the test result bundle.
+- On iOS 18.6 simulator, Messages exposed the drawer control as `Apps` instead of `add`; the harness now tries both labels and falls back to the visible bottom-left drawer coordinate.
+- The in-app browser simulator mirror worked for showing the Simulator inside Codex, but it was heavier and occasionally reconnected during tap synthesis. Default design iteration should use the normal Simulator window, XCUITest harness captures, and `simctl` screenshots; keep the browser mirror as an explicit backup lane only.
+- Repeated screenshot setup should be promoted into the XCUITest harness or DEBUG-only UX Lab automation controls. Computer Use remains a one-off fallback for surfaces the harness cannot reach yet, not the default capture path.
+
+Latest invite-surface visual reset validation:
+
+- The current first invite surface is an intermediate paper tabletop invite: title `A table is open`, setup chips for `Standard`, `3-4`, and `Async`, RSVP-style `Playing as` name field, and primary `Send Invite` CTA. The next design target is sharper: a board-game rules/setup card with printed facts instead of generic chips.
+- The DEBUG-only rules button placement moves beside the invite badge so the UX Lab `Preview` control does not occlude it in design-slice screenshots; release/product placement keeps the rules affordance in the top-right of the invite card.
+- The simulator rendered a stale installed extension after the first rebuild even though the derived build product contained the new strings. Explicitly installing `UnluckySevensApp.app` into the booted simulator and terminating `com.apple.MobileSMS` forced the design harness onto the fresh extension.
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:MessagesExtensionTests/LobbyScreenModelBuilderTests test`
+- `xcrun simctl install booted /Users/kunalsharda/Library/Developer/Xcode/DerivedData/UnluckySevens-gdscmhgchilzfjgbllclbkwyxdvz/Build/Products/Debug-iphonesimulator/UnluckySevensApp.app`
+- `xcrun simctl terminate booted com.apple.MobileSMS`
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens -destination 'platform=iOS Simulator,name=iPhone 15' -resultBundlePath Derived/UIHarness/uls-design-harness-invite-reset-20260605-clean.xcresult -only-testing:UnluckySevensUITests/MessagesExtensionDesignSliceUITests/testOpenMessagesExtensionAndCaptureDesignSlices test`
+
+Latest board-scene visual spike validation:
+
+- The live SpriteKit board scene can take the darker felt/deep-teal direction without replacing the SwiftUI shell. This spike is intentionally limited to the board palette, SpriteKit backdrop, SKView/snapshot background color, and city token silhouette.
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens-Workspace -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:MessagesExtensionTests/GameBoardSceneTests test`
+- `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`
+
+Latest tabletop gameplay-surface validation:
+
+- The expanded setup gameplay surface now uses a continuous tabletop direction: dark felt app background, compact command card, SpriteKit board with cream rim/deep-teal water, permanent board-game grid pieces, terrain texture marks, and a bottom tray with resource cards plus a dev deck stack.
+- The implementation remains SwiftUI shell plus hosted SpriteKit board. UIKit is not needed for this visual iteration because the visible gap was composition, board rendering, and tray styling, not a framework limitation.
+- UX Lab now has a DEBUG-only clean setup screenshot control that loads `setup-placement` and hides the UX Lab chrome before capture; the hidden restore affordance is accessibility-addressable as `uls.uxLab.restoreChrome`.
+- The clean setup gameplay screenshot harness passed on the booted iPhone 16e simulator, found the `Clean setup screenshot` control, waited for `Place settlement`, and asserted the UX Lab toggle was absent before attachment.
+- Manual simulator still: `/private/tmp/unluckysevens_tabletop_iteration_3.png`
+- `xcodebuild -workspace /Users/kunalsharda/Documents/Code/UnluckySevens/UnluckySevens.xcworkspace -scheme UnluckySevens -destination id=C8ECCA82-D595-46D0-BC8E-258B27C16F18 build`
+- `xcodebuild -workspace /Users/kunalsharda/Documents/Code/UnluckySevens/UnluckySevens.xcworkspace -scheme UnluckySevens -destination id=C8ECCA82-D595-46D0-BC8E-258B27C16F18 -only-testing:UnluckySevensUITests/MessagesExtensionDesignSliceUITests/testOpenMessagesExtensionAndCaptureDesignSlices test`
+- `xcodebuild -workspace /Users/kunalsharda/Documents/Code/UnluckySevens/UnluckySevens.xcworkspace -scheme UnluckySevens -destination id=C8ECCA82-D595-46D0-BC8E-258B27C16F18 -only-testing:UnluckySevensUITests/MessagesExtensionDesignSliceUITests/testOpenMessagesExtensionAndCaptureCleanSetupGameplaySlice test`
+- `xcrun simctl io booted screenshot /private/tmp/unluckysevens_tabletop_iteration_3.png`
+- `xcrun simctl io booted screenshot /private/tmp/unluckysevens_clean_setup_no_debug.png`
 
 ## Progress
 
@@ -210,6 +248,12 @@ Latest XCUITest design-slice validation:
 - [x] Lobby join/rename `STATE` transition validation restored below Messages publishing
 - [x] DEBUG-only single-device UX Lab added for visual/design audit and one-device dummy-player playthroughs across representative states
 - [x] XCUITest design-slice harness added for repeatable simulator capture of the Messages extension invite surface and UX Lab overlay
+- [x] First invite surface reset from decorated form toward an initial tabletop paper-invite design language
+- [ ] Refine the invite surface into a board-game rules/setup card design language
+- [x] Simulator-first design iteration lane documented after validating the browser mirror as backup-only
+- [x] Dark felt/deep-teal SpriteKit board-scene visual spike landed without a UIKit shell rewrite
+- [x] First tabletop gameplay-surface pass landed across the SwiftUI shell, SpriteKit board, and lower hand/dev tray
+- [x] Clean setup gameplay screenshot harness added so repeatable captures can hide DEBUG chrome without manual Computer Use
 
 ## Decisions and Discoveries
 
@@ -238,7 +282,14 @@ Latest XCUITest design-slice validation:
 - The `lobby-invite` UX Lab fixture intentionally exposes dummy actor options before they are in the canonical roster so one device can simulate joiners, then continue through setup/gameplay by switching actor viewpoints.
 - UX Lab dummy autoplay is intentionally a flow skipper, not a product AI. It avoids strategic build/trade/dev-card choices and only takes deterministic first-legal setup, roll, forced-flow, and end-turn actions for non-human actors.
 - XCUITest sees SwiftUI-in-Messages leaf text and buttons more reliably than container-level identifiers. The design-slice harness therefore asserts on visible invite/lab text while still keeping accessibility identifiers on stable app controls for future expansion.
+- The invite screen should not chase generic "cozy" styling by adding more rounded beige UI. The target direction is a rules/setup card from a board game box: printed hierarchy, functional facts, compact marks, and board-game materials. The current dark green table surface, ivory paper, charcoal ink, clay primary action, and small moss/slate/clay accents are an intermediate exploration, not the locked final style.
+- Simulator design captures can show stale extension UI after a successful rebuild. Verify the installed simulator app's embedded extension or explicitly reinstall the latest app and terminate Messages before treating a screenshot as design evidence.
+- The default visual-review loop is the native iOS Simulator, XCUITest for deterministic design-slice captures, and `simctl` screenshots for stills. The in-app browser mirror is useful when explicitly requested, but its memory/runtime overhead and reconnect behavior make it a backup, not the normal UI sprint path.
+- Messages app drawer accessibility differs across simulator/runtime states; the harness should target visible labels such as `add` or `Apps` first, then use a narrow bottom-left coordinate fallback when those labels are unavailable.
+- A darker, more physical board feel does not require replacing the whole shell with UIKit. The narrow board-scene path is feasible because `BoardSceneHostView` already hosts a dedicated `SKView`; palette, backdrop, and token-shape experiments can stay inside `MessagesExtension/Sources/Board/` while the surrounding shell remains SwiftUI.
+- A fuller tabletop gameplay look also does not require an immediate UIKit rewrite. Keep SwiftUI for app chrome while it is mostly static layout and controls; keep SpriteKit responsible for the board, zoom, hit testing, and tactile board pieces. Reconsider a UIKit container only if SwiftUI starts blocking continuous animation, gesture arbitration, or precise Messages-host lifecycle behavior.
+- Repeatable simulator screenshots should be harness-first: use XCUITest to navigate Messages and UX Lab controls, use `simctl` for still capture once the state is prepared, and reserve Computer Use for one-off gaps. If a Computer Use click sequence becomes repeatable, convert it into a test helper or DEBUG-only UX Lab automation control.
 
 ## Outcome
 
-This transcript-copy, action-graphic bubble presentation, temporary app-icon, extension icon wiring, standalone Messages-only packaging, canonical lobby-naming, local preferred-name prefill, one-step trade-resolution cleanup, ordered-discard hardening, hidden-VP reveal hardening, lobby transition validation, single-device UX Lab with dummy-player playthrough and dummy-autoplay support, XCUITest design-slice capture harness, pre-TestFlight runtime/debug purge, repo cleanup, and basic feature audit slice is complete. Phase 14 remains active for broader UI/bubble polish beyond this slice.
+This transcript-copy, action-graphic bubble presentation, temporary app-icon, extension icon wiring, standalone Messages-only packaging, canonical lobby-naming, local preferred-name prefill, one-step trade-resolution cleanup, ordered-discard hardening, hidden-VP reveal hardening, lobby transition validation, single-device UX Lab with dummy-player playthrough and dummy-autoplay support, XCUITest design-slice capture harness, simulator-first design-review workflow, first invite tabletop visual reset, dark felt/deep-teal board-scene visual spike, first tabletop gameplay-surface pass, pre-TestFlight runtime/debug purge, repo cleanup, and basic feature audit slice is complete. Phase 14 remains active for broader UI/bubble polish beyond this slice.

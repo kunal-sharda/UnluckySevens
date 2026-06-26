@@ -13,8 +13,8 @@ enum LobbyScreenModelBuilder {
 
         return LobbyScreenModel(
             showsInviteEntryHero: true,
-            title: "Invite friends to play",
-            subtitle: "Set up a Catan-style game in this Messages chat.",
+            title: "A table is open",
+            subtitle: "Catan-style play in this Messages chat.",
             warningText: warningText,
             participantsTitle: "Lobby",
             participants: [],
@@ -24,14 +24,14 @@ enum LobbyScreenModelBuilder {
             nameEditor: buildInviteEntryNameEditor(context: context),
             inviteButton: context.canInvite
                 ? LobbyActionButtonModel(
-                    title: "Create Invite",
+                    title: "Send Invite",
                     systemImage: "plus.message.fill",
                     isEnabled: true
                 )
                 : nil,
             joinButton: nil,
             startButton: nil,
-            helperText: "Everyone joins from the Messages bubble. The host starts once the table is ready."
+            helperText: "Friends join from the Messages bubble."
         )
     }
 
@@ -184,9 +184,9 @@ enum LobbyScreenModelBuilder {
         }
 
         return LobbyNameEditorModel(
-            title: "Your name",
-            placeholder: "Name at the table",
-            helperText: "Shown on this table and remembered for the next invite.",
+            title: "Playing as",
+            placeholder: "Name",
+            helperText: "Remembered for the next invite.",
             saveButton: nil
         )
     }

@@ -71,6 +71,7 @@ struct GameShellFreezeOverlayView: View {
                 if !snapshot.isGameOver {
                     GameBottomTrayView(
                         layout: snapshot.layout.lowerRail,
+                        handTray: snapshot.handTray,
                         actionDock: snapshot.actionDock,
                         selectedDockKind: snapshot.selectedDockKind,
                         onSelectDock: { _ in },

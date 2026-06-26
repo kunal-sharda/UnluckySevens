@@ -43,6 +43,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var uxTestingFollowsTurnOwner: Bool = true
     @Published var uxTestingAutoplaysDummyTurns: Bool = false
     @Published private(set) var uxTestingIsActive: Bool = false
+    @Published private(set) var uxTestingChromeHiddenForScreenshot: Bool = false
     private var uxTestingAutoplayIsRunning = false
     #endif
 
@@ -110,6 +111,15 @@ final class LobbyDriverViewModel: ObservableObject {
         runUXTestingAutoplayIfNeeded()
     }
 
+    func activateCleanUXTestingFixture(id: String, actingAs actorID: String? = nil) {
+        activateUXTestingFixture(id: id, actingAs: actorID)
+        uxTestingChromeHiddenForScreenshot = true
+    }
+
+    func restoreUXTestingChrome() {
+        uxTestingChromeHiddenForScreenshot = false
+    }
+
     func refreshUXTestingActorView() {
         guard uxTestingIsActive, let state = selectedState else {
             return
@@ -145,6 +155,7 @@ final class LobbyDriverViewModel: ObservableObject {
 
     func exitUXTesting() {
         uxTestingIsActive = false
+        uxTestingChromeHiddenForScreenshot = false
         clearActiveContext()
         selectionStatus = "UX Lab exited"
         setLastError(nil)

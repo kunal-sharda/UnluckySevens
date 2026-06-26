@@ -65,7 +65,7 @@ struct BoardSceneHostView: UIViewRepresentable {
     private func configure(_ view: SKView) {
         view.allowsTransparency = false
         view.isOpaque = true
-        view.backgroundColor = GameBoardPalette.water
+        view.backgroundColor = GameBoardPalette.sceneBackground
         view.preferredFramesPerSecond = 60
         view.showsFPS = false
         view.showsNodeCount = false

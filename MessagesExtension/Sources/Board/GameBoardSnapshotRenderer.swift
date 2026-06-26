@@ -39,7 +39,7 @@ enum GameBoardSnapshotRenderer {
         let view = SKView(frame: frame)
         view.allowsTransparency = false
         view.isOpaque = true
-        view.backgroundColor = GameBoardPalette.water
+        view.backgroundColor = GameBoardPalette.sceneBackground
         view.preferredFramesPerSecond = 60
         view.presentScene(scene)
         view.layoutIfNeeded()

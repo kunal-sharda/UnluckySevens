@@ -35,6 +35,7 @@ Run these validation commands serially. Do not run `swift test` or `xcodebuild` 
   - run `xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build`
   - run the focused `MessagesExtensionTests/UXTestingFixturesTests` simulator test
   - run `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:UnluckySevensUITests/MessagesExtensionDesignSliceUITests/testOpenMessagesExtensionAndCaptureDesignSlices test` when repeatable simulator screenshots are useful for design review
+  - run `xcodebuild -workspace UnluckySevens.xcworkspace -scheme UnluckySevens -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:UnluckySevensUITests/MessagesExtensionDesignSliceUITests/testOpenMessagesExtensionAndCaptureCleanSetupGameplaySlice test` when a clean setup gameplay screenshot is needed without DEBUG chrome
   - manually step through the Single-Device UX Lab fixtures on the target device or simulator
   - still run the relevant real-device checklist before release or TestFlight handoff
 - Any lobby join/start UX change:
@@ -583,6 +584,20 @@ Current fixtures cover:
 While UX Lab is active, the view model uses local fixture state and local actor override. It does not publish `MSMessage` bubbles; state-producing actions are applied back into the local preview path. That makes it useful for screen-by-screen design review and one-device dummy-user flow checks, but it does not validate transcript URL transport, bubble delivery, cross-device selection, same-session folding, or real Messages lifecycle behavior.
 
 The `UnluckySevensUITests` XCUITest harness can drive the simulator through Messages, open the Unlucky Sevens app drawer item, and attach screenshots of the invite slice plus the UX Lab panel to the `.xcresult` bundle. It is a design-review capture aid, not a replacement for the real-device Messages lane. The current harness expects Messages to have at least one existing simulator conversation and falls back to the first visible conversation if the seeded `+1 (888) 555-1212` thread is unavailable.
+
+Default visual iteration lane:
+
+- Use the normal iOS Simulator window for live visual review and interaction.
+- Use the XCUITest design-slice harness for repeatable invite/lab/gameplay captures.
+- Use DEBUG-only UX Lab clean-shot controls to load common fixture states and hide the UX Lab chrome before screenshots.
+- Use `xcrun simctl io <device> screenshot <path>` for quick still screenshots after the harness has placed the simulator in the target state.
+- Use Computer Use only for one-off simulator gaps the harness cannot yet reach. If a manual path is needed more than once, add an XCUITest helper or UX Lab automation control instead.
+
+The clean setup gameplay capture path is `MessagesExtensionDesignSliceUITests/testOpenMessagesExtensionAndCaptureCleanSetupGameplaySlice`. It opens Messages through the same reusable navigation helpers, opens UX Lab, taps the `uls.uxLab.cleanShot.setupPlacement` control, waits for the setup board, asserts the UX Lab toggle is hidden, and attaches a screenshot after the debug chrome is hidden.
+
+Messages exposes the app drawer differently across simulator/runtime states. The harness first tries stable button labels such as `add` and `Apps`, then falls back to tapping the visible bottom-left drawer control.
+
+When iterating on the Messages extension UI, the simulator can keep rendering an older installed extension even after the workspace build product contains the new code. If a screenshot shows stale copy or layout, explicitly install the latest `UnluckySevensApp.app` into the booted simulator, terminate `com.apple.MobileSMS`, and rerun the capture harness before judging the design.
 
 Before TestFlight or any release claim, follow the relevant Real Device Lane checklist even if the UX Lab pass looked good.
 

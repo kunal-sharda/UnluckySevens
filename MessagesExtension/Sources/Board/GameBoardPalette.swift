@@ -2,48 +2,55 @@ import SpriteKit
 import ULS_CoreGame
 
 enum GameBoardPalette {
-    static let water = SKColor(red: 0.30, green: 0.55, blue: 0.72, alpha: 0.96)
-    static let waterEdge = SKColor(red: 0.13, green: 0.24, blue: 0.33, alpha: 0.28)
-    static let boardBase = SKColor(red: 0.41, green: 0.27, blue: 0.16, alpha: 0.34)
-    static let boardBaseEdge = SKColor(red: 0.22, green: 0.15, blue: 0.10, alpha: 0.20)
-    static let ink = SKColor(red: 0.20, green: 0.13, blue: 0.08, alpha: 0.92)
-    static let outline = SKColor(red: 0.27, green: 0.18, blue: 0.11, alpha: 0.34)
-    static let tokenFill = SKColor(red: 0.97, green: 0.92, blue: 0.81, alpha: 0.98)
-    static let tokenStroke = SKColor(red: 0.57, green: 0.41, blue: 0.23, alpha: 0.45)
+    static let sceneBackground = SKColor(red: 0.16, green: 0.22, blue: 0.18, alpha: 1.0)
+    static let sceneBackgroundEdge = SKColor(red: 0.09, green: 0.13, blue: 0.10, alpha: 0.50)
+    static let clothThread = SKColor(red: 0.74, green: 0.82, blue: 0.70, alpha: 0.055)
+    static let boardRim = SKColor(red: 0.94, green: 0.86, blue: 0.67, alpha: 1.0)
+    static let boardRimEdge = SKColor(red: 0.38, green: 0.29, blue: 0.18, alpha: 0.62)
+    static let water = SKColor(red: 0.06, green: 0.42, blue: 0.47, alpha: 0.98)
+    static let waterEdge = SKColor(red: 0.03, green: 0.20, blue: 0.23, alpha: 0.58)
+    static let boardBase = SKColor(red: 0.05, green: 0.33, blue: 0.36, alpha: 0.54)
+    static let boardBaseEdge = SKColor(red: 0.03, green: 0.17, blue: 0.19, alpha: 0.36)
+    static let ink = SKColor(red: 0.19, green: 0.15, blue: 0.12, alpha: 0.94)
+    static let outline = SKColor(red: 0.91, green: 0.81, blue: 0.62, alpha: 0.92)
+    static let gridStroke = SKColor(red: 0.92, green: 0.82, blue: 0.63, alpha: 0.96)
+    static let gridFill = SKColor(red: 0.95, green: 0.86, blue: 0.66, alpha: 0.98)
+    static let tokenFill = SKColor(red: 0.96, green: 0.89, blue: 0.72, alpha: 0.98)
+    static let tokenStroke = SKColor(red: 0.42, green: 0.31, blue: 0.18, alpha: 0.46)
     static let robber = SKColor(red: 0.16, green: 0.13, blue: 0.12, alpha: 0.90)
     static let robberAccent = SKColor(red: 0.71, green: 0.60, blue: 0.47, alpha: 0.32)
-    static let portFill = SKColor(red: 0.95, green: 0.90, blue: 0.81, alpha: 0.94)
-    static let portStroke = SKColor(red: 0.45, green: 0.33, blue: 0.21, alpha: 0.34)
-    static let roadShadow = SKColor.black.withAlphaComponent(0.18)
-    static let structureFill = SKColor(red: 0.98, green: 0.96, blue: 0.90, alpha: 0.94)
-    static let legalHighlight = SKColor(red: 0.94, green: 0.80, blue: 0.33, alpha: 0.92)
-    static let legalHighlightFill = SKColor(red: 0.98, green: 0.90, blue: 0.54, alpha: 0.18)
-    static let selectedHighlight = SKColor(red: 0.99, green: 0.96, blue: 0.86, alpha: 0.98)
-    static let selectedHighlightFill = SKColor(red: 0.99, green: 0.96, blue: 0.86, alpha: 0.26)
+    static let portFill = SKColor(red: 0.94, green: 0.86, blue: 0.67, alpha: 0.98)
+    static let portStroke = SKColor(red: 0.36, green: 0.27, blue: 0.16, alpha: 0.54)
+    static let roadShadow = SKColor.black.withAlphaComponent(0.22)
+    static let structureFill = SKColor(red: 0.95, green: 0.92, blue: 0.84, alpha: 0.94)
+    static let legalHighlight = SKColor(red: 1.00, green: 0.79, blue: 0.08, alpha: 0.98)
+    static let legalHighlightFill = SKColor(red: 1.00, green: 0.77, blue: 0.05, alpha: 0.22)
+    static let selectedHighlight = SKColor(red: 1.00, green: 0.94, blue: 0.52, alpha: 1.0)
+    static let selectedHighlightFill = SKColor(red: 1.00, green: 0.84, blue: 0.16, alpha: 0.30)
 
     static func resourceFill(for resource: ResourceV1) -> SKColor {
         switch resource {
         case .wood:
-            return SKColor(red: 0.41, green: 0.56, blue: 0.27, alpha: 0.94)
+            return SKColor(red: 0.25, green: 0.47, blue: 0.18, alpha: 0.98)
         case .brick:
-            return SKColor(red: 0.67, green: 0.31, blue: 0.24, alpha: 0.94)
+            return SKColor(red: 0.74, green: 0.30, blue: 0.16, alpha: 0.98)
         case .sheep:
-            return SKColor(red: 0.56, green: 0.72, blue: 0.39, alpha: 0.94)
+            return SKColor(red: 0.55, green: 0.68, blue: 0.31, alpha: 0.98)
         case .wheat:
-            return SKColor(red: 0.86, green: 0.72, blue: 0.30, alpha: 0.96)
+            return SKColor(red: 0.86, green: 0.66, blue: 0.18, alpha: 0.98)
         case .ore:
-            return SKColor(red: 0.47, green: 0.51, blue: 0.54, alpha: 0.94)
+            return SKColor(red: 0.40, green: 0.45, blue: 0.45, alpha: 0.98)
         case .desert:
-            return SKColor(red: 0.80, green: 0.69, blue: 0.50, alpha: 0.94)
+            return SKColor(red: 0.71, green: 0.58, blue: 0.36, alpha: 0.98)
         }
     }
 
     static func playerColor(owner: String, playerOrder: [String]) -> SKColor {
         let palette: [SKColor] = [
-            SKColor(red: 0.79, green: 0.22, blue: 0.19, alpha: 1.0),
-            SKColor(red: 0.18, green: 0.39, blue: 0.78, alpha: 1.0),
-            SKColor(red: 0.96, green: 0.95, blue: 0.91, alpha: 1.0),
-            SKColor(red: 0.90, green: 0.56, blue: 0.14, alpha: 1.0),
+            SKColor(red: 0.72, green: 0.18, blue: 0.16, alpha: 1.0),
+            SKColor(red: 0.18, green: 0.42, blue: 0.70, alpha: 1.0),
+            SKColor(red: 0.91, green: 0.88, blue: 0.78, alpha: 1.0),
+            SKColor(red: 0.78, green: 0.48, blue: 0.13, alpha: 1.0),
         ]
 
         if let index = playerOrder.firstIndex(of: owner) {
@@ -63,21 +70,8 @@ enum GameBoardPalette {
         switch kind {
         case .threeToOne:
             return "3:1"
-        case let .twoToOne(resource):
-            switch resource {
-            case .brick:
-                return "Br"
-            case .wood:
-                return "Wd"
-            case .sheep:
-                return "Sh"
-            case .wheat:
-                return "Wh"
-            case .ore:
-                return "Or"
-            case .desert:
-                return "2:1"
-            }
+        case .twoToOne:
+            return "2:1"
         }
     }
 

@@ -3,20 +3,22 @@ import SwiftUI
 enum GameTheme {
     static let appBackground = LinearGradient(
         colors: [
-            Color(red: 0.97, green: 0.93, blue: 0.86),
-            Color(red: 0.90, green: 0.82, blue: 0.70),
+            Color(red: 0.15, green: 0.20, blue: 0.17),
+            Color(red: 0.22, green: 0.29, blue: 0.24),
         ],
         startPoint: .top,
         endPoint: .bottom
     )
 
-    static let surface = Color(red: 0.96, green: 0.92, blue: 0.85)
-    static let surfaceRaised = Color(red: 0.89, green: 0.80, blue: 0.66)
-    static let outline = Color(red: 0.39, green: 0.24, blue: 0.14)
-    static let accent = Color(red: 0.77, green: 0.40, blue: 0.18)
-    static let ink = Color(red: 0.20, green: 0.13, blue: 0.08)
-    static let mutedInk = Color(red: 0.39, green: 0.28, blue: 0.20)
-    static let water = Color(red: 0.31, green: 0.56, blue: 0.72)
+    static let felt = Color(red: 0.18, green: 0.25, blue: 0.20)
+    static let feltRaised = Color(red: 0.24, green: 0.31, blue: 0.25)
+    static let surface = Color(red: 0.96, green: 0.91, blue: 0.80)
+    static let surfaceRaised = Color(red: 0.89, green: 0.80, blue: 0.64)
+    static let outline = Color(red: 0.28, green: 0.20, blue: 0.13)
+    static let accent = Color(red: 0.92, green: 0.63, blue: 0.18)
+    static let ink = Color(red: 0.14, green: 0.10, blue: 0.07)
+    static let mutedInk = Color(red: 0.38, green: 0.30, blue: 0.21)
+    static let water = Color(red: 0.07, green: 0.42, blue: 0.47)
 
     static let wood = Color(red: 0.53, green: 0.35, blue: 0.19)
     static let brick = Color(red: 0.69, green: 0.25, blue: 0.20)

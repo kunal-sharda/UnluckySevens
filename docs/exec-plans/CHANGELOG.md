@@ -14,6 +14,7 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 - Transcript bubble publication now treats `MSMessageTemplateLayout.image` as an optional readability layer while keeping caption, summary text, and URL payload as the reliable transport surface; join and name-update lobby bubbles remain text-only.
 - Bubble visuals now use concise per-action graphics instead of full board thumbnails, keeping the board inside the expanded game surface where it remains readable.
 - Local generation now produces a standalone Messages-only app bundle by keeping the app target resource-only and patching Tuist's generated product type to `com.apple.product-type.application.messages`.
+- Expanded gameplay now has a first tabletop visual pass: dark felt shell, compact command card, SpriteKit board with cream rim/deep-teal water and terrain details, and a physical lower tray for resource cards plus the dev deck.
 
 ### Removed
 - Removed `ULS_Transport.TurnIntentV1`, transport resource/dev-card action draft helpers, obsolete action-draft transport tests, and the unused summary-payload mirror length field.
@@ -24,6 +25,9 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 - Extension-scoped `iMessage App Icon.stickersiconset` assets so the standalone Messages app drawer uses the temporary `7` icon.
 - DEBUG-only single-device UX Lab fixtures and overlay for visual audit, one-device dummy-player playthroughs, and simple non-human dummy autoplay across lobby, setup, turn, forced-flow, trade, and game-over states without sending Messages bubbles.
 - XCUITest design-slice harness that drives Messages to the Unlucky Sevens extension and stores invite-slice plus UX Lab screenshots as test attachments.
+- Clean setup gameplay screenshot harness path that loads the setup fixture and hides DEBUG UX Lab chrome before capture.
+- Simulator-first UI sprint workflow documented, with the browser mirror kept as an explicit backup lane and the design-slice harness hardened for Messages app drawer label differences.
+- First invite surface visual reset with a tabletop invitation direction: green felt/table background, ivory paper invite card, compact setup chips, RSVP-style name field, and `Send Invite` CTA.
 - Stage 0.A bootstrap scaffolding for `Tuist/`, `App/`, `MessagesExtension/`, `Packages/`, and `scripts/`.
 - Stage 0.A developer scripts: `scripts/gen.sh` and `scripts/clean.sh`.
 - Stage 0.A repository baseline files: `.gitignore`, `README.md`, and `Makefile`.

@@ -18,9 +18,9 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
         )
 
         XCTAssertTrue(model.showsInviteEntryHero)
-        XCTAssertEqual(model.title, "Invite friends to play")
-        XCTAssertEqual(model.inviteButton?.title, "Create Invite")
-        XCTAssertEqual(model.nameEditor?.title, "Your name")
+        XCTAssertEqual(model.title, "A table is open")
+        XCTAssertEqual(model.inviteButton?.title, "Send Invite")
+        XCTAssertEqual(model.nameEditor?.title, "Playing as")
         XCTAssertNil(model.joinButton)
         XCTAssertNil(model.startButton)
     }

@@ -9,17 +9,37 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
     }
 
     func testOpenMessagesExtensionAndCaptureDesignSlices() throws {
-        messages.launch()
-        handleFirstRunPrompts()
-        openExistingConversation()
-        openMessagesAppDrawer()
-        openUnluckySevensFromDrawer()
+        openUnluckySevensExtension()
 
         XCTAssertTrue(waitForInviteSlice(timeout: 12), "Expected the Unlucky Sevens invite slice to render.")
         attachScreenshot(named: "Unlucky Sevens - invite slice")
 
         openUXLabPanel()
         attachScreenshot(named: "Unlucky Sevens - UX Lab panel")
+    }
+
+    func testOpenMessagesExtensionAndCaptureCleanSetupGameplaySlice() throws {
+        openUnluckySevensExtension()
+        openUXLabPanel()
+        loadCleanSetupGameplaySlice()
+
+        XCTAssertTrue(
+            messages.staticTexts["Place settlement"].firstMatch.waitForExistence(timeout: 8),
+            "Expected the setup gameplay fixture to render."
+        )
+        XCTAssertFalse(
+            messages.buttons["uls.uxLab.toggle"].firstMatch.exists,
+            "Expected UX Lab chrome to be hidden for the clean gameplay screenshot."
+        )
+        attachScreenshot(named: "Unlucky Sevens - clean setup gameplay")
+    }
+
+    private func openUnluckySevensExtension() {
+        messages.launch()
+        handleFirstRunPrompts()
+        openExistingConversation()
+        openMessagesAppDrawer()
+        openUnluckySevensFromDrawer()
     }
 
     private func handleFirstRunPrompts() {
@@ -86,9 +106,19 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             return
         }
 
-        let addButton = messages.buttons["add"].firstMatch
-        XCTAssertTrue(addButton.waitForExistence(timeout: 6), "Expected the Messages app drawer add button.")
-        addButton.tap()
+        let drawerButtons = [
+            messages.buttons["add"].firstMatch,
+            messages.buttons["Apps"].firstMatch,
+            messages.buttons["More"].firstMatch,
+            messages.buttons["App Store"].firstMatch,
+        ]
+
+        if let drawerButton = drawerButtons.first(where: { $0.waitForExistence(timeout: 1) }) {
+            drawerButton.tap()
+            return
+        }
+
+        messages.coordinate(withNormalizedOffset: CGVector(dx: 0.07, dy: 0.94)).tap()
     }
 
     private func openUnluckySevensFromDrawer() {
@@ -133,6 +163,23 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(panelSignal.exists, "Expected the UX Lab panel to open.")
     }
 
+    private func loadCleanSetupGameplaySlice() {
+        let button = firstExistingElement(
+            [
+                messages.buttons["uls.uxLab.cleanShot.setupPlacement"].firstMatch,
+                messages.buttons["Clean setup screenshot"].firstMatch,
+            ],
+            timeout: 4
+        )
+
+        if button.exists {
+            button.tap()
+        } else {
+            // Messages sometimes flattens the SwiftUI header button accessibility tree.
+            messages.coordinate(withNormalizedOffset: CGVector(dx: 0.90, dy: 0.19)).tap()
+        }
+    }
+
     private func attachScreenshot(named name: String) {
         let attachment = XCTAttachment(screenshot: messages.screenshot())
         attachment.name = name
@@ -144,7 +191,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         firstExistingElement(
             [
                 messages.staticTexts["uls.lobby.inviteTitle"].firstMatch,
-                messages.staticTexts["Invite friends to play"].firstMatch,
+                messages.staticTexts["A table is open"].firstMatch,
             ],
             timeout: timeout
         )

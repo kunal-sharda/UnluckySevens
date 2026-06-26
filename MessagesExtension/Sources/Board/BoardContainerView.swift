@@ -28,33 +28,17 @@ struct BoardContainerView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [
-                    GameTheme.water.opacity(0.18),
-                    GameTheme.surfaceRaised.opacity(0.90),
-                    GameTheme.surface.opacity(0.94),
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            GameTheme.felt.opacity(0.001)
 
             boardCanvas
 
-            VStack(alignment: .leading, spacing: 6) {
-                if shouldShowBoardHeader {
-                    boardHeader
-                }
-
-                Spacer(minLength: 0)
-
-                if renderModel == nil {
-                    placeholderCopy
-                }
+            if renderModel == nil {
+                placeholderCopy
+                    .padding(GameTheme.shellPadding)
+                    .allowsHitTesting(false)
             }
-            .padding(GameTheme.shellPadding)
-            .allowsHitTesting(false)
 
-            if let boardHintText {
+            if let boardHintText, shouldShowBoardHint {
                 VStack {
                     Spacer(minLength: 0)
 
@@ -84,31 +68,18 @@ struct BoardContainerView: View {
             minHeight: renderModel == nil ? 260 : nil,
             alignment: .topLeading
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: GameTheme.largeRadius)
-                .stroke(GameTheme.outline.opacity(0.18), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius))
-        .shadow(color: GameTheme.sectionShadow.opacity(0.75), radius: 10, x: 0, y: 4)
+        .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius + 10))
+        .shadow(color: .black.opacity(0.34), radius: 14, x: 0, y: 5)
     }
 
     @ViewBuilder
     private var boardCanvas: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: GameTheme.largeRadius - 4)
-                .fill(GameTheme.water.opacity(0.12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: GameTheme.largeRadius - 4)
-                        .stroke(GameTheme.outline.opacity(0.10), lineWidth: 1)
-                )
-
             if let renderModel {
                 if let frozenBoardImage {
                     Image(uiImage: frozenBoardImage)
                         .resizable()
                         .scaledToFill()
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 6)
                 } else {
                     BoardSceneView(
                         renderModel: renderModel,
@@ -121,8 +92,6 @@ struct BoardContainerView: View {
                         onTargetTap: onTargetTap
                     )
                     .equatable()
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 6)
                 }
             } else {
                 BoardPlaceholderArtView()
@@ -130,7 +99,15 @@ struct BoardContainerView: View {
                     .padding(.vertical, 10)
             }
         }
-        .padding(4)
+    }
+
+    private var shouldShowBoardHint: Bool {
+        switch interactionMode {
+        case .setup:
+            return false
+        default:
+            return true
+        }
     }
 
     private var boardHeader: some View {

@@ -5,7 +5,7 @@ This document summarizes the player-facing flows the UI must support in the curr
 ## Lobby Flow
 
 - A player starts a game from Messages and sends an invite/game-state bubble into a thread.
-- Before the first invite is sent, the lobby surface should be a simple invite entry screen focused on one action: invite players to Unlucky Sevens.
+- Before the first invite is sent, the lobby surface should be a simple invite entry screen focused on one action: invite players to Unlucky Sevens. Its visual metaphor should be a board-game rules/setup card, not a generic form: printed setup facts, compact rule-card hierarchy, an RSVP-style player-name line, and one `Send Invite` action.
 - Immediately after sending the initial invite, the extension dismisses back to the Messages thread instead of pretending the local post-send shell is a live lobby.
 - Other players join before the host starts.
 - Joining should feel like a game action, not a draft-composition flow. A player should not need an extra manual send step after choosing `Join`.
@@ -39,18 +39,18 @@ This document summarizes the player-facing flows the UI must support in the curr
 - Roll.
 - Resolve either production or the full seven/robber subflow.
 - Optionally trade, build, buy or play allowed dev cards, and then end turn.
-- The default shell should read as:
-  - header
-  - board
-  - handle band
-  - dock
+- The default shell should read as a compact tabletop surface:
+  - command card
+  - large board tray
+  - physical hand/dev tray
+  - compact action pieces
 - The fixed shell height targets are:
-  - header `12%`
-  - board `70%`
-  - dock region `18%`
+  - phone command card around `8%`
+  - board gets the remaining primary play space
+  - phone hand/dev tray around `27%`
 - Within the dock region:
-  - handle band `6%`
-  - dock row `12%`
+  - handle band stays small
+  - hand cards, dev deck, and compact action pieces share the tray
 - The lower shelf should be an overlay, not a layout reflow:
   - total shelf height `18%`
   - visible in lower rail `6%`
@@ -63,7 +63,7 @@ This document summarizes the player-facing flows the UI must support in the curr
   - it switches to `Trade` once rolling is no longer the relevant action for the turn
 - The collapsed lower rail should show only:
   - a small centered pull-tab / chevron in the handle band
-  - the four dock actions in the dock row
+  - the local hand resources, dev deck stack, and compact action pieces
 - Only one lower shelf should be open at a time.
 - Opening the pull-tab should reveal a compact shelf header with:
   - `Hand`
