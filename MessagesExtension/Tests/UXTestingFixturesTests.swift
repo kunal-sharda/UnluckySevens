@@ -111,5 +111,19 @@ final class UXTestingFixturesTests: XCTestCase {
         XCTAssertEqual(fixturesByID["game-over"]?.state.phase, .gameOver)
         XCTAssertEqual(fixturesByID["game-over"]?.state.winnerPlayer, UXTestFixtures.host)
     }
+
+    func testTurnAfterRollFixtureExposesTheNormalTurnMatrix() throws {
+        let fixture = UXTestFixtures.fixture(id: "turn-after-roll")
+        let state = fixture.state
+
+        XCTAssertFalse(state.legalBuildRoadEdges(for: UXTestFixtures.host).isEmpty)
+        XCTAssertFalse(state.legalBuildSettlementNodes(for: UXTestFixtures.host).isEmpty)
+        XCTAssertFalse(state.legalBuildCityNodes(for: UXTestFixtures.host).isEmpty)
+        XCTAssertTrue(state.canInitiatePlayerTrade(for: UXTestFixtures.host))
+        XCTAssertFalse(state.legalKnightMoveTilesForDevCard(for: UXTestFixtures.host).isEmpty)
+        XCTAssertFalse(state.monopolyPreviews(for: UXTestFixtures.host).isEmpty)
+        XCTAssertFalse(state.yearOfPlentyBankOptions(for: UXTestFixtures.host).isEmpty)
+        XCTAssertFalse(state.legalRoadBuildingFirstEdges(for: UXTestFixtures.host).isEmpty)
+    }
 }
 #endif

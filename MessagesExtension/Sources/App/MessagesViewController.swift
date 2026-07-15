@@ -15,7 +15,16 @@ final class MessagesViewController: MSMessagesAppViewController {
             self?.dismiss()
         }
 
+        #if DEBUG
+        let rootView = MessagesRootView(
+            viewModel: viewModel,
+            onSettingsTap: { [weak viewModel] in
+                viewModel?.recordUXTestingSettingsHookInvocation()
+            }
+        )
+        #else
         let rootView = MessagesRootView(viewModel: viewModel)
+        #endif
         let hostingController = UIHostingController(rootView: rootView)
 
         addChild(hostingController)

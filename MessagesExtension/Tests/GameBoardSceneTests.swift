@@ -5,6 +5,88 @@ import XCTest
 @testable import MessagesExtension
 
 final class GameBoardSceneTests: XCTestCase {
+    func testSharedSettlementAndCityGeometryRemainDistinct() {
+        let settlement = GamePieceGeometry.structurePath(kind: .settlement, radius: 20)
+        let city = GamePieceGeometry.structurePath(kind: .city, radius: 20)
+
+        XCTAssertGreaterThan(city.boundingBox.width, settlement.boundingBox.width)
+        XCTAssertNotEqual(city.boundingBox, settlement.boundingBox)
+        XCTAssertFalse(city.isEmpty)
+        XCTAssertFalse(settlement.isEmpty)
+    }
+
+    func testCityGeometryStacksHalfWidthSettlementOnMatchingHeightRectangle() {
+        let settlement = GamePieceGeometry.structurePath(kind: .settlement, radius: 20)
+        let city = GamePieceGeometry.structurePath(kind: .city, radius: 20)
+
+        XCTAssertTrue(city.contains(CGPoint(x: -10, y: 8)))
+        XCTAssertTrue(city.contains(CGPoint(x: 12, y: -2)))
+        XCTAssertFalse(city.contains(CGPoint(x: 12, y: 2)))
+        XCTAssertFalse(city.contains(CGPoint(x: 2, y: 8)))
+        XCTAssertEqual(city.boundingBox.width / settlement.boundingBox.width, 1.568, accuracy: 0.001)
+        XCTAssertEqual(city.boundingBox.height / settlement.boundingBox.height, 1.112, accuracy: 0.001)
+        XCTAssertEqual(
+            (20 * GamePieceGeometry.structureScale(for: .city) * 0.90) / settlement.boundingBox.width,
+            0.784,
+            accuracy: 0.001
+        )
+    }
+
+    func testNumberTokenFillLetsTerrainRemainVisible() {
+        var alpha: CGFloat = 0
+
+        GameBoardPalette.tokenFill.getRed(nil, green: nil, blue: nil, alpha: &alpha)
+
+        XCTAssertLessThan(alpha, 0.90)
+        XCTAssertGreaterThanOrEqual(alpha, 0.80)
+    }
+
+    func testOceanBackdropIsOneUninterruptedWaterSurface() throws {
+        let renderModel = makeRenderModel()
+        let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
+
+        scene.update(
+            renderModel: renderModel,
+            referenceSize: CGSize(width: 320, height: 240),
+            viewportSize: CGSize(width: 320, height: 240),
+            overlayModel: .empty
+        )
+        scene.updateOceanStyle(.shallowGlow, referenceSize: CGSize(width: 320, height: 240))
+
+        let base = try XCTUnwrap(baseContentNode(in: scene))
+        let backdropLayer = try XCTUnwrap(base.children.first)
+        let backdrop = try XCTUnwrap(backdropLayer.children.first)
+        let water = try XCTUnwrap(backdrop.children.first as? SKShapeNode)
+
+        XCTAssertEqual(backdrop.children.count, 1)
+        XCTAssertNotNil(water.fillTexture)
+    }
+
+    func testPortsUsePhysicalShipAndResourceMarkersInsteadOfRateLabels() {
+        let renderModel = makeRenderModel()
+        let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
+
+        scene.update(
+            renderModel: renderModel,
+            referenceSize: CGSize(width: 320, height: 240),
+            viewportSize: CGSize(width: 320, height: 240),
+            overlayModel: .empty
+        )
+
+        let nodes = descendants(of: scene)
+        XCTAssertEqual(nodes.filter { $0.name == "port.generic.ship" }.count, 4)
+        XCTAssertEqual(nodes.filter { $0.name == "port.generic.ship.art" && $0 is SKSpriteNode }.count, 4)
+        XCTAssertEqual(nodes.filter { $0.name?.hasPrefix("port.resource.") == true }.count, 5)
+        XCTAssertFalse(nodes.compactMap { $0 as? SKLabelNode }.contains { $0.text == "3:1" || $0.text == "2:1" })
+    }
+
+    func testSharedRoadGeometryUsesRequestedLength() {
+        let road = GamePieceGeometry.roadPath(length: 54)
+
+        XCTAssertEqual(road.boundingBox.width, 54, accuracy: 0.001)
+        XCTAssertEqual(road.boundingBox.height, 0, accuracy: 0.001)
+    }
+
     func testOverlayUpdatesDoNotRebuildBaseSceneTree() throws {
         let renderModel = makeRenderModel()
         let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
@@ -120,6 +202,70 @@ final class GameBoardSceneTests: XCTestCase {
         XCTAssertEqual(tileNode.position.y, expectedPosition.y, accuracy: 0.001)
     }
 
+    func testTileNodesUseSpriteKitFieldAndSavedStampSprite() throws {
+        let renderModel = makeRenderModel()
+        let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
+
+        scene.update(
+            renderModel: renderModel,
+            referenceSize: CGSize(width: 320, height: 240),
+            viewportSize: CGSize(width: 320, height: 240),
+            overlayModel: .empty
+        )
+
+        let layout = GameBoardLayout(size: CGSize(width: 320, height: 240), geometry: renderModel.geometry)
+        let tileNode = try XCTUnwrap(self.tileNode(forTileID: 0, in: scene, renderModel: renderModel))
+        let field = try XCTUnwrap(tileNode.children.compactMap { $0 as? SKShapeNode }.first(where: { $0.name == "tileField" }))
+        let stampCrop = try XCTUnwrap(tileNode.children.compactMap { $0 as? SKCropNode }.first(where: { $0.name == "tileStampCrop" }))
+        let stamp = try XCTUnwrap(stampCrop.children.compactMap { $0 as? SKSpriteNode }.first(where: { $0.name == "tileStamp" }))
+        let expectedSize = GameBoardTileArt.stampSize(for: renderModel.tiles[0].resource, hexRadius: layout.tileRadius)
+
+        XCTAssertColor(
+            field.fillColor,
+            equals: GameBoardPalette.resourceFill(for: renderModel.tiles[0].resource)
+        )
+        XCTAssertNotNil(stampCrop.maskNode)
+        XCTAssertNotNil(stamp.texture)
+        XCTAssertEqual(stampCrop.zPosition, 10)
+        XCTAssertEqual(GameBoardTileArt.fieldHexRadius(forTopologyRadius: layout.tileRadius), layout.tileRadius)
+        XCTAssertEqual(stamp.size.width, expectedSize.width, accuracy: 0.001)
+        XCTAssertEqual(stamp.size.height, expectedSize.height, accuracy: 0.001)
+    }
+
+    func testPermanentGridDrawsSharedPhysicalFrameWithoutNodeCaps() throws {
+        let renderModel = makeRenderModel()
+        let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
+
+        scene.update(
+            renderModel: renderModel,
+            referenceSize: CGSize(width: 320, height: 240),
+            viewportSize: CGSize(width: 320, height: 240),
+            overlayModel: .empty
+        )
+
+        let layout = GameBoardLayout(size: CGSize(width: 320, height: 240), geometry: renderModel.geometry)
+        let gridRoot = try XCTUnwrap(gridRootNode(in: scene))
+        let borderNodes = gridRoot.children.compactMap { $0 as? SKShapeNode }
+
+        XCTAssertEqual(gridRoot.children.count, 3)
+        XCTAssertEqual(borderNodes.count, 3)
+
+        let darkFrame = try XCTUnwrap(borderNodes.first)
+        let warmFrame = try XCTUnwrap(borderNodes.dropFirst().first)
+        let hairline = try XCTUnwrap(borderNodes.dropFirst(2).first)
+
+        XCTAssertEqual(darkFrame.name, "tileFrameDark")
+        XCTAssertEqual(warmFrame.name, "tileFrameWarm")
+        XCTAssertEqual(hairline.name, "tileFrameHairline")
+        XCTAssertEqual(darkFrame.lineCap, .butt)
+        XCTAssertEqual(warmFrame.lineCap, .butt)
+        XCTAssertEqual(hairline.lineCap, .butt)
+        XCTAssertEqual(darkFrame.lineWidth, max(layout.tileRadius * 0.12, 4.2), accuracy: 0.001)
+        XCTAssertEqual(warmFrame.lineWidth, max(layout.tileRadius * 0.066, 2.5), accuracy: 0.001)
+        XCTAssertEqual(hairline.lineWidth, max(layout.tileRadius * 0.018, 0.7), accuracy: 0.001)
+        XCTAssertLessThan(darkFrame.lineWidth, layout.roadWidth)
+    }
+
     private func makeRenderModel() -> GameBoardRenderModel {
         let board = BoardSetupV1(
             resourcesByTile: [
@@ -179,6 +325,13 @@ final class GameBoardSceneTests: XCTestCase {
         baseContentNode(in: scene)?.children.first(where: { $0.children.count == renderModel.tiles.count })
     }
 
+    private func gridRootNode(in scene: GameBoardScene) -> SKNode? {
+        baseContentNode(in: scene)?
+            .children
+            .compactMap { $0.children.first }
+            .first(where: { $0.name == "tileFrameNetwork" })
+    }
+
     private func tileNode(
         forTileID tileID: Int,
         in scene: GameBoardScene,
@@ -192,5 +345,34 @@ final class GameBoardSceneTests: XCTestCase {
             abs($0.position.x - expectedPosition.x) < 0.001
                 && abs($0.position.y - expectedPosition.y) < 0.001
         })
+    }
+
+    private func descendants(of node: SKNode) -> [SKNode] {
+        node.children + node.children.flatMap { descendants(of: $0) }
+    }
+
+    private func XCTAssertColor(
+        _ actual: SKColor,
+        equals expected: SKColor,
+        accuracy: CGFloat = 0.001,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        var actualRed: CGFloat = 0
+        var actualGreen: CGFloat = 0
+        var actualBlue: CGFloat = 0
+        var actualAlpha: CGFloat = 0
+        var expectedRed: CGFloat = 0
+        var expectedGreen: CGFloat = 0
+        var expectedBlue: CGFloat = 0
+        var expectedAlpha: CGFloat = 0
+
+        actual.getRed(&actualRed, green: &actualGreen, blue: &actualBlue, alpha: &actualAlpha)
+        expected.getRed(&expectedRed, green: &expectedGreen, blue: &expectedBlue, alpha: &expectedAlpha)
+
+        XCTAssertEqual(actualRed, expectedRed, accuracy: accuracy, file: file, line: line)
+        XCTAssertEqual(actualGreen, expectedGreen, accuracy: accuracy, file: file, line: line)
+        XCTAssertEqual(actualBlue, expectedBlue, accuracy: accuracy, file: file, line: line)
+        XCTAssertEqual(actualAlpha, expectedAlpha, accuracy: accuracy, file: file, line: line)
     }
 }

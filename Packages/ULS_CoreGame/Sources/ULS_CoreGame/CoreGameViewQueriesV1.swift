@@ -528,6 +528,33 @@ public extension CoreGameStateV1 {
         )
     }
 
+    func canInitiatePlayerTrade(for actor: String) -> Bool {
+        guard
+            phase == .turn,
+            turnState?.step == .afterRoll,
+            currentPlayer == actor,
+            activeTradeOffer == nil,
+            roster.contains(where: { $0 != actor })
+        else {
+            return false
+        }
+
+        return defaultTradeProposal(for: actor) != nil
+    }
+
+    func canInitiateMaritimeTrade(for actor: String) -> Bool {
+        guard
+            phase == .turn,
+            turnState?.step == .afterRoll,
+            currentPlayer == actor,
+            activeTradeOffer == nil
+        else {
+            return false
+        }
+
+        return !maritimeTradeQuotes(for: actor).isEmpty
+    }
+
     func defaultMaritimeTrade(for actor: String) -> MaritimeTradeQuoteV1? {
         maritimeTradeQuotes(for: actor).first
     }

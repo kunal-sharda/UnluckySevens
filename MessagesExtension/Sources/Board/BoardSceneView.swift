@@ -22,6 +22,8 @@ struct BoardSceneView: View, Equatable {
     @State private var pendingOverlayModel: GameBoardOverlayModel?
     @State private var resizeSettleTask: Task<Void, Never>?
     @State private var boardHostReloadGeneration: Int = 0
+    @AppStorage(GameBoardOceanStyle.defaultsKey)
+    private var oceanStyleRawValue = GameBoardOceanStyle.flat.rawValue
 
     private static let referencePromotionThreshold: CGFloat = 24
     private static let resizeSettleDelayNanoseconds: UInt64 = 180_000_000
@@ -104,6 +106,10 @@ struct BoardSceneView: View, Equatable {
                     renderModel: renderModel,
                     overlayModel: overlayModel
                 )
+            }
+            .onChange(of: oceanStyleRawValue) { _, newValue in
+                let oceanStyle = GameBoardOceanStyle(rawValue: newValue) ?? .flat
+                scene.updateOceanStyle(oceanStyle, referenceSize: resolvedReferenceSize(for: geometry.size))
             }
             .onDisappear {
                 cancelResizeSettle()
@@ -203,6 +209,10 @@ struct BoardSceneView: View, Equatable {
             renderModel: renderModel,
             referenceSize: referenceSize,
             viewportSize: viewportSize
+        )
+        scene.updateOceanStyle(
+            GameBoardOceanStyle(rawValue: oceanStyleRawValue) ?? .flat,
+            referenceSize: referenceSize
         )
         scene.updateOverlay(
             renderModel: renderModel,

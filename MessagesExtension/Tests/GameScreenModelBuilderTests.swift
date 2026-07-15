@@ -59,14 +59,14 @@ final class GameScreenModelBuilderTests: XCTestCase {
         )
         XCTAssertEqual(
             model.opponents[0].playerTint,
-            GamePlayerTint(red: 0.18, green: 0.39, blue: 0.78)
+            GamePlayerTint(red: 0.18, green: 0.42, blue: 0.70)
         )
         XCTAssertEqual(model.opponents[0].victoryPoints, 3)
         XCTAssertEqual(model.opponents[0].handCount, 3)
         XCTAssertFalse(model.opponents[0].isCurrentPlayer)
         XCTAssertEqual(
             model.opponents[1].playerTint,
-            GamePlayerTint(red: 0.96, green: 0.95, blue: 0.91)
+            GamePlayerTint(red: 0.91, green: 0.88, blue: 0.78)
         )
         XCTAssertEqual(model.opponents[1].victoryPoints, 1)
         XCTAssertEqual(model.opponents[1].handCount, 4)
@@ -172,7 +172,67 @@ final class GameScreenModelBuilderTests: XCTestCase {
         XCTAssertTrue(model.actionDock.buildShelfItems.isEmpty)
     }
 
-    func testBuildUsesBuildShelfForDevCardPurchaseWhenPurchaseIsLegal() {
+    func testBuildShelfIncludesOnlyExecutablePiecesWithCoreOwnedCosts() {
+        let model = GameScreenModelBuilder.build(
+            context: GameScreenContext(
+                selectedState: makeState(resourcesByPlayer: ["A": .zero, "B": .zero]),
+                actingAs: "A",
+                contextBanner: "banner",
+                contextMeta: "meta",
+                actionAvailability: GameActionAvailability(
+                    canRoll: false,
+                    canBuild: true,
+                    canTrade: false,
+                    canBuyDevCard: false,
+                    canPlayDevCards: false,
+                    canEndTurn: true
+                ),
+                modeAvailability: GameModeAvailability(
+                    canSetup: false,
+                    canBuildRoad: true,
+                    canBuildSettlement: false,
+                    canBuildCity: true,
+                    canRobberMove: false,
+                    canRobberVictim: false,
+                    canTrade: false,
+                    canPlayDevCard: false,
+                    canDiscard: false
+                )
+            )
+        )
+
+        XCTAssertEqual(model.actionDock.buildShelfItems.map(\.kind), [.buildRoad, .buildCity])
+        XCTAssertEqual(model.actionDock.buildShelfItems.map(\.cost), [CoreBuildCostsV1.road, CoreBuildCostsV1.city])
+        XCTAssertEqual(
+            model.actionDock.buildShelfItems.map(\.placementInstruction),
+            [
+                "Tap a highlighted edge, then tap it again to build.",
+                "Tap one of your highlighted settlements, then tap it again to upgrade.",
+            ]
+        )
+    }
+
+    func testTurnObjectRailKeepsFixedSlotsWhileUnavailableActionsStayAbsent() {
+        let dock = GameActionDockModel(
+            primaryItems: [
+                GameActionDockItem(kind: .trade, title: "Trade", systemImage: "arrow.left.arrow.right", isEnabled: false),
+                GameActionDockItem(kind: .endTurn, title: "End Turn", systemImage: "flag.fill", isEnabled: true),
+                GameActionDockItem(kind: .build, title: "Build", systemImage: "hammer.fill", isEnabled: true),
+                GameActionDockItem(kind: .devCards, title: "Play Dev", systemImage: "sparkles.rectangle.stack.fill", isEnabled: false),
+            ],
+            utilityItems: [],
+            buildShelfItems: []
+        )
+
+        let rail = GameTurnObjectRailModel.build(actionDock: dock)
+
+        XCTAssertEqual(rail.slots.map(\.kind), [.hand, .build, .trade, .devCards, .endTurn])
+        XCTAssertEqual(rail.slots.map(\.isAvailable), [true, true, false, false, true])
+        XCTAssertNil(rail.slots[2].actionItem)
+        XCTAssertNil(rail.slots[3].actionItem)
+    }
+
+    func testBuildKeepsDevCardPurchaseOwnedByPublicDeck() {
         let model = GameScreenModelBuilder.build(
             context: GameScreenContext(
                 selectedState: makeState(resourcesByPlayer: ["A": .zero, "B": .zero]),
@@ -191,27 +251,51 @@ final class GameScreenModelBuilderTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(
-            model.actionDock.primaryItems[2],
-            GameActionDockItem(
-                kind: .build,
-                title: "Build",
-                systemImage: "hammer.fill",
-                isEnabled: true
+        XCTAssertFalse(model.actionDock.primaryItems[2].isEnabled)
+        XCTAssertTrue(model.actionDock.buildShelfItems.isEmpty)
+        XCTAssertTrue(model.canBuyDevCard)
+        XCTAssertFalse(model.actionDock.primaryItems[3].isEnabled)
+    }
+
+    func testBuildCreatesLocalOwnedDevInventoryAndPublicGameInfo() throws {
+        let state = makeState(
+            currentPlayer: "A",
+            resourcesByPlayer: [
+                "A": ResourceHandV1(wood: 2),
+                "B": ResourceHandV1(brick: 3),
+            ],
+            devCardsByPlayer: [
+                "A": DevCardInventoryV1(knight: 1),
+                "B": DevCardInventoryV1(monopoly: 2),
+            ],
+            newDevCardsByPlayer: [
+                "A": DevCardInventoryV1(yearOfPlenty: 1),
+            ],
+            largestArmyOwner: "A",
+            longestRoadOwner: "B"
+        )
+
+        let model = GameScreenModelBuilder.build(
+            context: GameScreenContext(
+                selectedState: state,
+                actingAs: "A",
+                contextBanner: "banner",
+                contextMeta: "meta",
+                actionAvailability: .none,
+                modeAvailability: .none
             )
         )
+
         XCTAssertEqual(
-            model.actionDock.buildShelfItems,
+            model.ownedDevCards,
             [
-                GameBuildShelfItem(
-                    kind: .buyDevCard,
-                    title: "Buy Dev",
-                    systemImage: "plus.rectangle.on.folder.fill",
-                    isEnabled: true
-                ),
+                GameOwnedDevCardSummary(kind: .knight, playableCount: 1, newCount: 0),
+                GameOwnedDevCardSummary(kind: .yearOfPlenty, playableCount: 0, newCount: 1),
             ]
         )
-        XCTAssertFalse(model.actionDock.primaryItems[3].isEnabled)
+        XCTAssertEqual(model.gameInfo.players.map(\.developmentCardCount), [2, 2])
+        XCTAssertEqual(model.gameInfo.players[0].awardLabels, ["Largest Army"])
+        XCTAssertEqual(model.gameInfo.players[1].awardLabels, ["Longest Road"])
     }
 
     func testBuildComposesHeaderWithTurnOwnershipAndDiceRoll() {
@@ -364,6 +448,10 @@ final class GameScreenModelBuilderTests: XCTestCase {
         settlementsByNode: [NodeID: String] = [:],
         citiesByNode: [NodeID: String] = [:],
         revealedVictoryPointsByPlayer: [String: Int] = [:],
+        devCardsByPlayer: [String: DevCardInventoryV1] = [:],
+        newDevCardsByPlayer: [String: DevCardInventoryV1] = [:],
+        largestArmyOwner: String? = nil,
+        longestRoadOwner: String? = nil,
         activeTradeOffer: TradeOfferV1? = nil,
         turnState: TurnStateV1 = TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 4)),
         phase: PhaseV1 = .turn,
@@ -385,7 +473,11 @@ final class GameScreenModelBuilderTests: XCTestCase {
             diceRngState: 2,
             robberRngState: 3,
             resourcesByPlayer: resourcesByPlayer,
+            devCardsByPlayer: devCardsByPlayer,
+            newDevCardsByPlayer: newDevCardsByPlayer,
             revealedVictoryPointsByPlayer: revealedVictoryPointsByPlayer,
+            largestArmyOwner: largestArmyOwner,
+            longestRoadOwner: longestRoadOwner,
             winnerPlayer: winnerPlayer,
             winningVictoryPoints: winningVictoryPoints,
             lastTurnRecap: lastTurnRecap,

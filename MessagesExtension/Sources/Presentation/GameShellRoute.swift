@@ -32,6 +32,8 @@ enum GameShellRoute: Equatable {
     case build
     case devCards
     case trade(GameTradeOverlayRoute)
+    case endTurnConfirmation
+    case gameInfo
 
     var selectedDockKind: GameActionDockItem.Kind? {
         switch self {
@@ -41,7 +43,9 @@ enum GameShellRoute: Equatable {
             return .devCards
         case .trade:
             return .trade
-        case .none, .utility:
+        case .endTurnConfirmation:
+            return .endTurn
+        case .none, .utility, .gameInfo:
             return nil
         }
     }

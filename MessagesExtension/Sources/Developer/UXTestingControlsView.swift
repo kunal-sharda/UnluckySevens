@@ -4,6 +4,10 @@ import SwiftUI
 struct UXTestingControlsView: View {
     @ObservedObject var viewModel: LobbyDriverViewModel
     @State private var isExpanded = false
+    @AppStorage(GameTabletopLayoutStyle.uxTestingDefaultsKey)
+    private var tabletopLayoutStyleRawValue = GameTabletopLayoutStyle.framedShelf.rawValue
+    @AppStorage(GameBoardOceanStyle.defaultsKey)
+    private var oceanStyleRawValue = GameBoardOceanStyle.flat.rawValue
 
     var body: some View {
         if viewModel.uxTestingChromeHiddenForScreenshot {
@@ -15,30 +19,46 @@ struct UXTestingControlsView: View {
 
     private var chrome: some View {
         VStack(alignment: .trailing, spacing: 8) {
-            Button {
-                withAnimation(.snappy(duration: 0.18)) {
-                    isExpanded.toggle()
+            HStack(spacing: 8) {
+                cleanShotChipButton(
+                    title: "Setup",
+                    systemImage: "camera.viewfinder",
+                    accessibilityLabel: "Clean setup screenshot",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.setupPlacement"
+                ) {
+                    activateCleanFixture(
+                        id: UXTestFixtures.setupPlacementID,
+                        style: .framedShelf
+                    )
                 }
-            } label: {
-                Label(
-                    viewModel.uxTestingIsActive ? "UX Lab" : "Preview",
-                    systemImage: "testtube.2"
-                )
-                .font(GameTheme.chipFont)
-                .foregroundStyle(GameTheme.ink)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(
-                    Capsule()
-                        .fill(GameTheme.surfaceRaised.opacity(0.96))
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(GameTheme.outline.opacity(0.18), lineWidth: 1)
-                )
+
+                cleanShotChipButton(
+                    title: "Turn",
+                    systemImage: "play.rectangle",
+                    accessibilityLabel: "Clean turn screenshot",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.turnAfterRoll"
+                ) {
+                    activateCleanFixture(
+                        id: UXTestFixtures.defaultFixtureID,
+                        style: .framedShelf
+                    )
+                }
+
+                cleanShotChipButton(
+                    title: "Pending",
+                    systemImage: "arrow.left.arrow.right",
+                    accessibilityLabel: "Clean pending trade screenshot",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.pendingTrade"
+                ) {
+                    activateCleanFixture(
+                        id: UXTestFixtures.tradeOfferID,
+                        style: .framedShelf,
+                        actingAs: UXTestFixtures.alice
+                    )
+                }
+
+                toggleButton
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("uls.uxLab.toggle")
 
             if isExpanded {
                 controlsPanel
@@ -47,6 +67,33 @@ struct UXTestingControlsView: View {
         }
         .padding(.top, 10)
         .padding(.trailing, 10)
+    }
+
+    private var toggleButton: some View {
+        Button {
+            withAnimation(.snappy(duration: 0.18)) {
+                isExpanded.toggle()
+            }
+        } label: {
+            Label(
+                viewModel.uxTestingIsActive ? "UX Lab" : "Preview",
+                systemImage: "testtube.2"
+            )
+            .font(GameTheme.chipFont)
+            .foregroundStyle(GameTheme.ink)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(GameTheme.surfaceRaised.opacity(0.96))
+            )
+            .overlay(
+                Capsule()
+                    .stroke(GameTheme.outline.opacity(0.18), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("uls.uxLab.toggle")
     }
 
     private var restoreChromeButton: some View {
@@ -65,6 +112,61 @@ struct UXTestingControlsView: View {
     private var controlsPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
+
+            HStack(spacing: 8) {
+                cleanShotChipButton(
+                    title: "No rim",
+                    systemImage: "square.dashed",
+                    accessibilityLabel: "Frameless shelf comparison",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.tabletopFramelessShelf"
+                ) {
+                    activateCleanFixture(
+                        id: UXTestFixtures.defaultFixtureID,
+                        style: .framelessShelf
+                    )
+                }
+
+                cleanShotChipButton(
+                    title: "Felt tools",
+                    systemImage: "hammer.fill",
+                    accessibilityLabel: "Felt tools comparison",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.tabletopFeltTools"
+                ) {
+                    activateCleanFixture(
+                        id: UXTestFixtures.defaultFixtureID,
+                        style: .feltTools
+                    )
+                }
+
+                cleanShotChipButton(
+                    title: "Props",
+                    systemImage: "shippingbox.fill",
+                    accessibilityLabel: "Physical props comparison",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.tabletopPhysicalProps"
+                ) {
+                    activateCleanFixture(
+                        id: UXTestFixtures.defaultFixtureID,
+                        style: .physicalProps
+                    )
+                }
+            }
+
+            HStack(spacing: 6) {
+                Text("Ocean")
+                    .font(GameTheme.metaFont)
+                    .foregroundStyle(GameTheme.mutedInk)
+
+                ForEach(
+                    [GameBoardOceanStyle.shallowGlow, .verticalDepth, .edgeVignette],
+                    id: \.rawValue
+                ) { style in
+                    Button(style.shortLabel) {
+                        oceanStyleRawValue = style.rawValue
+                    }
+                    .buttonStyle(UXTestingControlButtonStyle(accent: oceanStyleRawValue == style.rawValue))
+                    .accessibilityIdentifier("uls.uxLab.oceanStyle.\(style.rawValue)")
+                }
+            }
 
             Picker("State", selection: $viewModel.uxTestingSelectedFixtureID) {
                 ForEach(viewModel.uxTestingFixtures) { fixture in
@@ -178,27 +280,95 @@ struct UXTestingControlsView: View {
 
             Spacer(minLength: 0)
 
-            Button {
-                viewModel.activateCleanUXTestingFixture(id: UXTestFixtures.setupPlacementID)
-            } label: {
-                Image(systemName: "camera.viewfinder")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(GameTheme.ink)
-                    .frame(width: 34, height: 34)
-                    .background(
-                        Circle()
-                            .fill(GameTheme.surfaceRaised.opacity(0.95))
+            HStack(spacing: 6) {
+                cleanShotButton(
+                    systemImage: "camera.viewfinder",
+                    accessibilityLabel: "Clean setup screenshot",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.header.setupPlacement"
+                ) {
+                    activateCleanFixture(
+                        id: UXTestFixtures.setupPlacementID,
+                        style: .framedShelf
                     )
-                    .overlay(
-                        Circle()
-                            .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
+                }
+
+                cleanShotButton(
+                    systemImage: "play.rectangle",
+                    accessibilityLabel: "Clean turn screenshot",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.header.turnAfterRoll"
+                ) {
+                    activateCleanFixture(
+                        id: UXTestFixtures.defaultFixtureID,
+                        style: .framedShelf
                     )
+                }
+
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Clean setup screenshot")
-            .accessibilityIdentifier("uls.uxLab.cleanShot.setupPlacement")
         }
     }
+
+    private func cleanShotButton(
+        systemImage: String,
+        accessibilityLabel: String,
+        accessibilityIdentifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(GameTheme.ink)
+                .frame(width: 34, height: 34)
+                .background(
+                    Circle()
+                        .fill(GameTheme.surfaceRaised.opacity(0.95))
+                )
+                .overlay(
+                    Circle()
+                        .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityIdentifier(accessibilityIdentifier)
+    }
+
+    private func cleanShotChipButton(
+        title: String,
+        systemImage: String,
+        accessibilityLabel: String,
+        accessibilityIdentifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .font(GameTheme.chipFont)
+                .foregroundStyle(GameTheme.ink)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(GameTheme.surfaceRaised.opacity(0.96))
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(GameTheme.outline.opacity(0.18), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityIdentifier(accessibilityIdentifier)
+    }
+
+    private func activateCleanFixture(
+        id: String,
+        style: GameTabletopLayoutStyle,
+        actingAs actorID: String? = nil
+    ) {
+        tabletopLayoutStyleRawValue = style.rawValue
+        viewModel.activateCleanUXTestingFixture(id: id, actingAs: actorID)
+    }
+
 }
 
 private struct UXTestingControlButtonStyle: ButtonStyle {

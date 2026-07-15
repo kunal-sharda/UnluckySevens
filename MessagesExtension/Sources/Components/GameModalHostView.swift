@@ -254,8 +254,10 @@ struct GameModalHostView: View {
     @ViewBuilder
     private func devCardContent(fallbackMessage: String) -> some View {
         if let devCardPanel {
-            if !devCardPanel.cards.isEmpty {
+            if mode == .playDevCard, !devCardPanel.cards.isEmpty {
                 devCardGrid(cards: devCardPanel.cards)
+            } else if let selectedCard = devCardPanel.cards.first(where: \.isSelected) {
+                selectedDevCardSummary(selectedCard)
             }
 
             if mode != .playDevCard || devCardPanel.cards.isEmpty {
@@ -283,7 +285,7 @@ struct GameModalHostView: View {
                 Button(confirmTitle) {
                     onConfirmDevCardDraft()
                 }
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, minHeight: 44)
                 .buttonStyle(.borderedProminent)
                 .disabled(!devCardPanel.canConfirm)
             }
@@ -292,7 +294,7 @@ struct GameModalHostView: View {
                 Button("Back To Cards") {
                     onResetDevCardDraft()
                 }
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, minHeight: 44)
                 .buttonStyle(.bordered)
             }
         } else {
@@ -301,6 +303,32 @@ struct GameModalHostView: View {
                 .foregroundStyle(GameTheme.mutedInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private func selectedDevCardSummary(_ card: GameDevCardTileModel) -> some View {
+        HStack(spacing: GameTheme.inlineSpacing) {
+            Image(systemName: card.kind.systemImage)
+                .font(.system(size: 16, weight: .semibold))
+
+            Text(card.kind.title)
+                .font(GameTheme.metaFont.weight(.bold))
+
+            Spacer(minLength: 0)
+
+            Text(card.statusText)
+                .font(GameTheme.metaFont.weight(.semibold))
+        }
+        .foregroundStyle(GameTheme.ink)
+        .padding(.horizontal, GameTheme.compactPadding)
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .background(GameTheme.surfaceRaised.opacity(0.94))
+        .overlay(
+            RoundedRectangle(cornerRadius: GameTheme.mediumRadius)
+                .stroke(GameTheme.accent.opacity(0.42), lineWidth: 2)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: GameTheme.mediumRadius))
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isSelected)
     }
 
     private func devCardGrid(cards: [GameDevCardTileModel]) -> some View {

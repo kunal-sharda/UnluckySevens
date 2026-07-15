@@ -22,6 +22,8 @@ private struct ActionDockButton: View {
     let isSelected: Bool
     let action: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+
     var body: some View {
         Button(action: action) {
             VStack(spacing: 5) {
@@ -49,7 +51,7 @@ private struct ActionDockButton: View {
         .buttonStyle(.plain)
         .disabled(!item.isEnabled)
         .scaleEffect(isSelected ? GameTheme.pressedScale : 1)
-        .animation(GameTheme.quickAnimation, value: isSelected)
+        .animation(accessibilityReduceMotion ? nil : GameTheme.quickAnimation, value: isSelected)
         .accessibilityHint(item.isEnabled ? "Selects \(item.title)" : "\(item.title) is not available")
     }
 

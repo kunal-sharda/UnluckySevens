@@ -213,6 +213,51 @@ final class CoreGameViewQueriesV1Tests: XCTestCase {
         )
     }
 
+    func testTradeInitiationQueriesRequireARealExecutableRoute() throws {
+        let playerTradeState = makeState(
+            resourcesByPlayer: [
+                "A": ResourceHandV1(wood: 1),
+                "B": .zero,
+            ]
+        )
+        XCTAssertTrue(playerTradeState.canInitiatePlayerTrade(for: "A"))
+        XCTAssertFalse(playerTradeState.canInitiatePlayerTrade(for: "B"))
+
+        let emptyHandState = makeState(
+            resourcesByPlayer: [
+                "A": .zero,
+                "B": ResourceHandV1(brick: 1),
+            ]
+        )
+        XCTAssertFalse(emptyHandState.canInitiatePlayerTrade(for: "A"))
+
+        let maritimeState = makeState(
+            resourcesByPlayer: [
+                "A": ResourceHandV1(wood: 4),
+                "B": .zero,
+            ]
+        )
+        XCTAssertTrue(maritimeState.canInitiateMaritimeTrade(for: "A"))
+
+        let offer = TradeOfferV1(
+            offerHash: "offer",
+            proposer: "A",
+            give: ResourceHandV1(wood: 1),
+            receive: ResourceHandV1(brick: 1),
+            recipients: ["B"],
+            createdRev: 120
+        )
+        let pendingOfferState = makeState(
+            resourcesByPlayer: [
+                "A": ResourceHandV1(wood: 4),
+                "B": ResourceHandV1(brick: 1),
+            ],
+            activeTradeOffer: offer
+        )
+        XCTAssertFalse(pendingOfferState.canInitiatePlayerTrade(for: "A"))
+        XCTAssertFalse(pendingOfferState.canInitiateMaritimeTrade(for: "A"))
+    }
+
     func testChoiceDrivenDevCardQueriesExposeLegalSelections() throws {
         let homeNode = topology.tiles[0].nodes[0]
         let victimNode = topology.tiles[2].nodes[0]
@@ -275,6 +320,7 @@ final class CoreGameViewQueriesV1Tests: XCTestCase {
         settlementsByNode: [NodeID: String] = [:],
         citiesByNode: [NodeID: String] = [:],
         roadsByEdge: [EdgeID: String] = [:],
+        activeTradeOffer: TradeOfferV1? = nil,
         turnState: TurnStateV1 = TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 4, d2: 3))
     ) -> CoreGameStateV1 {
         let roster = Array(resourcesByPlayer.keys).sorted()
@@ -310,6 +356,7 @@ final class CoreGameViewQueriesV1Tests: XCTestCase {
             devCardsByPlayer: normalizedDevCards,
             newDevCardsByPlayer: normalizedNewDevCards,
             revealedVictoryPointsByPlayer: revealedVictoryPointsByPlayer,
+            activeTradeOffer: activeTradeOffer,
             settlementsByNode: settlementsByNode,
             citiesByNode: citiesByNode,
             roadsByEdge: roadsByEdge,

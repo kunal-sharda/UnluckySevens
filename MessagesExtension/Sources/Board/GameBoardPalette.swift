@@ -1,21 +1,102 @@
 import SpriteKit
 import ULS_CoreGame
 
+enum GameBoardOceanStyle: String, CaseIterable {
+    case flat
+    case shallowGlow
+    case verticalDepth
+    case edgeVignette
+
+    static let defaultsKey = "uls.debug.boardOceanStyle"
+
+    static var current: GameBoardOceanStyle {
+#if DEBUG
+        GameBoardOceanStyle(
+            rawValue: UserDefaults.standard.string(forKey: defaultsKey) ?? ""
+        ) ?? .flat
+#else
+        .flat
+#endif
+    }
+
+    var shortLabel: String {
+        switch self {
+        case .flat: "Flat"
+        case .shallowGlow: "Glow"
+        case .verticalDepth: "Depth"
+        case .edgeVignette: "Halo"
+        }
+    }
+
+    var centerVector: vector_float4 {
+        switch self {
+        case .flat:
+            vector_float4(0.060, 0.380, 0.420, 1.0)
+        case .shallowGlow:
+            vector_float4(0.092, 0.438, 0.472, 1.0)
+        case .verticalDepth:
+            vector_float4(0.083, 0.420, 0.454, 1.0)
+        case .edgeVignette:
+            vector_float4(0.110, 0.470, 0.500, 1.0)
+        }
+    }
+
+    var edgeVector: vector_float4 {
+        switch self {
+        case .flat:
+            centerVector
+        case .shallowGlow:
+            vector_float4(0.048, 0.342, 0.382, 1.0)
+        case .verticalDepth:
+            vector_float4(0.036, 0.310, 0.360, 1.0)
+        case .edgeVignette:
+            vector_float4(0.040, 0.314, 0.360, 1.0)
+        }
+    }
+
+    var backgroundColor: SKColor {
+        SKColor(
+            red: CGFloat(edgeVector.x),
+            green: CGFloat(edgeVector.y),
+            blue: CGFloat(edgeVector.z),
+            alpha: 1.0
+        )
+    }
+
+    var centerColor: SKColor {
+        SKColor(
+            red: CGFloat(centerVector.x),
+            green: CGFloat(centerVector.y),
+            blue: CGFloat(centerVector.z),
+            alpha: 1.0
+        )
+    }
+
+    var edgeColor: SKColor {
+        SKColor(
+            red: CGFloat(edgeVector.x),
+            green: CGFloat(edgeVector.y),
+            blue: CGFloat(edgeVector.z),
+            alpha: 1.0
+        )
+    }
+}
+
 enum GameBoardPalette {
-    static let sceneBackground = SKColor(red: 0.18, green: 0.25, blue: 0.20, alpha: 1.0)
-    static let sceneBackgroundEdge = SKColor(red: 0.09, green: 0.13, blue: 0.10, alpha: 0.22)
-    static let clothThread = SKColor(red: 0.74, green: 0.82, blue: 0.70, alpha: 0.045)
+    static let sceneBackground = GameBoardOceanStyle.current.backgroundColor
+    static let sceneBackgroundEdge = SKColor(red: 0.06, green: 0.10, blue: 0.08, alpha: 0.24)
     static let boardRim = SKColor(red: 0.91, green: 0.84, blue: 0.68, alpha: 1.0)
     static let boardRimEdge = SKColor(red: 0.35, green: 0.28, blue: 0.19, alpha: 0.58)
-    static let water = SKColor(red: 0.04, green: 0.36, blue: 0.40, alpha: 0.98)
-    static let waterEdge = SKColor(red: 0.02, green: 0.18, blue: 0.20, alpha: 0.54)
-    static let boardBase = SKColor(red: 0.04, green: 0.29, blue: 0.32, alpha: 0.30)
-    static let boardBaseEdge = SKColor(red: 0.02, green: 0.15, blue: 0.17, alpha: 0.28)
+    static let water = SKColor(red: 0.06, green: 0.38, blue: 0.42, alpha: 0.99)
+    static let waterEdge = SKColor(red: 0.02, green: 0.17, blue: 0.20, alpha: 0.58)
+    static let boardBase = SKColor(red: 0.04, green: 0.28, blue: 0.31, alpha: 0.24)
+    static let boardBaseEdge = SKColor(red: 0.02, green: 0.15, blue: 0.17, alpha: 0.24)
     static let ink = SKColor(red: 0.19, green: 0.15, blue: 0.12, alpha: 0.94)
     static let outline = SKColor(red: 0.91, green: 0.81, blue: 0.62, alpha: 0.92)
-    static let gridStroke = SKColor(red: 0.92, green: 0.82, blue: 0.63, alpha: 0.96)
-    static let gridFill = SKColor(red: 0.95, green: 0.86, blue: 0.66, alpha: 0.98)
-    static let tokenFill = SKColor(red: 0.96, green: 0.89, blue: 0.72, alpha: 0.98)
+    static let tileBorderDark = SKColor(red: 0.30, green: 0.20, blue: 0.11, alpha: 0.92)
+    static let tileBorderWarm = SKColor(red: 0.88, green: 0.73, blue: 0.46, alpha: 1.0)
+    static let tileBorderHairline = SKColor(red: 0.98, green: 0.91, blue: 0.70, alpha: 0.92)
+    static let tokenFill = SKColor(red: 0.96, green: 0.89, blue: 0.72, alpha: 0.82)
     static let tokenStroke = SKColor(red: 0.42, green: 0.31, blue: 0.18, alpha: 0.46)
     static let robber = SKColor(red: 0.16, green: 0.13, blue: 0.12, alpha: 0.90)
     static let robberAccent = SKColor(red: 0.71, green: 0.60, blue: 0.47, alpha: 0.32)
@@ -63,16 +144,7 @@ enum GameBoardPalette {
 
     static func playerStroke(owner: String, playerOrder: [String]) -> SKColor {
         let color = playerColor(owner: owner, playerOrder: playerOrder)
-        return mix(color, with: .black, fraction: 0.28)
-    }
-
-    static func portLabel(for kind: PortKindV1) -> String {
-        switch kind {
-        case .threeToOne:
-            return "3:1"
-        case .twoToOne:
-            return "2:1"
-        }
+        return mix(color, with: .black, fraction: 0.38)
     }
 
     private static func mix(_ lhs: SKColor, with rhs: SKColor, fraction: CGFloat) -> SKColor {

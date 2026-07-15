@@ -6,9 +6,9 @@ struct GameBoardLayout {
     let geometry: BoardRenderGeometryV1
 
     private let padding: CGFloat = 8
-    private let horizontalSeaMultiplier: CGFloat = 0.82
-    private let topSeaMultiplier: CGFloat = 0.62
-    private let bottomSeaMultiplier: CGFloat = 0.74
+    private let horizontalSeaMultiplier: CGFloat = 0.98
+    private let topSeaMultiplier: CGFloat = 0.78
+    private let bottomSeaMultiplier: CGFloat = 0.92
 
     init(size: CGSize, geometry: BoardRenderGeometryV1) {
         self.size = size
@@ -20,15 +20,30 @@ struct GameBoardLayout {
     }
 
     var roadWidth: CGFloat {
-        max(tileRadius * 0.18, 6)
+        max(tileRadius * 0.125, 4.5)
     }
 
     var structureRadius: CGFloat {
-        max(tileRadius * 0.22, 8)
+        max(tileRadius * 0.275, 9.6)
     }
 
     var portBadgeSize: CGSize {
         CGSize(width: max(tileRadius * 0.52, 19), height: max(tileRadius * 0.27, 12.5))
+    }
+
+    func portMarkerSize(for kind: PortKindV1) -> CGSize {
+        switch kind {
+        case .threeToOne:
+            CGSize(
+                width: max(portBadgeSize.width * 1.18, 22),
+                height: max(portBadgeSize.height * 1.62, 18)
+            )
+        case .twoToOne:
+            CGSize(
+                width: max(portBadgeSize.height * 1.34, 16),
+                height: max(portBadgeSize.height * 1.34, 16)
+            )
+        }
     }
 
     var boardCenter: CGPoint {
@@ -97,7 +112,7 @@ struct GameBoardLayout {
         let midpoint = edgeMidpoint(for: port.edgeID, topology: topology)
         let direction = outwardEdgeNormal(for: port.edgeID, topology: topology)
         let edgeLength = edgeLength(for: port.edgeID, topology: topology)
-        let desiredOffset = max(edgeLength * 0.70, 15)
+        let desiredOffset = max(edgeLength * 0.48, 14)
         let candidate = CGPoint(
             x: midpoint.x + (direction.dx * desiredOffset),
             y: midpoint.y + (direction.dy * desiredOffset)
@@ -105,13 +120,8 @@ struct GameBoardLayout {
 
         return clamp(
             point: candidate,
-            to: viewportFrame(for: portBadgeSize)
+            to: viewportFrame(for: portMarkerSize(for: port.kind))
         )
-    }
-
-    func edgeAngle(for edgeID: EdgeID, topology: BoardGraphV1) -> CGFloat {
-        let edgeLine = edgeLine(for: edgeID, topology: topology)
-        return atan2(edgeLine.end.y - edgeLine.start.y, edgeLine.end.x - edgeLine.start.x)
     }
 
     private var bounds: CGRect {

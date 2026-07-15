@@ -110,6 +110,24 @@ final class GameDevCardPanelModelBuilderTests: XCTestCase {
         XCTAssertTrue(panel.cards.contains(where: { $0.kind == .yearOfPlenty && !$0.isEnabled }))
     }
 
+    func testNormalTurnSelectionFiltersOwnedCardsThatAreNotExecutable() throws {
+        let state = makeState(
+            currentPlayer: "A",
+            resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(wood: 1)],
+            devCardsByPlayer: ["A": DevCardInventoryV1(monopoly: 1, victoryPoint: 1)],
+            newDevCardsByPlayer: ["A": DevCardInventoryV1(yearOfPlenty: 1)]
+        )
+
+        let panel = try XCTUnwrap(
+            GameDevCardPanelModelBuilder.build(state: state, actingAs: "A")
+        )
+        let selection = panel.executableSelectionOnly()
+
+        XCTAssertEqual(selection.cards.map(\.kind), [.monopoly])
+        XCTAssertEqual(selection.heldCounts, panel.heldCounts)
+        XCTAssertEqual(selection.newCounts, panel.newCounts)
+    }
+
     func testBuildAfterDevCardActionPlayedThisTurnKeepsOnlyWinningRevealAvailable() throws {
         let state = makeState(
             currentPlayer: "A",

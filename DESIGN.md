@@ -1,0 +1,52 @@
+# Design
+
+This document owns the current visual language and calibrated product taste for Unlucky Sevens. [PRODUCT.md](PRODUCT.md) owns concise design-facing context; product behavior remains in the product specs.
+
+## Scene
+
+Three or four people return to a Catan table inside an iMessage thread in short, interrupted sessions. The interface must reorient them immediately, keep the board visually primary, and make the next legal action obvious inside a constrained Messages host.
+
+## Visual Language
+
+- Compact, tactile, and trustworthy: premium tabletop materials with product-level control density.
+- Board first: supporting chrome yields to the canonical board, current actor, pending flow, and legal action.
+- Physical but efficient: use printed cards, felt, tile seams, tokens, and stacks only when they improve scanability or ownership.
+- Restrained color: dark felt and teal frame the play field; warm cream carries paper/tabletop surfaces; clay, moss, slate, and command blue communicate roles rather than decorate.
+- Familiar controls: SF/system typography and standard interaction affordances are preferred unless a tabletop treatment makes the state clearer.
+
+## Component Vocabulary
+
+- One compact command surface states the current phase or action.
+- The active player’s normal post-roll screen is one fixed tabletop with five zones: compact top bar, public table rail, live board, reserved action well, and turn-object rail.
+- On that screen, physical Bank and `Dev Cards` objects communicate public ownership. Exact public counts stay concealed; tapping Bank reveals only `H/M/L` levels in place. The local player’s resources and owned Dev Cards are nested together inside Hand.
+- Public and owned Dev Cards use a desaturated blue-gray family (`#71858B`) with a lighter steel edge. The public pile uses the approved factory vector in charcoal; the Trade prop uses the approved merchant-ship vector in warm wood. Every revealed public-pile level uses the same bold warm-white treatment over its faded card.
+- The normal post-roll turn-object rail keeps stable `Hand · Build · Trade · End` anchors. Unavailable actions leave empty, hitless, accessibility-hidden space instead of disabled props or rearranged neighbors.
+- Other gameplay states continue to use their existing lower-tray and shelf compositions.
+- Overlays belong to one interaction owner and must not depend on controls underneath them.
+- Opening or replacing an action-well surface must not resize, shift, freeze, or remount the live board, public rail, or top status.
+- Number tokens, roads, structures, ports, robber, and legal highlights remain separate live board layers; production terrain textures live under `MessagesExtension/Resources/Assets.xcassets/BoardTiles/`.
+- Icon-first controls require stable accessibility labels and identifiers.
+
+## Anti-References
+
+- Generic SaaS dashboards, nested cards, debug/log surfaces, oversized hero typography, and ornamental chrome.
+- Beige rounded-card repetition used as a substitute for hierarchy.
+- Heavy permanent board rails or empty node caps that make normal play look like placement mode.
+- Generated-looking terrain variation, baked gameplay pieces, noisy micro-texture, fake 3D lighting, or resource props that compete with number tokens.
+- Decorative motion, hidden primary state, or color-only legality/player identity.
+
+## Approved Direction
+
+The current production source of truth is the code and assets, especially `GameTheme`, `GameBoardPalette`, and `MessagesExtension/Resources/Assets.xcassets/BoardTiles/`. The six default terrain assets use one canonical texture per resource. SpriteKit owns live gameplay layers and SwiftUI owns the surrounding shell.
+
+The post-roll Turn Screen's functional boundaries in the product spec remain constraints, but its current production composition is not an approved visual reference. The next direction must be selected through the checkpointed [Turn Screen visual-direction plan](docs/exec-plans/active/turn-screen-visual-direction.md) before further nested-state productionization.
+
+Previous numbered terrain and tree passes were experimentation, not durable product truth. They were removed after their final outputs were integrated. New experiments belong in ignored `docs/design/workbench/` and are deleted when the decision closes.
+
+## Human Calibration
+
+Ask for user judgment when current guidance cannot distinguish viable directions, reviewers disagree about a judgment constraint, or a new visual principle is being established. Record the selected principle here and enforce it through the narrowest reusable component, fixture, test, or reviewer rule.
+
+## Durable References
+
+Binary references are default-denied and require explicit user approval. The manifest and budgets live in [docs/design/references/manifest.json](docs/design/references/manifest.json). Prefer production assets and text decisions over duplicate reference binaries.

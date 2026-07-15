@@ -3,7 +3,7 @@
 This file records **locked product + architecture decisions** for the MVP.  
 If a change is desired, update this file **first**, then update code/tests.
 
-**Last updated:** 2026-05-01
+**Last updated:** 2026-07-11
 
 ---
 
@@ -67,6 +67,8 @@ If a change is desired, update this file **first**, then update code/tests.
 - Explicit “End Turn” button; no auto-advance.
 - **No timeout / force-advance** in MVP (social enforcement; game may stall).
 - During a `7` discard round, each required discarder publishes one canonical `STATE` in locked roster order while `currentPlayer` stays unchanged. Robber movement stays blocked until the discard queue is empty.
+- On the active player’s normal post-roll Turn Screen, the resource Bank and public `Dev Cards` pile conceal exact remaining counts. Tapping Bank reveals qualitative `H`, `M`, or `L` levels in place for all six public piles; visible and accessibility output never discloses the exact counts on this surface.
+- The public `Dev Cards` pile is the sole Buy Dev affordance on that Turn Screen. Owned Dev Cards are nested inside Hand for inspection and play; Buy Dev must not also appear in Build.
 
 Recommended canonical state cadence per turn:
 - STATE update after roll (so others can see results and decide on trades).

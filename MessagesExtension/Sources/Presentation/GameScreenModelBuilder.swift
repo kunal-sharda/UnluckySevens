@@ -21,6 +21,10 @@ enum GameScreenModelBuilder {
                 title: "Your Hand",
                 chips: makeHandChips(context: context)
             ),
+            ownedDevCards: makeOwnedDevCards(context: context),
+            gameInfo: makeGameInfo(context: context),
+            devDeckCount: context.selectedState?.devDeck.count ?? 0,
+            canBuyDevCard: actionAvailability.canBuyDevCard,
             actionDock: makeActionDockModel(
                 actionAvailability: actionAvailability,
                 modeAvailability: context.modeAvailability
@@ -125,6 +129,71 @@ enum GameScreenModelBuilder {
         ]
     }
 
+    private static func makeOwnedDevCards(context: GameScreenContext) -> [GameOwnedDevCardSummary] {
+        guard
+            let state = context.selectedState,
+            let actor = context.actingAs,
+            let visible = state.visibleDevCards(for: actor).first(where: { $0.player == actor }),
+            let playable = visible.revealedPlayable,
+            let newCards = visible.revealedNew
+        else {
+            return []
+        }
+
+        return GameDevCardVisualKind.allCases.compactMap { kind in
+            let playableCount = devCardCount(kind, in: playable)
+            let newCount = devCardCount(kind, in: newCards)
+            guard playableCount + newCount > 0 else { return nil }
+            return GameOwnedDevCardSummary(
+                kind: kind,
+                playableCount: playableCount,
+                newCount: newCount
+            )
+        }
+    }
+
+    private static func makeGameInfo(context: GameScreenContext) -> GameInfoModel {
+        guard let state = context.selectedState else { return .empty }
+        let resourceCounts = Dictionary(
+            uniqueKeysWithValues: state.visibleResourceHands(for: context.actingAs).map { ($0.player, $0.totalCount) }
+        )
+        let devCounts = Dictionary(
+            uniqueKeysWithValues: state.visibleDevCards(for: context.actingAs).map { ($0.player, $0.totalCount) }
+        )
+
+        let players = state.roster.map { player in
+            var awards: [String] = []
+            if state.longestRoadOwner == player { awards.append("Longest Road") }
+            if state.largestArmyOwner == player { awards.append("Largest Army") }
+            return GameInfoPlayerSummary(
+                id: player,
+                displayName: PlayerPseudonymResolver.displayName(for: player, in: state),
+                playerTint: playerTint(for: player, roster: state.roster),
+                victoryPoints: victoryPoints(for: player, in: state),
+                resourceCardCount: resourceCounts[player] ?? 0,
+                developmentCardCount: devCounts[player] ?? 0,
+                isCurrentPlayer: state.currentPlayer == player,
+                isLocalPlayer: context.actingAs == player,
+                awardLabels: awards
+            )
+        }
+
+        return GameInfoModel(players: players, recapText: recapSummary(for: state))
+    }
+
+    private static func devCardCount(
+        _ kind: GameDevCardVisualKind,
+        in inventory: DevCardInventoryV1
+    ) -> Int {
+        switch kind {
+        case .knight: return inventory.knight
+        case .monopoly: return inventory.monopoly
+        case .yearOfPlenty: return inventory.yearOfPlenty
+        case .roadBuilding: return inventory.roadBuilding
+        case .victoryPoint: return inventory.victoryPoint
+        }
+    }
+
     private static func resolvedActionAvailability(context: GameScreenContext) -> GameActionAvailability {
         if context.selectedState?.phase == .gameOver {
             return .none
@@ -164,7 +233,7 @@ enum GameScreenModelBuilder {
                     kind: .build,
                     title: "Build",
                     systemImage: "hammer.fill",
-                    isEnabled: actionAvailability.canBuild || actionAvailability.canBuyDevCard
+                    isEnabled: actionAvailability.canBuild
                 ),
                 GameActionDockItem(
                     kind: .devCards,
@@ -179,25 +248,25 @@ enum GameScreenModelBuilder {
                     kind: .buildRoad,
                     title: "Road",
                     systemImage: "road.lanes",
+                    cost: CoreBuildCostsV1.road,
+                    placementInstruction: "Tap a highlighted edge, then tap it again to build.",
                     isEnabled: modeAvailability.canBuildRoad
                 ),
                 GameBuildShelfItem(
                     kind: .buildSettlement,
                     title: "Settlement",
                     systemImage: "house.fill",
+                    cost: CoreBuildCostsV1.settlement,
+                    placementInstruction: "Tap a highlighted corner, then tap it again to build.",
                     isEnabled: modeAvailability.canBuildSettlement
                 ),
                 GameBuildShelfItem(
                     kind: .buildCity,
                     title: "City",
                     systemImage: "building.2.fill",
+                    cost: CoreBuildCostsV1.city,
+                    placementInstruction: "Tap one of your highlighted settlements, then tap it again to upgrade.",
                     isEnabled: modeAvailability.canBuildCity
-                ),
-                GameBuildShelfItem(
-                    kind: .buyDevCard,
-                    title: "Buy Dev",
-                    systemImage: "plus.rectangle.on.folder.fill",
-                    isEnabled: actionAvailability.canBuyDevCard
                 ),
             ].filter(\.isEnabled)
         )

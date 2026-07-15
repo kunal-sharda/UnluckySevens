@@ -6,14 +6,24 @@ struct BoardContainerView: View {
     let renderModel: GameBoardRenderModel?
     let overlayModel: GameBoardOverlayModel
     let interactionMode: GameMode
+    let bankTray: GameBankTrayModel?
+    let showsTabletopRack: Bool
+    let showsBankCounts: Bool
+    let isBankOpen: Bool
+    let devDeckCount: Int
+    let isDevDeckEnabled: Bool
     let selectionText: String?
     let hintBottomInset: CGFloat
+    let showsCreamFrame: Bool
+    let boardContentVerticalOffset: CGFloat
     let frozenBoardImage: UIImage?
     let reloadToken: Int
     let onInteractionChanged: ((Bool) -> Void)?
     let onResizeFreezeChanged: ((BoardResizeFreezeState) -> Void)?
     let onFreezeRecoveryReloadRequested: ((String) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
+    let onOpenBank: () -> Void
+    let onOpenDevCards: () -> Void
 
     private var shouldShowBoardHeader: Bool {
         renderModel != nil || !model.subtitle.isEmpty
@@ -68,36 +78,102 @@ struct BoardContainerView: View {
             minHeight: renderModel == nil ? 260 : nil,
             alignment: .topLeading
         )
-        .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius + 6))
-        .shadow(color: .black.opacity(0.24), radius: 9, x: 0, y: 3)
+        .background(outerBackground)
+        .overlay(outerOverlay)
+        .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius + 8))
+        .shadow(
+            color: showsCreamFrame ? .black.opacity(0.28) : .clear,
+            radius: showsCreamFrame ? 11 : 0,
+            x: 0,
+            y: showsCreamFrame ? 4 : 0
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("uls.tabletop.board")
     }
 
     @ViewBuilder
     private var boardCanvas: some View {
         ZStack {
-            if let renderModel {
-                if let frozenBoardImage {
-                    Image(uiImage: frozenBoardImage)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    BoardSceneView(
-                        renderModel: renderModel,
-                        overlayModel: overlayModel,
-                        interactionMode: interactionMode,
-                        reloadToken: reloadToken,
-                        onInteractionChanged: onInteractionChanged,
-                        onResizeFreezeChanged: onResizeFreezeChanged,
-                        onFreezeRecoveryReloadRequested: onFreezeRecoveryReloadRequested,
-                        onTargetTap: onTargetTap
-                    )
-                    .equatable()
-                }
+            if let renderModel, let bankTray {
+                LiveGameBoardCanvasView(
+                    renderModel: renderModel,
+                    overlayModel: overlayModel,
+                    interactionMode: interactionMode,
+                    bankTray: bankTray,
+                    showsTabletopRack: showsTabletopRack,
+                    showsBankCounts: showsBankCounts,
+                    isBankOpen: isBankOpen,
+                    devDeckCount: devDeckCount,
+                    isDevDeckEnabled: isDevDeckEnabled,
+                    showsIntegratedFrame: showsCreamFrame,
+                    contentVerticalOffset: boardContentVerticalOffset,
+                    frozenBoardImage: frozenBoardImage,
+                    reloadToken: reloadToken,
+                    onInteractionChanged: onInteractionChanged,
+                    onResizeFreezeChanged: onResizeFreezeChanged,
+                    onFreezeRecoveryReloadRequested: onFreezeRecoveryReloadRequested,
+                    onTargetTap: onTargetTap,
+                    onOpenBank: onOpenBank,
+                    onOpenDevCards: onOpenDevCards
+                )
             } else {
                 BoardPlaceholderArtView()
                     .padding(.horizontal, 8)
                     .padding(.vertical, 10)
             }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: boardCanvasCornerRadius))
+        .padding(boardCanvasPadding)
+        .background(
+            RoundedRectangle(cornerRadius: GameTheme.largeRadius + 8)
+                .fill(boardFrameColor)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: GameTheme.largeRadius + 8)
+                .stroke(boardFrameStrokeColor, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius + 8))
+    }
+
+    private var boardCanvasCornerRadius: CGFloat {
+        showsCreamFrame ? GameTheme.largeRadius : GameTheme.largeRadius + 8
+    }
+
+    private var boardCanvasPadding: CGFloat {
+        renderModel != nil && showsCreamFrame ? 7 : 0
+    }
+
+    private var boardFrameColor: Color {
+        guard renderModel != nil, showsCreamFrame else {
+            return .clear
+        }
+        return GameTheme.boardFrame
+    }
+
+    private var boardFrameStrokeColor: Color {
+        guard renderModel != nil, showsCreamFrame else {
+            return .clear
+        }
+        return GameTheme.outline.opacity(0.56)
+    }
+
+    @ViewBuilder
+    private var outerBackground: some View {
+        if showsCreamFrame {
+            RoundedRectangle(cornerRadius: GameTheme.largeRadius + 8)
+                .fill(GameTheme.feltRaised.opacity(0.78))
+        } else {
+            Color.clear
+        }
+    }
+
+    @ViewBuilder
+    private var outerOverlay: some View {
+        if showsCreamFrame {
+            RoundedRectangle(cornerRadius: GameTheme.largeRadius + 8)
+                .stroke(GameTheme.surface.opacity(0.18), lineWidth: 1)
+        } else {
+            Color.clear
         }
     }
 

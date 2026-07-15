@@ -21,6 +21,12 @@ struct BoardSceneHostView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> SKView {
         let view = SKView(frame: .zero)
+#if DEBUG
+        view.isAccessibilityElement = true
+        view.accessibilityIdentifier = "uls.tabletop.boardHost"
+        view.accessibilityLabel = "Live game board host"
+        view.accessibilityValue = UUID().uuidString
+#endif
         configure(view)
         context.coordinator.attachGestures(to: view)
         context.coordinator.update(
@@ -65,6 +71,8 @@ struct BoardSceneHostView: UIViewRepresentable {
     private func configure(_ view: SKView) {
         view.allowsTransparency = false
         view.isOpaque = true
+        view.clipsToBounds = true
+        view.layer.masksToBounds = true
         view.backgroundColor = GameBoardPalette.sceneBackground
         view.preferredFramesPerSecond = 60
         view.showsFPS = false

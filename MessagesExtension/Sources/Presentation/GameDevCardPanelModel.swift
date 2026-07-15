@@ -102,4 +102,20 @@ struct GameDevCardPanelModel: Equatable {
     let confirmTitle: String?
     let canConfirm: Bool
     let showsBackButton: Bool
+
+    func executableSelectionOnly() -> GameDevCardPanelModel {
+        GameDevCardPanelModel(
+            message: message,
+            cards: cards.filter { $0.isEnabled || $0.isSelected },
+            playableCounts: playableCounts,
+            heldCounts: heldCounts,
+            newCounts: newCounts,
+            playActions: playActions,
+            timingNotes: timingNotes,
+            draftSummary: draftSummary,
+            confirmTitle: confirmTitle,
+            canConfirm: canConfirm,
+            showsBackButton: showsBackButton
+        )
+    }
 }

@@ -55,6 +55,7 @@ enum UXTestFixtures {
     static let defaultFixtureID = turnAfterRoll.id
     static let defaultActorID = host
     static let setupPlacementID = "setup-placement"
+    static let tradeOfferID = "trade-offer"
 
     static func fixture(id: String) -> UXTestFixture {
         all.first { $0.id == id } ?? turnAfterRoll
@@ -150,6 +151,13 @@ enum UXTestFixtures {
         state: makeTurnFixture(
             rev: 9,
             currentPlayer: host,
+            lastTurnRecap: TurnRecapV1(
+                actor: alice,
+                startRev: 5,
+                endRev: 8,
+                rollTotal: 6,
+                actions: [.buildRoad, .endTurn]
+            ),
             turnState: TurnStateV1(
                 step: .afterRoll,
                 lastRoll: DiceRollV1(d1: 3, d2: 5)
@@ -334,7 +342,13 @@ enum UXTestFixtures {
             bankResources: fullBank,
             devDeck: devDeck,
             devCardsByPlayer: [
-                host: DevCardInventoryV1(knight: 1, yearOfPlenty: 1, victoryPoint: 1),
+                host: DevCardInventoryV1(
+                    knight: 1,
+                    monopoly: 1,
+                    yearOfPlenty: 1,
+                    roadBuilding: 1,
+                    victoryPoint: 1
+                ),
                 alice: DevCardInventoryV1(knight: 1),
             ],
             newDevCardsByPlayer: [
@@ -362,7 +376,7 @@ enum UXTestFixtures {
     }
 
     private static let defaultResources = [
-        host: ResourceHandV1(wood: 3, brick: 2, sheep: 2, wheat: 2, ore: 2),
+        host: ResourceHandV1(wood: 5, brick: 5, sheep: 5, wheat: 5, ore: 5),
         alice: ResourceHandV1(wood: 1, brick: 2, sheep: 3, wheat: 1, ore: 1),
         ben: ResourceHandV1(wood: 2, brick: 1, sheep: 1, wheat: 3),
     ]
@@ -378,12 +392,47 @@ enum UXTestFixtures {
         25: alice,
     ]
 
-    private static let defaultRoads = [
-        3: host,
-        4: host,
-        17: alice,
-        18: alice,
-        29: ben,
-    ]
+    private static let defaultRoads: [EdgeID: String] = {
+        let topology = StandardBoardTopologyV1.standard()
+        let startNode = 4
+        let occupiedNodes: Set<NodeID> = [4, 8, 18, 25, 31]
+        var queue: [NodeID] = [startNode]
+        var visited: Set<NodeID> = [startNode]
+        var previous: [NodeID: (node: NodeID, edge: EdgeID)] = [:]
+        var targetNode: NodeID?
+
+        while !queue.isEmpty, targetNode == nil {
+            let node = queue.removeFirst()
+            for edgeID in topology.edges(incidentTo: node).sorted() {
+                let edge = topology.edges[edgeID]
+                let nextNode = edge.a == node ? edge.b : edge.a
+                guard !visited.contains(nextNode) else { continue }
+                guard nextNode == startNode || !occupiedNodes.contains(nextNode) else { continue }
+
+                visited.insert(nextNode)
+                previous[nextNode] = (node, edgeID)
+                queue.append(nextNode)
+
+                let adjacent = Set(topology.nodes(adjacentTo: nextNode))
+                if !occupiedNodes.contains(nextNode),
+                   adjacent.isDisjoint(with: occupiedNodes) {
+                    targetNode = nextNode
+                    break
+                }
+            }
+        }
+
+        var result: [EdgeID: String] = [:]
+        var cursor = targetNode
+        while let node = cursor, node != startNode, let step = previous[node] {
+            result[step.edge] = host
+            cursor = step.node
+        }
+
+        for (edge, owner) in [(17, alice), (18, alice), (29, ben)] where result[edge] == nil {
+            result[edge] = owner
+        }
+        return result
+    }()
 }
 #endif

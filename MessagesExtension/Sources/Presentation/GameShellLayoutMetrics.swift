@@ -1,5 +1,69 @@
 import CoreGraphics
 
+struct GamePhysicalTurnLayout: Equatable {
+    static let topBarHeight: CGFloat = 40
+    static let portraitCardSize = CGSize(width: 38, height: 47)
+    static let handCardSize = CGSize(width: 46, height: 57)
+    static let centeredHandOffset: CGFloat = 8
+    static let propStageHeight: CGFloat = 36
+    static let propVisualHeight: CGFloat = 32
+    static let propLabelGap: CGFloat = 3
+    static let publicObjectGap: CGFloat = 28
+    static let publicLabelGap: CGFloat = 8
+    static let publicBankCardGap: CGFloat = 2
+
+    // The authored port ring sits just above the SpriteKit host's geometric
+    // midpoint. This renderer-owned ratio remains stable as the host scales.
+    private static let canonicalIslandCenterYFraction: CGFloat = 0.494
+
+    let publicRailHeight: CGFloat
+    let actionSpreadHeight: CGFloat
+    let propRailHeight: CGFloat
+    let interZoneSpacing: CGFloat
+    let boardHorizontalOverflow: CGFloat
+    let boardFrameHorizontalMaskInset: CGFloat
+    let boardFrameVerticalInset: CGFloat
+    let boardFrameVerticalOffset: CGFloat
+    let bottomRailPadding: CGFloat
+
+    static func resolve(availableSize: CGSize) -> Self {
+        let height = max(availableSize.height, 0)
+        return Self(
+            publicRailHeight: bounded(height * 0.066, minimum: 52, maximum: 56),
+            actionSpreadHeight: bounded(height * 0.092, minimum: 72, maximum: 76),
+            propRailHeight: bounded(height * 0.070, minimum: 56, maximum: 62),
+            interZoneSpacing: bounded(height * 0.017, minimum: 12, maximum: 14),
+            boardHorizontalOverflow: bounded(availableSize.width * 0.025, minimum: 8, maximum: 12),
+            boardFrameHorizontalMaskInset: bounded(
+                availableSize.width * 0.025,
+                minimum: 8,
+                maximum: 12
+            ),
+            boardFrameVerticalInset: 4,
+            boardFrameVerticalOffset: 4,
+            bottomRailPadding: 0
+        )
+    }
+
+    func boardCenteringCorrection(
+        boardGlobalFrame: CGRect,
+        displayHeight: CGFloat
+    ) -> CGFloat {
+        guard boardGlobalFrame.height > 0, displayHeight > 0 else { return 0 }
+        let renderedIslandCenter = boardGlobalFrame.minY
+            + (boardGlobalFrame.height * Self.canonicalIslandCenterYFraction)
+        return (displayHeight / 2) - renderedIslandCenter
+    }
+
+    private static func bounded(
+        _ value: CGFloat,
+        minimum: CGFloat,
+        maximum: CGFloat
+    ) -> CGFloat {
+        min(max(value, minimum), maximum)
+    }
+}
+
 struct GameShellLayoutMetrics: Equatable {
     static let maxPhoneLowerRailWidth: CGFloat = 420
     static let maxPadLowerRailWidth: CGFloat = 620
@@ -7,19 +71,27 @@ struct GameShellLayoutMetrics: Equatable {
     static let minimumUtilityShelfContentHeight: CGFloat = 68
     static let minimumBoardHeightForUtilityShelf: CGFloat = 280
     static let minimumUtilityShelfScrollHeight: CGFloat = 150
+    static let phoneNormalTurnActionWellHeight: CGFloat = 184
+    static let padNormalTurnActionWellHeight: CGFloat = 220
 
-    private static let phoneHeaderRatio: CGFloat = 0.072
-    private static let padHeaderRatio: CGFloat = 0.095
-    private static let phoneDockRatio: CGFloat = 0.245
+    private static let phoneHeaderRatio: CGFloat = 0.083
+    private static let padHeaderRatio: CGFloat = 0.090
+    private static let phoneDockRatio: CGFloat = 0.255
     private static let padDockRatio: CGFloat = 0.16
-    private static let phoneHeaderMin: CGFloat = 42
-    private static let phoneHeaderMax: CGFloat = 54
+    private static let phoneCollapsedTrayRatio: CGFloat = 0.112
+    private static let padCollapsedTrayRatio: CGFloat = 0.118
+    private static let phoneHeaderMin: CGFloat = 58
+    private static let phoneHeaderMax: CGFloat = 70
     private static let padHeaderMin: CGFloat = 68
     private static let padHeaderMax: CGFloat = 94
-    private static let phoneDockMin: CGFloat = 132
-    private static let phoneDockMax: CGFloat = 198
+    private static let phoneDockMin: CGFloat = 150
+    private static let phoneDockMax: CGFloat = 214
     private static let padDockMin: CGFloat = 132
     private static let padDockMax: CGFloat = 174
+    private static let phoneCollapsedTrayMin: CGFloat = 92
+    private static let phoneCollapsedTrayMax: CGFloat = 118
+    private static let padCollapsedTrayMin: CGFloat = 104
+    private static let padCollapsedTrayMax: CGFloat = 132
     private static let phoneHandleMin: CGFloat = 20
     private static let phoneHandleMax: CGFloat = 24
     private static let padHandleMin: CGFloat = 52
@@ -47,11 +119,28 @@ struct GameShellLayoutMetrics: Equatable {
         let overlapIntoBoardHeight: CGFloat
         let headerHeight: CGFloat
         let contentHeight: CGFloat
+
+        func fittedToTabletopSurface(height: CGFloat) -> Self {
+            let resolvedHeight = max(height, 0)
+            let resolvedHeaderHeight = min(
+                min(max(resolvedHeight * 0.32, 28), 34),
+                resolvedHeight
+            )
+
+            return Self(
+                totalHeight: resolvedHeight,
+                visibleInLowerRailHeight: resolvedHeight,
+                overlapIntoBoardHeight: 0,
+                headerHeight: resolvedHeaderHeight,
+                contentHeight: max(resolvedHeight - resolvedHeaderHeight - 1, 0)
+            )
+        }
     }
 
     let headerHeight: CGFloat
     let boardHeight: CGFloat
     let trayHeight: CGFloat
+    let expandedTrayHeight: CGFloat
     let lowerRail: LowerRailMetrics
     let overlayShelf: OverlayShelfMetrics
 
@@ -73,6 +162,12 @@ struct GameShellLayoutMetrics: Equatable {
             ? maxPadLowerRailWidth
             : maxPhoneLowerRailWidth
         return min(max(availableWidth, 0), widthCap)
+    }
+
+    static func normalTurnActionWellHeight(for availableWidth: CGFloat) -> CGFloat {
+        availableWidth >= padWidthThreshold
+            ? padNormalTurnActionWellHeight
+            : phoneNormalTurnActionWellHeight
     }
 
     static func supportsUtilityShelf(
@@ -122,27 +217,35 @@ struct GameShellLayoutMetrics: Equatable {
         let isWideLayout = availableWidth >= padWidthThreshold
         let usesExpandedVerticalProfile = availableWidth >= padWidthThreshold
             && usableHeight >= (padHeaderMin + padDockMin + minimumBoardHeightForUtilityShelf)
+        let compactHeaderMin = isWideLayout ? 42 : phoneHeaderMin
+        let compactDockMin = isWideLayout ? 132 : phoneDockMin
 
         let headerHeight = boundedHeight(
             usableHeight,
             ratio: usesExpandedVerticalProfile ? padHeaderRatio : phoneHeaderRatio,
-            minimum: usesExpandedVerticalProfile ? padHeaderMin : phoneHeaderMin,
+            minimum: usesExpandedVerticalProfile ? padHeaderMin : compactHeaderMin,
             maximum: usesExpandedVerticalProfile ? padHeaderMax : phoneHeaderMax
         )
-        let dockRegionHeight = boundedHeight(
+        let expandedTrayHeight = boundedHeight(
             usableHeight,
             ratio: usesExpandedVerticalProfile ? padDockRatio : phoneDockRatio,
-            minimum: usesExpandedVerticalProfile ? padDockMin : phoneDockMin,
+            minimum: usesExpandedVerticalProfile ? padDockMin : compactDockMin,
             maximum: usesExpandedVerticalProfile ? padDockMax : phoneDockMax
         )
-        let boardHeight = max(usableHeight - headerHeight - dockRegionHeight, 0)
+        let collapsedTrayHeight = boundedHeight(
+            usableHeight,
+            ratio: usesExpandedVerticalProfile ? padCollapsedTrayRatio : phoneCollapsedTrayRatio,
+            minimum: usesExpandedVerticalProfile ? padCollapsedTrayMin : phoneCollapsedTrayMin,
+            maximum: usesExpandedVerticalProfile ? padCollapsedTrayMax : phoneCollapsedTrayMax
+        )
+        let boardHeight = max(usableHeight - headerHeight - collapsedTrayHeight, 0)
         let handleBandHeight = boundedHeight(
-            dockRegionHeight,
+            collapsedTrayHeight,
             ratio: usesExpandedVerticalProfile ? 0.34 : 0.33,
             minimum: usesExpandedVerticalProfile ? padHandleMin : phoneHandleMin,
             maximum: usesExpandedVerticalProfile ? padHandleMax : phoneHandleMax
         )
-        let dockHeight = max(dockRegionHeight - handleBandHeight, 0)
+        let dockHeight = max(collapsedTrayHeight - handleBandHeight, 0)
         let overlayProfile = overlayProfile(
             for: overlayKind,
             isWideLayout: isWideLayout,
@@ -165,7 +268,8 @@ struct GameShellLayoutMetrics: Equatable {
         return GameShellLayoutMetrics(
             headerHeight: headerHeight,
             boardHeight: boardHeight,
-            trayHeight: dockRegionHeight,
+            trayHeight: collapsedTrayHeight,
+            expandedTrayHeight: max(expandedTrayHeight, collapsedTrayHeight),
             lowerRail: LowerRailMetrics(
                 handleBandHeight: handleBandHeight,
                 dockHeight: dockHeight
