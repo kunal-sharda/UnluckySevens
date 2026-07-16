@@ -5,38 +5,43 @@ struct GameTurnEndConfirmationView: View {
     let onConfirm: () -> Void
 
     var body: some View {
-        VStack(spacing: 12) {
-            Label("End your turn?", systemImage: "flag.fill")
-                .font(.headline.weight(.bold))
-                .foregroundStyle(GameTheme.surface)
-
-            Text("Other legal actions will remain available if you keep playing.")
-                .font(.caption)
-                .foregroundStyle(GameTheme.surface.opacity(0.78))
-                .multilineTextAlignment(.center)
+        VStack(spacing: 8) {
+            Text("End your turn?")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
 
             HStack(spacing: 10) {
                 Button(action: onCancel) {
                     Text("Keep Playing")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(GamePhysicalTurnPalette.primaryText)
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .contentShape(Rectangle())
                 }
-                    .buttonStyle(.bordered)
-                    .tint(GameTheme.surface)
+                .buttonStyle(.plain)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7)
+                        .stroke(GamePhysicalTurnPalette.nameTileEdge, lineWidth: 1)
+                }
 
                 Button(role: .destructive, action: onConfirm) {
                     Text("End Turn")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(GamePhysicalTurnPalette.primaryText)
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .contentShape(Rectangle())
                 }
-                    .buttonStyle(.borderedProminent)
+                .buttonStyle(.plain)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7)
+                        .stroke(GamePhysicalTurnPalette.selectedKeyline, lineWidth: 1.5)
+                }
             }
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(GameTheme.feltRaised.opacity(0.72))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 18)
+        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("uls.turn.endConfirmation")
+        .accessibilityLabel("End turn confirmation")
     }
 }

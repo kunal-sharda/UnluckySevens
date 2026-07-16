@@ -216,6 +216,7 @@ final class GameBoardSceneTests: XCTestCase {
         let layout = GameBoardLayout(size: CGSize(width: 320, height: 240), geometry: renderModel.geometry)
         let tileNode = try XCTUnwrap(self.tileNode(forTileID: 0, in: scene, renderModel: renderModel))
         let field = try XCTUnwrap(tileNode.children.compactMap { $0 as? SKShapeNode }.first(where: { $0.name == "tileField" }))
+        let terrainInset = try XCTUnwrap(tileNode.children.compactMap { $0 as? SKShapeNode }.first(where: { $0.name == "tileTerrainInset" }))
         let stampCrop = try XCTUnwrap(tileNode.children.compactMap { $0 as? SKCropNode }.first(where: { $0.name == "tileStampCrop" }))
         let stamp = try XCTUnwrap(stampCrop.children.compactMap { $0 as? SKSpriteNode }.first(where: { $0.name == "tileStamp" }))
         let expectedSize = GameBoardTileArt.stampSize(for: renderModel.tiles[0].resource, hexRadius: layout.tileRadius)
@@ -224,8 +225,14 @@ final class GameBoardSceneTests: XCTestCase {
             field.fillColor,
             equals: GameBoardPalette.resourceFill(for: renderModel.tiles[0].resource)
         )
+        XCTAssertColor(
+            terrainInset.strokeColor,
+            equals: GameBoardPalette.resourceInset(for: renderModel.tiles[0].resource)
+        )
         XCTAssertNotNil(stampCrop.maskNode)
         XCTAssertNotNil(stamp.texture)
+        XCTAssertEqual(stamp.texture?.usesMipmaps, true)
+        XCTAssertEqual(stamp.colorBlendFactor, 0)
         XCTAssertEqual(stampCrop.zPosition, 10)
         XCTAssertEqual(GameBoardTileArt.fieldHexRadius(forTopologyRadius: layout.tileRadius), layout.tileRadius)
         XCTAssertEqual(stamp.size.width, expectedSize.width, accuracy: 0.001)
@@ -257,13 +264,18 @@ final class GameBoardSceneTests: XCTestCase {
         XCTAssertEqual(darkFrame.name, "tileFrameDark")
         XCTAssertEqual(warmFrame.name, "tileFrameWarm")
         XCTAssertEqual(hairline.name, "tileFrameHairline")
-        XCTAssertEqual(darkFrame.lineCap, .butt)
-        XCTAssertEqual(warmFrame.lineCap, .butt)
-        XCTAssertEqual(hairline.lineCap, .butt)
+        XCTAssertEqual(darkFrame.lineCap, .square)
+        XCTAssertEqual(warmFrame.lineCap, .square)
+        XCTAssertEqual(hairline.lineCap, .square)
         XCTAssertEqual(darkFrame.lineWidth, max(layout.tileRadius * 0.12, 4.2), accuracy: 0.001)
         XCTAssertEqual(warmFrame.lineWidth, max(layout.tileRadius * 0.066, 2.5), accuracy: 0.001)
         XCTAssertEqual(hairline.lineWidth, max(layout.tileRadius * 0.018, 0.7), accuracy: 0.001)
         XCTAssertLessThan(darkFrame.lineWidth, layout.roadWidth)
+
+        let expectedPathElementCount = renderModel.topology.edges.count * 2
+        XCTAssertEqual(pathElementCount(in: darkFrame.path), expectedPathElementCount)
+        XCTAssertEqual(pathElementCount(in: warmFrame.path), expectedPathElementCount)
+        XCTAssertEqual(pathElementCount(in: hairline.path), expectedPathElementCount)
     }
 
     private func makeRenderModel() -> GameBoardRenderModel {
@@ -349,6 +361,12 @@ final class GameBoardSceneTests: XCTestCase {
 
     private func descendants(of node: SKNode) -> [SKNode] {
         node.children + node.children.flatMap { descendants(of: $0) }
+    }
+
+    private func pathElementCount(in path: CGPath?) -> Int {
+        var count = 0
+        path?.applyWithBlock { _ in count += 1 }
+        return count
     }
 
     private func XCTAssertColor(

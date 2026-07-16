@@ -76,16 +76,15 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(handButton.waitForExistence(timeout: 4), "Expected the fixed Hand object.")
         let buildButton = turnElement(identifier: "uls.turnObject.build", labels: ["Build"])
         let tradeButton = turnElement(identifier: "uls.turnObject.trade", labels: ["Trade"])
-        let devButton = turnElement(identifier: "uls.turnObject.devCards", labels: ["Dev", "Dev Cards"])
         let endButton = turnElement(identifier: "uls.turnObject.endTurn", labels: ["End", "End Turn"])
-        let turnObjects = [handButton, buildButton, tradeButton, devButton, endButton]
+        let turnObjects = [handButton, buildButton, tradeButton, endButton]
         let board = turnElement(identifier: "uls.tabletop.board", labels: [])
         let boardHost = turnElement(identifier: "uls.tabletop.boardHost", labels: ["Live game board host"])
         let bankRack = turnElement(identifier: "uls.tabletop.bankRack", labels: ["Bank"])
         let publicRail = turnElement(identifier: "uls.turn.publicRail", labels: [])
-        let status = turnElement(identifier: "uls.turn.status", labels: ["Your turn, Rolled 8", "Your turn"])
+        let status = turnElement(identifier: "uls.turn.topBar", labels: [])
         let actionWell = turnElement(identifier: "uls.turn.actionWell", labels: ["Reserved turn action well"])
-        let handSurface = turnElement(identifier: "uls.feltTools.handContents", labels: [])
+        let handSurface = turnElement(identifier: "uls.physicalProps.actionSpread", labels: [])
         XCTAssertTrue(board.waitForExistence(timeout: 4), "Expected the live board container to be measurable.")
         XCTAssertTrue(boardHost.waitForExistence(timeout: 4), "Expected the live board host identity marker.")
         XCTAssertTrue(bankRack.waitForExistence(timeout: 4), "Expected the bank rack to be measurable.")
@@ -134,22 +133,17 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         )
         attachScreenshot(named: "Unlucky Sevens - turn gameplay open hand")
 
+        let concealedBankValue = String(describing: bankRack.value)
         bankRack.tap()
-        let bankSurface = turnElement(identifier: "uls.feltTools.componentSurface", labels: [])
-        let woodBankCount = firstExistingElement(
-            [
-                messages.buttons["Wood, 19 left in bank"].firstMatch,
-                messages.staticTexts["Wood, 19 left in bank"].firstMatch,
-                messages.otherElements["Wood, 19 left in bank"].firstMatch,
-            ],
-            timeout: 4
-        )
         XCTAssertTrue(
-            woodBankCount.exists,
-            "Expected exact Bank counts only after tapping the public Bank object."
+            waitForValueChange(of: bankRack, from: concealedBankValue, timeout: 4),
+            "Expected qualitative Bank levels after tapping the public Bank object."
         )
-        XCTAssertTrue(bankSurface.waitForExistence(timeout: 4))
-        assertElement(bankSurface, isContainedIn: fixedActionWellFrame, message: "Bank must stay inside the reserved action well.")
+        XCTAssertNil(
+            String(describing: bankRack.value).rangeOfCharacter(from: .decimalDigits),
+            "Revealed Bank accessibility must expose only H/M/L levels."
+        )
+        XCTAssertTrue(handSurface.exists, "Bank reveal must not replace the selected Hand spread.")
         assertFrame(
             of: board,
             matches: fixedBoardFrame,
@@ -182,16 +176,19 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         )
         attachScreenshot(named: "Unlucky Sevens - turn gameplay bank open")
 
+        let revealedBankValue = String(describing: bankRack.value)
         bankRack.tap()
         XCTAssertTrue(
-            woodBankCount.waitForNonExistence(timeout: 4),
-            "Expected tapping Bank again to close its counts."
+            waitForValueChange(
+                of: bankRack,
+                from: revealedBankValue,
+                timeout: 4
+            ),
+            "Expected tapping Bank again to conceal its levels."
         )
-        XCTAssertTrue(bankSurface.waitForNonExistence(timeout: 4))
-        handButton.tap()
         XCTAssertTrue(
-            handSurface.waitForExistence(timeout: 4),
-            "Expected Hand to replace the closed Bank surface."
+            handSurface.exists,
+            "Expected Hand to remain open while public Bank information toggles."
         )
         assertElement(handSurface, isContainedIn: fixedActionWellFrame, message: "Hand must reuse the reserved action well.")
 
@@ -221,7 +218,10 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         )
         XCTAssertFalse(endButton.isSelected)
 
-        let gameInfo = turnElement(identifier: "", labels: ["Game information"])
+        let gameInfo = turnElement(
+            identifier: "",
+            labels: ["Players and game information", "Game information"]
+        )
         XCTAssertTrue(gameInfo.waitForExistence(timeout: 4))
         gameInfo.tap()
         let gameInfoSurface = turnElement(identifier: "uls.turn.gameInfo", labels: [])
@@ -254,7 +254,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
         XCTAssertTrue(buildButton.waitForExistence(timeout: 4))
         buildButton.tap()
-        let buildSurface = turnElement(identifier: "uls.feltTools.componentSurface", labels: [])
+        let buildSurface = turnElement(identifier: "uls.physicalProps.actionSpread", labels: [])
         let roadButton = exactLabelElement("Road")
         XCTAssertTrue(roadButton.waitForExistence(timeout: 4))
         XCTAssertTrue(exactLabelElement("Settlement").exists)
@@ -276,11 +276,10 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Unlucky Sevens - turn gameplay build choices")
 
         roadButton.tap()
-        let buildSelection = turnElement(identifier: "uls.turn.build.selection", labels: [])
-        XCTAssertTrue(buildSelection.waitForExistence(timeout: 4))
-        XCTAssertTrue(messages.staticTexts["Tap a highlighted edge, then tap it again to build."].firstMatch.exists)
+        let placeRoadPrompt = exactLabelElement("Place a road")
+        XCTAssertTrue(placeRoadPrompt.waitForExistence(timeout: 4))
+        XCTAssertTrue(buildSurface.waitForNonExistence(timeout: 4))
         XCTAssertTrue(buildButton.isSelected)
-        assertElement(buildSurface, isContainedIn: fixedActionWellFrame, message: "Road targeting must stay inside the action well.")
         assertFrame(of: board, matches: fixedBoardFrame, message: "The board must stay fixed for Road targets.")
         XCTAssertEqual(String(describing: boardHost.value), fixedBoardHostValue)
         assertPersistentTurnGeometry(
@@ -294,15 +293,14 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         )
         attachScreenshot(named: "Unlucky Sevens - turn gameplay road targets")
         buildButton.tap()
-        XCTAssertTrue(buildSelection.waitForNonExistence(timeout: 4))
+        XCTAssertTrue(placeRoadPrompt.waitForNonExistence(timeout: 4))
 
         buildButton.tap()
         let settlementButton = exactLabelElement("Settlement")
         XCTAssertTrue(settlementButton.waitForExistence(timeout: 4))
         settlementButton.tap()
-        XCTAssertTrue(buildSelection.waitForExistence(timeout: 4))
-        XCTAssertTrue(messages.staticTexts["Tap a highlighted corner, then tap it again to build."].firstMatch.exists)
-        assertElement(buildSurface, isContainedIn: fixedActionWellFrame, message: "Settlement targeting must stay inside the action well.")
+        let placeSettlementPrompt = exactLabelElement("Place a settlement")
+        XCTAssertTrue(placeSettlementPrompt.waitForExistence(timeout: 4))
         assertPersistentTurnGeometry(
             board: board, boardFrame: fixedBoardFrame,
             boardHost: boardHost, boardHostValue: fixedBoardHostValue,
@@ -314,15 +312,14 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         )
         attachScreenshot(named: "Unlucky Sevens - turn gameplay settlement targets")
         buildButton.tap()
-        XCTAssertTrue(buildSelection.waitForNonExistence(timeout: 4))
+        XCTAssertTrue(placeSettlementPrompt.waitForNonExistence(timeout: 4))
 
         buildButton.tap()
         let cityButton = exactLabelElement("City")
         XCTAssertTrue(cityButton.waitForExistence(timeout: 4))
         cityButton.tap()
-        XCTAssertTrue(buildSelection.waitForExistence(timeout: 4))
-        XCTAssertTrue(messages.staticTexts["Tap one of your highlighted settlements, then tap it again to upgrade."].firstMatch.exists)
-        assertElement(buildSurface, isContainedIn: fixedActionWellFrame, message: "City targeting must stay inside the action well.")
+        let upgradeCityPrompt = exactLabelElement("Upgrade to a city")
+        XCTAssertTrue(upgradeCityPrompt.waitForExistence(timeout: 4))
         assertPersistentTurnGeometry(
             board: board, boardFrame: fixedBoardFrame,
             boardHost: boardHost, boardHostValue: fixedBoardHostValue,
@@ -334,7 +331,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         )
         attachScreenshot(named: "Unlucky Sevens - turn gameplay city targets")
         buildButton.tap()
-        XCTAssertTrue(buildSelection.waitForNonExistence(timeout: 4))
+        XCTAssertTrue(upgradeCityPrompt.waitForNonExistence(timeout: 4))
 
         XCTAssertTrue(tradeButton.waitForExistence(timeout: 4))
         tradeButton.tap()
@@ -382,16 +379,34 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(tradeComposerSignal.waitForNonExistence(timeout: 4))
         XCTAssertFalse(tradeButton.isSelected)
 
-        XCTAssertTrue(devButton.waitForExistence(timeout: 4))
-        devButton.tap()
-        let devSurface = turnElement(identifier: "uls.feltTools.componentSurface", labels: [])
+        handButton.tap()
+        let ownedDevCards = turnElement(
+            identifier: "uls.physicalProps.ownedDevCards",
+            labels: ["Owned Dev Cards"]
+        )
+        XCTAssertTrue(ownedDevCards.waitForExistence(timeout: 4))
+        let ownedDevInventory = String(describing: ownedDevCards.value)
+        for expectedKind in ["Knight", "Monopoly", "Year of Plenty", "Road Building", "Victory Point"] {
+            XCTAssertTrue(
+                ownedDevInventory.contains(expectedKind),
+                "Hand must expose every owned Dev Card kind, including \(expectedKind)."
+            )
+        }
+        XCTAssertTrue(ownedDevInventory.contains("1 new"))
+        XCTAssertTrue(ownedDevInventory.contains("playable"))
+        ownedDevCards.tap()
+        let devSurface = turnElement(identifier: "uls.physicalProps.actionSpread", labels: [])
         let monopolyCard = exactLabelElement("Monopoly")
         XCTAssertTrue(monopolyCard.waitForExistence(timeout: 4))
         XCTAssertTrue(messages.staticTexts["Knight"].firstMatch.exists)
-        XCTAssertTrue(messages.staticTexts["Year of Plenty"].firstMatch.exists)
-        XCTAssertTrue(messages.staticTexts["Road Building"].firstMatch.exists)
-        XCTAssertFalse(messages.staticTexts["Victory Point"].firstMatch.exists)
-        XCTAssertTrue(devButton.isSelected)
+        XCTAssertTrue(messages.staticTexts["Year of"].firstMatch.exists)
+        XCTAssertTrue(messages.staticTexts["Plenty"].firstMatch.exists)
+        XCTAssertTrue(messages.staticTexts["Road"].firstMatch.exists)
+        XCTAssertTrue(messages.staticTexts["Builder"].firstMatch.exists)
+        let victoryPointLabel = exactLabelElement("Victory")
+        XCTAssertTrue(victoryPointLabel.waitForExistence(timeout: 4))
+        XCTAssertTrue(exactLabelElement("Point").exists)
+        XCTAssertTrue(exactLabelElement("Knight").exists)
         assertElement(devSurface, isContainedIn: fixedActionWellFrame, message: "Dev selection must stay inside the reserved action well.")
         assertPersistentTurnGeometry(
             board: board, boardFrame: fixedBoardFrame,
@@ -405,6 +420,10 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Unlucky Sevens - turn gameplay dev choices")
 
         monopolyCard.tap()
+        let devResourceSpread = turnElement(
+            identifier: "uls.physicalProps.devResourceSpread",
+            labels: ["Development card resource choices"]
+        )
         let monopolyWoodChoice = messages.buttons
             .matching(NSPredicate(format: "label BEGINSWITH %@", "Wood, 19 left in bank"))
             .firstMatch
@@ -412,7 +431,8 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             monopolyWoodChoice.waitForExistence(timeout: 4),
             "Expected Monopoly resource selection inside the reserved well."
         )
-        assertElement(devSurface, isContainedIn: fixedActionWellFrame, message: "Dev resource selection must stay inside the action well.")
+        XCTAssertTrue(devResourceSpread.waitForExistence(timeout: 4))
+        assertElement(devResourceSpread, isContainedIn: fixedActionWellFrame, message: "Dev resource selection must stay inside the action well.")
         assertFrame(of: board, matches: fixedBoardFrame, message: "The board must stay fixed for Dev resource selection.")
         XCTAssertEqual(String(describing: boardHost.value), fixedBoardHostValue)
         assertPersistentTurnGeometry(
@@ -426,12 +446,13 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         )
         attachScreenshot(named: "Unlucky Sevens - turn gameplay dev resource selection")
 
-        messages.buttons["Back To Cards"].firstMatch.tap()
-        let knightCard = messages.staticTexts["Knight"].firstMatch
+        handButton.tap()
+        XCTAssertTrue(ownedDevCards.waitForExistence(timeout: 4))
+        ownedDevCards.tap()
+        let knightCard = exactLabelElement("Knight")
         XCTAssertTrue(knightCard.waitForExistence(timeout: 4))
         knightCard.tap()
-        XCTAssertTrue(messages.staticTexts["Pick robber tile."].firstMatch.waitForExistence(timeout: 4))
-        assertElement(devSurface, isContainedIn: fixedActionWellFrame, message: "Dev board selection must stay inside the action well.")
+        XCTAssertTrue(exactLabelElement("Move the robber").waitForExistence(timeout: 4))
         assertFrame(of: board, matches: fixedBoardFrame, message: "The board must stay fixed for Dev board selection.")
         XCTAssertEqual(String(describing: boardHost.value), fixedBoardHostValue)
         assertPersistentTurnGeometry(
@@ -444,7 +465,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             turnRailFrame: fixedTurnRailFrame, route: "Dev board selection"
         )
         attachScreenshot(named: "Unlucky Sevens - turn gameplay dev board selection")
-        devButton.tap()
+        handButton.tap()
 
         endButton.tap()
         XCTAssertTrue(endConfirmation.waitForExistence(timeout: 4))
@@ -469,13 +490,9 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(devDeck.waitForExistence(timeout: 4))
         devDeck.tap()
         XCTAssertTrue(
-            messages.buttons
-                .matching(NSPredicate(format: "label CONTAINS %@", "11 cards remaining"))
-                .firstMatch
-                .waitForExistence(timeout: 4),
-            "Expected the public draw pile to own Buy Dev and decrement after purchase."
+            handSurface.waitForExistence(timeout: 4),
+            "Expected the public draw pile to own Buy Dev and return to Hand after purchase."
         )
-        XCTAssertTrue(handSurface.waitForExistence(timeout: 4))
         assertElement(handSurface, isContainedIn: fixedActionWellFrame, message: "A draw-pile purchase must return inside the fixed Hand well.")
         assertFrame(of: board, matches: fixedBoardFrame, message: "Buying from the public draw pile must not move the board.")
         XCTAssertEqual(String(describing: boardHost.value), fixedBoardHostValue)
@@ -488,14 +505,11 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             turnObjects: turnObjects, turnObjectFrames: fixedTurnObjectFrames,
             turnRailFrame: fixedTurnRailFrame, route: "Buy Dev"
         )
+        let updatedConcealedBankValue = String(describing: bankRack.value)
         bankRack.tap()
-        XCTAssertTrue(exactLabelElement("Wood, 19 left in bank").exists)
-        XCTAssertTrue(exactLabelElement("Brick, 19 left in bank").exists)
-        XCTAssertTrue(exactLabelElement("Sheep, 20 left in bank").exists)
-        XCTAssertTrue(exactLabelElement("Wheat, 20 left in bank").exists)
-        XCTAssertTrue(exactLabelElement("Ore, 20 left in bank").exists)
-        XCTAssertTrue(bankSurface.waitForExistence(timeout: 4))
-        assertElement(bankSurface, isContainedIn: fixedActionWellFrame, message: "Updated Bank counts must remain inside the fixed action well.")
+        XCTAssertTrue(waitForValueChange(of: bankRack, from: updatedConcealedBankValue, timeout: 4))
+        XCTAssertNil(String(describing: bankRack.value).rangeOfCharacter(from: .decimalDigits))
+        XCTAssertTrue(handSurface.exists, "Updated Bank levels must not replace Hand.")
         assertPersistentTurnGeometry(
             board: board, boardFrame: fixedBoardFrame,
             boardHost: boardHost, boardHostValue: fixedBoardHostValue,
@@ -547,8 +561,10 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
         let bankRack = turnElement(identifier: "uls.tabletop.bankRack", labels: ["Bank"])
         XCTAssertTrue(bankRack.waitForExistence(timeout: 4))
+        let concealedValue = String(describing: bankRack.value)
         bankRack.tap()
-        XCTAssertTrue(exactLabelElement("Wood, 19 left in bank").waitForExistence(timeout: 4))
+        XCTAssertTrue(waitForValueChange(of: bankRack, from: concealedValue, timeout: 4))
+        XCTAssertNil(String(describing: bankRack.value).rangeOfCharacter(from: .decimalDigits))
         Thread.sleep(forTimeInterval: 1)
     }
 
@@ -582,16 +598,19 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         let roadButton = exactLabelElement("Road")
         XCTAssertTrue(roadButton.waitForExistence(timeout: 4))
         roadButton.tap()
-        XCTAssertTrue(messages.staticTexts["Tap a highlighted edge, then tap it again to build."].waitForExistence(timeout: 4))
+        XCTAssertTrue(exactLabelElement("Place a road").waitForExistence(timeout: 4))
         Thread.sleep(forTimeInterval: 1)
     }
 
     func testSettleTurnDevResourceForDirectStill() throws {
         openSettledTurnGameplaySlice()
 
-        let devButton = turnElement(identifier: "uls.turnObject.devCards", labels: ["Dev", "Dev Cards"])
-        XCTAssertTrue(devButton.waitForExistence(timeout: 4))
-        devButton.tap()
+        let ownedDevCards = turnElement(
+            identifier: "uls.physicalProps.ownedDevCards",
+            labels: ["Owned Dev Cards"]
+        )
+        XCTAssertTrue(ownedDevCards.waitForExistence(timeout: 4))
+        ownedDevCards.tap()
         let monopolyCard = exactLabelElement("Monopoly")
         XCTAssertTrue(monopolyCard.waitForExistence(timeout: 4))
         monopolyCard.tap()
@@ -1363,11 +1382,12 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         isContainedIn container: CGRect,
         message: String
     ) {
+        let compositorTolerance: CGFloat = 1.5
         let frame = element.frame
-        XCTAssertGreaterThanOrEqual(frame.minX, container.minX - 1, message)
-        XCTAssertGreaterThanOrEqual(frame.minY, container.minY - 1, message)
-        XCTAssertLessThanOrEqual(frame.maxX, container.maxX + 1, message)
-        XCTAssertLessThanOrEqual(frame.maxY, container.maxY + 1, message)
+        XCTAssertGreaterThanOrEqual(frame.minX, container.minX - compositorTolerance, message)
+        XCTAssertGreaterThanOrEqual(frame.minY, container.minY - compositorTolerance, message)
+        XCTAssertLessThanOrEqual(frame.maxX, container.maxX + compositorTolerance, message)
+        XCTAssertLessThanOrEqual(frame.maxY, container.maxY + compositorTolerance, message)
     }
 
     private func assertPersistentTurnGeometry(

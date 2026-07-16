@@ -12,6 +12,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var staleContextWarning: String = "-"
     @Published var boardStrategy: BoardGenStrategyV1
     @Published private(set) var boardReloadToken: Int = 0
+    @Published private(set) var gameShellResetToken: Int = 0
     @Published private(set) var recoveredGames: [ActiveGameRecoverySummary] = []
     @Published private(set) var dismissRequestToken: Int = 0
     @Published var lobbyDisplayNameDraft: String = ""
@@ -44,6 +45,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var uxTestingAutoplaysDummyTurns: Bool = false
     @Published private(set) var uxTestingIsActive: Bool = false
     @Published private(set) var uxTestingChromeHiddenForScreenshot: Bool = false
+    @Published private(set) var uxTestingSettingsHookInvocationCount: Int = 0
     private var uxTestingAutoplayIsRunning = false
     #endif
 
@@ -109,6 +111,7 @@ final class LobbyDriverViewModel: ObservableObject {
         selectionStatus = "UX Lab loaded \(fixture.title)"
         setLastError(nil)
         runUXTestingAutoplayIfNeeded()
+        gameShellResetToken &+= 1
     }
 
     func activateCleanUXTestingFixture(id: String, actingAs actorID: String? = nil) {
@@ -118,6 +121,10 @@ final class LobbyDriverViewModel: ObservableObject {
 
     func restoreUXTestingChrome() {
         uxTestingChromeHiddenForScreenshot = false
+    }
+
+    func recordUXTestingSettingsHookInvocation() {
+        uxTestingSettingsHookInvocationCount &+= 1
     }
 
     func refreshUXTestingActorView() {
@@ -653,11 +660,29 @@ final class LobbyDriverViewModel: ObservableObject {
             return true
         }
 
-        return localActorIdentifier() == state.currentPlayer
+        guard let actor = localActorIdentifier(), actor == state.currentPlayer else {
+            return false
+        }
+
+        return state.canInitiatePlayerTrade(for: actor)
+            || state.canInitiateMaritimeTrade(for: actor)
     }
 
     var hasActiveContext: Bool {
         selectedState != nil
+    }
+
+    var isNormalPostRollActiveTurn: Bool {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            state.turnState?.step == .afterRoll,
+            let actor = localActorIdentifier()
+        else {
+            return false
+        }
+
+        return actor == state.currentPlayer
     }
 
     var canJoin: Bool {

@@ -3,9 +3,26 @@ import SwiftUI
 struct GamePhysicalTurnTopBarView: View {
     let title: String
     let subtitle: String
+    var prompt: GamePhysicalTurnHeaderPrompt? = nil
     let isGameInfoOpen: Bool
     let onSettingsTap: () -> Void
     let onGameInfoTap: () -> Void
+
+    init(
+        title: String,
+        subtitle: String,
+        prompt: GamePhysicalTurnHeaderPrompt? = nil,
+        isGameInfoOpen: Bool,
+        onSettingsTap: @escaping () -> Void,
+        onGameInfoTap: @escaping () -> Void
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.prompt = prompt
+        self.isGameInfoOpen = isGameInfoOpen
+        self.onSettingsTap = onSettingsTap
+        self.onGameInfoTap = onGameInfoTap
+    }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -17,7 +34,20 @@ struct GamePhysicalTurnTopBarView: View {
             )
 
             HStack(spacing: 7) {
-                if rollValues.count >= 2 {
+                if let prompt {
+                    VStack(spacing: 4) {
+                        Text(prompt.text)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
+                            .multilineTextAlignment(.center)
+
+                        Capsule()
+                            .fill(GamePhysicalTurnPalette.selectedKeyline)
+                            .frame(width: 22, height: 2)
+                    }
+                } else if rollValues.count >= 2 {
                     HStack(spacing: 3) {
                         die(rollValues[0])
                         die(rollValues[1])
@@ -35,7 +65,7 @@ struct GamePhysicalTurnTopBarView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 44)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(title), \(subtitle)")
+            .accessibilityLabel(prompt?.text ?? "\(title), \(subtitle)")
             .accessibilityIdentifier("uls.turn.status")
 
             iconButton(
@@ -46,6 +76,8 @@ struct GamePhysicalTurnTopBarView: View {
             )
         }
         .padding(.horizontal, 4)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("uls.turn.topBar")
     }
 
     private func iconButton(

@@ -58,14 +58,19 @@ struct GamePhysicalTurnActionSpreadView: View {
             if !ownedDevelopmentCards.isEmpty {
                 Button(action: onOpenDevCards) {
                     ownedDevStack
-                        .frame(width: 48, height: 54)
+                        .frame(width: 58, height: 54)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .disabled(!canOpenDevCards)
                 .accessibilityIdentifier("uls.physicalProps.ownedDevCards")
                 .accessibilityLabel("Owned Dev Cards")
-                .accessibilityHint("Opens your playable Dev Cards")
+                .accessibilityValue(ownedDevAccessibilityValue)
+                .accessibilityHint(
+                    canOpenDevCards
+                        ? "Opens your playable Dev Cards"
+                        : "No owned Dev Cards are playable now"
+                )
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -82,32 +87,74 @@ struct GamePhysicalTurnActionSpreadView: View {
 
     private var ownedDevStack: some View {
         ZStack {
-            ForEach(Array(ownedDevelopmentCards.prefix(2).enumerated()), id: \.offset) { index, card in
+            if let first = ownedDevelopmentCards.first {
                 GameTabletopPortraitCardView(
-                    face: .ownedDevelopment(card.kind),
+                    face: .ownedDevelopment(first.kind),
                     size: CGSize(width: 35, height: 46),
-                    count: card.totalCount,
                     isFaded: false,
                     stackDepth: 1
                 )
-                .rotationEffect(.degrees(index == 0 ? -7 : 7))
-                .offset(x: index == 0 ? -7 : 7, y: index == 0 ? 1 : 0)
+                .rotationEffect(.degrees(-8))
+                .offset(x: -7, y: 1)
+            }
+
+            if let second = ownedDevelopmentCards.dropFirst().first ?? ownedDevelopmentCards.first {
+                GameTabletopPortraitCardView(
+                    face: .ownedDevelopment(second.kind),
+                    size: CGSize(width: 35, height: 46),
+                    count: ownedDevelopmentCards.reduce(0) { $0 + $1.totalCount },
+                    isFaded: false,
+                    stackDepth: 1
+                )
+                .rotationEffect(.degrees(8))
+                .offset(x: 7)
+            }
+
+            if ownedNewCount > 0 {
+                Text("New")
+                    .font(.caption2)
+                    .bold()
+                    .foregroundStyle(GamePhysicalTurnPalette.publicPileRevealInk)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .background(
+                        Capsule()
+                            .fill(GamePhysicalTurnPalette.devCardEdge.opacity(0.94))
+                    )
+                    .offset(x: 16, y: 20)
             }
         }
     }
 
+    private var ownedNewCount: Int {
+        ownedDevelopmentCards.reduce(0) { $0 + $1.newCount }
+    }
+
+    private var ownedDevAccessibilityValue: String {
+        ownedDevelopmentCards.map { card in
+            var parts = ["\(card.kind.title): \(card.totalCount) owned"]
+            if card.playableCount > 0 {
+                parts.append("\(card.playableCount) playable")
+            }
+            if card.newCount > 0 {
+                parts.append("\(card.newCount) new")
+            }
+            return parts.joined(separator: ", ")
+        }
+        .joined(separator: "; ")
+    }
+
     private var devCardSpread: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             ForEach(devCardPanel?.cards ?? []) { card in
-                if let action = card.actionKind, card.isEnabled {
-                    GamePhysicalDevCardPropView(
-                        card: card,
-                        action: action,
-                        onSelect: onSelectDevCard
-                    )
-                }
+                GamePhysicalDevCardPropView(
+                    card: card,
+                    action: card.isEnabled ? card.actionKind : nil,
+                    onSelect: onSelectDevCard
+                )
             }
         }
+        .padding(.vertical, 2)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .accessibilityIdentifier("uls.physicalProps.devChooser")
         .accessibilityLabel("Playable Dev Cards")
@@ -163,14 +210,23 @@ struct GamePhysicalTurnActionSpreadView: View {
     private func costRow(_ cost: ResourceHandV1) -> some View {
         HStack(spacing: 4) {
             ForEach(Self.resources.filter { cost.count(for: $0) > 0 }, id: \.self) { resource in
-                HStack(spacing: 1) {
-                    Image(resource.tabletopStampAssetName)
-                        .renderingMode(.template)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 12, height: 12)
-                        .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
-                        .accessibilityHidden(true)
+                HStack(spacing: 2) {
+                    ZStack {
+                        Circle()
+                            .fill(resource.tabletopCardFill.opacity(0.92))
+
+                        Circle()
+                            .stroke(resource.tabletopEdge.opacity(0.90), lineWidth: 0.8)
+
+                        Image(resource.tabletopMiniStampAssetName)
+                            .renderingMode(.original)
+                            .resizable()
+                            .interpolation(.high)
+                            .scaledToFit()
+                            .frame(width: 10, height: 10)
+                    }
+                    .frame(width: 16, height: 16)
+                    .accessibilityHidden(true)
 
                     Text("\(cost.count(for: resource))")
                         .font(.caption)

@@ -1,0 +1,8 @@
+{
+  "images" : [
+    { "filename" : "mini_stamp_wheat.png", "idiom" : "universal", "scale" : "1x" },
+    { "filename" : "mini_stamp_wheat@2x.png", "idiom" : "universal", "scale" : "2x" },
+    { "filename" : "mini_stamp_wheat@3x.png", "idiom" : "universal", "scale" : "3x" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}

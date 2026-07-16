@@ -18,7 +18,7 @@ Three or four people return to a Catan table inside an iMessage thread in short,
 
 - One compact command surface states the current phase or action.
 - The active player’s normal post-roll screen is one fixed tabletop with five zones: compact top bar, public table rail, live board, reserved action well, and turn-object rail.
-- On that screen, physical Bank and `Dev Cards` objects communicate public ownership. Exact public counts stay concealed; tapping Bank reveals only `H/M/L` levels in place. The local player’s resources and owned Dev Cards are nested together inside Hand.
+- On that screen, physical Bank and `Dev Cards` objects communicate public ownership. Exact public counts stay concealed; tapping Bank reveals only `H/M/L` levels in place. The local player’s resources and a two-card splayed owned-Dev entry prop are nested together inside Hand; tapping that prop opens the complete owned-card spread, with action keylines only on legally playable cards.
 - Public and owned Dev Cards use a desaturated blue-gray family (`#71858B`) with a lighter steel edge. The public pile uses the approved factory vector in charcoal; the Trade prop uses the approved merchant-ship vector in warm wood. Every revealed public-pile level uses the same bold warm-white treatment over its faded card.
 - The normal post-roll turn-object rail keeps stable `Hand · Build · Trade · End` anchors. Unavailable actions leave empty, hitless, accessibility-hidden space instead of disabled props or rearranged neighbors.
 - Other gameplay states continue to use their existing lower-tray and shelf compositions.
@@ -39,7 +39,7 @@ Three or four people return to a Catan table inside an iMessage thread in short,
 
 The current production source of truth is the code and assets, especially `GameTheme`, `GameBoardPalette`, and `MessagesExtension/Resources/Assets.xcassets/BoardTiles/`. The six default terrain assets use one canonical texture per resource. SpriteKit owns live gameplay layers and SwiftUI owns the surrounding shell.
 
-The post-roll Turn Screen's functional boundaries in the product spec remain constraints, but its current production composition is not an approved visual reference. The next direction must be selected through the checkpointed [Turn Screen visual-direction plan](docs/exec-plans/active/turn-screen-visual-direction.md) before further nested-state productionization.
+The approved normal post-roll Turn Screen is the Physical Props composition: a full-display-centered live island surrounded by compact public and private tabletop objects on dark felt. Bank and Dev Cards share portrait geometry; four optically aligned Hand, Build, Trade, and End props use subordinate wooden labels; a two-card splayed Dev prop remains nested in Hand and opens the full owned-card spread. Build and legally playable card choices use amber action keylines directly on felt, while held/new cards remain visible without looking actionable. Short presentation-derived action prompts replace the passive dice only when the player must act. This direction is productionized only for the active local player’s normal `.afterRoll` state; excluded game states retain their established compositions.
 
 Previous numbered terrain and tree passes were experimentation, not durable product truth. They were removed after their final outputs were integrated. New experiments belong in ignored `docs/design/workbench/` and are deleted when the decision closes.
 

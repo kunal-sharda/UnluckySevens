@@ -81,18 +81,16 @@ struct GameTabletopPortraitCardView: View {
         switch face {
         case let .resource(resource):
             Image(resource.tabletopStampAssetName)
-                .renderingMode(.template)
+                .renderingMode(.original)
                 .resizable()
                 .scaledToFit()
                 .frame(width: size.width * 0.45, height: size.height * 0.42)
-                .foregroundStyle(resource.tabletopInk)
         case .developmentBack:
             Image("factory")
-                .renderingMode(.template)
+                .renderingMode(.original)
                 .resizable()
                 .scaledToFit()
                 .frame(width: size.width * 0.64, height: size.height * 0.56)
-                .foregroundStyle(GamePhysicalTurnPalette.devCardInk)
         case let .ownedDevelopment(kind):
             Image(systemName: kind.systemImage)
                 .font(.system(size: size.width * 0.36, weight: .semibold))
@@ -112,9 +110,9 @@ struct GameTabletopPortraitCardView: View {
     private var cardStroke: Color {
         switch face {
         case .developmentBack, .ownedDevelopment:
-            return GamePhysicalTurnPalette.devCardEdge.opacity(0.68)
-        default:
-            return GameTheme.outline.opacity(0.50)
+            return GamePhysicalTurnPalette.devCardEdge.opacity(0.90)
+        case let .resource(resource):
+            return resource.tabletopEdge.opacity(0.88)
         }
     }
 

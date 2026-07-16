@@ -122,10 +122,20 @@ struct GamePhysicalTurnPropRailView: View {
                     .frame(width: 44, height: GamePhysicalTurnLayout.propVisualHeight)
 
                 if hasPendingTrade {
-                    Circle()
-                        .fill(GameTheme.surface)
-                        .frame(width: 9, height: 9)
-                    .overlay(Circle().stroke(GameTheme.ink, lineWidth: 1))
+                    Text("Pending")
+                        .font(.system(size: 7, weight: .bold, design: .rounded))
+                        .foregroundStyle(GamePhysicalTurnPalette.selectedKeyline)
+                        .padding(.horizontal, 3)
+                        .padding(.vertical, 1)
+                        .background(
+                            Capsule()
+                                .fill(GameTheme.felt.opacity(0.88))
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(GamePhysicalTurnPalette.selectedKeyline.opacity(0.72), lineWidth: 0.75)
+                        )
+                        .offset(x: 5, y: -3)
                 }
             }
             .scaleEffect(1.00, anchor: .bottom)

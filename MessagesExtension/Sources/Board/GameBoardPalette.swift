@@ -126,6 +126,11 @@ enum GameBoardPalette {
         }
     }
 
+    static func resourceInset(for resource: ResourceV1) -> SKColor {
+        mix(resourceFill(for: resource), with: .black, fraction: 0.26)
+            .withAlphaComponent(0.90)
+    }
+
     static func playerColor(owner: String, playerOrder: [String]) -> SKColor {
         let palette: [SKColor] = [
             SKColor(red: 0.72, green: 0.18, blue: 0.16, alpha: 1.0),

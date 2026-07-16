@@ -50,6 +50,9 @@ struct GameShellView: View {
         let screenModel = projection.gameScreenModel
         let isGameOver = projection.phase == PhaseV1.gameOver.rawValue
         let isNormalPostRollTurn = viewModel.isNormalPostRollActiveTurn
+        let tabletopLayoutStyle = resolvedTabletopLayoutStyle(
+            isNormalPostRollTurn: isNormalPostRollTurn
+        )
         let resolvedMode = GameModeResolver.normalized(
             currentMode: currentMode,
             availability: screenModel.modeAvailability
@@ -66,7 +69,7 @@ struct GameShellView: View {
             mode: resolvedMode,
             draft: devCardDraft
         )
-        let devCardPanelModel = isNormalPostRollTurn
+        let devCardPanelModel = isNormalPostRollTurn && !tabletopLayoutStyle.usesPhysicalProps
             ? rawDevCardPanelModel?.executableSelectionOnly()
             : rawDevCardPanelModel
         let overlayModel = viewModel.makeBoardOverlayModel(
@@ -91,13 +94,16 @@ struct GameShellView: View {
         let selectedTradeHandCounts = tradeSelectedHandCounts(route: activeTradeRoute)
         let selectedDiscardHandCounts = discardSelectedHandCounts()
         let selectedRecipients = tradeSelectedRecipients(route: activeTradeRoute)
-        let tabletopLayoutStyle = resolvedTabletopLayoutStyle(
-            isNormalPostRollTurn: isNormalPostRollTurn
-        )
         let isBankOpen = shellRoute.utilityShelf == .bank
         let isGameInfoOpen = shellRoute == .gameInfo
         let hasPendingTrade = projection.tradePanelModel?.activeOffer != nil
         let usesPhysicalProps = tabletopLayoutStyle.usesPhysicalProps
+        let physicalHeaderPrompt = GamePhysicalTurnHeaderPromptResolver.prompt(
+            route: shellRoute,
+            mode: resolvedMode,
+            hasBoardCommitDraft: boardCommitDraft != nil,
+            devCardDraft: devCardDraft
+        )
         let physicalPlayerColor = screenModel.gameInfo.players
             .first(where: \.isLocalPlayer)
             .map { tint in
@@ -229,6 +235,7 @@ struct GameShellView: View {
                                         GamePhysicalTurnTopBarView(
                                             title: headerModel.statusLine.title,
                                             subtitle: headerModel.statusLine.subtitle,
+                                            prompt: physicalHeaderPrompt,
                                             isGameInfoOpen: isGameInfoOpen,
                                             onSettingsTap: onSettingsTap,
                                             onGameInfoTap: handleGameInfoToggle
@@ -601,6 +608,24 @@ struct GameShellView: View {
                                 .padding(.bottom, GameTheme.shellPadding + bottomTrayHeight)
                                 .transition(.opacity)
                                 .zIndex(0.75)
+                            } else if shellRoute == .devCards,
+                                      resolvedMode == .devCardMonopoly
+                                        || resolvedMode == .devCardYearOfPlenty {
+                                GamePhysicalDevResourceSpreadView(
+                                    bank: bankTrayModel,
+                                    confirmTitle: devCardPanelModel?.confirmTitle,
+                                    canConfirm: devCardPanelModel?.canConfirm ?? false,
+                                    onSelectResource: {
+                                        handleBankResourceSelection($0, mode: resolvedMode)
+                                    },
+                                    onConfirm: handleConfirmDevCardDraft
+                                )
+                                .frame(height: actionSurfaceHeight)
+                                .frame(maxWidth: lowerRailWidth)
+                                .padding(.horizontal, GameTheme.shellPadding)
+                                .padding(.bottom, GameTheme.shellPadding + bottomTrayHeight)
+                                .transition(.opacity)
+                                .zIndex(0.75)
                             }
                         }
 
@@ -723,10 +748,18 @@ struct GameShellView: View {
                                 model: screenModel.gameInfo,
                                 onClose: handleGameInfoToggle
                             )
-                            .frame(height: feltToolSurfaceHeight)
+                            .frame(
+                                height: usesPhysicalProps
+                                    ? actionSurfaceHeight
+                                    : feltToolSurfaceHeight
+                            )
                             .frame(maxWidth: lowerRailWidth)
                             .padding(.horizontal, GameTheme.shellPadding)
-                            .padding(.bottom, GameTheme.shellPadding + shellLayout.trayHeight)
+                            .padding(
+                                .bottom,
+                                GameTheme.shellPadding
+                                    + (usesPhysicalProps ? bottomTrayHeight : shellLayout.trayHeight)
+                            )
                             .zIndex(1)
                         }
 
@@ -737,10 +770,18 @@ struct GameShellView: View {
                                 onCancel: handleEndTurnConfirmationCancel,
                                 onConfirm: handleEndTurnConfirmationConfirm
                             )
-                            .frame(height: feltToolSurfaceHeight)
+                            .frame(
+                                height: usesPhysicalProps
+                                    ? actionSurfaceHeight
+                                    : feltToolSurfaceHeight
+                            )
                             .frame(maxWidth: lowerRailWidth)
                             .padding(.horizontal, GameTheme.shellPadding)
-                            .padding(.bottom, GameTheme.shellPadding + shellLayout.trayHeight)
+                            .padding(
+                                .bottom,
+                                GameTheme.shellPadding
+                                    + (usesPhysicalProps ? bottomTrayHeight : shellLayout.trayHeight)
+                            )
                             .zIndex(1)
                         }
 
@@ -768,6 +809,7 @@ struct GameShellView: View {
                                 route: tradeOverlayRoute,
                                 panelModel: tradePanelModel,
                                 usesFixedActionWell: tabletopLayoutStyle.usesFeltTools,
+                                usesPhysicalProps: usesPhysicalProps,
                                 availableWidth: lowerRailWidth,
                                 bankChips: bankTrayModel.chips,
                                 handChips: screenModel.handTray.chips,
@@ -824,17 +866,22 @@ struct GameShellView: View {
                                 }
                             )
                             .frame(
-                                height: tabletopLayoutStyle.usesFeltTools
-                                    ? feltToolSurfaceHeight
-                                    : tradePanelHeight,
+                                height: usesPhysicalProps
+                                    ? actionSurfaceHeight
+                                    : tabletopLayoutStyle.usesFeltTools
+                                        ? feltToolSurfaceHeight
+                                        : tradePanelHeight,
                                 alignment: .top
                             )
+                            .clipped()
                             .frame(maxWidth: lowerRailWidth)
                             .padding(.horizontal, GameTheme.shellPadding)
                             .padding(
                                 .bottom,
-                                tabletopLayoutStyle.usesFeltTools
-                                    ? GameTheme.shellPadding + shellLayout.trayHeight
+                                usesPhysicalProps
+                                    ? GameTheme.shellPadding + bottomTrayHeight
+                                    : tabletopLayoutStyle.usesFeltTools
+                                        ? GameTheme.shellPadding + shellLayout.trayHeight
                                     : tradePanelBottomPadding(
                                         isShelfPresented: isShelfPresented,
                                         shellLayout: shellLayout
@@ -927,9 +974,9 @@ struct GameShellView: View {
         if testingStyle != .framedShelf {
             return testingStyle
         }
-        return isNormalPostRollTurn ? .feltTools : .framedShelf
+        return isNormalPostRollTurn ? .physicalProps : .framedShelf
 #else
-        return isNormalPostRollTurn ? .feltTools : .framedShelf
+        return isNormalPostRollTurn ? .physicalProps : .framedShelf
 #endif
     }
 
@@ -2473,6 +2520,7 @@ struct GameTradeOverlayView: View {
     let route: GameTradeOverlayRoute
     let panelModel: GameTradePanelModel
     let usesFixedActionWell: Bool
+    let usesPhysicalProps: Bool
     let availableWidth: CGFloat
     let bankChips: [GameBankChip]
     let handChips: [GameHandChip]
@@ -2503,7 +2551,9 @@ struct GameTradeOverlayView: View {
         )
 
         VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-            header
+            if !usesPhysicalProps {
+                header
+            }
 
             switch route {
             case .chooser:
@@ -2516,25 +2566,18 @@ struct GameTradeOverlayView: View {
                 liveOfferBody
             }
         }
-        .padding(GameTheme.compactPadding)
+        .padding(usesPhysicalProps ? 0 : GameTheme.compactPadding)
         .frame(
             maxWidth: usesFixedActionWell ? .infinity : nil,
             maxHeight: usesFixedActionWell ? .infinity : nil,
             alignment: .topLeading
         )
-        .background(
-            RoundedRectangle(cornerRadius: GameTheme.largeRadius)
-                .fill(GameTheme.surface.opacity(0.985))
-                .shadow(color: GameTheme.trayShadow.opacity(0.86), radius: 14, x: 0, y: -3)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: GameTheme.largeRadius)
-                .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius))
-        .contentShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius))
+        .background(surfaceBackground)
+        .overlay(surfaceOverlay)
+        .clipShape(surfaceShape)
+        .contentShape(surfaceShape)
         .transition(
-            accessibilityReduceMotion
+            accessibilityReduceMotion || usesPhysicalProps
                 ? .opacity
                 : .move(edge: .bottom).combined(with: .opacity)
         )
@@ -2576,7 +2619,23 @@ struct GameTradeOverlayView: View {
 
     @ViewBuilder
     private var chooserBody: some View {
-        if usesFixedActionWell {
+        if usesPhysicalProps {
+            HStack(spacing: 24) {
+                physicalTradeChoice(
+                    title: "Player Trade",
+                    systemImage: "person.2.fill",
+                    action: onChoosePlayerTrade
+                )
+
+                physicalTradeChoice(
+                    title: "Maritime / Bank",
+                    assetName: "merchant_ship_colored",
+                    isDisabled: panelModel.maritimeOptions.isEmpty,
+                    action: onChooseMaritimeTrade
+                )
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        } else if usesFixedActionWell {
             ScrollView(.vertical, showsIndicators: true) {
                 chooserCards
             }
@@ -2584,6 +2643,77 @@ struct GameTradeOverlayView: View {
         } else {
             chooserCards
         }
+    }
+
+    private func physicalTradeChoice(
+        title: String,
+        systemImage: String? = nil,
+        assetName: String? = nil,
+        isDisabled: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                Group {
+                    if let assetName {
+                        Image(assetName)
+                            .resizable()
+                            .scaledToFit()
+                    } else if let systemImage {
+                        Image(systemName: systemImage)
+                            .resizable()
+                            .scaledToFit()
+                    }
+                }
+                .frame(width: 42, height: 34)
+                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                    .lineLimit(1)
+            }
+            .frame(width: 128)
+            .frame(minHeight: 72)
+            .contentShape(Rectangle())
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(
+                        GamePhysicalTurnPalette.selectedKeyline.opacity(isDisabled ? 0.20 : 0.72),
+                        lineWidth: 1.25
+                    )
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .opacity(isDisabled ? 0.45 : 1)
+    }
+
+    @ViewBuilder
+    private var surfaceBackground: some View {
+        if usesPhysicalProps {
+            Color.clear
+        } else {
+            RoundedRectangle(cornerRadius: GameTheme.largeRadius)
+                .fill(GameTheme.surface.opacity(0.985))
+                .shadow(color: GameTheme.trayShadow.opacity(0.86), radius: 14, x: 0, y: -3)
+        }
+    }
+
+    @ViewBuilder
+    private var surfaceOverlay: some View {
+        if usesPhysicalProps {
+            Color.clear
+        } else {
+            RoundedRectangle(cornerRadius: GameTheme.largeRadius)
+                .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
+        }
+    }
+
+    private var surfaceShape: AnyShape {
+        usesPhysicalProps
+            ? AnyShape(Rectangle())
+            : AnyShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius))
     }
 
     private var chooserCards: some View {
@@ -2699,6 +2829,12 @@ struct GameTradeOverlayView: View {
                 showsIndicators: usesFixedActionWell
             ) {
                 VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+                    if usesPhysicalProps {
+                        Text(panelModel.roleTitle)
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                    }
+
                     if let activeOffer = panelModel.activeOffer {
                         offerCard(activeOffer)
                     }

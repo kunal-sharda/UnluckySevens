@@ -88,3 +88,12 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - Proposed fix shape: persist or derive stronger same-game session continuity so recovery-published `STATE` prefers the existing game chain instead of falling back to a fresh session.
 - When to address: phase 15 unless real-device TestFlight feedback shows transcript clutter becoming materially confusing sooner.
 - Links: [TranscriptTransportSupport.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/TranscriptTransportSupport.swift)
+
+### TD-011 — Core build costs have multiple matching definitions
+
+- Area: `ULS_CoreGame` economy rules and presentation queries
+- Why it matters: `CoreBuildCostsV1` now gives presentation a Core-owned cost source, but reducers, validation, and legal-build queries still contain matching literals.
+- Current cost or risk: the values agree today, but a future rule adjustment could make displayed costs drift from validation or mutation behavior.
+- Proposed fix shape: route reducer, validation, and build-query costs through `CoreBuildCostsV1`, then add one regression test that covers every build and development-card cost consumer.
+- When to address: phase 15, before changing economy rules.
+- Links: [CoreBuildCostsV1.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/Packages/ULS_CoreGame/Sources/ULS_CoreGame/CoreBuildCostsV1.swift), [ARCHITECTURE.md](/Users/kunalsharda/Documents/Code/UnluckySevens/ARCHITECTURE.md)

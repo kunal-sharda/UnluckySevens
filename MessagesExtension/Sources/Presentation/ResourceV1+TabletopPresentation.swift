@@ -19,6 +19,10 @@ extension ResourceV1 {
         }
     }
 
+    var tabletopMiniStampAssetName: String {
+        "mini_\(tabletopStampAssetName)"
+    }
+
     var tabletopIconSize: CGSize {
         switch self {
         case .wood, .wheat:
@@ -52,7 +56,24 @@ extension ResourceV1 {
     }
 
     var tabletopInk: Color {
-        GameTheme.ink.opacity(0.88)
+        switch self {
+        case .wood:
+            return Color(red: 0.059, green: 0.271, blue: 0.090)
+        case .brick:
+            return Color(red: 0.431, green: 0.122, blue: 0.071)
+        case .sheep:
+            return Color(red: 0.212, green: 0.333, blue: 0.059)
+        case .wheat:
+            return Color(red: 0.463, green: 0.314, blue: 0.039)
+        case .ore:
+            return Color(red: 0.153, green: 0.231, blue: 0.239)
+        case .desert:
+            return Color(red: 0.290, green: 0.204, blue: 0.110)
+        }
+    }
+
+    var tabletopEdge: Color {
+        tabletopInk
     }
 
     var tabletopCountInk: Color {

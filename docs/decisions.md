@@ -69,6 +69,7 @@ If a change is desired, update this file **first**, then update code/tests.
 - During a `7` discard round, each required discarder publishes one canonical `STATE` in locked roster order while `currentPlayer` stays unchanged. Robber movement stays blocked until the discard queue is empty.
 - On the active player’s normal post-roll Turn Screen, the resource Bank and public `Dev Cards` pile conceal exact remaining counts. Tapping Bank reveals qualitative `H`, `M`, or `L` levels in place for all six public piles; visible and accessibility output never discloses the exact counts on this surface.
 - The public `Dev Cards` pile is the sole Buy Dev affordance on that Turn Screen. Owned Dev Cards are nested inside Hand for inspection and play; Buy Dev must not also appear in Build.
+- The approved normal post-roll presentation is the Physical Props tabletop with stable `Hand · Build · Trade · End` anchors, Hand-open default, a two-card splayed Dev entry nested in Hand, an independent Bank reveal, and a live board whose renderer and geometry do not change when routes open. Tapping the Dev entry opens the complete owned inventory; held/new cards remain visible but non-interactive and only Core-authorized cards receive action affordances. This composition applies only to the active local actor in normal `.afterRoll` play.
 
 Recommended canonical state cadence per turn:
 - STATE update after roll (so others can see results and decide on trades).

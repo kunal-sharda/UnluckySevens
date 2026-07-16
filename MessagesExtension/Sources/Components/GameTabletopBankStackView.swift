@@ -19,16 +19,15 @@ struct GameTabletopBankStackView: View {
                 .fill(chip.resource.tabletopCardFill)
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
-                        .stroke(GameTheme.outline.opacity(0.50), lineWidth: 1)
+                        .stroke(chip.resource.tabletopEdge.opacity(0.88), lineWidth: 1)
                 )
 
             VStack(spacing: 2) {
                 Image(chip.resource.tabletopStampAssetName)
-                    .renderingMode(.template)
+                    .renderingMode(.original)
                     .resizable()
                     .scaledToFit()
                     .frame(width: 18, height: 18)
-                    .foregroundStyle(chip.resource.tabletopInk)
 
                 if showsCount {
                     Text("\(chip.count)")

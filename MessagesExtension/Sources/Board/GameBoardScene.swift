@@ -295,7 +295,7 @@ final class GameBoardScene: SKScene {
         darkFrame.strokeColor = GameBoardPalette.tileBorderDark
         darkFrame.fillColor = .clear
         darkFrame.lineWidth = max(layout.tileRadius * 0.12, 4.2)
-        darkFrame.lineCap = .butt
+        darkFrame.lineCap = .square
         darkFrame.lineJoin = .miter
         darkFrame.zPosition = 0
         node.addChild(darkFrame)
@@ -305,7 +305,7 @@ final class GameBoardScene: SKScene {
         warmFrame.strokeColor = GameBoardPalette.tileBorderWarm
         warmFrame.fillColor = .clear
         warmFrame.lineWidth = max(layout.tileRadius * 0.066, 2.5)
-        warmFrame.lineCap = .butt
+        warmFrame.lineCap = .square
         warmFrame.lineJoin = .miter
         warmFrame.zPosition = 1
         node.addChild(warmFrame)
@@ -315,7 +315,7 @@ final class GameBoardScene: SKScene {
         hairline.strokeColor = GameBoardPalette.tileBorderHairline
         hairline.fillColor = .clear
         hairline.lineWidth = max(layout.tileRadius * 0.018, 0.7)
-        hairline.lineCap = .butt
+        hairline.lineCap = .square
         hairline.lineJoin = .miter
         hairline.zPosition = 2
         node.addChild(hairline)
@@ -335,6 +335,15 @@ final class GameBoardScene: SKScene {
         field.strokeColor = .clear
         field.zPosition = 0
         tileNode.addChild(field)
+
+        let terrainInset = SKShapeNode(path: hexagonPath(radius: fieldRadius * 0.925))
+        terrainInset.name = "tileTerrainInset"
+        terrainInset.fillColor = .clear
+        terrainInset.strokeColor = GameBoardPalette.resourceInset(for: tile.resource)
+        terrainInset.lineWidth = max(layout.tileRadius * 0.048, 1.4)
+        terrainInset.lineJoin = .miter
+        terrainInset.zPosition = 2
+        tileNode.addChild(terrainInset)
 
         let stampCrop = SKCropNode()
         stampCrop.name = "tileStampCrop"
@@ -478,18 +487,13 @@ final class GameBoardScene: SKScene {
             cornerRadius: side * 0.28
         )
         marker.fillColor = GameBoardPalette.resourceFill(for: resource)
-        marker.strokeColor = GameBoardPalette.portFill
-        marker.lineWidth = 0.9
+        marker.strokeColor = GameBoardPalette.resourceInset(for: resource)
+        marker.lineWidth = 1.1
         node.addChild(marker)
 
-        let texture = GameBoardTileArt.stampTexture(for: resource)
-        let textureSize = texture.size()
-        let longestSide = max(textureSize.width, textureSize.height, 1)
+        let texture = GameBoardTileArt.miniStampTexture(for: resource)
         let stamp = SKSpriteNode(texture: texture)
-        stamp.size = CGSize(
-            width: textureSize.width * side * 0.68 / longestSide,
-            height: textureSize.height * side * 0.68 / longestSide
-        )
+        stamp.size = CGSize(width: side * 0.70, height: side * 0.70)
         stamp.zPosition = 1
         node.addChild(stamp)
 

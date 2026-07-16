@@ -380,6 +380,7 @@ private struct FrozenTradeOverlayCard: View {
                 route: route,
                 panelModel: panelModel,
                 usesFixedActionWell: snapshot.tabletopLayoutStyle.usesFeltTools,
+                usesPhysicalProps: snapshot.tabletopLayoutStyle.usesPhysicalProps,
                 availableWidth: snapshot.lowerRailWidth,
                 bankChips: snapshot.bankTray.chips,
                 handChips: snapshot.handTray.chips,
