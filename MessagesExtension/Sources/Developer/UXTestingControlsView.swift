@@ -20,43 +20,7 @@ struct UXTestingControlsView: View {
     private var chrome: some View {
         VStack(alignment: .trailing, spacing: 8) {
             HStack(spacing: 8) {
-                cleanShotChipButton(
-                    title: "Setup",
-                    systemImage: "camera.viewfinder",
-                    accessibilityLabel: "Clean setup screenshot",
-                    accessibilityIdentifier: "uls.uxLab.cleanShot.setupPlacement"
-                ) {
-                    activateCleanFixture(
-                        id: UXTestFixtures.setupPlacementID,
-                        style: .framedShelf
-                    )
-                }
-
-                cleanShotChipButton(
-                    title: "Turn",
-                    systemImage: "play.rectangle",
-                    accessibilityLabel: "Clean turn screenshot",
-                    accessibilityIdentifier: "uls.uxLab.cleanShot.turnAfterRoll"
-                ) {
-                    activateCleanFixture(
-                        id: UXTestFixtures.defaultFixtureID,
-                        style: .framedShelf
-                    )
-                }
-
-                cleanShotChipButton(
-                    title: "Pending",
-                    systemImage: "arrow.left.arrow.right",
-                    accessibilityLabel: "Clean pending trade screenshot",
-                    accessibilityIdentifier: "uls.uxLab.cleanShot.pendingTrade"
-                ) {
-                    activateCleanFixture(
-                        id: UXTestFixtures.tradeOfferID,
-                        style: .framedShelf,
-                        actingAs: UXTestFixtures.alice
-                    )
-                }
-
+                quickStateMenu
                 toggleButton
             }
 
@@ -67,6 +31,58 @@ struct UXTestingControlsView: View {
         }
         .padding(.top, 10)
         .padding(.trailing, 10)
+    }
+
+    private var quickStateMenu: some View {
+        Menu {
+            Button("Setup", systemImage: "camera.viewfinder") {
+                activateCleanFixture(
+                    id: UXTestFixtures.setupPlacementID,
+                    style: .framedShelf
+                )
+            }
+            .accessibilityIdentifier("uls.uxLab.cleanShot.setupPlacement")
+
+            Button("Start", systemImage: "dice.fill") {
+                activateCleanFixture(
+                    id: UXTestFixtures.turnNeedsRollID,
+                    style: .physicalProps
+                )
+            }
+            .accessibilityIdentifier("uls.uxLab.cleanShot.turnNeedsRoll")
+
+            Button("Turn", systemImage: "play.rectangle") {
+                activateCleanFixture(
+                    id: UXTestFixtures.defaultFixtureID,
+                    style: .physicalProps
+                )
+            }
+            .accessibilityIdentifier("uls.uxLab.cleanShot.turnAfterRoll")
+
+            Button("Pending", systemImage: "arrow.left.arrow.right") {
+                activateCleanFixture(
+                    id: UXTestFixtures.tradeOfferID,
+                    style: .physicalProps,
+                    actingAs: UXTestFixtures.alice
+                )
+            }
+            .accessibilityIdentifier("uls.uxLab.cleanShot.pendingTrade")
+        } label: {
+            Label("States", systemImage: "square.grid.2x2")
+                .font(GameTheme.chipFont)
+                .foregroundStyle(GameTheme.ink)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(GameTheme.surfaceRaised.opacity(0.96))
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(GameTheme.outline.opacity(0.18), lineWidth: 1)
+                )
+        }
+        .accessibilityIdentifier("uls.uxLab.quickStates")
     }
 
     private var toggleButton: some View {
@@ -250,7 +266,7 @@ struct UXTestingControlsView: View {
             }
         }
         .padding(12)
-        .frame(width: 316, alignment: .leading)
+        .frame(maxWidth: 316, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: GameTheme.mediumRadius)
                 .fill(GameTheme.surface.opacity(0.98))

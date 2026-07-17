@@ -24,6 +24,7 @@ struct GameShellView: View {
     @State private var physicalBoardCenteringOffset: CGFloat = 0
     @State private var shellResizeFreezeEpoch: Int = 0
     @State private var shellResizeFreezeTask: Task<Void, Never>?
+    @State private var physicalDiceRollResult: GameDiceRollResult?
 #if DEBUG
     @AppStorage(GameTabletopLayoutStyle.uxTestingDefaultsKey)
     private var uxTestingTabletopLayoutStyleRawValue = GameTabletopLayoutStyle.framedShelf.rawValue
@@ -50,6 +51,7 @@ struct GameShellView: View {
         let screenModel = projection.gameScreenModel
         let isGameOver = projection.phase == PhaseV1.gameOver.rawValue
         let isNormalPostRollTurn = viewModel.isNormalPostRollActiveTurn
+        let isNormalPreRollTurn = viewModel.isNormalPreRollActiveTurn
         let tabletopLayoutStyle = resolvedTabletopLayoutStyle(
             isNormalPostRollTurn: isNormalPostRollTurn
         )
@@ -98,12 +100,18 @@ struct GameShellView: View {
         let isGameInfoOpen = shellRoute == .gameInfo
         let hasPendingTrade = projection.tradePanelModel?.activeOffer != nil
         let usesPhysicalProps = tabletopLayoutStyle.usesPhysicalProps
-        let physicalHeaderPrompt = GamePhysicalTurnHeaderPromptResolver.prompt(
-            route: shellRoute,
-            mode: resolvedMode,
-            hasBoardCommitDraft: boardCommitDraft != nil,
-            devCardDraft: devCardDraft
-        )
+        let isPhysicalStartTurn = usesPhysicalProps && isNormalPreRollTurn
+        let isPhysicalGameplayTurn = isNormalPostRollTurn || isPhysicalStartTurn
+        let physicalHeaderPrompt: GamePhysicalTurnHeaderPrompt? = if isPhysicalStartTurn {
+            nil
+        } else {
+            GamePhysicalTurnHeaderPromptResolver.prompt(
+                route: shellRoute,
+                mode: resolvedMode,
+                hasBoardCommitDraft: boardCommitDraft != nil,
+                devCardDraft: devCardDraft
+            )
+        }
         let physicalPlayerColor = screenModel.gameInfo.players
             .first(where: \.isLocalPlayer)
             .map { tint in
@@ -177,7 +185,7 @@ struct GameShellView: View {
                 ) + (usesPhysicalProps
                     ? max(
                         shellLayout.headerHeight
-                            - GamePhysicalTurnLayout.topBarHeight,
+                            - physicalLayout.topBarHeight,
                         0
                     )
                     : 0)
@@ -188,7 +196,7 @@ struct GameShellView: View {
                     baseBoardPresentationHeight - feltToolSurfaceReservation,
                     0
                 )
-                let publicRailHeight: CGFloat = isNormalPostRollTurn
+                let publicRailHeight: CGFloat = isPhysicalGameplayTurn
                         ? (usesPhysicalProps
                         ? physicalLayout.publicRailHeight
                         : 86)
@@ -196,7 +204,7 @@ struct GameShellView: View {
                 let boardCanvasPresentationHeight = max(
                     boardPresentationHeight
                         - publicRailHeight
-                        - (isNormalPostRollTurn ? tabletopSectionSpacing : 0),
+                        - (isPhysicalGameplayTurn ? tabletopSectionSpacing : 0),
                     0
                 )
                 let boardHostPresentationHeight = usesPhysicalProps
@@ -230,7 +238,7 @@ struct GameShellView: View {
                     ZStack(alignment: .bottom) {
                         VStack(alignment: .leading, spacing: tabletopSectionSpacing) {
                             Group {
-                                if isNormalPostRollTurn {
+                                if isPhysicalGameplayTurn {
                                     if usesPhysicalProps {
                                         GamePhysicalTurnTopBarView(
                                             title: headerModel.statusLine.title,
@@ -269,12 +277,13 @@ struct GameShellView: View {
                             }
                             .frame(
                                 height: usesPhysicalProps
-                                    ? GamePhysicalTurnLayout.topBarHeight
+                                    ? physicalLayout.topBarHeight
                                     : shellLayout.headerHeight,
                                 alignment: .center
                             )
+                            .accessibilityHidden(isPhysicalStartTurn)
 
-                            if isNormalPostRollTurn {
+                            if isPhysicalGameplayTurn {
                                 Group {
                                     if usesPhysicalProps {
                                         GamePhysicalPublicRackView(
@@ -291,9 +300,10 @@ struct GameShellView: View {
                                                     physicalBankCountsRevealed.toggle()
                                                 }
                                             },
-                                            onBuyDevelopmentCard: handlePublicDevDeckPurchase
-                                        )
-                                    } else {
+                                        onBuyDevelopmentCard: handlePublicDevDeckPurchase
+                                    )
+                                    .scaleEffect(physicalLayout.contentScale)
+                                } else {
                                         GameTabletopBankRackView(
                                             model: bankTrayModel,
                                             showsBankCounts: false,
@@ -311,6 +321,8 @@ struct GameShellView: View {
                                 }
                                 .frame(height: publicRailHeight)
                                 .frame(maxWidth: .infinity)
+                                .allowsHitTesting(!isPhysicalStartTurn)
+                                .accessibilityHidden(isPhysicalStartTurn)
                                 .accessibilityElement(children: .contain)
                                 .accessibilityIdentifier("uls.turn.publicRail")
                             }
@@ -321,7 +333,7 @@ struct GameShellView: View {
                                 overlayModel: overlayModel,
                                 interactionMode: resolvedMode,
                                 bankTray: bankTrayModel,
-                                showsTabletopRack: !isNormalPostRollTurn,
+                                showsTabletopRack: !isPhysicalGameplayTurn,
                                 showsBankCounts: true,
                                 isBankOpen: isBankOpen,
                                 devDeckCount: screenModel.devDeckCount,
@@ -337,7 +349,7 @@ struct GameShellView: View {
                                 frozenBoardImage: nil,
                                 reloadToken: viewModel.boardReloadToken,
                                 onInteractionChanged: nil,
-                                onResizeFreezeChanged: isNormalPostRollTurn ? nil : { freezeState in
+                                onResizeFreezeChanged: isPhysicalGameplayTurn ? nil : { freezeState in
                                     if freezeState.isFrozen {
                                         clearBoardSelection()
                                     }
@@ -401,6 +413,7 @@ struct GameShellView: View {
                                 }
                             )
                             .frame(height: boardHostPresentationHeight, alignment: .top)
+                            .accessibilityHidden(isPhysicalStartTurn)
                             .clipped()
                             .background {
                                 if usesPhysicalProps {
@@ -465,7 +478,7 @@ struct GameShellView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         .contentShape(Rectangle())
 
-                        if !isGameOver {
+                        if !isGameOver, !isPhysicalStartTurn {
                             Group {
                                 if usesPhysicalProps {
                                     GamePhysicalTurnPropRailView(
@@ -484,6 +497,7 @@ struct GameShellView: View {
                                         },
                                         onToggleHand: handleHandToggle
                                     )
+                                    .scaleEffect(physicalLayout.contentScale, anchor: .bottom)
                                 } else {
                                     GameBottomTrayView(
                                         layout: shellLayout.lowerRail,
@@ -541,7 +555,7 @@ struct GameShellView: View {
                         }
 #endif
 
-                        if !isGameOver, usesPhysicalProps {
+                        if !isGameOver, usesPhysicalProps, !isPhysicalStartTurn {
                             if isHandOpen {
                                 GamePhysicalTurnActionSpreadView(
                                     content: .hand,
@@ -564,6 +578,7 @@ struct GameShellView: View {
                                     },
                                     onSelectDevCard: handleDevCardSelection
                                 )
+                                .scaleEffect(physicalLayout.contentScale)
                                 .frame(height: actionSurfaceHeight)
                                 .frame(maxWidth: lowerRailWidth)
                                 .padding(.horizontal, GameTheme.shellPadding)
@@ -583,6 +598,7 @@ struct GameShellView: View {
                                     onOpenDevCards: {},
                                     onSelectDevCard: handleDevCardSelection
                                 )
+                                .scaleEffect(physicalLayout.contentScale)
                                 .frame(height: actionSurfaceHeight)
                                 .frame(maxWidth: lowerRailWidth)
                                 .padding(.horizontal, GameTheme.shellPadding)
@@ -602,6 +618,7 @@ struct GameShellView: View {
                                     onOpenDevCards: {},
                                     onSelectDevCard: handleDevCardSelection
                                 )
+                                .scaleEffect(physicalLayout.contentScale)
                                 .frame(height: actionSurfaceHeight)
                                 .frame(maxWidth: lowerRailWidth)
                                 .padding(.horizontal, GameTheme.shellPadding)
@@ -620,6 +637,7 @@ struct GameShellView: View {
                                     },
                                     onConfirm: handleConfirmDevCardDraft
                                 )
+                                .scaleEffect(physicalLayout.contentScale)
                                 .frame(height: actionSurfaceHeight)
                                 .frame(maxWidth: lowerRailWidth)
                                 .padding(.horizontal, GameTheme.shellPadding)
@@ -893,6 +911,46 @@ struct GameShellView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .opacity(shellResizeFreezeSnapshot == nil ? 1 : 0)
                     .allowsHitTesting(shellResizeFreezeSnapshot == nil)
+
+                    if !isGameOver, isPhysicalStartTurn, physicalDiceRollResult == nil,
+                       resolvedMode == .idle || resolvedMode == .playDevCard {
+                        GamePhysicalStartTurnView(
+                            devCardPanel: devCardPanelModel?.executableSelectionOnly(),
+                            canPlayDevCards: screenModel.actionDock.primaryItems.contains {
+                                $0.kind == .devCards && $0.isEnabled
+                            },
+                            canRoll: screenModel.actionDock.primaryItems.contains {
+                                $0.kind == .roll && $0.isEnabled
+                            },
+                            isDevChooserOpen: shellRoute == .devCards
+                                && resolvedMode == .playDevCard,
+                            contentScale: physicalLayout.contentScale,
+                            onToggleDevCards: {
+                                handleActionSelection(
+                                    .devCards,
+                                    currentMode: resolvedMode,
+                                    availability: screenModel.modeAvailability,
+                                    actionDock: screenModel.actionDock
+                                )
+                            },
+                            onSelectDevCard: handleDevCardSelection,
+                            onRoll: beginPhysicalDiceRoll
+                        )
+                        .frame(width: shellSize.width, height: shellSize.height)
+                        .transition(.opacity)
+                        .zIndex(4)
+                    }
+
+                    if isPhysicalStartTurn || physicalDiceRollResult != nil {
+                        GamePhysicalDiceRollOverlayView(
+                            result: physicalDiceRollResult,
+                            onComplete: {
+                                self.physicalDiceRollResult = nil
+                            }
+                        )
+                        .frame(width: shellSize.width, height: shellSize.height)
+                        .zIndex(5)
+                    }
 
                     if let shellResizeFreezeSnapshot {
                         GameShellFreezeOverlayView(snapshot: shellResizeFreezeSnapshot)
@@ -1184,6 +1242,25 @@ struct GameShellView: View {
             self.currentMode = .idle
             self.shellRoute = .none
             self.devCardDraft = nil
+        }
+    }
+
+    private func beginPhysicalDiceRoll() {
+        guard physicalDiceRollResult == nil else { return }
+        clearBoardSelection()
+        guard let result = viewModel.previewDiceRoll() else { return }
+        currentMode = .idle
+        shellRoute = .none
+        devCardDraft = nil
+        physicalDiceRollResult = result
+
+        Task { @MainActor in
+            await Task.yield()
+            guard physicalDiceRollResult == result else { return }
+            guard viewModel.publishDiceRoll() == result else {
+                physicalDiceRollResult = nil
+                return
+            }
         }
     }
 
@@ -2858,11 +2935,16 @@ struct GameTradeOverlayView: View {
             if let responderActions = panelModel.responderActions {
                 responderActionRow(responderActions)
             } else if panelModel.canReplaceOffer {
-                Button("Replace Offer") {
-                    onReplaceOffer()
+                if usesPhysicalProps {
+                    Button("Replace Offer", action: onReplaceOffer)
+                        .buttonStyle(GameTabletopActionButtonStyle(emphasis: .primary))
+                        .frame(width: 144)
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Button("Replace Offer", action: onReplaceOffer)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .buttonStyle(.bordered)
                 }
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .buttonStyle(.bordered)
             }
         }
     }
@@ -3183,7 +3265,7 @@ struct GameTradeOverlayView: View {
 
                 if status.isTargeted {
                     Text("Targeted")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)

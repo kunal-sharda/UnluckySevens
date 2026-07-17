@@ -119,7 +119,7 @@ The protocol source of truth is the message URL payload. Pre-TestFlight dev-era 
 Several invariants explain why the code is split this way:
 
 - only one canonical `STATE` chain exists per game
-- only the current player publishes canonical `STATE`
+- normal turn progression is authored by the current player; rules-defined responder transitions may publish canonical `STATE` without changing turn ownership
 - random outcomes must be reproducible from persisted deterministic state
 - the canonical state may contain hidden information, but the UI may only expose viewer-safe projections
 - transport is a boundary layer, not a rules engine

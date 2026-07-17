@@ -21,7 +21,7 @@ struct GameTabletopBankRackView: View {
                                 .font(.system(size: 11, weight: .bold))
                         }
                     }
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(GameTheme.surface.opacity(0.88))
 
                     HStack(spacing: 5) {
@@ -85,7 +85,7 @@ struct GameTabletopBankRackView: View {
                 Text("\(devDeckCount)")
                     .monospacedDigit()
             }
-            .font(.system(size: 12, weight: .bold, design: .rounded))
+            .font(.system(size: 12, weight: .bold))
             .foregroundStyle(GameTheme.surface.opacity(0.88))
 
             TabletopDevDeckView(size: CGSize(width: 42, height: 50))

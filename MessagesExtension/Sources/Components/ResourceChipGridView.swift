@@ -99,9 +99,9 @@ enum ResourceChipDensity {
         case .regular:
             return GameTheme.chipFont
         case .compact:
-            return .system(size: 12, weight: .bold, design: .rounded)
+            return .system(size: 12, weight: .bold)
         case .tight:
-            return .system(size: 11, weight: .bold, design: .rounded)
+            return .system(size: 11, weight: .bold)
         }
     }
 
@@ -110,18 +110,18 @@ enum ResourceChipDensity {
         case .regular:
             return GameTheme.headingFont
         case .compact:
-            return .system(size: 15, weight: .bold, design: .rounded)
+            return .system(size: 15, weight: .bold)
         case .tight:
-            return .system(size: 14, weight: .bold, design: .rounded)
+            return .system(size: 14, weight: .bold)
         }
     }
 
     var badgeFont: Font {
         switch self {
         case .regular:
-            return .system(size: 10, weight: .bold, design: .rounded)
+            return .system(size: 10, weight: .bold)
         case .compact, .tight:
-            return .system(size: 9, weight: .bold, design: .rounded)
+            return .system(size: 9, weight: .bold)
         }
     }
 

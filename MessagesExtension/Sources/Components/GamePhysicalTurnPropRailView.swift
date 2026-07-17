@@ -59,7 +59,7 @@ struct GamePhysicalTurnPropRailView: View {
                     )
 
                 GameTabletopNameTileView(
-                    title: title(for: slot.kind),
+                    title: visibleTitle(for: slot.kind),
                     width: nameTileWidth(for: slot.kind),
                     isSelected: isSelected
                 )
@@ -117,28 +117,9 @@ struct GamePhysicalTurnPropRailView: View {
             .frame(width: 34, height: GamePhysicalTurnLayout.propVisualHeight)
             .scaleEffect(1.23, anchor: .bottom)
         case .trade:
-            ZStack(alignment: .topTrailing) {
-                GameMerchantShipPropView(isSelected: isSelected)
-                    .frame(width: 44, height: GamePhysicalTurnLayout.propVisualHeight)
-
-                if hasPendingTrade {
-                    Text("Pending")
-                        .font(.system(size: 7, weight: .bold, design: .rounded))
-                        .foregroundStyle(GamePhysicalTurnPalette.selectedKeyline)
-                        .padding(.horizontal, 3)
-                        .padding(.vertical, 1)
-                        .background(
-                            Capsule()
-                                .fill(GameTheme.felt.opacity(0.88))
-                        )
-                        .overlay(
-                            Capsule()
-                                .stroke(GamePhysicalTurnPalette.selectedKeyline.opacity(0.72), lineWidth: 0.75)
-                        )
-                        .offset(x: 5, y: -3)
-                }
-            }
-            .scaleEffect(1.00, anchor: .bottom)
+            GameMerchantShipPropView(isSelected: isSelected)
+                .frame(width: 44, height: GamePhysicalTurnLayout.propVisualHeight)
+                .scaleEffect(1.00, anchor: .bottom)
         case .devCards:
             ZStack {
                 GameTabletopPortraitCardView(
@@ -208,10 +189,20 @@ struct GamePhysicalTurnPropRailView: View {
     private func nameTileWidth(
         for kind: GameTurnObjectRailSlot.Kind
     ) -> CGFloat {
+        if kind == .trade && hasPendingTrade {
+            return 56
+        }
+
         switch kind {
         case .endTurn: return 38
         case .hand, .build, .trade, .devCards: return 48
         }
+    }
+
+    private func visibleTitle(for kind: GameTurnObjectRailSlot.Kind) -> String {
+        kind == .trade && hasPendingTrade
+            ? "Pending"
+            : title(for: kind)
     }
 
     private func title(for kind: GameTurnObjectRailSlot.Kind) -> String {

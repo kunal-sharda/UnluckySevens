@@ -44,9 +44,12 @@ enum GameTheme {
     static let pressedScale: CGFloat = 0.98
     static let quickAnimation = Animation.easeInOut(duration: 0.18)
 
-    static let titleFont = Font.system(.title3, design: .serif).bold()
-    static let headingFont = Font.system(.headline, design: .rounded).bold()
-    static let bodyFont = Font.system(.body, design: .rounded)
-    static let metaFont = Font.system(.subheadline, design: .rounded)
-    static let chipFont = Font.system(.footnote, design: .rounded).bold()
+    // Use the OS-provided SF Pro family through semantic system styles.
+    // Do not embed or address downloaded Apple font files by name.
+    static let displayFont = Font.system(.title, design: .default).bold()
+    static let titleFont = Font.system(.title3, design: .default).bold()
+    static let headingFont = Font.system(.headline, design: .default).bold()
+    static let bodyFont = Font.system(.body, design: .default)
+    static let metaFont = Font.system(.subheadline, design: .default)
+    static let chipFont = Font.system(.footnote, design: .default).bold()
 }

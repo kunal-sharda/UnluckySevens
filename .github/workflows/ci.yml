@@ -23,6 +23,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve doc freshness base
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "DOC_FRESHNESS_BASE=origin/${{ github.base_ref }}" >> "$GITHUB_ENV"
+          elif git rev-parse HEAD^ >/dev/null 2>&1; then
+            echo "DOC_FRESHNESS_BASE=HEAD^" >> "$GITHUB_ENV"
+          else
+            echo "DOC_FRESHNESS_BASE=HEAD" >> "$GITHUB_ENV"
+          fi
+
+      - name: Check doc freshness
+        run: make doc-freshness DOC_FRESHNESS_BASE="$DOC_FRESHNESS_BASE"
+
+      - name: Check repository harness
+        run: make harness-check-tests harness-audit
 
       - name: Install Tuist 4.146.0
         run: |
@@ -36,9 +54,6 @@ jobs:
           swift --version
           xcodebuild -version
 
-      - name: Generate workspace
-        run: bash ./scripts/gen.sh
-
       - name: Test ULS_CoreGame
         run: swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals
 
@@ -49,4 +64,4 @@ jobs:
         run: swift test --package-path Packages/ULS_Transport
 
       - name: Build MessagesExtension
-        run: xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build
+        run: make build DOC_FRESHNESS_BASE="$DOC_FRESHNESS_BASE"

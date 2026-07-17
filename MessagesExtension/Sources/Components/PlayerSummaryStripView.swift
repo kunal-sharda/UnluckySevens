@@ -98,7 +98,7 @@ private struct PlayerSummaryRow: View {
 
             if isSelected {
                 Text("Targeted")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
@@ -106,7 +106,7 @@ private struct PlayerSummaryRow: View {
                     .clipShape(Capsule())
             } else if summary.isCurrentPlayer {
                 Text("Current")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)

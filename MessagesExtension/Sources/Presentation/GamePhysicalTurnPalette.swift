@@ -1,6 +1,7 @@
 import SwiftUI
 
 enum GamePhysicalTurnPalette {
+    static let focusVeil = Color(red: 0.115, green: 0.122, blue: 0.128).opacity(0.84)
     static let primaryText = Color(red: 0.945, green: 0.929, blue: 0.890)
     static let secondaryText = primaryText.opacity(0.70)
     static let tertiaryText = primaryText.opacity(0.56)

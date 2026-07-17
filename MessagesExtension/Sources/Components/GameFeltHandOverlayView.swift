@@ -11,7 +11,7 @@ struct GameFeltHandOverlayView: View {
             VStack(alignment: .leading, spacing: 8) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Hand")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(GameTheme.surface)
 
                     HStack(spacing: 4) {
@@ -27,7 +27,7 @@ struct GameFeltHandOverlayView: View {
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text("Your Dev")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(GameTheme.surface)
 
                     GameOwnedDevCardStripView(cards: ownedDevCards)

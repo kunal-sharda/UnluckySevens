@@ -1,4 +1,5 @@
 enum GamePhysicalTurnHeaderPrompt: String, CaseIterable, Equatable {
+    case chooseDevOrRoll
     case choosePiece
     case placeRoad
     case tapAgainToPlace
@@ -20,6 +21,7 @@ enum GamePhysicalTurnHeaderPrompt: String, CaseIterable, Equatable {
 
     var text: String {
         switch self {
+        case .chooseDevOrRoll: return "Choose Dev or Roll"
         case .choosePiece: return "Choose a piece"
         case .placeRoad: return "Place a road"
         case .tapAgainToPlace: return "Tap again to place"

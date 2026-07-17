@@ -31,7 +31,7 @@ struct GameTabletopBankStackView: View {
 
                 if showsCount {
                     Text("\(chip.count)")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(chip.resource.tabletopCountInk)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)

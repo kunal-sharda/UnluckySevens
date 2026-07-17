@@ -55,6 +55,7 @@ enum UXTestFixtures {
     static let defaultFixtureID = turnAfterRoll.id
     static let defaultActorID = host
     static let setupPlacementID = "setup-placement"
+    static let turnNeedsRollID = "turn-needs-roll"
     static let tradeOfferID = "trade-offer"
 
     static func fixture(id: String) -> UXTestFixture {
@@ -132,7 +133,7 @@ enum UXTestFixtures {
     )
 
     private static let turnNeedsRoll = UXTestFixture(
-        id: "turn-needs-roll",
+        id: turnNeedsRollID,
         title: "Turn needs roll",
         detail: "Current player before rolling.",
         defaultActorID: host,

@@ -10,11 +10,16 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 ## [Unreleased]
 
 ### Changed
+- The updated Solo Sorta Harness is now reconciled locally: finished harness migrations moved to completed history, active checkpoint plans may explicitly own ignored workbench evidence while approval is pending, and unowned design residue remains a harness-audit failure.
+- ExecPlans now separate validation profiles from `explore`, `checkpointed`, and `direct` delivery postures; the compact template keeps current intent and proof while moving judgment-heavy slices into focused child plans with explicit approval gates.
+- ExecPlan completion now uses locked `lightweight`, `standard`, or `release-critical` validation profiles: selected-plan constraints and reviews remain hard, unfinished sibling plans are audit notices, and exhaustive practical validation is reserved for the release gate.
 - Pre-TestFlight cleanup replaced the Messages transport action draft DTO path with `TurnActionDraft`, which wraps core reducer intents with actor and state-anchor metadata before publishing canonical `STATE`.
 - Transcript bubble publication now treats `MSMessageTemplateLayout.image` as an optional readability layer while keeping caption, summary text, and URL payload as the reliable transport surface; join and name-update lobby bubbles remain text-only.
 - Bubble visuals now use concise per-action graphics instead of full board thumbnails, keeping the board inside the expanded game surface where it remains readable.
 - Local generation now produces a standalone Messages-only app bundle by keeping the app target resource-only and patching Tuist's generated product type to `com.apple.product-type.application.messages`.
 - Expanded gameplay now has a first tabletop visual pass: dark felt shell, compact command card, SpriteKit board with cream rim/deep-teal water and terrain details, and a physical lower tray for resource cards plus the dev deck.
+- SpriteKit board terrain now uses saved default-theme texture sprites from the asset catalog instead of procedural resource fills and detail marks, with true-upscaled/clipped enlarged resource stamps and a small runtime tile overfill so neighboring hexes read connected while live tokens, roads, structures, ports, and highlights stay rendered above the tile art.
+- Repo workflow docs now make `bash ./scripts/gen.sh` the canonical agent generation path, keep Xcode GUI out of agent validation, remove the redundant `gen-local.sh`/`gen.sh --open` generation paths, and add `scripts/check-doc-freshness.sh` plus Make-owned `doc-freshness`/`build`/`practical-gate` targets used by CI and local validation to classify doc-freshness tiers so active plans, design notes, and historical evidence do not become competing sources of truth.
 
 ### Removed
 - Removed `ULS_Transport.TurnIntentV1`, transport resource/dev-card action draft helpers, obsolete action-draft transport tests, and the unused summary-payload mirror length field.
@@ -26,6 +31,9 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 - DEBUG-only single-device UX Lab fixtures and overlay for visual audit, one-device dummy-player playthroughs, and simple non-human dummy autoplay across lobby, setup, turn, forced-flow, trade, and game-over states without sending Messages bubbles.
 - XCUITest design-slice harness that drives Messages to the Unlucky Sevens extension and stores invite-slice plus UX Lab screenshots as test attachments.
 - Clean setup gameplay screenshot harness path that loads the setup fixture and hides DEBUG UX Lab chrome before capture.
+- Numbered terrain and wood studies informed the integrated board assets, then were deleted as non-durable iteration history; current visual direction lives in `DESIGN.md` and production assets live under `MessagesExtension/Resources`.
+- Board tile asset catalog imagesets under `MessagesExtension/Resources/Assets.xcassets/BoardTiles/`, exported from pass 10 as one canonical PNG texture per resource for the default theme.
+- `scripts/check-doc-freshness.sh`, `make doc-freshness`, `make build`, and `make practical-gate` as lightweight automation guardrails for owner-doc updates before build/validation.
 - Simulator-first UI sprint workflow documented, with the browser mirror kept as an explicit backup lane and the design-slice harness hardened for Messages app drawer label differences.
 - First invite surface visual reset with a tabletop invitation direction: green felt/table background, ivory paper invite card, compact setup chips, RSVP-style name field, and `Send Invite` CTA.
 - Stage 0.A bootstrap scaffolding for `Tuist/`, `App/`, `MessagesExtension/`, `Packages/`, and `scripts/`.
@@ -149,7 +157,7 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 - Phase UI hardening added invariant coverage for resource-bank conservation, dev deck and card conservation, piece bounds, and deterministic replay for representative full-match seeds.
 - Phase UI hardening added two additional seeded randomized full-match regressions with dev-card pressure: a 3-player dev-race scenario and a 4-player mixed economy scenario (dev/trade/maritime), each with deterministic replay assertions.
 - Phase UI hardening added transport regression coverage for a large canonical `STATE` envelope budget and roundtrip decode.
-- Phase UI hardening added a minimal GitHub Actions `CI` workflow mirroring the practical gate on `pull_request` and `push` to `master` and `main`.
+- Phase UI hardening added a minimal GitHub Actions `CI` workflow for the then-current practical build/test subset on `pull_request` and `push` to `master` and `main`.
 - Phase UI hardening added shared `ULS_CoreGame` view and query helpers for legal default actions and viewer-scoped secrecy-safe projections, with `MessagesExtension` consuming those helpers.
 - Phase UI hardening added root `PLANS.md` to define the repo's ExecPlan format for active and completed work.
 - Phase UI hardening backfilled completed ExecPlans for phases 0 through 9 and the post-phase-9 UI hardening pass under `docs/exec-plans/completed/`.

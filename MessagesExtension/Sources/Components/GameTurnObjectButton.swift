@@ -40,7 +40,7 @@ struct GameTurnObjectButton: View {
 
                     if statusText == "Pending" {
                         Text("Pending")
-                            .font(.system(size: 7, weight: .bold, design: .rounded))
+                            .font(.system(size: 7, weight: .bold))
                             .foregroundStyle(GameTheme.ink)
                             .padding(.horizontal, 4)
                             .padding(.vertical, 2)

@@ -126,6 +126,9 @@ final class GameShellLayoutMetricsTests: XCTestCase {
         )
 
         XCTAssertEqual(GamePhysicalTurnLayout.topBarHeight, 40)
+        XCTAssertEqual(compact.hostProfile, .narrow)
+        XCTAssertEqual(tall.hostProfile, .narrow)
+        XCTAssertEqual(compact.contentScale, 1, accuracy: 0.001)
         XCTAssertEqual(compact.publicRailHeight, 52, accuracy: 0.001)
         XCTAssertEqual(compact.actionSpreadHeight, 72, accuracy: 0.001)
         XCTAssertEqual(compact.propRailHeight, 56, accuracy: 0.001)
@@ -148,6 +151,64 @@ final class GameShellLayoutMetricsTests: XCTestCase {
             GamePhysicalTurnLayout.portraitCardSize,
             CGSize(width: 38, height: 47)
         )
+    }
+
+    func testHostProfilesResolveFromContainerRatherThanDeviceIdentity() {
+        XCTAssertEqual(
+            MessagesHostLayoutProfile.resolve(
+                availableSize: CGSize(width: 320, height: 568)
+            ),
+            .narrow
+        )
+        XCTAssertEqual(
+            MessagesHostLayoutProfile.resolve(
+                availableSize: CGSize(width: 430, height: 932)
+            ),
+            .narrow
+        )
+        XCTAssertEqual(
+            MessagesHostLayoutProfile.resolve(
+                availableSize: CGSize(width: 540, height: 980)
+            ),
+            .narrow
+        )
+        XCTAssertEqual(
+            MessagesHostLayoutProfile.resolve(
+                availableSize: CGSize(width: 660, height: 980)
+            ),
+            .standard
+        )
+        XCTAssertEqual(
+            MessagesHostLayoutProfile.resolve(
+                availableSize: CGSize(width: 834, height: 500)
+            ),
+            .wideShort
+        )
+        XCTAssertEqual(
+            MessagesHostLayoutProfile.resolve(
+                availableSize: CGSize(width: 834, height: 1000)
+            ),
+            .wide
+        )
+    }
+
+    func testPhysicalPropsScaleObjectsWithoutScalingWholeShell() {
+        let narrow = GamePhysicalTurnLayout.resolve(
+            availableSize: CGSize(width: 540, height: 980)
+        )
+        let standard = GamePhysicalTurnLayout.resolve(
+            availableSize: CGSize(width: 660, height: 980)
+        )
+        let wide = GamePhysicalTurnLayout.resolve(
+            availableSize: CGSize(width: 834, height: 1000)
+        )
+
+        XCTAssertEqual(narrow.contentScale, 1, accuracy: 0.001)
+        XCTAssertEqual(standard.contentScale, 1.08, accuracy: 0.001)
+        XCTAssertEqual(wide.contentScale, 1.14, accuracy: 0.001)
+        XCTAssertGreaterThan(standard.publicRailHeight, narrow.publicRailHeight)
+        XCTAssertGreaterThan(wide.actionSpreadHeight, standard.actionSpreadHeight)
+        XCTAssertGreaterThan(wide.propRailHeight, standard.propRailHeight)
     }
 
     func testPhysicalPropsCorrectsMeasuredIslandToDisplayMidpoint() {

@@ -218,21 +218,19 @@ struct GamePhysicalTurnActionSpreadView: View {
                         Circle()
                             .stroke(resource.tabletopEdge.opacity(0.90), lineWidth: 0.8)
 
-                        Image(resource.tabletopMiniStampAssetName)
-                            .renderingMode(.original)
-                            .resizable()
-                            .interpolation(.high)
-                            .scaledToFit()
-                            .frame(width: 10, height: 10)
+                        GameTabletopResourceStampView(
+                            resource: resource,
+                            size: CGSize(width: 10, height: 10),
+                            usesMiniatureAsset: true
+                        )
                     }
                     .frame(width: 16, height: 16)
                     .accessibilityHidden(true)
 
                     Text("\(cost.count(for: resource))")
-                        .font(.caption)
-                        .bold()
+                        .font(.caption.weight(.heavy))
                         .monospacedDigit()
-                        .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
+                        .foregroundStyle(GamePhysicalTurnPalette.primaryText)
                 }
             }
         }

@@ -4,6 +4,8 @@ import UIKit
 import ULS_CoreGame
 
 final class GameBoardScene: SKScene {
+    static let backdropOverscan: CGFloat = 96
+
     private let contentRootNode = SKNode()
     private let baseContentNode = SKNode()
     private let overlayContentNode = SKNode()
@@ -204,9 +206,11 @@ final class GameBoardScene: SKScene {
         let root = SKNode()
 
         let outerRect = CGRect(origin: .zero, size: size)
+            .insetBy(dx: -Self.backdropOverscan, dy: -Self.backdropOverscan)
         let water = SKShapeNode(rect: outerRect, cornerRadius: 22)
+        water.name = "oceanBackdrop"
         water.fillColor = .white
-        water.fillTexture = makeOceanTexture(size: size, oceanStyle: oceanStyle)
+        water.fillTexture = makeOceanTexture(size: outerRect.size, oceanStyle: oceanStyle)
         water.strokeColor = .clear
         water.lineWidth = 0
         water.zPosition = 0
@@ -383,7 +387,7 @@ final class GameBoardScene: SKScene {
         node.addChild(token)
 
         let label = SKLabelNode(text: "\(number)")
-        label.fontName = "Georgia-Bold"
+        label.fontName = UIFont.systemFont(ofSize: 12, weight: .bold).fontName
         label.fontSize = max(radius * 0.34, 12)
         label.fontColor = (number == 6 || number == 8)
             ? SKColor(red: 0.65, green: 0.18, blue: 0.14, alpha: 0.92)

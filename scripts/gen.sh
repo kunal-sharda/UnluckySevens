@@ -1,23 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-OPEN_XCODE=0
-
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --open)
-      OPEN_XCODE=1
-      shift
-      ;;
     --help|-h)
       cat <<'EOF'
-Usage: bash ./scripts/gen.sh [--open]
+Usage: bash ./scripts/gen.sh
 
-Generates the Tuist workspace and project files.
-
-Options:
-  --open    Open Xcode after generation.
-  --help    Show this help text.
+Generates the Tuist workspace and project files without opening Xcode, then
+patches the generated project for standalone Messages packaging.
 EOF
       exit 0
       ;;
@@ -28,10 +19,5 @@ EOF
   esac
 done
 
-if (( OPEN_XCODE > 0 )); then
-  tuist generate
-else
-  tuist generate --no-open
-fi
-
+tuist generate --no-open
 bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/scripts/patch-standalone-imessage-project.sh"

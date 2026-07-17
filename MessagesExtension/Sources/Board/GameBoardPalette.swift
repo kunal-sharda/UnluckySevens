@@ -8,14 +8,15 @@ enum GameBoardOceanStyle: String, CaseIterable {
     case edgeVignette
 
     static let defaultsKey = "uls.debug.boardOceanStyle"
+    static let productionDefault: GameBoardOceanStyle = .edgeVignette
 
     static var current: GameBoardOceanStyle {
 #if DEBUG
         GameBoardOceanStyle(
             rawValue: UserDefaults.standard.string(forKey: defaultsKey) ?? ""
-        ) ?? .flat
+        ) ?? productionDefault
 #else
-        .flat
+        productionDefault
 #endif
     }
 

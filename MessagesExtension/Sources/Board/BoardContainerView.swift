@@ -53,7 +53,7 @@ struct BoardContainerView: View {
                     Spacer(minLength: 0)
 
                     Text(boardHintText)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(GameTheme.accent)
                         .multilineTextAlignment(.center)
                         .lineLimit(1)

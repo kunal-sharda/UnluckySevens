@@ -80,11 +80,11 @@ struct GamePhysicalPublicRackView: View {
 
             GameTabletopNameTileView(
                 title: "Dev Cards",
-                width: 66,
+                width: 74,
                 isSelected: false
             )
         }
-        .frame(minWidth: 66, minHeight: 44)
+        .frame(minWidth: 74, minHeight: 44)
         .contentShape(Rectangle())
     }
 

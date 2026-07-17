@@ -43,6 +43,7 @@ Completed phase outcomes:
 
 Remaining focused slices:
 
+- The reusable [Tabletop UI System](../../design/tabletop-ui-system.md) is approved and is the starting reference for later screen plans.
 - Refine the first invite into the board-game rules/setup-card direction already described in [UI flows](../../product-specs/ui-flows.md).
 - The approved Physical Props post-roll Turn Screen is productionized and verified through [Turn Screen visual direction](turn-screen-visual-direction.md).
 - Continue later Phase 14 polish through separate child plans when a slice is independently deliverable or judgment-heavy.
@@ -75,6 +76,7 @@ Phase-level visual approval is delegated to focused child plans. No unresolved v
 
 ### Progress
 
+- [x] Player-facing typography standardized on the OS-provided SF Pro family across SwiftUI, SpriteKit board tokens, transcript rendering, and DEBUG chrome; the durable contract lives in `DESIGN.md`.
 - [x] Lobby identity, transcript, packaging, UX Lab, board-art, and tabletop-foundation outcomes landed.
 - [x] Durable platform, QA, architecture, product, and design lessons promoted to owner docs.
 - [ ] Invite rules/setup-card direction approved and productionized.
@@ -82,6 +84,7 @@ Phase-level visual approval is delegated to focused child plans. No unresolved v
 
 ### Decisions
 
+- 2026-07-17: Unlucky Sevens uses SF Pro through system APIs as its sole interface type family. Hierarchy comes from semantic size and weight rather than mixing serif, rounded, monospaced, or custom families; `monospacedDigit()` remains permitted for stable numeric widths.
 - 2026-07-11: Historical build and screenshot receipts were removed from this active parent after durable lessons were confirmed in owner docs. Active plans retain current intent, unresolved work, locked decisions, and concise proof—not every iteration.
 - 2026-07-11: The previously implemented post-roll Turn Screen is an implementation baseline only. It does not count as visual approval and must not bias the checkpointed comparison budget.
 - 2026-07-11: Focused visual children use user approval by default; product/UX review is advisory on demand and otherwise runs once after productionization.

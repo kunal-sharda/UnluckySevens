@@ -36,6 +36,156 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Unlucky Sevens - clean setup gameplay")
     }
 
+    func testOpenMessagesExtensionAndCaptureStartOfTurnComparison() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        loadStartTurnGameplaySlice()
+
+        let startSurface = turnElement(
+            identifier: "uls.startTurn.surface",
+            labels: ["Start of turn"]
+        )
+        let devCards = turnElement(
+            identifier: "uls.startTurn.devCards",
+            labels: ["Dev Cards"]
+        )
+        let roll = turnElement(
+            identifier: "uls.startTurn.roll",
+            labels: ["Roll dice"]
+        )
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let boardHost = turnElement(
+            identifier: "uls.tabletop.boardHost",
+            labels: ["Live game board host"]
+        )
+
+        XCTAssertTrue(startSurface.waitForExistence(timeout: 8))
+        XCTAssertTrue(devCards.waitForExistence(timeout: 4))
+        XCTAssertTrue(roll.waitForExistence(timeout: 4))
+        XCTAssertTrue(board.waitForExistence(timeout: 4))
+        XCTAssertTrue(boardHost.waitForExistence(timeout: 4))
+        XCTAssertGreaterThanOrEqual(devCards.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(devCards.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(roll.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(roll.frame.height, 44)
+
+        let boardFrame = board.frame
+        let boardHostValue = String(describing: boardHost.value)
+        attachScreenshot(named: "Start of Turn - Dev or Roll")
+
+        devCards.tap()
+        let chooser = turnElement(
+            identifier: "uls.startTurn.devChooser",
+            labels: ["Playable pre-roll Dev Cards"]
+        )
+        XCTAssertTrue(chooser.waitForExistence(timeout: 4))
+        XCTAssertEqual(board.frame, boardFrame)
+        XCTAssertEqual(String(describing: boardHost.value), boardHostValue)
+        attachScreenshot(named: "Start of Turn - Dev Chooser")
+
+        devCards.tap()
+        XCTAssertTrue(waitForDisappearance(of: chooser, timeout: 4))
+        roll.doubleTap()
+        XCTAssertTrue(waitForDisappearance(of: startSurface, timeout: 8))
+        XCTAssertTrue(boardHost.exists)
+        XCTAssertEqual(String(describing: boardHost.value), boardHostValue)
+    }
+
+    func testSettleStartOfTurnChoiceForDirectStill() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        loadStartTurnGameplaySlice()
+        XCTAssertTrue(
+            turnElement(identifier: "uls.startTurn.surface", labels: ["Start of turn"])
+                .waitForExistence(timeout: 8)
+        )
+    }
+
+    func testSettleStartOfTurnDevChooserForDirectStill() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        loadStartTurnGameplaySlice()
+        let devCards = turnElement(
+            identifier: "uls.startTurn.devCards",
+            labels: ["Dev Cards"]
+        )
+        XCTAssertTrue(devCards.waitForExistence(timeout: 8))
+        devCards.tap()
+        XCTAssertTrue(
+            turnElement(
+                identifier: "uls.startTurn.devChooser",
+                labels: ["Playable pre-roll Dev Cards"]
+            )
+            .waitForExistence(timeout: 4)
+        )
+    }
+
+    func testExerciseStartOfTurnRollForDirectVideo() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        loadStartTurnGameplaySlice()
+        let roll = turnElement(
+            identifier: "uls.startTurn.roll",
+            labels: ["Roll dice"]
+        )
+        XCTAssertTrue(roll.waitForExistence(timeout: 8))
+        roll.tap()
+        Thread.sleep(forTimeInterval: 1.2)
+    }
+
+    func testSettleStartOfTurnDiceBowlForDirectStill() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        loadStartTurnGameplaySlice()
+        let roll = turnElement(
+            identifier: "uls.startTurn.roll",
+            labels: ["Roll dice"]
+        )
+        XCTAssertTrue(roll.waitForExistence(timeout: 8))
+        roll.tap()
+        Thread.sleep(forTimeInterval: 1.50)
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = "Start of Turn - 3D Dice Bowl"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    func testRecordStartOfTurnDiceRollForDirectVideo() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        loadStartTurnGameplaySlice()
+        let roll = turnElement(
+            identifier: "uls.startTurn.roll",
+            labels: ["Roll dice"]
+        )
+        XCTAssertTrue(roll.waitForExistence(timeout: 8))
+        XCTContext.runActivity(named: "External recording arm window") { _ in
+            Thread.sleep(forTimeInterval: 5)
+        }
+        roll.tap()
+        Thread.sleep(forTimeInterval: 3.4)
+    }
+
+    func testCaptureStartOfTurnDiceRollFrames() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        loadStartTurnGameplaySlice()
+        let roll = turnElement(
+            identifier: "uls.startTurn.roll",
+            labels: ["Roll dice"]
+        )
+        XCTAssertTrue(roll.waitForExistence(timeout: 8))
+
+        attachDiceRollFrame(index: 0)
+        roll.tap()
+        for index in 1...14 {
+            Thread.sleep(forTimeInterval: 0.12)
+            attachDiceRollFrame(index: index)
+        }
+        Thread.sleep(forTimeInterval: 0.45)
+        attachDiceRollFrame(index: 15)
+    }
+
     func testOpenMessagesExtensionAndCaptureTurnGameplaySlice() throws {
         openUnluckySevensExtension()
         waitForUXLabChrome()
@@ -524,19 +674,13 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
     func testOpenMessagesExtensionAndCapturePendingActivePlayerTradeSlice() throws {
         openUnluckySevensExtension()
-        let pendingFixture = firstExistingElement(
-            [
-                messages.buttons["uls.uxLab.cleanShot.pendingTrade"].firstMatch,
-                messages.buttons["Clean pending trade screenshot"].firstMatch,
-            ],
-            timeout: 8
+        activateUXLabQuickState(
+            title: "Pending",
+            identifier: "uls.uxLab.cleanShot.pendingTrade"
         )
-        XCTAssertTrue(pendingFixture.exists)
-        pendingFixture.tap()
 
         let tradeButton = turnElement(identifier: "uls.turnObject.trade", labels: ["Trade"])
         XCTAssertTrue(tradeButton.waitForExistence(timeout: 8))
-        XCTAssertTrue(messages.staticTexts["Pending"].firstMatch.exists)
         XCTAssertEqual(
             tradeButton.value as? String,
             "Pending offer",
@@ -570,15 +714,10 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
     func testSettleTurnPendingTradeForDirectStill() throws {
         openUnluckySevensExtension()
-        let pendingFixture = firstExistingElement(
-            [
-                messages.buttons["uls.uxLab.cleanShot.pendingTrade"].firstMatch,
-                messages.buttons["Clean pending trade screenshot"].firstMatch,
-            ],
-            timeout: 8
+        activateUXLabQuickState(
+            title: "Pending",
+            identifier: "uls.uxLab.cleanShot.pendingTrade"
         )
-        XCTAssertTrue(pendingFixture.exists)
-        pendingFixture.tap()
 
         let tradeButton = turnElement(identifier: "uls.turnObject.trade", labels: ["Trade"])
         XCTAssertTrue(tradeButton.waitForExistence(timeout: 8))
@@ -1212,40 +1351,52 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
     }
 
     private func loadCleanSetupGameplaySlice() {
-        let button = firstExistingElement(
-            [
-                messages.buttons["uls.uxLab.cleanShot.setupPlacement"].firstMatch,
-                messages.buttons["Clean setup screenshot"].firstMatch,
-                messages.buttons["Clean Setup"].firstMatch,
-            ],
-            timeout: 4
+        activateUXLabQuickState(
+            title: "Setup",
+            identifier: "uls.uxLab.cleanShot.setupPlacement"
         )
+    }
 
-        if button.exists {
-            button.tap()
-        } else {
-            // Messages sometimes flattens the SwiftUI header button accessibility tree.
-            messages.coordinate(withNormalizedOffset: CGVector(dx: 0.90, dy: 0.19)).tap()
-        }
+    private func loadStartTurnGameplaySlice() {
+        activateUXLabQuickState(
+            title: "Start",
+            identifier: "uls.uxLab.cleanShot.turnNeedsRoll"
+        )
     }
 
     private func loadTurnGameplaySlice() {
-        let cleanTurnButton = firstExistingElement(
+        activateUXLabQuickState(
+            title: "Turn",
+            identifier: "uls.uxLab.cleanShot.turnAfterRoll"
+        )
+    }
+
+    private func activateUXLabQuickState(title: String, identifier: String) {
+        let directButton = messages.buttons[identifier].firstMatch
+        if directButton.waitForExistence(timeout: 1) {
+            directButton.tap()
+            return
+        }
+
+        let menu = firstExistingElement(
             [
-                messages.buttons["uls.uxLab.cleanShot.header.turnAfterRoll"].firstMatch,
-                messages.buttons["uls.uxLab.cleanShot.turnAfterRollVisible"].firstMatch,
-                messages.buttons["Turn"].firstMatch,
-                messages.buttons["uls.uxLab.cleanShot.turnAfterRoll"].firstMatch,
-                messages.otherElements["uls.uxLab.cleanShot.turnAfterRoll"].firstMatch,
-                messages.buttons["Clean turn screenshot"].firstMatch,
-                messages.buttons["Clean Turn"].firstMatch,
-                messages.staticTexts["Clean Turn"].firstMatch,
+                messages.buttons["uls.uxLab.quickStates"].firstMatch,
+                messages.buttons["States"].firstMatch,
             ],
             timeout: 4
         )
+        XCTAssertTrue(menu.exists, "Expected the UX Lab state menu to be visible.")
+        menu.tap()
 
-        XCTAssertTrue(cleanTurnButton.exists, "Expected the UX Lab Clean Turn button to be visible.")
-        cleanTurnButton.tap()
+        let menuItem = firstExistingElement(
+            [
+                messages.buttons[identifier].firstMatch,
+                messages.buttons[title].firstMatch,
+            ],
+            timeout: 4
+        )
+        XCTAssertTrue(menuItem.exists, "Expected the UX Lab \(title) state to be available.")
+        menuItem.tap()
     }
 
     private func openSettledTurnGameplaySlice() {
@@ -1454,6 +1605,13 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         .exists
     }
 
+    private func attachDiceRollFrame(index: Int) {
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = String(format: "Dice Roll Frame %02d", index)
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     private func firstExistingElement(_ candidates: [XCUIElement], timeout: TimeInterval) -> XCUIElement {
         let deadline = Date().addingTimeInterval(timeout)
 
@@ -1481,6 +1639,20 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.1))
         } while Date() < deadline
         return false
+    }
+
+    private func waitForDisappearance(
+        of element: XCUIElement,
+        timeout: TimeInterval
+    ) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if !element.exists {
+                return true
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        } while Date() < deadline
+        return !element.exists
     }
 
     private func waitForHittable(

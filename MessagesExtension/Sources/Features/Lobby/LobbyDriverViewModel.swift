@@ -685,6 +685,19 @@ final class LobbyDriverViewModel: ObservableObject {
         return actor == state.currentPlayer
     }
 
+    var isNormalPreRollActiveTurn: Bool {
+        guard
+            let state = selectedState,
+            state.phase == .turn,
+            state.turnState?.step == .needsRoll,
+            let actor = localActorIdentifier()
+        else {
+            return false
+        }
+
+        return actor == state.currentPlayer
+    }
+
     var canJoin: Bool {
         LobbyMembershipResolver.canJoin(
             state: selectedState,
@@ -1189,6 +1202,51 @@ final class LobbyDriverViewModel: ObservableObject {
         } catch {
             setLastError("Turn action failed: \(error.localizedDescription)")
             return false
+        }
+    }
+
+    func publishDiceRoll() -> GameDiceRollResult? {
+        guard let draft = immediateTurnIntent(for: .roll) else {
+            return nil
+        }
+
+        do {
+            let resultingState = try applyAndPublishTurnIntent(
+                draft,
+                successStatus: successStatus(for: draft.intent)
+            )
+            guard let roll = resultingState.turnState?.lastRoll else {
+                return nil
+            }
+            return GameDiceRollResult(first: roll.d1, second: roll.d2)
+        } catch {
+            setLastError("Turn action failed: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    func previewDiceRoll() -> GameDiceRollResult? {
+        guard let draft = immediateTurnIntent(for: .roll) else {
+            return nil
+        }
+
+        do {
+            let resolution = actionAuthoringStateResolution(for: draft.anchorGameId)
+            guard let fromState = resolution.state ?? selectedState, draft.matches(fromState) else {
+                return nil
+            }
+            let resultingState = try ULS_CoreGame.apply(
+                intent: draft.intent,
+                to: fromState,
+                actor: draft.actor
+            )
+            guard let roll = resultingState.turnState?.lastRoll else {
+                return nil
+            }
+            return GameDiceRollResult(first: roll.d1, second: roll.d2)
+        } catch {
+            setLastError("Turn action failed: \(error.localizedDescription)")
+            return nil
         }
     }
 
@@ -2324,10 +2382,11 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
+    @discardableResult
     private func applyAndPublishTurnIntent(
         _ draft: TurnActionDraft,
         successStatus: String
-    ) throws {
+    ) throws -> CoreGameStateV1 {
         let resolution = actionAuthoringStateResolution(for: draft.anchorGameId)
         activateAuthoringStateIfNeeded(resolution)
 
@@ -2358,6 +2417,7 @@ final class LobbyDriverViewModel: ObservableObject {
         setActiveContext(toState, source: .lastSentState)
         selectionStatus = "\(successStatus) rev\(toState.rev)"
         setLastError(nil)
+        return toState
     }
 
     private func publishTradeResponse(_ draft: TurnActionDraft) throws {

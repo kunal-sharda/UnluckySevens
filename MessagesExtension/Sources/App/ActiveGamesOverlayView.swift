@@ -91,7 +91,7 @@ struct ActiveGamesOverlayView: View {
                 .foregroundStyle(GameTheme.mutedInk)
 
             Text(game.detail)
-                .font(.system(.caption2, design: .monospaced))
+                .font(.caption2)
                 .foregroundStyle(GameTheme.mutedInk)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

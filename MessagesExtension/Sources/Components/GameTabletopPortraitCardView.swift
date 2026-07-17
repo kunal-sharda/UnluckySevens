@@ -80,11 +80,11 @@ struct GameTabletopPortraitCardView: View {
     private var cardMark: some View {
         switch face {
         case let .resource(resource):
-            Image(resource.tabletopStampAssetName)
-                .renderingMode(.original)
-                .resizable()
-                .scaledToFit()
-                .frame(width: size.width * 0.45, height: size.height * 0.42)
+            GameTabletopResourceStampView(
+                resource: resource,
+                size: CGSize(width: size.width * 0.45, height: size.height * 0.42),
+                usesMiniatureAsset: false
+            )
         case .developmentBack:
             Image("factory")
                 .renderingMode(.original)

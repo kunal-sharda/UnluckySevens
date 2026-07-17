@@ -5,6 +5,10 @@ import XCTest
 @testable import MessagesExtension
 
 final class GameBoardSceneTests: XCTestCase {
+    func testApprovedHaloIsProductionOceanDefault() {
+        XCTAssertEqual(GameBoardOceanStyle.productionDefault, .edgeVignette)
+    }
+
     func testSharedSettlementAndCityGeometryRemainDistinct() {
         let settlement = GamePieceGeometry.structurePath(kind: .settlement, radius: 20)
         let city = GamePieceGeometry.structurePath(kind: .city, radius: 20)
@@ -60,6 +64,11 @@ final class GameBoardSceneTests: XCTestCase {
 
         XCTAssertEqual(backdrop.children.count, 1)
         XCTAssertNotNil(water.fillTexture)
+        XCTAssertEqual(water.name, "oceanBackdrop")
+        XCTAssertLessThanOrEqual(water.frame.minX, -GameBoardScene.backdropOverscan)
+        XCTAssertLessThanOrEqual(water.frame.minY, -GameBoardScene.backdropOverscan)
+        XCTAssertGreaterThanOrEqual(water.frame.maxX, 320 + GameBoardScene.backdropOverscan)
+        XCTAssertGreaterThanOrEqual(water.frame.maxY, 240 + GameBoardScene.backdropOverscan)
     }
 
     func testPortsUsePhysicalShipAndResourceMarkersInsteadOfRateLabels() {

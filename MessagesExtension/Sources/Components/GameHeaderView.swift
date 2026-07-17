@@ -6,7 +6,7 @@ struct GameHeaderView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(model.statusLine.title)
-                .font(.system(size: 22, weight: .bold, design: .serif))
+                .font(.system(size: 22, weight: .bold))
                 .foregroundStyle(GameTheme.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.9)
@@ -87,7 +87,7 @@ struct GameCommandBarView: View {
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(title)
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(GameTheme.ink)
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)

@@ -85,7 +85,7 @@ struct LobbyShellView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(model.title)
-                    .font(.system(.title, design: .serif).bold())
+                    .font(GameTheme.displayFont)
                     .foregroundStyle(InvitePalette.ink)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("uls.lobby.inviteTitle")
@@ -153,7 +153,7 @@ struct LobbyShellView: View {
             showsRulesHelp = true
         } label: {
             Image(systemName: "questionmark")
-                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(InvitePalette.ink)
                 .frame(width: 32, height: 32)
                 .background(
@@ -192,7 +192,7 @@ struct LobbyShellView: View {
                 .lineLimit(1)
 
             Text(detail)
-                .font(.system(.caption2, design: .rounded))
+                .font(.caption2)
                 .foregroundStyle(InvitePalette.mutedInk)
                 .lineLimit(1)
         }
@@ -230,7 +230,7 @@ struct LobbyShellView: View {
                 .accessibilityIdentifier("uls.lobby.nameField")
 
             Text(model.helperText)
-                .font(.system(.caption, design: .rounded))
+                .font(.caption)
                 .foregroundStyle(InvitePalette.mutedInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -619,7 +619,7 @@ private struct LobbyRulesHelpSheet: View {
     private func rulesRow(systemImage: String, title: String, detail: String) -> some View {
         HStack(alignment: .top, spacing: GameTheme.inlineSpacing) {
             Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(GameTheme.accent)
                 .frame(width: 28)
 

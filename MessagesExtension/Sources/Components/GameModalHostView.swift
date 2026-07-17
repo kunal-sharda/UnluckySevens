@@ -355,7 +355,7 @@ struct GameModalHostView: View {
                 Spacer(minLength: 0)
 
                 Text("\(card.count)")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
@@ -369,7 +369,7 @@ struct GameModalHostView: View {
                 .lineLimit(2)
 
             Text(card.statusText)
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(card.isEnabled ? GameTheme.accent : GameTheme.mutedInk)
                 .lineLimit(2)
 

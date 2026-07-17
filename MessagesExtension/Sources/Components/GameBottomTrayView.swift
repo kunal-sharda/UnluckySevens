@@ -35,7 +35,7 @@ struct GameBottomTrayView: View {
                     HStack(alignment: .top, spacing: 8) {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Hand")
-                                .font(.system(size: 17, weight: .bold, design: .rounded))
+                                .font(.system(size: 17, weight: .bold))
                                 .foregroundStyle(GameTheme.ink)
 
                             HStack(spacing: 4) {
@@ -52,7 +52,7 @@ struct GameBottomTrayView: View {
 
                         VStack(alignment: .center, spacing: 6) {
                             Text("Dev")
-                                .font(.system(size: 17, weight: .bold, design: .rounded))
+                                .font(.system(size: 17, weight: .bold))
                                 .foregroundStyle(GameTheme.ink)
 
                             TabletopDevDeckView()
@@ -108,7 +108,7 @@ struct TabletopResourceCardView: View {
                 .accessibilityHidden(true)
 
             Text("\(chip.count)")
-                .font(.system(size: 19, weight: .bold, design: .rounded))
+                .font(.system(size: 19, weight: .bold))
                 .foregroundStyle(chip.resource.tabletopCountInk)
                 .lineLimit(1)
                 .minimumScaleFactor(0.82)

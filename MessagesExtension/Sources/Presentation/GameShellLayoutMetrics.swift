@@ -1,5 +1,51 @@
 import CoreGraphics
 
+enum MessagesHostLayoutProfile: Equatable {
+    case narrow
+    case standard
+    case wideShort
+    case wide
+
+    static func resolve(availableSize: CGSize) -> Self {
+        if availableSize.width < 560 {
+            return .narrow
+        }
+        if availableSize.width < 700 {
+            return .standard
+        }
+        if availableSize.height < 700 {
+            return .wideShort
+        }
+        return .wide
+    }
+
+    var physicalContentScale: CGFloat {
+        switch self {
+        case .narrow:
+            1
+        case .standard:
+            1.08
+        case .wideShort:
+            1.03
+        case .wide:
+            1.14
+        }
+    }
+
+    var physicalZoneScale: CGFloat {
+        switch self {
+        case .narrow:
+            1
+        case .standard:
+            1.06
+        case .wideShort:
+            1
+        case .wide:
+            1.12
+        }
+    }
+}
+
 struct GamePhysicalTurnLayout: Equatable {
     static let topBarHeight: CGFloat = 40
     static let portraitCardSize = CGSize(width: 38, height: 47)
@@ -25,13 +71,18 @@ struct GamePhysicalTurnLayout: Equatable {
     let boardFrameVerticalInset: CGFloat
     let boardFrameVerticalOffset: CGFloat
     let bottomRailPadding: CGFloat
+    let topBarHeight: CGFloat
+    let contentScale: CGFloat
+    let hostProfile: MessagesHostLayoutProfile
 
     static func resolve(availableSize: CGSize) -> Self {
         let height = max(availableSize.height, 0)
+        let profile = MessagesHostLayoutProfile.resolve(availableSize: availableSize)
+        let zoneScale = profile.physicalZoneScale
         return Self(
-            publicRailHeight: bounded(height * 0.066, minimum: 52, maximum: 56),
-            actionSpreadHeight: bounded(height * 0.092, minimum: 72, maximum: 76),
-            propRailHeight: bounded(height * 0.070, minimum: 56, maximum: 62),
+            publicRailHeight: bounded(height * 0.066, minimum: 52, maximum: 56) * zoneScale,
+            actionSpreadHeight: bounded(height * 0.092, minimum: 72, maximum: 76) * zoneScale,
+            propRailHeight: bounded(height * 0.070, minimum: 56, maximum: 62) * zoneScale,
             interZoneSpacing: bounded(height * 0.017, minimum: 12, maximum: 14),
             boardHorizontalOverflow: bounded(availableSize.width * 0.025, minimum: 8, maximum: 12),
             boardFrameHorizontalMaskInset: bounded(
@@ -41,7 +92,10 @@ struct GamePhysicalTurnLayout: Equatable {
             ),
             boardFrameVerticalInset: 4,
             boardFrameVerticalOffset: 4,
-            bottomRailPadding: 0
+            bottomRailPadding: 0,
+            topBarHeight: Self.topBarHeight * zoneScale,
+            contentScale: profile.physicalContentScale,
+            hostProfile: profile
         )
     }
 

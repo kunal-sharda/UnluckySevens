@@ -1,6 +1,9 @@
 **/*.xcodeproj
 **/*.xcworkspace
 DerivedData/
+docs/design/workbench/
+__pycache__/
+*.pyc
 Derived/
 .DS_Store
 .tuist/
