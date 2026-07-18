@@ -18,3 +18,19 @@ enum GameTabletopLayoutStyle: String, CaseIterable {
         self == .physicalProps
     }
 }
+
+enum GameTabletopLayoutStyleResolver {
+    static func resolve(
+        isNormalPostRollTurn: Bool,
+        hasNotPrimaryPlayerContext: Bool,
+        testingStyle: GameTabletopLayoutStyle? = nil
+    ) -> GameTabletopLayoutStyle {
+        if let testingStyle, testingStyle != .framedShelf {
+            return testingStyle
+        }
+
+        return isNormalPostRollTurn || hasNotPrimaryPlayerContext
+            ? .physicalProps
+            : .framedShelf
+    }
+}

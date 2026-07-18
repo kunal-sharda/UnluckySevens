@@ -2,6 +2,37 @@ import XCTest
 @testable import MessagesExtension
 
 final class GamePhysicalTurnHeaderPromptResolverTests: XCTestCase {
+    func testEveryPhysicalInstructionHeaderUsesTheApprovedTitleCaseCopy() {
+        let expected: [(GamePhysicalTurnHeaderPrompt, String)] = [
+            (.chooseDevOrRoll, "Choose Dev or Roll"),
+            (.choosePiece, "Choose a Piece"),
+            (.placeRoad, "Place a Road"),
+            (.tapAgainToPlace, "Tap Again to Place"),
+            (.placeSettlement, "Place a Settlement"),
+            (.upgradeCity, "Upgrade to a City"),
+            (.tapAgainToUpgrade, "Tap Again to Upgrade"),
+            (.chooseTrade, "Choose a Trade"),
+            (.makeOffer, "Make an Offer"),
+            (.tradeWithBank, "Trade with the Bank"),
+            (.waitingForPlayers, "Waiting for Players"),
+            (.answerTradeOffer, "Answer the Trade Offer"),
+            (.waitingForDiscard, "Waiting for Discard"),
+            (.chooseDevCard, "Choose a Dev Card"),
+            (.moveRobber, "Move the Robber"),
+            (.choosePlayer, "Choose a Player"),
+            (.chooseResource, "Choose a Resource"),
+            (.chooseTwoResources, "Choose Two Resources"),
+            (.chooseOneMore, "Choose One More"),
+            (.placeFirstRoad, "Place First Road"),
+            (.placeSecondRoad, "Place Second Road"),
+        ]
+
+        XCTAssertEqual(expected.count, GamePhysicalTurnHeaderPrompt.allCases.count)
+        for (prompt, copy) in expected {
+            XCTAssertEqual(prompt.text, copy, "Unexpected copy for \(prompt.rawValue)")
+        }
+    }
+
     func testPassiveRoutesKeepDice() {
         XCTAssertNil(prompt(route: .none))
         XCTAssertNil(prompt(route: .utility(.bank)))

@@ -53,6 +53,7 @@ struct GamePhysicalTurnLayout: Equatable {
     static let centeredHandOffset: CGFloat = 8
     static let propStageHeight: CGFloat = 36
     static let propVisualHeight: CGFloat = 32
+    static let propSlotWidth: CGFloat = 79
     static let propLabelGap: CGFloat = 3
     static let publicObjectGap: CGFloat = 28
     static let publicLabelGap: CGFloat = 8

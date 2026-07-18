@@ -12,9 +12,11 @@ final class UXTestingFixturesTests: XCTestCase {
         XCTAssertTrue(fixtureIDs.contains("turn-needs-roll"))
         XCTAssertTrue(fixtureIDs.contains("turn-after-roll"))
         XCTAssertTrue(fixtureIDs.contains("waiting-on-alice"))
+        XCTAssertTrue(fixtureIDs.contains("waiting-on-discard"))
         XCTAssertTrue(fixtureIDs.contains("pending-discard"))
         XCTAssertTrue(fixtureIDs.contains("robber-move"))
         XCTAssertTrue(fixtureIDs.contains("trade-offer"))
+        XCTAssertTrue(fixtureIDs.contains("multi-type-trade-offer"))
         XCTAssertTrue(fixtureIDs.contains("game-over"))
 
         for fixture in UXTestFixtures.all {
@@ -22,6 +24,41 @@ final class UXTestingFixturesTests: XCTestCase {
             XCTAssertTrue(fixture.actorIDs.contains(fixture.defaultActorID))
             XCTAssertEqual(fixture.state, fixture.state.rehashed())
         }
+    }
+
+    func testMultiTypeTradeOfferFixtureExercisesBothOfferLanes() {
+        let fixture = UXTestFixtures.fixture(id: UXTestFixtures.multiTypeTradeOfferID)
+        let offer = fixture.state.activeTradeOffer
+
+        XCTAssertEqual(offer?.give, ResourceHandV1(wood: 1, sheep: 2, wheat: 1))
+        XCTAssertEqual(offer?.receive, ResourceHandV1(brick: 2, ore: 1))
+        XCTAssertEqual(
+            Set(offer?.recipients ?? []),
+            Set([UXTestFixtures.host, UXTestFixtures.ben])
+        )
+    }
+
+    func testWaitingOnDiscardFixtureKeepsLocalPlayerPassive() {
+        let fixture = UXTestFixtures.fixture(id: UXTestFixtures.waitingOnDiscardID)
+        let panel = GameDiscardPanelModelBuilder.build(
+            state: fixture.state,
+            actingAs: UXTestFixtures.host
+        )
+
+        XCTAssertEqual(panel?.waitingPlayers, ["Theo"])
+        XCTAssertNil(panel?.action)
+        let context = GamePhysicalNotPrimaryPlayerContext.resolve(
+            state: fixture.state,
+            actingAs: UXTestFixtures.host,
+            tradePanel: nil,
+            discardPanel: panel
+        )
+        XCTAssertEqual(context, .waitingForDiscard)
+        XCTAssertNil(context?.headerPrompt)
+        XCTAssertEqual(
+            context?.headerTitle(fallback: "Waiting", discardPanel: panel),
+            "Waiting for Theo to discard"
+        )
     }
 
     func testLobbyInviteFixtureCanBeDrivenByDummyJoiners() {

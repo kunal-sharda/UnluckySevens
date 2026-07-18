@@ -46,9 +46,11 @@ enum UXTestFixtures {
         turnNeedsRoll,
         turnAfterRoll,
         waitingOnAlice,
+        waitingOnDiscard,
         pendingDiscard,
         robberMove,
         tradeOffer,
+        multiTypeTradeOffer,
         gameOver,
     ]
 
@@ -57,6 +59,9 @@ enum UXTestFixtures {
     static let setupPlacementID = "setup-placement"
     static let turnNeedsRollID = "turn-needs-roll"
     static let tradeOfferID = "trade-offer"
+    static let multiTypeTradeOfferID = "multi-type-trade-offer"
+    static let waitingOnAliceID = "waiting-on-alice"
+    static let waitingOnDiscardID = "waiting-on-discard"
 
     static func fixture(id: String) -> UXTestFixture {
         all.first { $0.id == id } ?? turnAfterRoll
@@ -167,7 +172,7 @@ enum UXTestFixtures {
     )
 
     private static let waitingOnAlice = UXTestFixture(
-        id: "waiting-on-alice",
+        id: waitingOnAliceID,
         title: "Waiting on another player",
         detail: "Read-only local view while another player owns the turn.",
         defaultActorID: host,
@@ -175,6 +180,27 @@ enum UXTestFixtures {
             rev: 10,
             currentPlayer: alice,
             turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
+        )
+    )
+
+    private static let waitingOnDiscard = UXTestFixture(
+        id: waitingOnDiscardID,
+        title: "Waiting on discard",
+        detail: "Seven was rolled; Theo is the next ordered discarder while the local player waits.",
+        defaultActorID: host,
+        state: makeTurnFixture(
+            rev: 11,
+            currentPlayer: alice,
+            resourcesByPlayer: [
+                host: ResourceHandV1(wood: 2, brick: 1, sheep: 1, wheat: 1, ore: 1),
+                alice: ResourceHandV1(wood: 2, brick: 1, sheep: 1, wheat: 1, ore: 1),
+                ben: ResourceHandV1(wood: 3, brick: 2, sheep: 2, wheat: 1, ore: 1),
+            ],
+            turnState: TurnStateV1(
+                step: .pendingDiscards,
+                lastRoll: DiceRollV1(d1: 4, d2: 3),
+                discardRequirementsByPlayer: [ben: 4]
+            )
         )
     )
 
@@ -245,6 +271,32 @@ enum UXTestFixtures {
                 turnState: TurnStateV1(
                     step: .afterRoll,
                     lastRoll: DiceRollV1(d1: 2, d2: 4)
+                )
+            )
+        }()
+    )
+
+    private static let multiTypeTradeOffer = UXTestFixture(
+        id: multiTypeTradeOfferID,
+        title: "Multi-type trade offer received",
+        detail: "Local player can review an offer containing several resource types on both sides.",
+        defaultActorID: host,
+        state: {
+            let offer = TradeOfferV1(
+                offerHash: "ux-trade-offer-multi-1",
+                proposer: alice,
+                give: ResourceHandV1(wood: 1, sheep: 2, wheat: 1),
+                receive: ResourceHandV1(brick: 2, ore: 1),
+                recipients: [host, ben],
+                createdRev: 15
+            )
+            return makeTurnFixture(
+                rev: 15,
+                currentPlayer: alice,
+                activeTradeOffer: offer,
+                turnState: TurnStateV1(
+                    step: .afterRoll,
+                    lastRoll: DiceRollV1(d1: 3, d2: 3)
                 )
             )
         }()

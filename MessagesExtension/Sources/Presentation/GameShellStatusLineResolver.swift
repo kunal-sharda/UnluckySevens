@@ -31,6 +31,6 @@ enum GameShellStatusLineResolver {
             return GameShellStatusLine(title: "Your turn", subtitle: subtitle)
         }
 
-        return GameShellStatusLine(title: "Waiting on \(currentPlayerDisplay)", subtitle: subtitle)
+        return GameShellStatusLine(title: "\(currentPlayerDisplay)'s Turn", subtitle: subtitle)
     }
 }

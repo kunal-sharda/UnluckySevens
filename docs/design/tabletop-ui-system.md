@@ -77,7 +77,7 @@ The document owns **why and when** a role is used. The listed code owns exact nu
 
 - Use San Francisco system text styles. Gameplay status, labels, costs, and controls do not introduce a custom font.
 - Primary tabletop copy uses warm cream; supporting copy uses the same hue at reduced opacity.
-- Keep prompts to one concise action clause: generally a verb plus object, such as `Place a road` or `Choose a resource`.
+- Keep prompts to one concise action clause: generally a verb plus object, such as `Place a Road` or `Choose a Resource`.
 - Use full player-facing names where ambiguity matters. Long compact Dev names may use two intentional lines (`Year of / Plenty`, `Road / Builder`, `Victory / Point`).
 - Visible text must not be authored below the system `caption2` style. Accessibility labels may be fuller than visible labels.
 - SF Symbols are used for familiar system controls and player-group status. Authored vectors are reserved for game objects whose silhouette carries tabletop meaning.
@@ -155,11 +155,13 @@ The compact top status has two modes:
 - **Passive:** dice result, waiting status, current actor, or other stable table state.
 - **Active:** one short presentation-derived instruction with a thin amber underline.
 
+Active instruction headers use conventional English Title Case. Keep short articles, coordinating conjunctions, and prepositions lowercase unless they begin or end the header—for example, `Answer the Trade Offer` and `Trade with the Bank`. Passive status copy remains natural sentence case because it reports table state rather than issuing an instruction.
+
 The existing prompt vocabulary is the starting set:
 
-- Build: choose piece, place road/settlement, upgrade city, tap again to place/upgrade.
-- Trade: choose trade, make offer, trade with Bank, waiting for players.
-- Dev/robber: choose Dev Card, move robber, choose player/resource(s), place first/second road.
+- Build: `Choose a Piece`, `Place a Road`/`Place a Settlement`, `Upgrade to a City`, `Tap Again to Place`/`Tap Again to Upgrade`.
+- Trade: `Choose a Trade`, `Make an Offer`, `Trade with the Bank`, `Waiting for Players`.
+- Dev/robber: `Choose a Dev Card`, `Move the Robber`, `Choose a Player`/`Choose a Resource`, `Place First Road`/`Place Second Road`.
 
 New prompts must describe the immediate action, fit on one line at supported Dynamic Type sizes where practical, and derive from presentation state rather than SwiftUI legality checks.
 

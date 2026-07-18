@@ -325,7 +325,7 @@ final class GameScreenModelBuilderTests: XCTestCase {
         )
         XCTAssertEqual(
             waitingModel.header.statusLine.title,
-            "Waiting on \(PlayerPseudonymResolver.displayName(for: "A", gameID: "game-screen-builder", roster: ["A", "B"]))"
+            "\(PlayerPseudonymResolver.displayName(for: "A", gameID: "game-screen-builder", roster: ["A", "B"]))'s Turn"
         )
         XCTAssertEqual(waitingModel.header.statusLine.subtitle, "Roll: 3 + 4 = 7")
 
@@ -345,7 +345,7 @@ final class GameScreenModelBuilderTests: XCTestCase {
         )
         XCTAssertEqual(
             pendingRollModel.header.statusLine.title,
-            "Waiting on \(PlayerPseudonymResolver.displayName(for: "A", gameID: "game-screen-builder", roster: ["A", "B"]))"
+            "\(PlayerPseudonymResolver.displayName(for: "A", gameID: "game-screen-builder", roster: ["A", "B"]))'s Turn"
         )
         XCTAssertEqual(pendingRollModel.header.statusLine.subtitle, "Roll pending")
 
@@ -369,7 +369,7 @@ final class GameScreenModelBuilderTests: XCTestCase {
         )
         XCTAssertEqual(
             discardModel.header.statusLine.title,
-            "Waiting on \(PlayerPseudonymResolver.displayName(for: "B", gameID: "game-screen-builder", roster: ["A", "B"]))"
+            "\(PlayerPseudonymResolver.displayName(for: "B", gameID: "game-screen-builder", roster: ["A", "B"]))'s Turn"
         )
         XCTAssertEqual(discardModel.header.statusLine.subtitle, "Roll: 4 + 3 = 7")
 

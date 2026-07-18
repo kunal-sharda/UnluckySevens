@@ -10,6 +10,8 @@ enum GamePhysicalTurnHeaderPrompt: String, CaseIterable, Equatable {
     case makeOffer
     case tradeWithBank
     case waitingForPlayers
+    case answerTradeOffer
+    case waitingForDiscard
     case chooseDevCard
     case moveRobber
     case choosePlayer
@@ -22,24 +24,26 @@ enum GamePhysicalTurnHeaderPrompt: String, CaseIterable, Equatable {
     var text: String {
         switch self {
         case .chooseDevOrRoll: return "Choose Dev or Roll"
-        case .choosePiece: return "Choose a piece"
-        case .placeRoad: return "Place a road"
-        case .tapAgainToPlace: return "Tap again to place"
-        case .placeSettlement: return "Place a settlement"
-        case .upgradeCity: return "Upgrade to a city"
-        case .tapAgainToUpgrade: return "Tap again to upgrade"
-        case .chooseTrade: return "Choose a trade"
-        case .makeOffer: return "Make an offer"
-        case .tradeWithBank: return "Trade with the bank"
-        case .waitingForPlayers: return "Waiting for players"
+        case .choosePiece: return "Choose a Piece"
+        case .placeRoad: return "Place a Road"
+        case .tapAgainToPlace: return "Tap Again to Place"
+        case .placeSettlement: return "Place a Settlement"
+        case .upgradeCity: return "Upgrade to a City"
+        case .tapAgainToUpgrade: return "Tap Again to Upgrade"
+        case .chooseTrade: return "Choose a Trade"
+        case .makeOffer: return "Make an Offer"
+        case .tradeWithBank: return "Trade with the Bank"
+        case .waitingForPlayers: return "Waiting for Players"
+        case .answerTradeOffer: return "Answer the Trade Offer"
+        case .waitingForDiscard: return "Waiting for Discard"
         case .chooseDevCard: return "Choose a Dev Card"
-        case .moveRobber: return "Move the robber"
-        case .choosePlayer: return "Choose a player"
-        case .chooseResource: return "Choose a resource"
-        case .chooseTwoResources: return "Choose two resources"
-        case .chooseOneMore: return "Choose one more"
-        case .placeFirstRoad: return "Place first road"
-        case .placeSecondRoad: return "Place second road"
+        case .moveRobber: return "Move the Robber"
+        case .choosePlayer: return "Choose a Player"
+        case .chooseResource: return "Choose a Resource"
+        case .chooseTwoResources: return "Choose Two Resources"
+        case .chooseOneMore: return "Choose One More"
+        case .placeFirstRoad: return "Place First Road"
+        case .placeSecondRoad: return "Place Second Road"
         }
     }
 }

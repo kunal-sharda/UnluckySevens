@@ -91,6 +91,154 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertEqual(String(describing: boardHost.value), boardHostValue)
     }
 
+    func testCaptureNotPrimaryPlayerOrdinaryWaiting() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        loadNotPrimaryWaitingSlice()
+
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let publicRail = turnElement(identifier: "uls.turn.publicRail", labels: [])
+        let status = turnElement(identifier: "uls.turn.status", labels: ["Maya's Turn"])
+        let hand = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
+
+        XCTAssertTrue(board.waitForExistence(timeout: 8))
+        XCTAssertTrue(publicRail.waitForExistence(timeout: 4))
+        XCTAssertTrue(status.waitForExistence(timeout: 4))
+        XCTAssertTrue(hand.waitForExistence(timeout: 4))
+        XCTAssertGreaterThanOrEqual(hand.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(hand.frame.height, 44)
+        XCTAssertEqual(hand.frame.midX, board.frame.midX, accuracy: 2)
+        XCTAssertFalse(messages.buttons["uls.turnObject.build"].firstMatch.exists)
+        XCTAssertFalse(messages.buttons["uls.turnObject.trade"].firstMatch.exists)
+        XCTAssertFalse(messages.buttons["uls.turnObject.endTurn"].firstMatch.exists)
+        XCTAssertFalse(
+            turnElement(identifier: "uls.physicalProps.actionSpread", labels: [], timeout: 1).exists,
+            "Ordinary waiting should begin with an empty action well."
+        )
+        attachScreenshot(named: "Not Primary Player - Ordinary Waiting")
+    }
+
+    func testCaptureNotPrimaryPlayerIncomingTrade() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        loadNotPrimaryOfferSlice()
+
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let boardHost = turnElement(
+            identifier: "uls.tabletop.boardHost",
+            labels: ["Live game board host"]
+        )
+        let trade = turnElement(identifier: "uls.turnObject.trade", labels: ["Trade"])
+        let hand = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
+        XCTAssertTrue(board.waitForExistence(timeout: 8))
+        XCTAssertTrue(boardHost.waitForExistence(timeout: 4))
+        XCTAssertTrue(trade.waitForExistence(timeout: 4))
+        XCTAssertTrue(hand.waitForExistence(timeout: 4))
+        XCTAssertEqual((hand.frame.midX + trade.frame.midX) / 2, board.frame.midX, accuracy: 2)
+        let boardFrame = board.frame
+        let boardHostValue = String(describing: boardHost.value)
+
+        trade.tap()
+        let offerPrompt = turnElement(identifier: "", labels: ["Answer the Trade Offer"])
+        let offer = turnElement(identifier: "uls.turn.tradeSurface", labels: [])
+        let accept = messages.buttons["Accept"].firstMatch
+        let decline = messages.buttons["Decline"].firstMatch
+        let counter = messages.buttons["Counter"].firstMatch
+        XCTAssertTrue(offerPrompt.waitForExistence(timeout: 4))
+        XCTAssertTrue(offer.waitForExistence(timeout: 4))
+        XCTAssertTrue(accept.waitForExistence(timeout: 4))
+        XCTAssertTrue(decline.waitForExistence(timeout: 4))
+        XCTAssertTrue(counter.waitForExistence(timeout: 4))
+        for action in [accept, decline, counter] {
+            XCTAssertGreaterThanOrEqual(action.frame.width, 44)
+            XCTAssertGreaterThanOrEqual(action.frame.height, 44)
+            XCTAssertLessThanOrEqual(
+                action.frame.maxY,
+                trade.frame.minY,
+                "Trade response must remain above the physical prop rail."
+            )
+        }
+        assertFrame(of: board, matches: boardFrame, message: "Board moved for incoming trade.")
+        XCTAssertEqual(String(describing: boardHost.value), boardHostValue)
+        attachScreenshot(named: "Not Primary Player - Incoming Trade")
+    }
+
+    func testCaptureNotPrimaryPlayerMultiTypeIncomingTrade() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        loadNotPrimaryMultiTypeOfferSlice()
+
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let boardHost = turnElement(
+            identifier: "uls.tabletop.boardHost",
+            labels: ["Live game board host"]
+        )
+        let trade = turnElement(identifier: "uls.turnObject.trade", labels: ["Trade"])
+        let hand = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
+        XCTAssertTrue(board.waitForExistence(timeout: 8))
+        XCTAssertTrue(boardHost.waitForExistence(timeout: 4))
+        XCTAssertTrue(trade.waitForExistence(timeout: 4))
+        XCTAssertTrue(hand.waitForExistence(timeout: 4))
+        XCTAssertEqual((hand.frame.midX + trade.frame.midX) / 2, board.frame.midX, accuracy: 2)
+        let boardFrame = board.frame
+        let boardHostValue = String(describing: boardHost.value)
+
+        trade.tap()
+        let offerPrompt = turnElement(identifier: "", labels: ["Answer the Trade Offer"])
+        let offer = turnElement(identifier: "uls.turn.tradeSurface", labels: [])
+        XCTAssertTrue(offerPrompt.waitForExistence(timeout: 4))
+        XCTAssertTrue(offer.waitForExistence(timeout: 4))
+        XCTAssertTrue(offer.label.contains("1 Wood"))
+        XCTAssertTrue(offer.label.contains("2 Sheep"))
+        XCTAssertTrue(offer.label.contains("1 Wheat"))
+        XCTAssertTrue(offer.label.contains("2 Brick"))
+        XCTAssertTrue(offer.label.contains("1 Ore"))
+
+        for action in [
+            messages.buttons["Accept"].firstMatch,
+            messages.buttons["Decline"].firstMatch,
+            messages.buttons["Counter"].firstMatch,
+        ] {
+            XCTAssertTrue(action.waitForExistence(timeout: 4))
+            XCTAssertGreaterThanOrEqual(action.frame.width, 44)
+            XCTAssertGreaterThanOrEqual(action.frame.height, 44)
+            XCTAssertLessThanOrEqual(action.frame.maxY, trade.frame.minY)
+        }
+        assertFrame(of: board, matches: boardFrame, message: "Board moved for multi-type trade.")
+        XCTAssertEqual(String(describing: boardHost.value), boardHostValue)
+        attachScreenshot(named: "Not Primary Player - Multi-Type Incoming Trade")
+    }
+
+    func testCaptureNotPrimaryPlayerWaitingOnDiscard() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        loadNotPrimaryDiscardWaitingSlice()
+
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let publicRail = turnElement(identifier: "uls.turn.publicRail", labels: [])
+        let prompt = turnElement(identifier: "", labels: ["Waiting for Theo to discard"])
+        let hand = messages.descendants(matching: .any)
+            .matching(
+                NSPredicate(
+                    format: "label == %@ AND value == %@",
+                    "Hand",
+                    "Available after the discard"
+                )
+            )
+            .firstMatch
+        XCTAssertTrue(board.waitForExistence(timeout: 8))
+        XCTAssertTrue(publicRail.waitForExistence(timeout: 4))
+        XCTAssertTrue(prompt.waitForExistence(timeout: 4))
+        XCTAssertTrue(hand.waitForExistence(timeout: 4))
+        XCTAssertEqual(hand.frame.midX, board.frame.midX, accuracy: 2)
+        XCTAssertFalse(messages.buttons["Publish Discard"].firstMatch.exists)
+        XCTAssertFalse(
+            turnElement(identifier: "uls.physicalProps.actionSpread", labels: [], timeout: 1).exists,
+            "Discard waiting should begin with the inspection hand closed."
+        )
+        attachScreenshot(named: "Not Primary Player - Waiting on Discard")
+    }
+
     func testSettleStartOfTurnChoiceForDirectStill() throws {
         openUnluckySevensExtension()
         waitForUXLabChrome()
@@ -426,7 +574,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Unlucky Sevens - turn gameplay build choices")
 
         roadButton.tap()
-        let placeRoadPrompt = exactLabelElement("Place a road")
+        let placeRoadPrompt = exactLabelElement("Place a Road")
         XCTAssertTrue(placeRoadPrompt.waitForExistence(timeout: 4))
         XCTAssertTrue(buildSurface.waitForNonExistence(timeout: 4))
         XCTAssertTrue(buildButton.isSelected)
@@ -449,7 +597,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         let settlementButton = exactLabelElement("Settlement")
         XCTAssertTrue(settlementButton.waitForExistence(timeout: 4))
         settlementButton.tap()
-        let placeSettlementPrompt = exactLabelElement("Place a settlement")
+        let placeSettlementPrompt = exactLabelElement("Place a Settlement")
         XCTAssertTrue(placeSettlementPrompt.waitForExistence(timeout: 4))
         assertPersistentTurnGeometry(
             board: board, boardFrame: fixedBoardFrame,
@@ -468,7 +616,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         let cityButton = exactLabelElement("City")
         XCTAssertTrue(cityButton.waitForExistence(timeout: 4))
         cityButton.tap()
-        let upgradeCityPrompt = exactLabelElement("Upgrade to a city")
+        let upgradeCityPrompt = exactLabelElement("Upgrade to a City")
         XCTAssertTrue(upgradeCityPrompt.waitForExistence(timeout: 4))
         assertPersistentTurnGeometry(
             board: board, boardFrame: fixedBoardFrame,
@@ -602,7 +750,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         let knightCard = exactLabelElement("Knight")
         XCTAssertTrue(knightCard.waitForExistence(timeout: 4))
         knightCard.tap()
-        XCTAssertTrue(exactLabelElement("Move the robber").waitForExistence(timeout: 4))
+        XCTAssertTrue(exactLabelElement("Move the Robber").waitForExistence(timeout: 4))
         assertFrame(of: board, matches: fixedBoardFrame, message: "The board must stay fixed for Dev board selection.")
         XCTAssertEqual(String(describing: boardHost.value), fixedBoardHostValue)
         assertPersistentTurnGeometry(
@@ -737,7 +885,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         let roadButton = exactLabelElement("Road")
         XCTAssertTrue(roadButton.waitForExistence(timeout: 4))
         roadButton.tap()
-        XCTAssertTrue(exactLabelElement("Place a road").waitForExistence(timeout: 4))
+        XCTAssertTrue(exactLabelElement("Place a Road").waitForExistence(timeout: 4))
         Thread.sleep(forTimeInterval: 1)
     }
 
@@ -1368,6 +1516,34 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         activateUXLabQuickState(
             title: "Turn",
             identifier: "uls.uxLab.cleanShot.turnAfterRoll"
+        )
+    }
+
+    private func loadNotPrimaryWaitingSlice() {
+        activateUXLabQuickState(
+            title: "Wait",
+            identifier: "uls.uxLab.cleanShot.notPrimary.waiting"
+        )
+    }
+
+    private func loadNotPrimaryOfferSlice() {
+        activateUXLabQuickState(
+            title: "Offer",
+            identifier: "uls.uxLab.cleanShot.notPrimary.offer"
+        )
+    }
+
+    private func loadNotPrimaryMultiTypeOfferSlice() {
+        activateUXLabQuickState(
+            title: "Multi Offer",
+            identifier: "uls.uxLab.cleanShot.notPrimary.multiOffer"
+        )
+    }
+
+    private func loadNotPrimaryDiscardWaitingSlice() {
+        activateUXLabQuickState(
+            title: "Discard Wait",
+            identifier: "uls.uxLab.cleanShot.notPrimary.discard"
         )
     }
 

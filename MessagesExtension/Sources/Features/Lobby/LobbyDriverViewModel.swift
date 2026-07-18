@@ -698,6 +698,15 @@ final class LobbyDriverViewModel: ObservableObject {
         return actor == state.currentPlayer
     }
 
+    var physicalNotPrimaryPlayerContext: GamePhysicalNotPrimaryPlayerContext? {
+        GamePhysicalNotPrimaryPlayerContext.resolve(
+            state: selectedState,
+            actingAs: localActorIdentifier(),
+            tradePanel: tradePanelModel,
+            discardPanel: discardPanelModel
+        )
+    }
+
     var canJoin: Bool {
         LobbyMembershipResolver.canJoin(
             state: selectedState,

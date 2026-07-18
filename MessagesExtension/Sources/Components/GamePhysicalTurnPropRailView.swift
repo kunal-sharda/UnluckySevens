@@ -6,17 +6,23 @@ struct GamePhysicalTurnPropRailView: View {
     let isHandOpen: Bool
     let hasPendingTrade: Bool
     let playerColor: Color
+    let centersAvailableProps: Bool
+    let isHandInteractive: Bool
     let onSelectDock: (GameActionDockItem.Kind) -> Void
     let onToggleHand: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
-            ForEach(physicalSlots) { slot in
+            ForEach(layoutSlots) { slot in
                 if slot.isAvailable {
                     propButton(for: slot)
+                        .frame(width: GamePhysicalTurnLayout.propSlotWidth)
                 } else {
                     Color.clear
-                        .frame(maxWidth: .infinity, minHeight: 58, maxHeight: 58)
+                        .frame(
+                            width: GamePhysicalTurnLayout.propSlotWidth,
+                            height: 58
+                        )
                         .accessibilityHidden(true)
                 }
             }
@@ -33,50 +39,73 @@ struct GamePhysicalTurnPropRailView: View {
         }
     }
 
+    private var layoutSlots: [GameTurnObjectRailSlot] {
+        centersAvailableProps
+            ? physicalSlots.filter(\.isAvailable)
+            : physicalSlots
+    }
+
+    @ViewBuilder
     private func propButton(
         for slot: GameTurnObjectRailSlot
     ) -> some View {
         let isSelected = selectionState(for: slot)
-        return Button {
-            if slot.kind == .hand {
-                onToggleHand()
-            } else if let actionKind = slot.actionItem?.kind {
-                onSelectDock(actionKind)
+        if slot.kind == .hand, !isHandInteractive {
+            propLabel(for: slot, isSelected: false)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(title(for: slot.kind))
+                .accessibilityValue("Available after the discard")
+                .accessibilityRespondsToUserInteraction(false)
+                .allowsHitTesting(false)
+        } else {
+            Button {
+                if slot.kind == .hand {
+                    onToggleHand()
+                } else if let actionKind = slot.actionItem?.kind {
+                    onSelectDock(actionKind)
+                }
+            } label: {
+                propLabel(for: slot, isSelected: isSelected)
             }
-        } label: {
-            VStack(spacing: GamePhysicalTurnLayout.propLabelGap) {
-                prop(for: slot, isSelected: isSelected)
-                    .frame(width: 48, height: GamePhysicalTurnLayout.propVisualHeight)
-                    .offset(
-                        x: opticalHorizontalOffset(for: slot.kind),
-                        y: opticalVerticalOffset(for: slot.kind)
-                            + (isSelected ? -2 : 0)
-                    )
-                    .frame(
-                        width: 48,
-                        height: GamePhysicalTurnLayout.propStageHeight,
-                        alignment: .bottom
-                    )
-
-                GameTabletopNameTileView(
-                    title: visibleTitle(for: slot.kind),
-                    width: nameTileWidth(for: slot.kind),
-                    isSelected: isSelected
-                )
-            }
-            .frame(maxWidth: .infinity, minHeight: 58, maxHeight: 58, alignment: .top)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(accessibilityIdentifier(for: slot))
+            .accessibilityLabel(title(for: slot.kind))
+            .accessibilityValue(
+                slot.kind == .trade && hasPendingTrade
+                    ? "Pending offer"
+                    : ""
+            )
+            .accessibilityHint(isSelected ? "Closes \(title(for: slot.kind))" : "Opens \(title(for: slot.kind))")
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(accessibilityIdentifier(for: slot))
-        .accessibilityLabel(title(for: slot.kind))
-        .accessibilityValue(
-            slot.kind == .trade && hasPendingTrade
-                ? "Pending offer"
-                : ""
-        )
-        .accessibilityHint(isSelected ? "Closes \(title(for: slot.kind))" : "Opens \(title(for: slot.kind))")
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func propLabel(
+        for slot: GameTurnObjectRailSlot,
+        isSelected: Bool
+    ) -> some View {
+        VStack(spacing: GamePhysicalTurnLayout.propLabelGap) {
+            prop(for: slot, isSelected: isSelected)
+                .frame(width: 48, height: GamePhysicalTurnLayout.propVisualHeight)
+                .offset(
+                    x: opticalHorizontalOffset(for: slot.kind),
+                    y: opticalVerticalOffset(for: slot.kind)
+                        + (isSelected ? -2 : 0)
+                )
+                .frame(
+                    width: 48,
+                    height: GamePhysicalTurnLayout.propStageHeight,
+                    alignment: .bottom
+                )
+
+            GameTabletopNameTileView(
+                title: visibleTitle(for: slot.kind),
+                width: nameTileWidth(for: slot.kind),
+                isSelected: isSelected
+            )
+        }
+        .frame(maxWidth: .infinity, minHeight: 58, maxHeight: 58, alignment: .top)
+        .contentShape(Rectangle())
     }
 
     @ViewBuilder

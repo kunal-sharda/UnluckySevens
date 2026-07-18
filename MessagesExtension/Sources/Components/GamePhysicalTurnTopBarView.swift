@@ -47,6 +47,13 @@ struct GamePhysicalTurnTopBarView: View {
                             .fill(GamePhysicalTurnPalette.selectedKeyline)
                             .frame(width: 22, height: 2)
                     }
+                } else if title != "Your turn" {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                        .multilineTextAlignment(.center)
                 } else if rollValues.count >= 2 {
                     HStack(spacing: 3) {
                         die(rollValues[0])

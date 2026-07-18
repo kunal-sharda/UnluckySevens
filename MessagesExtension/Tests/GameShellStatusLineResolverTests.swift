@@ -24,7 +24,7 @@ final class GameShellStatusLineResolverTests: XCTestCase {
         XCTAssertEqual(line.title, "Your turn")
     }
 
-    func testWaitingOnShownForNonCurrentActorWithoutTrade() {
+    func testNamedTurnShownForNonCurrentActorWithoutTrade() {
         let line = GameShellStatusLineResolver.resolve(
             actingAs: "B",
             currentPlayer: "A",
@@ -32,7 +32,7 @@ final class GameShellStatusLineResolverTests: XCTestCase {
             subtitle: "subtitle"
         )
 
-        XCTAssertEqual(line.title, "Waiting on A")
+        XCTAssertEqual(line.title, "A's Turn")
     }
 
     func testGameOverShowsWinnerStatus() {

@@ -67,6 +67,43 @@ struct UXTestingControlsView: View {
                 )
             }
             .accessibilityIdentifier("uls.uxLab.cleanShot.pendingTrade")
+
+            Divider()
+
+            Button("Wait", systemImage: "hourglass") {
+                activateCleanFixture(
+                    id: UXTestFixtures.waitingOnAliceID,
+                    style: .physicalProps
+                )
+            }
+            .accessibilityIdentifier("uls.uxLab.cleanShot.notPrimary.waiting")
+
+            Button("Offer", systemImage: "arrow.left.arrow.right") {
+                activateCleanFixture(
+                    id: UXTestFixtures.tradeOfferID,
+                    style: .physicalProps,
+                    actingAs: UXTestFixtures.host
+                )
+            }
+            .accessibilityIdentifier("uls.uxLab.cleanShot.notPrimary.offer")
+
+            Button("Multi Offer", systemImage: "rectangle.stack.fill") {
+                activateCleanFixture(
+                    id: UXTestFixtures.multiTypeTradeOfferID,
+                    style: .physicalProps,
+                    actingAs: UXTestFixtures.host
+                )
+            }
+            .accessibilityIdentifier("uls.uxLab.cleanShot.notPrimary.multiOffer")
+
+            Button("Discard Wait", systemImage: "hand.raised.fill") {
+                activateCleanFixture(
+                    id: UXTestFixtures.waitingOnDiscardID,
+                    style: .physicalProps
+                )
+            }
+            .accessibilityIdentifier("uls.uxLab.cleanShot.notPrimary.discard")
+
         } label: {
             Label("States", systemImage: "square.grid.2x2")
                 .font(GameTheme.chipFont)

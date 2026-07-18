@@ -52,8 +52,10 @@ struct GameShellView: View {
         let isGameOver = projection.phase == PhaseV1.gameOver.rawValue
         let isNormalPostRollTurn = viewModel.isNormalPostRollActiveTurn
         let isNormalPreRollTurn = viewModel.isNormalPreRollActiveTurn
+        let notPrimaryPlayerContext = viewModel.physicalNotPrimaryPlayerContext
         let tabletopLayoutStyle = resolvedTabletopLayoutStyle(
-            isNormalPostRollTurn: isNormalPostRollTurn
+            isNormalPostRollTurn: isNormalPostRollTurn,
+            hasNotPrimaryPlayerContext: notPrimaryPlayerContext != nil
         )
         let resolvedMode = GameModeResolver.normalized(
             currentMode: currentMode,
@@ -101,9 +103,14 @@ struct GameShellView: View {
         let hasPendingTrade = projection.tradePanelModel?.activeOffer != nil
         let usesPhysicalProps = tabletopLayoutStyle.usesPhysicalProps
         let isPhysicalStartTurn = usesPhysicalProps && isNormalPreRollTurn
-        let isPhysicalGameplayTurn = isNormalPostRollTurn || isPhysicalStartTurn
+        let isPhysicalNotPrimaryPlayer = usesPhysicalProps && notPrimaryPlayerContext != nil
+        let isPhysicalGameplayTurn = isNormalPostRollTurn
+            || isPhysicalStartTurn
+            || isPhysicalNotPrimaryPlayer
         let physicalHeaderPrompt: GamePhysicalTurnHeaderPrompt? = if isPhysicalStartTurn {
             nil
+        } else if let notPrimaryPlayerContext {
+            notPrimaryPlayerContext.headerPrompt
         } else {
             GamePhysicalTurnHeaderPromptResolver.prompt(
                 route: shellRoute,
@@ -112,6 +119,10 @@ struct GameShellView: View {
                 devCardDraft: devCardDraft
             )
         }
+        let physicalHeaderTitle = notPrimaryPlayerContext?.headerTitle(
+            fallback: headerModel.statusLine.title,
+            discardPanel: projection.discardPanelModel
+        ) ?? headerModel.statusLine.title
         let physicalPlayerColor = screenModel.gameInfo.players
             .first(where: \.isLocalPlayer)
             .map { tint in
@@ -172,6 +183,12 @@ struct GameShellView: View {
                     : tabletopLayoutStyle.usesFeltTools
                     ? shellLayout.trayHeight
                     : (isHandOpen ? shellLayout.expandedTrayHeight : shellLayout.trayHeight)
+                let physicalTradeSurfaceHeight = notPrimaryPlayerContext == .incomingTrade
+                    ? max(actionSurfaceHeight, GamePhysicalIncomingTradeView.minimumHeight)
+                    : actionSurfaceHeight
+                let physicalTradeBottomPadding = GameTheme.shellPadding
+                    + bottomTrayHeight
+                    + (notPrimaryPlayerContext == .incomingTrade ? 6 : 0)
                 // The 44-point handle extends six points beyond the legacy
                 // 38-point visual width; reserve that clearance above the tray.
                 let reservedTrayHeight = usesPhysicalProps
@@ -241,7 +258,7 @@ struct GameShellView: View {
                                 if isPhysicalGameplayTurn {
                                     if usesPhysicalProps {
                                         GamePhysicalTurnTopBarView(
-                                            title: headerModel.statusLine.title,
+                                            title: physicalHeaderTitle,
                                             subtitle: headerModel.statusLine.subtitle,
                                             prompt: physicalHeaderPrompt,
                                             isGameInfoOpen: isGameInfoOpen,
@@ -487,6 +504,8 @@ struct GameShellView: View {
                                         isHandOpen: isHandOpen,
                                         hasPendingTrade: hasPendingTrade,
                                         playerColor: physicalPlayerColor,
+                                        centersAvailableProps: isPhysicalNotPrimaryPlayer,
+                                        isHandInteractive: notPrimaryPlayerContext?.isWaitingForDiscard != true,
                                         onSelectDock: { actionKind in
                                             handleActionSelection(
                                                 actionKind,
@@ -535,7 +554,7 @@ struct GameShellView: View {
                         }
 
 #if DEBUG
-                        if !isGameOver, isNormalPostRollTurn {
+                        if !isGameOver, isPhysicalGameplayTurn {
                             Rectangle()
                                 .fill(Color.clear)
                                 .frame(height: actionSurfaceHeight)
@@ -555,7 +574,10 @@ struct GameShellView: View {
                         }
 #endif
 
-                        if !isGameOver, usesPhysicalProps, !isPhysicalStartTurn {
+                        if !isGameOver,
+                           usesPhysicalProps,
+                           !isPhysicalStartTurn,
+                           notPrimaryPlayerContext?.isWaitingForDiscard != true {
                             if isHandOpen {
                                 GamePhysicalTurnActionSpreadView(
                                     content: .hand,
@@ -760,7 +782,7 @@ struct GameShellView: View {
                         }
 
                         if !isGameOver,
-                           isNormalPostRollTurn,
+                           isPhysicalGameplayTurn,
                            shellRoute == .gameInfo {
                             GameTurnGameInfoView(
                                 model: screenModel.gameInfo,
@@ -885,7 +907,7 @@ struct GameShellView: View {
                             )
                             .frame(
                                 height: usesPhysicalProps
-                                    ? actionSurfaceHeight
+                                    ? physicalTradeSurfaceHeight
                                     : tabletopLayoutStyle.usesFeltTools
                                         ? feltToolSurfaceHeight
                                         : tradePanelHeight,
@@ -897,7 +919,7 @@ struct GameShellView: View {
                             .padding(
                                 .bottom,
                                 usesPhysicalProps
-                                    ? GameTheme.shellPadding + bottomTrayHeight
+                                    ? physicalTradeBottomPadding
                                     : tabletopLayoutStyle.usesFeltTools
                                         ? GameTheme.shellPadding + shellLayout.trayHeight
                                     : tradePanelBottomPadding(
@@ -979,6 +1001,9 @@ struct GameShellView: View {
             synchronizeMode(with: screenModel.modeAvailability)
             synchronizeBoardSelection(mode: resolvedMode)
             synchronizeHandTrayVisibility(for: resolvedMode)
+            if notPrimaryPlayerContext != nil {
+                isHandOpen = false
+            }
             boardHintText = nil
             if !resolvedMode.isDevCardMode {
                 devCardDraft = nil
@@ -993,6 +1018,12 @@ struct GameShellView: View {
         .onChange(of: screenModel.modeAvailability) { _, availability in
             synchronizeMode(with: availability)
             reconcileNormalTurnRoute(with: projection)
+        }
+        .onChange(of: notPrimaryPlayerContext) { _, newContext in
+            guard newContext != nil else { return }
+            isHandOpen = false
+            shellRoute = .none
+            clearBoardSelection()
         }
         .onChange(of: viewModel.gameShellResetToken) { _, _ in
             resetLocalShellInteractionState()
@@ -1023,18 +1054,23 @@ struct GameShellView: View {
     }
 
     private func resolvedTabletopLayoutStyle(
-        isNormalPostRollTurn: Bool
+        isNormalPostRollTurn: Bool,
+        hasNotPrimaryPlayerContext: Bool
     ) -> GameTabletopLayoutStyle {
 #if DEBUG
         let testingStyle = GameTabletopLayoutStyle(
             rawValue: uxTestingTabletopLayoutStyleRawValue
-        ) ?? .framedShelf
-        if testingStyle != .framedShelf {
-            return testingStyle
-        }
-        return isNormalPostRollTurn ? .physicalProps : .framedShelf
+        )
+        return GameTabletopLayoutStyleResolver.resolve(
+            isNormalPostRollTurn: isNormalPostRollTurn,
+            hasNotPrimaryPlayerContext: hasNotPrimaryPlayerContext,
+            testingStyle: testingStyle
+        )
 #else
-        return isNormalPostRollTurn ? .physicalProps : .framedShelf
+        return GameTabletopLayoutStyleResolver.resolve(
+            isNormalPostRollTurn: isNormalPostRollTurn,
+            hasNotPrimaryPlayerContext: hasNotPrimaryPlayerContext
+        )
 #endif
     }
 
@@ -2899,51 +2935,64 @@ struct GameTradeOverlayView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    @ViewBuilder
     private var liveOfferBody: some View {
-        VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-            ScrollView(
-                .vertical,
-                showsIndicators: usesFixedActionWell
-            ) {
-                VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-                    if usesPhysicalProps {
-                        Text(panelModel.roleTitle)
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                    }
+        if usesPhysicalProps,
+           let activeOffer = panelModel.activeOffer,
+           let responderActions = panelModel.responderActions {
+            GamePhysicalIncomingTradeView(
+                offer: activeOffer,
+                actions: responderActions,
+                onAccept: onAcceptOffer,
+                onDecline: onDeclineOffer,
+                onCounter: onStartCounterDraft
+            )
+        } else {
+            VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+                ScrollView(
+                    .vertical,
+                    showsIndicators: usesFixedActionWell
+                ) {
+                    VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+                        if usesPhysicalProps {
+                            Text(panelModel.roleTitle)
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                        }
 
-                    if let activeOffer = panelModel.activeOffer {
-                        offerCard(activeOffer)
-                    }
+                        if let activeOffer = panelModel.activeOffer {
+                            offerCard(activeOffer)
+                        }
 
-                    if !panelModel.participantStatuses.isEmpty {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Responses")
-                                .font(GameTheme.metaFont.weight(.semibold))
-                                .foregroundStyle(GameTheme.ink)
+                        if !panelModel.participantStatuses.isEmpty {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Responses")
+                                    .font(GameTheme.metaFont.weight(.semibold))
+                                    .foregroundStyle(GameTheme.ink)
 
-                            ForEach(panelModel.participantStatuses) { status in
-                                participantStatusRow(status)
+                                ForEach(panelModel.participantStatuses) { status in
+                                    participantStatusRow(status)
+                                }
                             }
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .scrollBounceBehavior(.basedOnSize)
+                .scrollBounceBehavior(.basedOnSize)
 
-            if let responderActions = panelModel.responderActions {
-                responderActionRow(responderActions)
-            } else if panelModel.canReplaceOffer {
-                if usesPhysicalProps {
-                    Button("Replace Offer", action: onReplaceOffer)
-                        .buttonStyle(GameTabletopActionButtonStyle(emphasis: .primary))
-                        .frame(width: 144)
-                        .frame(maxWidth: .infinity)
-                } else {
-                    Button("Replace Offer", action: onReplaceOffer)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .buttonStyle(.bordered)
+                if let responderActions = panelModel.responderActions {
+                    responderActionRow(responderActions)
+                } else if panelModel.canReplaceOffer {
+                    if usesPhysicalProps {
+                        Button("Replace Offer", action: onReplaceOffer)
+                            .buttonStyle(GameTabletopActionButtonStyle(emphasis: .primary))
+                            .frame(width: 144)
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Button("Replace Offer", action: onReplaceOffer)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .buttonStyle(.bordered)
+                    }
                 }
             }
         }
@@ -3298,28 +3347,13 @@ struct GameTradeOverlayView: View {
     }
 
     private func responderActionRow(_ responderActions: GameTradeResponderActions) -> some View {
-        HStack(spacing: GameTheme.inlineSpacing) {
-            Button("Accept") {
-                onAcceptOffer()
-            }
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .buttonStyle(.borderedProminent)
-            .disabled(!responderActions.canAccept)
-
-            Button("Decline") {
-                onDeclineOffer()
-            }
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .buttonStyle(.bordered)
-            .disabled(!responderActions.canDecline)
-
-            Button("Counter") {
-                onStartCounterDraft()
-            }
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .buttonStyle(.bordered)
-            .disabled(!responderActions.canCounter)
-        }
+        GameTradeResponderActionRow(
+            actions: responderActions,
+            usesPhysicalProps: usesPhysicalProps,
+            onAccept: onAcceptOffer,
+            onDecline: onDeclineOffer,
+            onCounter: onStartCounterDraft
+        )
     }
 
     private func recipientCopy(for draft: GameTradeDraft) -> String {
