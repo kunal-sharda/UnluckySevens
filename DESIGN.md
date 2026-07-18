@@ -18,9 +18,9 @@ Three or four people return to a Catan table inside an iMessage thread in short,
 
 - All player-facing typography uses the OS-provided **SF Pro** family through SwiftUI semantic system styles or `UIFont.systemFont`. The app never embeds or addresses downloaded SF Pro files by name.
 - `GameTheme` owns the shared display, title, heading, body, metadata, and label hierarchy. Weight and size may change to communicate hierarchy; the type family does not.
-- New York/system serif, SF Pro Rounded, SF Mono, Georgia, and custom bundled fonts are not part of the Unlucky Sevens interface language.
+- New York/system serif, SF Pro Rounded, SF Mono, Georgia, and custom bundled fonts are not part of ordinary interface typography. The sole exception is the geometry-bound board number token: it uses the OS-provided New York bold face with dice-probability pips beneath the numeral to read as a printed tabletop component rather than application chrome.
 - `monospacedDigit()` is allowed for changing counts, dice totals, and aligned numeric data because it preserves SF Pro while stabilizing numeral width. A monospaced typeface is not allowed for ordinary text.
-- SpriteKit labels, rendered transcript text, SwiftUI controls, and DEBUG UX Lab chrome follow the same family contract. Authored lettering inside resource illustrations is artwork rather than interface typography.
+- Other SpriteKit labels, rendered transcript text, SwiftUI controls, and DEBUG UX Lab chrome follow the SF Pro family contract. Authored lettering inside resource illustrations is artwork rather than interface typography.
 - Prefer semantic Dynamic Type styles. Fixed sizes are reserved for geometry-bound micro labels and board tokens and must remain legible at their supported host sizes.
 
 ## Component Vocabulary

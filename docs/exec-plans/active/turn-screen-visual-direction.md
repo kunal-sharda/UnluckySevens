@@ -165,6 +165,7 @@ Round budget:
 
 ### Progress
 
+- [x] Round 20 optical correction removes sheep-only stamp overdraw, keeps Road, Settlement, and City on equal fixed anchors while compacting only Settlement's four-pip cost row, and gives board number tokens a system-serif printed treatment with deterministic probability pips.
 - [x] Rejected production screenshot classified as baseline rather than approval evidence.
 - [x] Three representative states and two-round budget locked.
 - [x] Round 1 physical-props composition, dimensions, card orientation, prop vocabulary, and implementation material locked.
@@ -229,6 +230,7 @@ Round budget:
 
 ### Decisions
 
+- 2026-07-17: Board number tokens are the sole typography exception to the SF Pro interface contract. They use the OS-provided New York bold face with one-to-five dice-probability pips; 6 and 8 use the existing red emphasis for both numeral and pips, while other tokens use board ink.
 - 2026-07-11: User approval is the default authority for this visual gate. Advisory product/UX input does not substitute for it.
 - 2026-07-11: Comparison work is limited to three representative states and two rounds before a mandatory pause.
 - 2026-07-11: High-capability reasoning is reserved for ambiguous judgment and final independent review. Locked mechanical implementation should use the cheapest capable executor; deterministic capture/build/test work should not use an agent when tools suffice.

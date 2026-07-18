@@ -6,6 +6,19 @@ import ULS_CoreGame
 final class GameBoardScene: SKScene {
     static let backdropOverscan: CGFloat = 96
 
+    static func numberTokenPipCount(for number: Int) -> Int {
+        guard (2...12).contains(number), number != 7 else { return 0 }
+        return 6 - abs(7 - number)
+    }
+
+    private static let numberTokenFontName: String = {
+        let systemFont = UIFont.systemFont(ofSize: 12, weight: .bold)
+        guard let serifDescriptor = systemFont.fontDescriptor.withDesign(.serif) else {
+            return systemFont.fontName
+        }
+        return UIFont(descriptor: serifDescriptor, size: 12).fontName
+    }()
+
     private let contentRootNode = SKNode()
     private let baseContentNode = SKNode()
     private let overlayContentNode = SKNode()
@@ -378,24 +391,47 @@ final class GameBoardScene: SKScene {
 
     private func makeTokenNode(number: Int, radius: CGFloat) -> SKNode {
         let node = SKNode()
+        node.name = "numberToken.\(number)"
         node.zPosition = 30
 
-        let token = SKShapeNode(circleOfRadius: max(radius * 0.24, 10))
+        let tokenRadius = max(radius * 0.24, 10)
+        let token = SKShapeNode(circleOfRadius: tokenRadius)
         token.fillColor = GameBoardPalette.tokenFill
         token.strokeColor = GameBoardPalette.tokenStroke
         token.lineWidth = 1.2
         node.addChild(token)
 
-        let label = SKLabelNode(text: "\(number)")
-        label.fontName = UIFont.systemFont(ofSize: 12, weight: .bold).fontName
-        label.fontSize = max(radius * 0.34, 12)
-        label.fontColor = (number == 6 || number == 8)
+        let isHighProbability = number == 6 || number == 8
+        let markColor = isHighProbability
             ? SKColor(red: 0.65, green: 0.18, blue: 0.14, alpha: 0.92)
             : GameBoardPalette.ink
+        let label = SKLabelNode(text: "\(number)")
+        label.name = "numberToken.label"
+        label.fontName = Self.numberTokenFontName
+        label.fontSize = max(radius * 0.31, 11)
+        label.fontColor = markColor
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
+        label.position.y = tokenRadius * 0.13
         label.zPosition = 1
         node.addChild(label)
+
+        let pipCount = Self.numberTokenPipCount(for: number)
+        let pipRadius = max(tokenRadius * 0.045, 0.7)
+        let pipStep = pipRadius * 2.7
+        let pipStartX = -CGFloat(pipCount - 1) * pipStep / 2
+        for index in 0..<pipCount {
+            let pip = SKShapeNode(circleOfRadius: pipRadius)
+            pip.name = "numberToken.pip"
+            pip.fillColor = markColor
+            pip.strokeColor = .clear
+            pip.position = CGPoint(
+                x: pipStartX + CGFloat(index) * pipStep,
+                y: -tokenRadius * 0.52
+            )
+            pip.zPosition = 1
+            node.addChild(pip)
+        }
 
         return node
     }

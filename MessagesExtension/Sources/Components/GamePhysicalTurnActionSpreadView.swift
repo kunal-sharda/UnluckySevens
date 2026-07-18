@@ -208,9 +208,12 @@ struct GamePhysicalTurnActionSpreadView: View {
     }
 
     private func costRow(_ cost: ResourceHandV1) -> some View {
-        HStack(spacing: 4) {
-            ForEach(Self.resources.filter { cost.count(for: $0) > 0 }, id: \.self) { resource in
-                HStack(spacing: 2) {
+        let visibleResources = Self.resources.filter { cost.count(for: $0) > 0 }
+        let usesCompactPips = visibleResources.count == 4
+
+        return HStack(spacing: 2) {
+            ForEach(visibleResources, id: \.self) { resource in
+                HStack(spacing: usesCompactPips ? 1 : 1.5) {
                     ZStack {
                         Circle()
                             .fill(resource.tabletopCardFill.opacity(0.92))
@@ -220,11 +223,17 @@ struct GamePhysicalTurnActionSpreadView: View {
 
                         GameTabletopResourceStampView(
                             resource: resource,
-                            size: CGSize(width: 10, height: 10),
+                            size: CGSize(
+                                width: usesCompactPips ? 9 : 10,
+                                height: usesCompactPips ? 9 : 10
+                            ),
                             usesMiniatureAsset: true
                         )
                     }
-                    .frame(width: 16, height: 16)
+                    .frame(
+                        width: usesCompactPips ? 14 : 16,
+                        height: usesCompactPips ? 14 : 16
+                    )
                     .accessibilityHidden(true)
 
                     Text("\(cost.count(for: resource))")

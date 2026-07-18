@@ -45,6 +45,20 @@ final class GameBoardSceneTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(alpha, 0.80)
     }
 
+    func testNumberTokenProbabilityPipsMatchDiceCombinations() {
+        XCTAssertEqual(GameBoardScene.numberTokenPipCount(for: 2), 1)
+        XCTAssertEqual(GameBoardScene.numberTokenPipCount(for: 3), 2)
+        XCTAssertEqual(GameBoardScene.numberTokenPipCount(for: 4), 3)
+        XCTAssertEqual(GameBoardScene.numberTokenPipCount(for: 5), 4)
+        XCTAssertEqual(GameBoardScene.numberTokenPipCount(for: 6), 5)
+        XCTAssertEqual(GameBoardScene.numberTokenPipCount(for: 8), 5)
+        XCTAssertEqual(GameBoardScene.numberTokenPipCount(for: 9), 4)
+        XCTAssertEqual(GameBoardScene.numberTokenPipCount(for: 10), 3)
+        XCTAssertEqual(GameBoardScene.numberTokenPipCount(for: 11), 2)
+        XCTAssertEqual(GameBoardScene.numberTokenPipCount(for: 12), 1)
+        XCTAssertEqual(GameBoardScene.numberTokenPipCount(for: 7), 0)
+    }
+
     func testOceanBackdropIsOneUninterruptedWaterSurface() throws {
         let renderModel = makeRenderModel()
         let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
