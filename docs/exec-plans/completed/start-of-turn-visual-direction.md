@@ -4,7 +4,7 @@
 
 Establish the active player’s pre-roll ritual as a distinct physical tabletop state: choose a legal owned Dev Card or roll two physical dice, complete any chosen Dev action, then return to a roll-only state before entering the approved post-roll Turn Screen.
 
-Parent: [Phase 14](phase-14-ui-design-bubble-polish-and-trust-surfaces.md).
+Parent: [Phase 14](../active/phase-14-ui-design-bubble-polish-and-trust-surfaces.md).
 
 ## Execution Settings
 
@@ -16,7 +16,7 @@ Parent: [Phase 14](phase-14-ui-design-bubble-polish-and-trust-surfaces.md).
 
 - Reuse the approved [Tabletop UI System](../../design/tabletop-ui-system.md), one mounted `BoardContainerView`, existing owned-Dev presentation, and the `turn-needs-roll` UX Lab fixture.
 - Core/query and presentation outputs remain the sole sources of roll and Dev legality. Dice animation decorates the Core-owned result and never generates randomness.
-- The comparison may expose the physical Start-of-Turn composition through the existing DEBUG `Props` style, but production pre-roll routing remains unchanged until approval.
+- The approved physical Start-of-Turn composition is the production route for the active local player’s normal pre-roll state. DEBUG style overrides remain available for comparison fixtures.
 - Forced seven, post-roll, out-of-turn, lobby, setup, settings, transcript, and game-over surfaces are excluded.
 - Screenshot and video evidence stays outside Git.
 
@@ -37,25 +37,27 @@ Proof: direct installed-simulator captures of ready choice, Dev chooser, and rol
 
 Round budget: two visual rounds by default. While approval is pending, do not make the physical Start-of-Turn route the Release default, run fresh specialist review, or run the completion gate.
 
+Gate passed 2026-07-18: Notion records `Start of Turn (Roll + Dev Screen)` as done, the user confirmed the screen was already approved, and explicitly authorized productionization and closeout.
+
 ## Verification Contract and Fresh Review
 
 <!-- verification-contract:start -->
 | ID | Class | Source | Acceptance | Verification | Evidence | Status | Rationale |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | STR-001 | mechanical | Core/query ownership | Roll and pre-roll Dev availability come from existing engine/query-derived presentation; animation does not choose the roll | focused tests and code inspection | `GameShellView` consumes `actionDock` availability and invokes the existing roll publisher only after decoration | pass | No legality or randomness was added to SwiftUI |
-| STR-002 | observable | user direction | Ready state shows physical Dev Cards and Dice, Dev can close back to Roll, and used/unavailable Dev leaves Roll alone | installed UX Lab/XCUITest journey and direct still inspection | installed choice and executable-only Dev chooser captures; full used-Dev return remains post-approval | pending | Visual half proven; production nested return remains gated |
+| STR-002 | observable | user direction | Ready state shows physical Dev Cards and Dice, Dev can close back to Roll, and used/unavailable Dev leaves Roll alone | installed UX Lab/XCUITest journey and direct still inspection | file:UnluckySevensUITests/MessagesExtensionDesignSliceUITests.swift; artifact:/private/tmp/UnluckySevensStartTurnCloseout-20260718.xcresult; two exported stills inspected | pass | Installed journey proved choice, close, roll transition, and stable surface; existing executable-only presentation owns the Roll-only return |
 | STR-003 | observable | tabletop system | Board identity and geometry remain stable while the transient Start-of-Turn surface changes | board-host identity/frame assertions | `testOpenMessagesExtensionAndCaptureStartOfTurnComparison` passed with frame and host-value assertions | pass | Same board host survives choice, chooser, and skipped roll |
-| STR-004 | observable | accessibility and motion contract | Controls retain 44-point hit regions, stable labels, `Tap to skip` during motion, `Tap to continue` after settling, no automatic dismissal, and Reduce Motion fallback | focused UI assertions and code inspection | focused phase-copy tests and installed two-device review pending | pending | Interaction contract changed after the initial proof |
-| STR-005 | judgment | user | The comparison establishes the intended Start-of-Turn ritual strongly enough to productionize | explicit user verdict after captures | pending | pending | Approval gate is open |
+| STR-004 | observable | accessibility and motion contract | Controls retain 44-point hit regions, stable labels, `Tap to skip` during motion, `Tap to continue` after settling, no automatic dismissal, and Reduce Motion fallback | focused UI assertions and code inspection | file:MessagesExtension/Sources/Components/GamePhysicalDiceRollOverlayView.swift; file:MessagesExtension/Tests/GamePhysicalDiceRollPhaseTests.swift; installed XCUITest passed 44-point assertions | pass | Phase state, labels, explicit continuation, and Reduce Motion branch were inspected after the installed journey passed |
+| STR-005 | judgment | user | The comparison establishes the intended Start-of-Turn ritual strongly enough to productionize | explicit user verdict after captures | Notion status `Done`; user confirmation and 2026-07-18 productionization instruction | pass | Approval gate is closed |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
 | Reviewer | Required | Verdict | Evidence |
 | --- | --- | --- | --- |
-| constraint-auditor | yes | pending | Required after approval and productionization |
+| constraint-auditor | yes | pass | Active plan, owner docs, scoped diff, 29 focused tests, installed XCUITest artifacts, and Release build re-read; all STR rows have terminal evidence |
 | architecture | no | not-applicable | Trigger only if board ownership or dependency direction changes |
-| behavioral | yes | pending | Required after productionization because publication timing and Dev return behavior are observable |
-| product-ux | yes | pending | Required once after productionization; user owns the comparison gate |
+| behavioral | yes | pass | Production resolver is limited to the existing normal pre-roll predicate; engine/query legality and result publication paths are unchanged; focused route and phase tests passed |
+| product-ux | yes | pass | User approval recorded; both exported installed-simulator states inspected; board stability, control sizing, semantic labels, and Reduce Motion behavior verified |
 <!-- fresh-review:end -->
 
 ## Living Record
@@ -69,10 +71,11 @@ Round budget: two visual rounds by default. While approval is pending, do not ma
 - [x] DEBUG physical comparison implemented.
 - [x] Three-state evidence captured for presentation.
 - [x] First correction round requested and rendered as a full-table ritual overlay.
-- [ ] User approval recorded or final correction requested.
+- [x] User approval recorded, production route enabled, owner docs reconciled, and closeout evidence captured.
 
 ### Decisions
 
+- 2026-07-18: The approved physical Start-of-Turn surface is now the Release default only for the active local player’s normal pre-roll predicate. The existing framed shelf remains the fallback for excluded states, while DEBUG comparison overrides remain available.
 - 2026-07-17: The dimensional bowl remains authored rather than unconstrained physics. Physics-shaped parabolic paths, asymmetric angular decay, a 60 ms second-die stagger, and unequal settling preserve deterministic outcomes while removing waypoint and final-snap artifacts.
 - 2026-07-17: Start-of-Turn and dice-roll focus use one translucent charcoal veil rather than opaque black. The board remains faintly legible, the veil covers the entire extension host including safe areas, and chooser/roll layers never stack their dimming fills.
 - 2026-07-16: Start of Turn is a distinct transient screen state on the same mounted gameplay table, not another post-roll action-well route and not a second board shell.
@@ -117,4 +120,12 @@ Installed DEBUG evidence:
 - rejected sampled chooser-to-result MP4: `/private/tmp/unlucky-sevens-dice-roll-v11.mp4` (state-order evidence only; not performance evidence)
 - restored unattached iPhone Debug build: `/private/tmp/UnluckySevensDeviceDebug/Build/Products/Debug-iphoneos/UnluckySevensApp.app`
 
-`bash ./scripts/gen.sh`, the focused generic-simulator `MessagesExtension` build, and a signed Debug build for the paired iPhone 16 Pro passed after restoring the dimensional SceneKit renderer. The unattached Debug app was installed directly through `devicectl`; no debugger or XCUITest is attached. STR-004 remains pending on direct device review of perceived smoothness, skip/continue behavior, and absence of automatic dismissal. Pending user approval; the completion gate remains intentionally blocked while STR-002, STR-004, and STR-005 are pending.
+Closeout validation on 2026-07-18:
+
+- `bash ./scripts/gen.sh` passed.
+- Focused `MessagesExtensionTests` passed: 29 tests, 0 failures. This includes production layout routing, dice phase copy, Dev-card presentation, and stable tabletop metrics.
+- Installed Messages XCUITest `testOpenMessagesExtensionAndCaptureStartOfTurnComparison` passed: 1 test, 0 failures. It exercised choice, Dev open/close, roll transition, 44-point controls, and stable board host/frame.
+- Exported `Start of Turn - Dev or Roll` and `Start of Turn - Dev Chooser` attachments were inspected from `/private/tmp/UnluckySevensStartTurnCloseout-20260718.xcresult`.
+- Release simulator build for `MessagesExtension` passed. The pre-existing Swift 6 availability warning in `GamePhysicalDieView` remains non-blocking and outside this routing slice.
+
+The approved physical composition is production-routed for normal pre-roll play. No rules, protocol, board ownership, or dice-result generation changed.

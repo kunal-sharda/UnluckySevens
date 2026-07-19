@@ -4,7 +4,7 @@
 
 Approve the core visual and interaction metaphor for the active player’s normal post-roll Turn Screen before investing in another production implementation pass. The desired direction is a physical turn surface where available game objects expose executable actions, but the exact composition must be judged from a small honest comparison rather than inferred from prose or from the current production baseline.
 
-Parent: [Phase 14](phase-14-ui-design-bubble-polish-and-trust-surfaces.md).
+Parent: [Phase 14](../active/phase-14-ui-design-bubble-polish-and-trust-surfaces.md).
 
 ## Execution Settings
 

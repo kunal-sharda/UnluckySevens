@@ -4,7 +4,7 @@
 
 Turn the approved physical-props Turn Screen into the stable out-of-turn table: preserve the live board and public game context while removing actions the local player cannot execute, then surface only legal responder actions or blocking wait status when the state requires them.
 
-Parent: [Phase 14](phase-14-ui-design-bubble-polish-and-trust-surfaces.md).
+Parent: [Phase 14](../active/phase-14-ui-design-bubble-polish-and-trust-surfaces.md).
 
 Source intake: [Not Primary Player Screen](https://app.notion.com/p/39b159c0c66480a8b8caffc05da0952d), migrated into this repo-native plan on 2026-07-17.
 

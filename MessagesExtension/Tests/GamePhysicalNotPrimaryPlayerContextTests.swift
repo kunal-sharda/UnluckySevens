@@ -42,6 +42,17 @@ final class GamePhysicalNotPrimaryPlayerContextTests: XCTestCase {
         )
     }
 
+    func testStartOfTurnSelectsTheProductionPhysicalLayout() {
+        XCTAssertEqual(
+            GameTabletopLayoutStyleResolver.resolve(
+                isNormalPostRollTurn: false,
+                isNormalPreRollTurn: true,
+                hasNotPrimaryPlayerContext: false
+            ),
+            .physicalProps
+        )
+    }
+
     func testNeedsRollForAnotherPlayerResolvesOrdinaryWaiting() {
         let state = makeState(
             currentPlayer: "alice",

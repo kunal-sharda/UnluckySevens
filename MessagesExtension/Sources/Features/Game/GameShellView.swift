@@ -57,6 +57,7 @@ struct GameShellView: View {
         let isSetup = setupPlacementModel != nil
         let tabletopLayoutStyle = resolvedTabletopLayoutStyle(
             isNormalPostRollTurn: isNormalPostRollTurn,
+            isNormalPreRollTurn: isNormalPreRollTurn,
             hasNotPrimaryPlayerContext: notPrimaryPlayerContext != nil,
             isSetupPlacement: isSetup
         )
@@ -1079,6 +1080,7 @@ struct GameShellView: View {
 
     private func resolvedTabletopLayoutStyle(
         isNormalPostRollTurn: Bool,
+        isNormalPreRollTurn: Bool,
         hasNotPrimaryPlayerContext: Bool,
         isSetupPlacement: Bool
     ) -> GameTabletopLayoutStyle {
@@ -1088,6 +1090,7 @@ struct GameShellView: View {
         )
         return GameTabletopLayoutStyleResolver.resolve(
             isNormalPostRollTurn: isNormalPostRollTurn,
+            isNormalPreRollTurn: isNormalPreRollTurn,
             hasNotPrimaryPlayerContext: hasNotPrimaryPlayerContext,
             isSetupPlacement: isSetupPlacement,
             testingStyle: testingStyle
@@ -1095,6 +1098,7 @@ struct GameShellView: View {
 #else
         return GameTabletopLayoutStyleResolver.resolve(
             isNormalPostRollTurn: isNormalPostRollTurn,
+            isNormalPreRollTurn: isNormalPreRollTurn,
             hasNotPrimaryPlayerContext: hasNotPrimaryPlayerContext,
             isSetupPlacement: isSetupPlacement
         )

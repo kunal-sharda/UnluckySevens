@@ -22,6 +22,7 @@ enum GameTabletopLayoutStyle: String, CaseIterable {
 enum GameTabletopLayoutStyleResolver {
     static func resolve(
         isNormalPostRollTurn: Bool,
+        isNormalPreRollTurn: Bool = false,
         hasNotPrimaryPlayerContext: Bool,
         isSetupPlacement: Bool = false,
         testingStyle: GameTabletopLayoutStyle? = nil
@@ -30,7 +31,10 @@ enum GameTabletopLayoutStyleResolver {
             return testingStyle
         }
 
-        return isNormalPostRollTurn || hasNotPrimaryPlayerContext || isSetupPlacement
+        return isNormalPostRollTurn
+            || isNormalPreRollTurn
+            || hasNotPrimaryPlayerContext
+            || isSetupPlacement
             ? .physicalProps
             : .framedShelf
     }

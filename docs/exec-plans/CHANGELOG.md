@@ -10,6 +10,7 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 ## [Unreleased]
 
 ### Changed
+- The approved Start-of-Turn Physical Props ritual now routes in production for the active local player’s normal pre-roll state, preserving the mounted board while offering executable owned Dev Cards and a Core-result-decorating dice transition with skip, explicit continuation, and Reduce Motion behavior.
 - The updated Solo Sorta Harness is now reconciled locally: finished harness migrations moved to completed history, active checkpoint plans may explicitly own ignored workbench evidence while approval is pending, and unowned design residue remains a harness-audit failure.
 - ExecPlans now separate validation profiles from `explore`, `checkpointed`, and `direct` delivery postures; the compact template keeps current intent and proof while moving judgment-heavy slices into focused child plans with explicit approval gates.
 - ExecPlan completion now uses locked `lightweight`, `standard`, or `release-critical` validation profiles: selected-plan constraints and reviews remain hard, unfinished sibling plans are audit notices, and exhaustive practical validation is reserved for the release gate.

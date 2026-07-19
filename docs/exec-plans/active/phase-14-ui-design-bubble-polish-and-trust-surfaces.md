@@ -46,7 +46,9 @@ Remaining focused slices:
 - The reusable [Tabletop UI System](../../design/tabletop-ui-system.md) is approved and is the starting reference for later screen plans.
 - Refine the first invite into the board-game rules/setup-card direction already described in [UI flows](../../product-specs/ui-flows.md).
 - Establish and approve the dedicated [Initial Setup Placement Screen](../completed/initial-setup-placement-screen.md) before making its physical-table composition the production default.
-- The approved Physical Props post-roll Turn Screen is productionized and verified through [Turn Screen visual direction](turn-screen-visual-direction.md).
+- The approved Physical Props pre-roll ritual is productionized and verified through [Start-of-Turn visual direction](../completed/start-of-turn-visual-direction.md).
+- The approved Physical Props post-roll Turn Screen is productionized and verified through [Turn Screen visual direction](../completed/turn-screen-visual-direction.md).
+- The approved shared-table waiting and responder states are productionized and verified through [Not Primary Player visual direction](../completed/not-primary-player-visual-direction.md).
 - Continue later Phase 14 polish through separate child plans when a slice is independently deliverable or judgment-heavy.
 
 ## Approval Gate
@@ -61,7 +63,9 @@ Phase-level visual approval is delegated to focused child plans. No unresolved v
 | P14-001 | mechanical | product and architecture owner docs | Canonical names, presentation-only bubble media, standalone Messages packaging, and Core-owned legality remain the durable implementation boundaries | owner-doc and focused test evidence retained in phase history | file:docs/product-specs/ui-flows.md; file:ARCHITECTURE.md; file:docs/decisions.md | pass | Landed outcomes are now owned outside this plan |
 | P14-002 | observable | QA owner docs | UX Lab and simulator capture paths remain repeatable design evidence lanes without replacing real-device release validation | owner-doc inspection | file:docs/quality/ux-lab.md; file:docs/quality/device-runbooks.md | pass | Durable harness behavior is documented in its owners |
 | P14-003 | judgment | UI flows | Invite surface reaches the approved rules/setup-card direction | focused child comparison and user approval | report:pending | pending | Remaining Phase 14 slice |
-| P14-004 | judgment | user direction | Post-roll Turn Screen metaphor is visually approved before further productionization | checkpointed child plan | file:docs/exec-plans/active/turn-screen-visual-direction.md | pass | User approved the Physical Props direction on 2026-07-15; the child owns production verification |
+| P14-004 | judgment | user direction | Post-roll Turn Screen metaphor is visually approved before further productionization | checkpointed child plan | file:docs/exec-plans/completed/turn-screen-visual-direction.md | pass | User approved the Physical Props direction on 2026-07-15 and its standard completion gate passed |
+| P14-005 | judgment | user direction | Pre-roll Start-of-Turn ritual is visually approved before production routing | checkpointed child plan | file:docs/exec-plans/completed/start-of-turn-visual-direction.md | pass | User approved the direction and authorized productionization on 2026-07-18 |
+| P14-006 | judgment | user direction | Out-of-turn waiting and responder states reuse the approved shared table without exposing unavailable active-player actions | checkpointed child plan | file:docs/exec-plans/completed/not-primary-player-visual-direction.md | pass | User approved the corrected direction on 2026-07-18 and its standard completion gate passed |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
@@ -82,6 +86,8 @@ Phase-level visual approval is delegated to focused child plans. No unresolved v
 - [x] Durable platform, QA, architecture, product, and design lessons promoted to owner docs.
 - [ ] Invite rules/setup-card direction approved and productionized.
 - [x] Post-roll Turn Screen direction approved and productionized through its child plan.
+- [x] Start-of-Turn direction approved, production-routed, and verified through its child plan.
+- [x] Not Primary Player direction approved, productionized, and verified through its child plan.
 
 ### Decisions
 
@@ -98,4 +104,4 @@ Phase-level visual approval is delegated to focused child plans. No unresolved v
 
 ## Validation and Outcome
 
-Completed outcomes are summarized in [CHANGELOG](../CHANGELOG.md) and owned by the linked current docs. Phase 14 remains active because the invite refinement is unresolved; the Turn Screen child now owns its final verification receipt. Each child records its own commands, evidence, reviewer verdicts, and completion receipt.
+Completed outcomes are summarized in [CHANGELOG](../CHANGELOG.md) and owned by the linked current docs. Phase 14 remains active because the invite refinement is unresolved; the completed setup, Turn Screen, Start-of-Turn, and Not Primary Player children retain their closeout evidence. Each child records its own commands, evidence, reviewer verdicts, and completion receipt.

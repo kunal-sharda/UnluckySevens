@@ -39,6 +39,9 @@ This document summarizes the player-facing flows the UI must support in the curr
 - Optional non-VP dev-card play before or after the roll, subject to core timing rules and never for a non-VP card bought on the same turn.
 - Victory Point cards stay hidden unless revealing them would immediately win the game.
 - Roll.
+- The active local player’s normal pre-roll state uses the same mounted Physical Props table as setup and post-roll play. A full-host focus layer presents executable owned Dev Cards and Roll when both are legal, or Roll alone when no pre-roll Dev action remains.
+- Closing the pre-roll Dev chooser returns to the Dev-or-Roll choice without consuming a card. Completing a pre-roll Dev action returns to Roll alone; rolling is always deliberate and never automatic.
+- The dice transition decorates the Core-owned result rather than generating it. During motion the player may skip to that exact result; after settling, the result remains until explicit continuation. Reduce Motion moves directly to the settled result while preserving explicit continuation.
 - Resolve either production or the full seven/robber subflow.
 - Optionally trade, build, buy or play allowed dev cards, and then end turn.
 - The active player’s normal `.afterRoll` Turn Screen uses five persistent zones: a compact top bar, public table rail, live board, reserved action well, and turn-object rail. Lobby, roll-needed, out-of-turn, forced-flow, settings, and game-over screens retain their existing compositions.
@@ -55,7 +58,7 @@ This document summarizes the player-facing flows the UI must support in the curr
 - End appears only when ending is legal and opens a compact inline `Keep Playing` / `End Turn` confirmation.
 - Selecting the active object closes it and clears its local draft or board selection. Selecting another turn object or Game Information replaces the current action-well contents and clears incompatible state. Toggling Bank reveal preserves the selected action.
 - Action-well replacement uses an opacity-only transition when Reduce Motion is enabled; every interactive object keeps at least a 44-by-44-point hit region and a stable VoiceOver label.
-- Outside the active normal post-roll Turn Screen, the established lower tray and overlay-shelf behavior remains unchanged.
+- Outside the approved setup, normal pre-roll, normal post-roll, and eligible not-primary-player Physical Props states, the established lower tray and overlay-shelf behavior remains unchanged.
 - Dev-card actions should be choice-driven for Knight, Monopoly, Year of Plenty, and Road Building rather than expanding into a deep form flow or hiding behind defaults.
 - Victory Point cards remain visible to their owner in Hand/inventory; they enter the Dev selection surface only when revealing them would immediately win the game.
 - Knight should stage through robber-tile choice first and only ask for an explicit victim when the chosen tile has multiple eligible steals.

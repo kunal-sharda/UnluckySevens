@@ -52,6 +52,8 @@ The approved normal post-roll Turn Screen is the Physical Props composition: a f
 
 The approved initial-setup screen is a setup-specific state of that same Physical Props table. It keeps the live board at the shared game-screen size, replaces the Bank rail with a centered three-slot placement carousel (current plus the next two placements), and replaces the lower turn props with one settlement and one road. Player slots use uniform system typography and spacing, with opacity and an amber current-player ring supplementing—not replacing—text and accessibility state. Core-owned setup progress drives the separate settlement and connected-road steps and the handoff into the existing first-turn screen.
 
+The approved Start-of-Turn screen is the pre-roll state of the same Physical Props table. A full-host charcoal focus veil keeps the mounted board faintly legible while centering a `Your Turn` ritual: executable owned Dev Cards and a physical dice pair when both choices are legal, or Roll alone after a pre-roll Dev action. The Dev chooser remains inside that focus layer and can close without consuming a card. Rolling decorates the Core-owned result with the dimensional dice bowl, offers skip while moving, waits for explicit continuation after settling, and crossfades directly to the result when Reduce Motion is enabled. The board host and geometry do not remount during these transitions.
+
 Previous numbered terrain and tree passes were experimentation, not durable product truth. They were removed after their final outputs were integrated. New experiments belong in ignored `docs/design/workbench/` and are deleted when the decision closes.
 
 ## Human Calibration
