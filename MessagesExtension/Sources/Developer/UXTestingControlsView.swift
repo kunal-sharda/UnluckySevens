@@ -38,10 +38,26 @@ struct UXTestingControlsView: View {
             Button("Setup", systemImage: "camera.viewfinder") {
                 activateCleanFixture(
                     id: UXTestFixtures.setupPlacementID,
-                    style: .framedShelf
+                    style: .physicalProps
                 )
             }
             .accessibilityIdentifier("uls.uxLab.cleanShot.setupPlacement")
+
+            Button("Setup Road", systemImage: "point.bottomleft.forward.to.point.topright.scurvepath") {
+                activateCleanFixture(
+                    id: UXTestFixtures.setupRoadPlacementID,
+                    style: .physicalProps
+                )
+            }
+            .accessibilityIdentifier("uls.uxLab.cleanShot.setupRoadPlacement")
+
+            Button("Setup Handoff", systemImage: "arrow.forward.to.line") {
+                activateCleanFixture(
+                    id: UXTestFixtures.setupHandoffID,
+                    style: .physicalProps
+                )
+            }
+            .accessibilityIdentifier("uls.uxLab.cleanShot.setupHandoff")
 
             Button("Start", systemImage: "dice.fill") {
                 activateCleanFixture(
@@ -341,7 +357,7 @@ struct UXTestingControlsView: View {
                 ) {
                     activateCleanFixture(
                         id: UXTestFixtures.setupPlacementID,
-                        style: .framedShelf
+                        style: .physicalProps
                     )
                 }
 

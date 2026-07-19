@@ -43,6 +43,8 @@ enum UXTestFixtures {
         lobbyInvite,
         lobbyReady,
         setupPlacement,
+        setupRoadPlacement,
+        setupHandoff,
         turnNeedsRoll,
         turnAfterRoll,
         waitingOnAlice,
@@ -57,6 +59,8 @@ enum UXTestFixtures {
     static let defaultFixtureID = turnAfterRoll.id
     static let defaultActorID = host
     static let setupPlacementID = "setup-placement"
+    static let setupRoadPlacementID = "setup-road-placement"
+    static let setupHandoffID = "setup-handoff"
     static let turnNeedsRollID = "turn-needs-roll"
     static let tradeOfferID = "trade-offer"
     static let multiTypeTradeOfferID = "multi-type-trade-offer"
@@ -129,12 +133,23 @@ enum UXTestFixtures {
         title: "Setup placement",
         detail: "First setup settlement prompt.",
         defaultActorID: host,
-        state: makeState(
-            rev: 3,
-            currentPlayer: host,
-            phase: .setup,
-            setupState: initializeSetupState(roster: roster)
-        )
+        state: makeInitialSetupState()
+    )
+
+    private static let setupRoadPlacement = UXTestFixture(
+        id: setupRoadPlacementID,
+        title: "Setup road placement",
+        detail: "Connected-road prompt after the first settlement.",
+        defaultActorID: host,
+        state: makeSetupRoadPlacementState()
+    )
+
+    private static let setupHandoff = UXTestFixture(
+        id: setupHandoffID,
+        title: "Setup handoff",
+        detail: "Authoritative first-turn state after all setup placements.",
+        defaultActorID: host,
+        state: makeSetupHandoffState()
     )
 
     private static let turnNeedsRoll = UXTestFixture(
@@ -333,6 +348,8 @@ enum UXTestFixtures {
         currentPlayer: String,
         phase: PhaseV1 = .turn,
         resourcesByPlayer: [String: ResourceHandV1] = defaultResources,
+        devCardsByPlayer: [String: DevCardInventoryV1] = defaultDevCardsByPlayer,
+        newDevCardsByPlayer: [String: DevCardInventoryV1] = defaultNewDevCardsByPlayer,
         revealedVictoryPointsByPlayer: [String: Int] = [:],
         activeTradeOffer: TradeOfferV1? = nil,
         tradeResponses: [TradeResponseV1] = [],
@@ -346,6 +363,8 @@ enum UXTestFixtures {
             currentPlayer: currentPlayer,
             phase: phase,
             resourcesByPlayer: resourcesByPlayer,
+            devCardsByPlayer: devCardsByPlayer,
+            newDevCardsByPlayer: newDevCardsByPlayer,
             revealedVictoryPointsByPlayer: revealedVictoryPointsByPlayer,
             activeTradeOffer: activeTradeOffer,
             tradeResponses: tradeResponses,
@@ -365,6 +384,8 @@ enum UXTestFixtures {
         diceRngState: UInt64? = 9_002,
         robberRngState: UInt64? = 9_003,
         resourcesByPlayer: [String: ResourceHandV1] = defaultResources,
+        devCardsByPlayer: [String: DevCardInventoryV1] = defaultDevCardsByPlayer,
+        newDevCardsByPlayer: [String: DevCardInventoryV1] = defaultNewDevCardsByPlayer,
         revealedVictoryPointsByPlayer: [String: Int] = [:],
         activeTradeOffer: TradeOfferV1? = nil,
         tradeResponses: [TradeResponseV1] = [],
@@ -394,19 +415,8 @@ enum UXTestFixtures {
             resourcesByPlayer: resourcesByPlayer,
             bankResources: fullBank,
             devDeck: devDeck,
-            devCardsByPlayer: [
-                host: DevCardInventoryV1(
-                    knight: 1,
-                    monopoly: 1,
-                    yearOfPlenty: 1,
-                    roadBuilding: 1,
-                    victoryPoint: 1
-                ),
-                alice: DevCardInventoryV1(knight: 1),
-            ],
-            newDevCardsByPlayer: [
-                host: DevCardInventoryV1(victoryPoint: 1),
-            ],
+            devCardsByPlayer: devCardsByPlayer,
+            newDevCardsByPlayer: newDevCardsByPlayer,
             revealedVictoryPointsByPlayer: revealedVictoryPointsByPlayer,
             knightsPlayedByPlayer: [host: 2, alice: 1],
             largestArmyOwner: host,
@@ -428,10 +438,85 @@ enum UXTestFixtures {
         ).rehashed()
     }
 
+    private static func makeInitialSetupState() -> CoreGameStateV1 {
+        makeState(
+            rev: 3,
+            currentPlayer: host,
+            phase: .setup,
+            resourcesByPlayer: Dictionary(
+                uniqueKeysWithValues: roster.map { ($0, ResourceHandV1.zero) }
+            ),
+            devCardsByPlayer: [:],
+            newDevCardsByPlayer: [:],
+            settlementsByNode: [:],
+            citiesByNode: [:],
+            roadsByEdge: [:],
+            setupState: initializeSetupState(roster: roster)
+        )
+    }
+
+    private static func makeSetupRoadPlacementState() -> CoreGameStateV1 {
+        let state = makeInitialSetupState()
+        guard let node = state.legalSetupSettlementNodes(for: host).first else {
+            preconditionFailure("Setup fixture requires a legal first settlement.")
+        }
+        do {
+            return try apply(intent: .placeSetupSettlement(node: node), to: state, actor: host)
+        } catch {
+            preconditionFailure("Unable to build setup road fixture: \(error)")
+        }
+    }
+
+    private static func makeSetupHandoffState() -> CoreGameStateV1 {
+        var state = makeInitialSetupState()
+
+        do {
+            while state.phase == .setup {
+                guard let setupState = state.setupState else {
+                    preconditionFailure("Setup fixture lost setup state before handoff.")
+                }
+                let actor = state.currentPlayer
+                switch setupState.step {
+                case .placeSettlement:
+                    guard let node = state.legalSetupSettlementNodes(for: actor).first else {
+                        preconditionFailure("Setup fixture requires a legal settlement for \(actor).")
+                    }
+                    state = try apply(intent: .placeSetupSettlement(node: node), to: state, actor: actor)
+                case .placeRoad:
+                    guard let edge = state.legalSetupRoadEdges(for: actor).first else {
+                        preconditionFailure("Setup fixture requires a legal road for \(actor).")
+                    }
+                    state = try apply(intent: .placeSetupRoad(edge: edge), to: state, actor: actor)
+                case .done:
+                    preconditionFailure("Setup fixture reached an unpublishable done step.")
+                }
+            }
+        } catch {
+            preconditionFailure("Unable to build setup handoff fixture: \(error)")
+        }
+
+        return state
+    }
+
     private static let defaultResources = [
         host: ResourceHandV1(wood: 5, brick: 5, sheep: 5, wheat: 5, ore: 5),
         alice: ResourceHandV1(wood: 1, brick: 2, sheep: 3, wheat: 1, ore: 1),
         ben: ResourceHandV1(wood: 2, brick: 1, sheep: 1, wheat: 3),
+    ]
+
+    private static let defaultDevCardsByPlayer = [
+        host: DevCardInventoryV1(
+            knight: 1,
+            monopoly: 1,
+            yearOfPlenty: 1,
+            roadBuilding: 1,
+            victoryPoint: 1
+        ),
+        alice: DevCardInventoryV1(knight: 1),
+    ]
+
+    private static let defaultNewDevCardsByPlayer = [
+        host: DevCardInventoryV1(victoryPoint: 1),
     ]
 
     private static let defaultSettlements = [

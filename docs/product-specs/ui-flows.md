@@ -26,6 +26,8 @@ This document summarizes the player-facing flows the UI must support in the curr
 - The second completed placement grants starting resources from adjacent non-desert tiles.
 - The UI must make placement order and legality legible without inventing setup rules locally.
 - Setup should feel guided and blocking: the player should always know whether the next action is settlement placement or road placement.
+- Setup uses the same full-size live board as normal play. Its public rail becomes a three-slot placement carousel showing the current placement and next two placements, while its lower rail shows exactly one settlement and one road for the active placement pair.
+- Setup advances into the existing first-turn screen only after the authoritative Core phase changes to `.turn`; the presentation does not predict that handoff.
 - Setup and build placement should be selection-first rather than one-tap publish:
   - first tap selects a legal node or edge
   - the player confirms by tapping the same selected target again

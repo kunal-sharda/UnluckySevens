@@ -45,6 +45,7 @@ Remaining focused slices:
 
 - The reusable [Tabletop UI System](../../design/tabletop-ui-system.md) is approved and is the starting reference for later screen plans.
 - Refine the first invite into the board-game rules/setup-card direction already described in [UI flows](../../product-specs/ui-flows.md).
+- Establish and approve the dedicated [Initial Setup Placement Screen](../completed/initial-setup-placement-screen.md) before making its physical-table composition the production default.
 - The approved Physical Props post-roll Turn Screen is productionized and verified through [Turn Screen visual direction](turn-screen-visual-direction.md).
 - Continue later Phase 14 polish through separate child plans when a slice is independently deliverable or judgment-heavy.
 

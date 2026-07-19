@@ -23,13 +23,14 @@ enum GameTabletopLayoutStyleResolver {
     static func resolve(
         isNormalPostRollTurn: Bool,
         hasNotPrimaryPlayerContext: Bool,
+        isSetupPlacement: Bool = false,
         testingStyle: GameTabletopLayoutStyle? = nil
     ) -> GameTabletopLayoutStyle {
         if let testingStyle, testingStyle != .framedShelf {
             return testingStyle
         }
 
-        return isNormalPostRollTurn || hasNotPrimaryPlayerContext
+        return isNormalPostRollTurn || hasNotPrimaryPlayerContext || isSetupPlacement
             ? .physicalProps
             : .framedShelf
     }

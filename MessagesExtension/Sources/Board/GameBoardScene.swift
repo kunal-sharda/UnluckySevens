@@ -11,13 +11,13 @@ final class GameBoardScene: SKScene {
         return 6 - abs(7 - number)
     }
 
-    private static let numberTokenFontName: String = {
-        let systemFont = UIFont.systemFont(ofSize: 12, weight: .bold)
+    private static func numberTokenFont(ofSize size: CGFloat) -> UIFont {
+        let systemFont = UIFont.systemFont(ofSize: size, weight: .bold)
         guard let serifDescriptor = systemFont.fontDescriptor.withDesign(.serif) else {
-            return systemFont.fontName
+            return systemFont
         }
-        return UIFont(descriptor: serifDescriptor, size: 12).fontName
-    }()
+        return UIFont(descriptor: serifDescriptor, size: size)
+    }
 
     private let contentRootNode = SKNode()
     private let baseContentNode = SKNode()
@@ -405,14 +405,20 @@ final class GameBoardScene: SKScene {
         let markColor = isHighProbability
             ? SKColor(red: 0.65, green: 0.18, blue: 0.14, alpha: 0.92)
             : GameBoardPalette.ink
-        let label = SKLabelNode(text: "\(number)")
+        let fontSize = max(radius * 0.31, 11)
+        let label = SKLabelNode()
         label.name = "numberToken.label"
-        label.fontName = Self.numberTokenFontName
-        label.fontSize = max(radius * 0.31, 11)
-        label.fontColor = markColor
+        label.attributedText = NSAttributedString(
+            string: "\(number)",
+            attributes: [
+                .font: Self.numberTokenFont(ofSize: fontSize),
+                .foregroundColor: markColor,
+            ]
+        )
         label.verticalAlignmentMode = .center
-        label.horizontalAlignmentMode = .center
-        label.position.y = tokenRadius * 0.13
+        label.horizontalAlignmentMode = .left
+        label.position = CGPoint(x: 0, y: tokenRadius * 0.13)
+        label.position.x = -label.frame.midX
         label.zPosition = 1
         node.addChild(label)
 

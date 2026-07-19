@@ -53,9 +53,12 @@ struct GameShellView: View {
         let isNormalPostRollTurn = viewModel.isNormalPostRollActiveTurn
         let isNormalPreRollTurn = viewModel.isNormalPreRollActiveTurn
         let notPrimaryPlayerContext = viewModel.physicalNotPrimaryPlayerContext
+        let setupPlacementModel = projection.setupPlacementModel
+        let isSetup = setupPlacementModel != nil
         let tabletopLayoutStyle = resolvedTabletopLayoutStyle(
             isNormalPostRollTurn: isNormalPostRollTurn,
-            hasNotPrimaryPlayerContext: notPrimaryPlayerContext != nil
+            hasNotPrimaryPlayerContext: notPrimaryPlayerContext != nil,
+            isSetupPlacement: isSetup
         )
         let resolvedMode = GameModeResolver.normalized(
             currentMode: currentMode,
@@ -102,11 +105,13 @@ struct GameShellView: View {
         let isGameInfoOpen = shellRoute == .gameInfo
         let hasPendingTrade = projection.tradePanelModel?.activeOffer != nil
         let usesPhysicalProps = tabletopLayoutStyle.usesPhysicalProps
+        let isPhysicalSetup = usesPhysicalProps && isSetup
         let isPhysicalStartTurn = usesPhysicalProps && isNormalPreRollTurn
         let isPhysicalNotPrimaryPlayer = usesPhysicalProps && notPrimaryPlayerContext != nil
         let isPhysicalGameplayTurn = isNormalPostRollTurn
             || isPhysicalStartTurn
             || isPhysicalNotPrimaryPlayer
+            || isPhysicalSetup
         let physicalHeaderPrompt: GamePhysicalTurnHeaderPrompt? = if isPhysicalStartTurn {
             nil
         } else if let notPrimaryPlayerContext {
@@ -206,7 +211,7 @@ struct GameShellView: View {
                         0
                     )
                     : 0)
-                let feltToolSurfaceReservation = tabletopLayoutStyle.usesFeltTools
+                let feltToolSurfaceReservation = tabletopLayoutStyle.usesFeltTools && !isPhysicalSetup
                     ? actionSurfaceHeight + tabletopSectionSpacing
                     : 0
                 let boardPresentationHeight = max(
@@ -256,7 +261,13 @@ struct GameShellView: View {
                         VStack(alignment: .leading, spacing: tabletopSectionSpacing) {
                             Group {
                                 if isPhysicalGameplayTurn {
-                                    if usesPhysicalProps {
+                                    if let setupPlacementModel, isPhysicalSetup {
+                                        GamePhysicalSetupTopBarView(
+                                            model: setupPlacementModel,
+                                            onSettingsTap: onSettingsTap,
+                                            onGameInfoTap: handleGameInfoToggle
+                                        )
+                                    } else if usesPhysicalProps {
                                         GamePhysicalTurnTopBarView(
                                             title: physicalHeaderTitle,
                                             subtitle: headerModel.statusLine.subtitle,
@@ -302,7 +313,9 @@ struct GameShellView: View {
 
                             if isPhysicalGameplayTurn {
                                 Group {
-                                    if usesPhysicalProps {
+                                    if let setupPlacementModel, isPhysicalSetup {
+                                        GamePhysicalSetupOrderRailView(model: setupPlacementModel)
+                                    } else if usesPhysicalProps {
                                         GamePhysicalPublicRackView(
                                             bank: bankTrayModel,
                                             revealsBankCounts: physicalBankCountsRevealed,
@@ -341,7 +354,11 @@ struct GameShellView: View {
                                 .allowsHitTesting(!isPhysicalStartTurn)
                                 .accessibilityHidden(isPhysicalStartTurn)
                                 .accessibilityElement(children: .contain)
-                                .accessibilityIdentifier("uls.turn.publicRail")
+                                .accessibilityIdentifier(
+                                    isPhysicalSetup
+                                        ? "uls.setup.orderRail"
+                                        : "uls.turn.publicRail"
+                                )
                             }
 
                             BoardContainerView(
@@ -361,7 +378,7 @@ struct GameShellView: View {
                                 hintBottomInset: boardHintBottomInset,
                                 showsCreamFrame: tabletopLayoutStyle.showsCreamBoardFrame,
                                 boardContentVerticalOffset: usesPhysicalProps
-                                    ? physicalBoardCenteringOffset
+                                    ? (isPhysicalSetup ? 0 : physicalBoardCenteringOffset)
                                     : 0,
                                 frozenBoardImage: nil,
                                 reloadToken: viewModel.boardReloadToken,
@@ -497,7 +514,13 @@ struct GameShellView: View {
 
                         if !isGameOver, !isPhysicalStartTurn {
                             Group {
-                                if usesPhysicalProps {
+                                if let setupPlacementModel, isPhysicalSetup {
+                                    GamePhysicalSetupPieceRailView(
+                                        model: setupPlacementModel,
+                                        playerColor: physicalPlayerColor
+                                    )
+                                    .scaleEffect(physicalLayout.contentScale, anchor: .bottom)
+                                } else if usesPhysicalProps {
                                     GamePhysicalTurnPropRailView(
                                         actionDock: screenModel.actionDock,
                                         selectedDockKind: selectedDockKind,
@@ -577,6 +600,7 @@ struct GameShellView: View {
                         if !isGameOver,
                            usesPhysicalProps,
                            !isPhysicalStartTurn,
+                           !isPhysicalSetup,
                            notPrimaryPlayerContext?.isWaitingForDiscard != true {
                             if isHandOpen {
                                 GamePhysicalTurnActionSpreadView(
@@ -1055,7 +1079,8 @@ struct GameShellView: View {
 
     private func resolvedTabletopLayoutStyle(
         isNormalPostRollTurn: Bool,
-        hasNotPrimaryPlayerContext: Bool
+        hasNotPrimaryPlayerContext: Bool,
+        isSetupPlacement: Bool
     ) -> GameTabletopLayoutStyle {
 #if DEBUG
         let testingStyle = GameTabletopLayoutStyle(
@@ -1064,12 +1089,14 @@ struct GameShellView: View {
         return GameTabletopLayoutStyleResolver.resolve(
             isNormalPostRollTurn: isNormalPostRollTurn,
             hasNotPrimaryPlayerContext: hasNotPrimaryPlayerContext,
+            isSetupPlacement: isSetupPlacement,
             testingStyle: testingStyle
         )
 #else
         return GameTabletopLayoutStyleResolver.resolve(
             isNormalPostRollTurn: isNormalPostRollTurn,
-            hasNotPrimaryPlayerContext: hasNotPrimaryPlayerContext
+            hasNotPrimaryPlayerContext: hasNotPrimaryPlayerContext,
+            isSetupPlacement: isSetupPlacement
         )
 #endif
     }

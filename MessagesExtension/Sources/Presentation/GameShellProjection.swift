@@ -39,6 +39,7 @@ struct GameShellProjection: Equatable {
     var setupPlacement: String
     var turnIntent: String
     var gameScreenModel: GameScreenModel
+    var setupPlacementModel: GameSetupPlacementModel?
     var setupGuidanceText: String?
     var discardPanelModel: GameDiscardPanelModel?
     var robberVictimOptions: [GameRobberVictimOption]
@@ -92,6 +93,7 @@ struct GameShellProjection: Equatable {
                 modeAvailability: .none
             )
         ),
+        setupPlacementModel: nil,
         setupGuidanceText: nil,
         discardPanelModel: nil,
         robberVictimOptions: [],
@@ -159,6 +161,7 @@ enum GameShellProjectionBuilder {
                 setupPlacement: "-",
                 turnIntent: "-",
                 gameScreenModel: screenModel,
+                setupPlacementModel: nil,
                 setupGuidanceText: nil,
                 discardPanelModel: nil,
                 robberVictimOptions: [],
@@ -211,6 +214,11 @@ enum GameShellProjectionBuilder {
             setupPlacement: "-",
             turnIntent: "-",
             gameScreenModel: screenModel,
+            setupPlacementModel: GameSetupPlacementModelBuilder.build(
+                state: state,
+                actingAs: actingAs,
+                players: screenModel.gameInfo.players
+            ),
             setupGuidanceText: SetupInteractionResolver.guidanceText(
                 state: state,
                 actingAs: actingAs

@@ -26,14 +26,65 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         loadCleanSetupGameplaySlice()
 
         XCTAssertTrue(
-            messages.staticTexts["Place settlement"].firstMatch.waitForExistence(timeout: 8),
+            turnElement(
+                identifier: "uls.setup.status",
+                labels: ["Place Your First Settlement"]
+            ).waitForExistence(timeout: 8),
             "Expected the setup gameplay fixture to render."
         )
+        let orderRail = turnElement(identifier: "uls.setup.orderRail", labels: [])
+        XCTAssertTrue(
+            orderRail.waitForExistence(timeout: 4),
+            "Expected setup snake order to render."
+        )
+        XCTAssertEqual(
+            orderRail.value as? String,
+            "3 placement slots shown",
+            "Expected setup order to show the current player and the next two slots."
+        )
+        let pieceRail = turnElement(identifier: "uls.setup.pieceRail", labels: [])
+        XCTAssertTrue(
+            pieceRail.waitForExistence(timeout: 4),
+            "Expected settlement and road setup steps to render."
+        )
+        XCTAssertEqual(pieceRail.value as? String, "1 settlement and 1 road")
         XCTAssertFalse(
             messages.buttons["uls.uxLab.toggle"].firstMatch.exists,
             "Expected UX Lab chrome to be hidden for the clean gameplay screenshot."
         )
-        attachScreenshot(named: "Unlucky Sevens - clean setup gameplay")
+        attachScreenshot(named: "Setup Flow 1 - Place Settlement")
+
+        restoreUXLabChrome()
+        activateUXLabQuickState(
+            title: "Setup Road",
+            identifier: "uls.uxLab.cleanShot.setupRoadPlacement"
+        )
+        XCTAssertTrue(
+            turnElement(
+                identifier: "uls.setup.status",
+                labels: ["Connect Your First Road"]
+            ).waitForExistence(timeout: 8),
+            "Expected the connected-road setup state to render."
+        )
+        XCTAssertEqual(
+            turnElement(identifier: "uls.setup.piece.road", labels: []).value as? String,
+            "Place now"
+        )
+        attachScreenshot(named: "Setup Flow 2 - Connect Road")
+
+        restoreUXLabChrome()
+        activateUXLabQuickState(
+            title: "Setup Handoff",
+            identifier: "uls.uxLab.cleanShot.setupHandoff"
+        )
+        XCTAssertTrue(
+            turnElement(
+                identifier: "uls.startTurn.surface",
+                labels: ["Start of turn"]
+            ).waitForExistence(timeout: 8),
+            "Expected authoritative setup completion to hand off to the first turn."
+        )
+        attachScreenshot(named: "Setup Flow 3 - First Turn")
     }
 
     func testOpenMessagesExtensionAndCaptureStartOfTurnComparison() throws {
@@ -1503,6 +1554,12 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             title: "Setup",
             identifier: "uls.uxLab.cleanShot.setupPlacement"
         )
+    }
+
+    private func restoreUXLabChrome() {
+        let restore = messages.buttons["uls.uxLab.restoreChrome"].firstMatch
+        XCTAssertTrue(restore.waitForExistence(timeout: 4))
+        restore.tap()
     }
 
     private func loadStartTurnGameplaySlice() {

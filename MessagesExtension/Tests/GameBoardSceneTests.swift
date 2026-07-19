@@ -59,6 +59,28 @@ final class GameBoardSceneTests: XCTestCase {
         XCTAssertEqual(GameBoardScene.numberTokenPipCount(for: 7), 0)
     }
 
+    func testNumberTokenNumeralsCenterTheirRenderedGlyphBounds() {
+        let renderModel = makeRenderModel()
+        let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
+
+        scene.update(
+            renderModel: renderModel,
+            referenceSize: CGSize(width: 320, height: 240),
+            viewportSize: CGSize(width: 320, height: 240),
+            overlayModel: .empty
+        )
+
+        let labels = descendants(of: scene)
+            .compactMap { $0 as? SKLabelNode }
+            .filter { $0.name == "numberToken.label" }
+
+        XCTAssertFalse(labels.isEmpty)
+        for label in labels {
+            XCTAssertNotNil(label.attributedText)
+            XCTAssertEqual(label.frame.midX, 0, accuracy: 0.01, "Expected \(label.text ?? "number") to be optically centered.")
+        }
+    }
+
     func testOceanBackdropIsOneUninterruptedWaterSurface() throws {
         let renderModel = makeRenderModel()
         let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
