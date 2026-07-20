@@ -80,7 +80,7 @@ struct GameModalHostView: View {
     private func modeBodyContent(for mode: GameMode, fallbackMessage: String) -> some View {
         switch mode {
         case .discard:
-            discardContent(fallbackMessage: fallbackMessage)
+            EmptyView()
         case .playDevCard,
              .devCardKnightMove,
              .devCardKnightVictim,
@@ -97,133 +97,6 @@ struct GameModalHostView: View {
                 .foregroundStyle(GameTheme.mutedInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
-    }
-
-    @ViewBuilder
-    private func discardContent(fallbackMessage: String) -> some View {
-        if let discardPanel {
-            Text(discardMessage(for: discardPanel))
-                .font(GameTheme.metaFont)
-                .foregroundStyle(GameTheme.mutedInk)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if let action = discardPanel.action {
-                let (requiredCount, availableHand): (Int, [GameHandChip]) = {
-                    switch action {
-                    case let .publishDiscard(required, hand):
-                        return (required, hand)
-                    }
-                }()
-
-                discardComposerSection(
-                    requiredCount: requiredCount,
-                    availableHand: availableHand
-                )
-
-                Button(action: onDiscardAction) {
-                    Text(discardButtonTitle(for: action))
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(discardSelectedCount != requiredCount)
-            }
-
-            if !discardPanel.waitingPlayers.isEmpty {
-                Text("Waiting on: \(discardPanel.waitingPlayers.joined(separator: ", "))")
-                    .font(GameTheme.metaFont)
-                    .foregroundStyle(GameTheme.mutedInk)
-            }
-        } else {
-            Text(fallbackMessage)
-                .font(GameTheme.metaFont)
-                .foregroundStyle(GameTheme.mutedInk)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    @ViewBuilder
-    private func discardComposerSection(
-        requiredCount: Int,
-        availableHand: [GameHandChip]
-    ) -> some View {
-        let density = ResourceChipDensity.compact
-        let remaining = max(requiredCount - discardSelectedCount, 0)
-
-        VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-            Text("Selected discard (\(discardSelectedCount)/\(requiredCount))")
-                .font(GameTheme.metaFont.weight(.semibold))
-                .foregroundStyle(GameTheme.ink)
-
-            if discardSelectedChips.isEmpty {
-                Text("Nothing selected yet.")
-                    .font(GameTheme.metaFont)
-                    .foregroundStyle(GameTheme.mutedInk)
-            } else {
-                ResourceChipGridView(items: discardSelectedChips, density: density) { chip in
-                    ResourceCountChipView(
-                        resource: chip.resource,
-                        label: chip.shortLabel,
-                        count: chip.count,
-                        isEnabled: true,
-                        isSelected: true,
-                        selectionBadge: nil,
-                        detailBadge: "-",
-                        density: density,
-                        action: {
-                            onRemoveDiscardResource?(chip.resource)
-                        },
-                        accessibilityLabel: "\(chip.shortLabel), remove one from discard selection"
-                    )
-                }
-            }
-
-            Text(remaining == 0 ? "Ready to submit." : "Select \(remaining) more card\(remaining == 1 ? "" : "s").")
-                .font(GameTheme.metaFont)
-                .foregroundStyle(GameTheme.mutedInk)
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Your hand")
-                    .font(GameTheme.metaFont.weight(.semibold))
-                    .foregroundStyle(GameTheme.ink)
-
-                if availableHand.isEmpty {
-                    Text("No resources in hand.")
-                        .font(GameTheme.metaFont)
-                        .foregroundStyle(GameTheme.mutedInk)
-                } else {
-                    ResourceChipGridView(items: availableHand, density: density) { chip in
-                        discardAvailableChip(
-                            chip,
-                            requiredCount: requiredCount,
-                            density: density
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    private func discardAvailableChip(
-        _ chip: GameHandChip,
-        requiredCount: Int,
-        density: ResourceChipDensity
-    ) -> some View {
-        let selected = discardSelectedHandCounts[chip.resource] ?? 0
-        let canAdd = selected < chip.count && discardSelectedCount < requiredCount
-        return ResourceCountChipView(
-            resource: chip.resource,
-            label: chip.shortLabel,
-            count: chip.count,
-            isEnabled: canAdd,
-            isSelected: selected > 0,
-            selectionBadge: selected > 0 ? String(selected) : nil,
-            detailBadge: canAdd ? "+" : nil,
-            density: density,
-            action: canAdd ? {
-                onSelectDiscardResource?(chip.resource)
-            } : nil,
-            accessibilityLabel: "\(chip.shortLabel), \(chip.count) in hand, \(selected) selected to discard"
-        )
     }
 
     @ViewBuilder
@@ -436,39 +309,6 @@ struct GameModalHostView: View {
         }
     }
 
-    private func discardMessage(for panel: GameDiscardPanelModel) -> String {
-        switch panel.action {
-        case let .publishDiscard(requiredCount, _):
-            return "Discard exactly \(requiredCount) cards to publish the next canonical discard state. Discarders resolve in roster order during this robber step."
-        case .none:
-            if panel.waitingPlayers.isEmpty {
-                return "Discard resolution is blocking turn progress."
-            }
-            return "Discard resolution is blocking turn progress until the remaining players submit in order."
-        }
-    }
-
-    private func discardButtonTitle(for action: GameDiscardPanelModel.Action) -> String {
-        switch action {
-        case .publishDiscard:
-            return "Publish Discard"
-        }
-    }
-
-    private var discardSelectedCount: Int {
-        discardSelectedHandCounts.values.reduce(0, +)
-    }
-
-    private var discardSelectedChips: [GameHandChip] {
-        ResourceV1.tradeableCases.compactMap { resource in
-            let count = discardSelectedHandCounts[resource] ?? 0
-            guard count > 0 else {
-                return nil
-            }
-            return GameHandChip(resource: resource, count: count)
-        }
-    }
-
     private func chipBackground(for chip: GameHandChip) -> Color {
         switch chip.resource {
         case .wood:
@@ -516,15 +356,9 @@ struct GameModalHostView: View {
         case .devCardRoadBuildingSecond:
             return ("Road Building", "Choose the second connected road on the board.", "road.lanes")
         case .discard:
-            return ("Discard Required", "Discard resolution is blocking turn progress.", "exclamationmark.triangle.fill")
+            return nil
         default:
             return nil
         }
-    }
-}
-
-private extension ResourceV1 {
-    static var tradeableCases: [ResourceV1] {
-        [.wood, .brick, .sheep, .wheat, .ore]
     }
 }

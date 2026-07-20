@@ -353,6 +353,102 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Not Primary Player - Waiting on Discard")
     }
 
+    func testCaptureActionableDiscardComposer() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+
+        openUXLabPanel()
+        let flatOcean = turnElement(
+            identifier: "uls.uxLab.oceanStyle.flat",
+            labels: ["Flat"]
+        )
+        XCTAssertTrue(flatOcean.waitForExistence(timeout: 4))
+        flatOcean.tap()
+
+        loadTurnGameplaySlice()
+        let normalTurnBoard = turnElement(identifier: "uls.tabletop.board", labels: [])
+        XCTAssertTrue(normalTurnBoard.waitForExistence(timeout: 8))
+        let normalTurnBoardFrame = normalTurnBoard.frame
+        attachScreenshot(named: "Normal Turn - Board Reference")
+
+        restoreUXLabChrome()
+        activateDirectCleanState(
+            identifier: "uls.uxLab.cleanShot.pendingDiscard.direct",
+            label: "Clean actionable discard"
+        )
+
+        let surface = turnElement(identifier: "uls.discard.surface", labels: [])
+        let progress = turnElement(identifier: "uls.discard.progress", labels: [])
+        let submit = messages.buttons["uls.discard.submit"].firstMatch
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let physicalTopBar = turnElement(identifier: "uls.turn.topBar", labels: [])
+        let legacyShelf = messages.descendants(matching: .any)
+            .matching(identifier: "uls.overlayShelf")
+            .firstMatch
+        let wood = messages.buttons["uls.discard.hand.wood"].firstMatch
+        let brick = messages.buttons["uls.discard.hand.brick"].firstMatch
+        let wheat = messages.buttons["uls.discard.hand.wheat"].firstMatch
+        let selectedWood = messages.buttons["uls.discard.selection.wood"].firstMatch
+
+        XCTAssertTrue(surface.waitForExistence(timeout: 8))
+        XCTAssertTrue(progress.waitForExistence(timeout: 4))
+        XCTAssertTrue(submit.waitForExistence(timeout: 4))
+        XCTAssertEqual(submit.label, "Confirm")
+        XCTAssertTrue(board.waitForExistence(timeout: 4))
+        XCTAssertTrue(physicalTopBar.waitForExistence(timeout: 4))
+        XCTAssertEqual(
+            board.frame,
+            normalTurnBoardFrame,
+            "Forced discard must preserve the normal-turn board frame."
+        )
+        XCTAssertFalse(
+            turnElement(identifier: "uls.turn.objectRail", labels: [], timeout: 1).exists,
+            "The visible discard hand replaces the redundant standalone Hand prop."
+        )
+        XCTAssertFalse(legacyShelf.exists)
+        XCTAssertTrue(wood.waitForExistence(timeout: 4))
+        XCTAssertTrue(brick.waitForExistence(timeout: 4))
+        XCTAssertTrue(wheat.waitForExistence(timeout: 4))
+        XCTAssertEqual(progress.value as? String, "0 of 5 selected")
+        XCTAssertFalse(submit.isEnabled)
+        XCTAssertGreaterThanOrEqual(wood.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(wood.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(submit.frame.height, 44)
+        XCTAssertEqual(submit.frame.midY, wood.frame.midY, accuracy: 2)
+
+        let boardFrame = board.frame
+        wood.tap()
+        wood.tap()
+        wood.tap()
+        brick.tap()
+        brick.tap()
+
+        XCTAssertEqual(progress.value as? String, "5 of 5 selected")
+        XCTAssertTrue(submit.isEnabled)
+        XCTAssertTrue(selectedWood.waitForExistence(timeout: 2))
+        XCTAssertGreaterThanOrEqual(selectedWood.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(selectedWood.frame.height, 44)
+        XCTAssertEqual(selectedWood.value as? String, "3 selected")
+        XCTAssertLessThanOrEqual(
+            wood.frame.maxY,
+            selectedWood.frame.minY,
+            "Discard controls must reserve their own row instead of clipping across the hand cards."
+        )
+        XCTAssertLessThanOrEqual(selectedWood.frame.maxY, surface.frame.maxY)
+        XCTAssertEqual(board.frame, boardFrame)
+
+        selectedWood.tap()
+        XCTAssertEqual(progress.value as? String, "4 of 5 selected")
+        XCTAssertEqual(selectedWood.value as? String, "2 selected")
+        XCTAssertFalse(submit.isEnabled)
+
+        wheat.tap()
+        XCTAssertEqual(progress.value as? String, "5 of 5 selected")
+        XCTAssertTrue(submit.isEnabled)
+        XCTAssertEqual(board.frame, boardFrame)
+        attachScreenshot(named: "Discard - Ready to Submit")
+    }
+
     func testSettleStartOfTurnChoiceForDirectStill() throws {
         openUnluckySevensExtension()
         waitForUXLabChrome()
@@ -1658,6 +1754,14 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         activateUXLabQuickState(
             title: "Discard Wait",
             identifier: "uls.uxLab.cleanShot.notPrimary.discard"
+        )
+    }
+
+    private func loadActionableDiscardSlice() {
+        openUXLabPanel()
+        activateDirectCleanState(
+            identifier: "uls.uxLab.cleanShot.pendingDiscard.direct",
+            label: "Clean actionable discard"
         )
     }
 

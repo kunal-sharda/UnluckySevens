@@ -55,17 +55,21 @@ struct GameShellView: View {
         let notPrimaryPlayerContext = viewModel.physicalNotPrimaryPlayerContext
         let setupPlacementModel = projection.setupPlacementModel
         let isSetup = setupPlacementModel != nil
-        let tabletopLayoutStyle = resolvedTabletopLayoutStyle(
-            isNormalPostRollTurn: isNormalPostRollTurn,
-            isNormalPreRollTurn: isNormalPreRollTurn,
-            hasNotPrimaryPlayerContext: notPrimaryPlayerContext != nil,
-            isSetupPlacement: isSetup
-        )
         let resolvedMode = GameModeResolver.normalized(
             currentMode: currentMode,
             availability: screenModel.modeAvailability
         )
-        let shelfPresentation = resolvedShelfPresentation(mode: resolvedMode)
+        let tabletopLayoutStyle = resolvedTabletopLayoutStyle(
+            isNormalPostRollTurn: isNormalPostRollTurn,
+            isNormalPreRollTurn: isNormalPreRollTurn,
+            hasNotPrimaryPlayerContext: notPrimaryPlayerContext != nil,
+            isSetupPlacement: isSetup,
+            isForcedDiscard: resolvedMode == .discard
+        )
+        let shelfPresentation = resolvedShelfPresentation(
+            mode: resolvedMode,
+            usesPhysicalProps: tabletopLayoutStyle.usesPhysicalProps
+        )
         let activeLowerShelf = shelfPresentation.activeShelf
         let isShelfPresented = activeLowerShelf != nil && !isGameOver
         let activeTradeRoute = shellRoute.tradeOverlayRoute
@@ -109,10 +113,14 @@ struct GameShellView: View {
         let isPhysicalSetup = usesPhysicalProps && isSetup
         let isPhysicalStartTurn = usesPhysicalProps && isNormalPreRollTurn
         let isPhysicalNotPrimaryPlayer = usesPhysicalProps && notPrimaryPlayerContext != nil
+        let isPhysicalDiscard = usesPhysicalProps && resolvedMode == .discard
+        let isActionablePhysicalDiscard = isPhysicalDiscard
+            && projection.discardPanelModel?.action != nil
         let isPhysicalGameplayTurn = isNormalPostRollTurn
             || isPhysicalStartTurn
             || isPhysicalNotPrimaryPlayer
             || isPhysicalSetup
+            || isPhysicalDiscard
         let physicalHeaderPrompt: GamePhysicalTurnHeaderPrompt? = if isPhysicalStartTurn {
             nil
         } else if let notPrimaryPlayerContext {
@@ -125,10 +133,12 @@ struct GameShellView: View {
                 devCardDraft: devCardDraft
             )
         }
-        let physicalHeaderTitle = notPrimaryPlayerContext?.headerTitle(
-            fallback: headerModel.statusLine.title,
-            discardPanel: projection.discardPanelModel
-        ) ?? headerModel.statusLine.title
+        let physicalHeaderTitle = isActionablePhysicalDiscard
+            ? "Discard cards"
+            : notPrimaryPlayerContext?.headerTitle(
+                fallback: headerModel.statusLine.title,
+                discardPanel: projection.discardPanelModel
+            ) ?? headerModel.statusLine.title
         let physicalPlayerColor = screenModel.gameInfo.players
             .first(where: \.isLocalPlayer)
             .map { tint in
@@ -189,6 +199,7 @@ struct GameShellView: View {
                     : tabletopLayoutStyle.usesFeltTools
                     ? shellLayout.trayHeight
                     : (isHandOpen ? shellLayout.expandedTrayHeight : shellLayout.trayHeight)
+                let physicalDiscardSurfaceHeight = actionSurfaceHeight + bottomTrayHeight
                 let physicalTradeSurfaceHeight = notPrimaryPlayerContext == .incomingTrade
                     ? max(actionSurfaceHeight, GamePhysicalIncomingTradeView.minimumHeight)
                     : actionSurfaceHeight
@@ -513,7 +524,7 @@ struct GameShellView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         .contentShape(Rectangle())
 
-                        if !isGameOver, !isPhysicalStartTurn {
+                        if !isGameOver, !isPhysicalStartTurn, !isActionablePhysicalDiscard {
                             Group {
                                 if let setupPlacementModel, isPhysicalSetup {
                                     GamePhysicalSetupPieceRailView(
@@ -528,8 +539,9 @@ struct GameShellView: View {
                                         isHandOpen: isHandOpen,
                                         hasPendingTrade: hasPendingTrade,
                                         playerColor: physicalPlayerColor,
-                                        centersAvailableProps: isPhysicalNotPrimaryPlayer,
-                                        isHandInteractive: notPrimaryPlayerContext?.isWaitingForDiscard != true,
+                                        centersAvailableProps: isPhysicalNotPrimaryPlayer || isPhysicalDiscard,
+                                        isHandInteractive: !isPhysicalDiscard
+                                            && notPrimaryPlayerContext?.isWaitingForDiscard != true,
                                         onSelectDock: { actionKind in
                                             handleActionSelection(
                                                 actionKind,
@@ -603,7 +615,27 @@ struct GameShellView: View {
                            !isPhysicalStartTurn,
                            !isPhysicalSetup,
                            notPrimaryPlayerContext?.isWaitingForDiscard != true {
-                            if isHandOpen {
+                            if isPhysicalDiscard {
+                                GameDiscardComposerView(
+                                    panel: projection.discardPanelModel,
+                                    fallbackMessage: "Discard resolution is required.",
+                                    selectedCountsByResource: selectedDiscardHandCounts,
+                                    onAddResource: addDiscardResource,
+                                    onRemoveResource: removeDiscardResource,
+                                    onSubmit: {
+                                        guard viewModel.handleDiscardFlowAction(discarded: discardDraft) else { return }
+                                        discardDraft = .zero
+                                        selectedBoardTarget = nil
+                                    }
+                                )
+                                .scaleEffect(physicalLayout.contentScale)
+                                .frame(height: physicalDiscardSurfaceHeight)
+                                .frame(maxWidth: lowerRailWidth)
+                                .padding(.horizontal, GameTheme.shellPadding)
+                                .padding(.bottom, GameTheme.shellPadding)
+                                .transition(.opacity)
+                                .zIndex(0.75)
+                            } else if isHandOpen {
                                 GamePhysicalTurnActionSpreadView(
                                     content: .hand,
                                     hand: screenModel.handTray,
@@ -1082,7 +1114,8 @@ struct GameShellView: View {
         isNormalPostRollTurn: Bool,
         isNormalPreRollTurn: Bool,
         hasNotPrimaryPlayerContext: Bool,
-        isSetupPlacement: Bool
+        isSetupPlacement: Bool,
+        isForcedDiscard: Bool
     ) -> GameTabletopLayoutStyle {
 #if DEBUG
         let testingStyle = GameTabletopLayoutStyle(
@@ -1093,6 +1126,7 @@ struct GameShellView: View {
             isNormalPreRollTurn: isNormalPreRollTurn,
             hasNotPrimaryPlayerContext: hasNotPrimaryPlayerContext,
             isSetupPlacement: isSetupPlacement,
+            isForcedDiscard: isForcedDiscard,
             testingStyle: testingStyle
         )
 #else
@@ -1100,12 +1134,19 @@ struct GameShellView: View {
             isNormalPostRollTurn: isNormalPostRollTurn,
             isNormalPreRollTurn: isNormalPreRollTurn,
             hasNotPrimaryPlayerContext: hasNotPrimaryPlayerContext,
-            isSetupPlacement: isSetupPlacement
+            isSetupPlacement: isSetupPlacement,
+            isForcedDiscard: isForcedDiscard
         )
 #endif
     }
 
-    private func resolvedShelfPresentation(mode: GameMode) -> GameShelfPresentation {
+    private func resolvedShelfPresentation(
+        mode: GameMode,
+        usesPhysicalProps: Bool
+    ) -> GameShelfPresentation {
+        if mode == .discard, usesPhysicalProps {
+            return .none
+        }
         if mode == .discard || mode == .robberVictim {
             return .forcedFlow
         }
@@ -2183,7 +2224,10 @@ struct GameShellView: View {
             return
         }
 
-        if case .utility = resolvedShelfPresentation(mode: currentMode) {
+        if case .utility = resolvedShelfPresentation(
+            mode: currentMode,
+            usesPhysicalProps: false
+        ) {
             self.shellRoute = .none
             clearBoardSelection()
         }

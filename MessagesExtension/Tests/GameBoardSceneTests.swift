@@ -5,8 +5,8 @@ import XCTest
 @testable import MessagesExtension
 
 final class GameBoardSceneTests: XCTestCase {
-    func testApprovedHaloIsProductionOceanDefault() {
-        XCTAssertEqual(GameBoardOceanStyle.productionDefault, .edgeVignette)
+    func testFlatWaterIsProductionOceanDefault() {
+        XCTAssertEqual(GameBoardOceanStyle.productionDefault, .flat)
     }
 
     func testSharedSettlementAndCityGeometryRemainDistinct() {

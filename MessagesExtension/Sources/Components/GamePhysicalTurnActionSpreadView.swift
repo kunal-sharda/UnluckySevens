@@ -43,13 +43,7 @@ struct GamePhysicalTurnActionSpreadView: View {
         HStack(spacing: 12) {
             HStack(spacing: 6) {
                 ForEach(hand.chips) { chip in
-                    GameTabletopPortraitCardView(
-                        face: .resource(chip.resource),
-                        size: GamePhysicalTurnLayout.handCardSize,
-                        count: chip.count,
-                        isFaded: true,
-                        stackDepth: 1
-                    )
+                    GamePhysicalResourceHandCardView(chip: chip, isFaded: true)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("\(chip.shortLabel), \(chip.count) owned")
                 }

@@ -150,3 +150,21 @@ struct GameTabletopPortraitCardView: View {
         overlayText ?? count.map { String($0) }
     }
 }
+
+/// The canonical resource-card treatment used when the player's physical hand
+/// is laid out on the felt. Interaction-specific chrome belongs outside it so
+/// hand, discard, and future resource choices keep the same card proportions.
+struct GamePhysicalResourceHandCardView: View {
+    let chip: GameHandChip
+    let isFaded: Bool
+
+    var body: some View {
+        GameTabletopPortraitCardView(
+            face: .resource(chip.resource),
+            size: GamePhysicalTurnLayout.handCardSize,
+            count: chip.count,
+            isFaded: isFaded,
+            stackDepth: 1
+        )
+    }
+}

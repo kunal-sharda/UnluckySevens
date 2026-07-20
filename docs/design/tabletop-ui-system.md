@@ -41,7 +41,7 @@ The document owns **why and when** a role is used. The listed code owns exact nu
 
 ### Ocean and board frame
 
-- The ocean is one rounded teal field with a subtle shoreline Halo: lighter near the island, darker toward the outside.
+- The ocean is one rounded, flat teal field. Island and shoreline detail may create local depth, but the outer perimeter must not darken into a vignette or read as clipped board edges.
 - The field may extend slightly farther below the island to balance the full-display center, never farther above in a way that crowds public objects.
 - Cream topology lines frame the complete hex grid. Terrain-local dark edges and colored stamps provide secondary separation.
 - Ocean treatment may not change board topology, target coordinates, camera behavior, or the SpriteKit host identity.
@@ -223,7 +223,7 @@ Do not create a second shell, duplicate Core legality, add generated raster prop
 
 These narrow mismatches were discovered while extracting the contract and corrected before review. They do not broaden the slice into a redesign.
 
-1. **Shoreline Halo default — resolved:** `GameBoardOceanStyle.productionDefault` is now Halo while DEBUG comparisons remain available.
+1. **Flat ocean default — resolved:** `GameBoardOceanStyle.productionDefault` is flat so the rounded host frame defines the board boundary without a second dark perimeter; Halo and other depth comparisons remain available in DEBUG.
 2. **Pending trade treatment — resolved:** pending state now changes the anchored wooden label to `Pending` instead of floating a second badge over the ship. Its accessibility label remains `Trade` with the value `Pending offer`.
 3. **Inline tabletop actions — resolved:** physical-props actions such as `Replace Offer`, `Keep Playing`, and `End Turn` share one system Caption treatment and the established neutral/amber keyline semantics instead of inheriting blue bordered-button chrome.
 

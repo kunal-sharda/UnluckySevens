@@ -25,6 +25,7 @@ enum GameTabletopLayoutStyleResolver {
         isNormalPreRollTurn: Bool = false,
         hasNotPrimaryPlayerContext: Bool,
         isSetupPlacement: Bool = false,
+        isForcedDiscard: Bool = false,
         testingStyle: GameTabletopLayoutStyle? = nil
     ) -> GameTabletopLayoutStyle {
         if let testingStyle, testingStyle != .framedShelf {
@@ -35,6 +36,7 @@ enum GameTabletopLayoutStyleResolver {
             || isNormalPreRollTurn
             || hasNotPrimaryPlayerContext
             || isSetupPlacement
+            || isForcedDiscard
             ? .physicalProps
             : .framedShelf
     }

@@ -70,6 +70,15 @@ struct UXTestingControlsView: View {
             }
             .accessibilityIdentifier("uls.uxLab.lobbyStates")
 
+            Button("Discard Now", systemImage: "hand.raised.fill") {
+                activateCleanFixture(
+                    id: "pending-discard",
+                    style: .physicalProps,
+                    actingAs: UXTestFixtures.host
+                )
+            }
+            .accessibilityIdentifier("uls.uxLab.cleanShot.pendingDiscard")
+
             Button("Setup", systemImage: "camera.viewfinder") {
                 activateCleanFixture(
                     id: UXTestFixtures.setupPlacementID,
@@ -296,7 +305,7 @@ struct UXTestingControlsView: View {
                     .foregroundStyle(GameTheme.mutedInk)
 
                 ForEach(
-                    [GameBoardOceanStyle.shallowGlow, .verticalDepth, .edgeVignette],
+                    [GameBoardOceanStyle.flat, .shallowGlow, .verticalDepth, .edgeVignette],
                     id: \.rawValue
                 ) { style in
                     Button(style.shortLabel) {
@@ -421,13 +430,14 @@ struct UXTestingControlsView: View {
 
             HStack(spacing: 6) {
                 cleanShotButton(
-                    systemImage: "camera.viewfinder",
-                    accessibilityLabel: "Clean setup screenshot",
-                    accessibilityIdentifier: "uls.uxLab.cleanShot.header.setupPlacement"
+                    systemImage: "hand.raised.fill",
+                    accessibilityLabel: "Clean actionable discard",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.pendingDiscard.direct"
                 ) {
                     activateCleanFixture(
-                        id: UXTestFixtures.setupPlacementID,
-                        style: .physicalProps
+                        id: "pending-discard",
+                        style: .physicalProps,
+                        actingAs: UXTestFixtures.host
                     )
                 }
 
