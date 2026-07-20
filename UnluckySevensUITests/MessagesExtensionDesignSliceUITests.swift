@@ -20,9 +20,72 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Unlucky Sevens - UX Lab panel")
     }
 
+    func testOpenMessagesExtensionAndCaptureLobbyInviteDirections() throws {
+        openUnluckySevensExtension()
+
+        openUXLabPanel()
+        activateUXLabNestedQuickState(
+            title: "Setup Card",
+            identifier: "uls.uxLab.cleanShot.lobbyInviteSetupCard"
+        )
+        XCTAssertTrue(waitForInviteSlice(timeout: 12))
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.lobby.inviteDirection.setupCard"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+        attachScreenshot(named: "Lobby Invite Direction - Setup Card")
+
+        restoreUXLabChrome()
+        activateUXLabNestedQuickState(
+            title: "Invitation Card",
+            identifier: "uls.uxLab.cleanShot.lobbyInviteInvitationCard"
+        )
+        XCTAssertTrue(waitForInviteSlice(timeout: 12))
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.lobby.inviteDirection.invitationCard"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
+        XCTAssertTrue(tutorial.exists)
+        XCTAssertEqual(tutorial.label, "Tutorial")
+        XCTAssertTrue(messages.buttons["uls.lobby.gameSettings"].firstMatch.exists)
+        XCTAssertFalse(messages.staticTexts["Async turns"].firstMatch.exists)
+        attachScreenshot(named: "Lobby Invite Direction - Invitation Card")
+
+        messages.buttons["uls.lobby.gameSettings"].firstMatch.tap()
+        XCTAssertTrue(messages.navigationBars["Game settings"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.staticTexts["Board"].firstMatch.exists)
+        XCTAssertTrue(messages.staticTexts["Victory"].firstMatch.exists)
+        messages.buttons["Done"].firstMatch.tap()
+
+        tutorial.tap()
+        XCTAssertTrue(messages.navigationBars["Game rules"].firstMatch.waitForExistence(timeout: 4))
+        messages.buttons["Done"].firstMatch.tap()
+    }
+
+    private func restoreUXLabChrome() {
+        let restore = messages.buttons["uls.uxLab.restoreChrome"].firstMatch
+        XCTAssertTrue(restore.waitForExistence(timeout: 4))
+        restore.tap()
+    }
+
+    private func activateDirectCleanState(identifier: String, label: String) {
+        let button = firstExistingElement(
+            [
+                messages.buttons[identifier].firstMatch,
+                messages.buttons[label].firstMatch,
+                messages.descendants(matching: .any)[identifier].firstMatch,
+                messages.descendants(matching: .any)[label].firstMatch,
+            ],
+            timeout: 4
+        )
+        XCTAssertTrue(button.waitForExistence(timeout: 4))
+        button.tap()
+    }
+
     func testOpenMessagesExtensionAndCaptureCleanSetupGameplaySlice() throws {
         openUnluckySevensExtension()
-        openUXLabPanel()
+        waitForUXLabChrome()
         loadCleanSetupGameplaySlice()
 
         XCTAssertTrue(
@@ -1556,12 +1619,6 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         )
     }
 
-    private func restoreUXLabChrome() {
-        let restore = messages.buttons["uls.uxLab.restoreChrome"].firstMatch
-        XCTAssertTrue(restore.waitForExistence(timeout: 4))
-        restore.tap()
-    }
-
     private func loadStartTurnGameplaySlice() {
         activateUXLabQuickState(
             title: "Start",
@@ -1625,6 +1682,42 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             [
                 messages.buttons[identifier].firstMatch,
                 messages.buttons[title].firstMatch,
+            ],
+            timeout: 4
+        )
+        XCTAssertTrue(menuItem.exists, "Expected the UX Lab \(title) state to be available.")
+        menuItem.tap()
+    }
+
+    private func activateUXLabNestedQuickState(title: String, identifier: String) {
+        let menu = firstExistingElement(
+            [
+                messages.buttons["uls.uxLab.quickStates"].firstMatch,
+                messages.buttons["States"].firstMatch,
+            ],
+            timeout: 4
+        )
+        XCTAssertTrue(menu.exists, "Expected the UX Lab state menu to be visible.")
+        menu.tap()
+
+        let lobbyMenu = firstExistingElement(
+            [
+                messages.buttons["uls.uxLab.lobbyStates"].firstMatch,
+                messages.buttons["Lobby"].firstMatch,
+                messages.descendants(matching: .any)["uls.uxLab.lobbyStates"].firstMatch,
+                messages.descendants(matching: .any)["Lobby"].firstMatch,
+            ],
+            timeout: 4
+        )
+        XCTAssertTrue(lobbyMenu.exists, "Expected the UX Lab Lobby state group to be available.")
+        lobbyMenu.tap()
+
+        let menuItem = firstExistingElement(
+            [
+                messages.buttons[identifier].firstMatch,
+                messages.buttons[title].firstMatch,
+                messages.descendants(matching: .any)[identifier].firstMatch,
+                messages.descendants(matching: .any)[title].firstMatch,
             ],
             timeout: 4
         )

@@ -8,6 +8,8 @@ struct UXTestingControlsView: View {
     private var tabletopLayoutStyleRawValue = GameTabletopLayoutStyle.framedShelf.rawValue
     @AppStorage(GameBoardOceanStyle.defaultsKey)
     private var oceanStyleRawValue = GameBoardOceanStyle.flat.rawValue
+    @AppStorage(LobbyInviteDirection.defaultsKey)
+    private var lobbyInviteDirectionRawValue = LobbyInviteDirection.setupCard.rawValue
 
     var body: some View {
         if viewModel.uxTestingChromeHiddenForScreenshot {
@@ -35,6 +37,39 @@ struct UXTestingControlsView: View {
 
     private var quickStateMenu: some View {
         Menu {
+            Menu("Lobby", systemImage: "person.3.fill") {
+                Button("Setup Card", systemImage: "list.number") {
+                    lobbyInviteDirectionRawValue = LobbyInviteDirection.setupCard.rawValue
+                    viewModel.activateCleanLobbyInviteEntry()
+                }
+                .accessibilityIdentifier("uls.uxLab.cleanShot.lobbyInviteSetupCard")
+
+                Button("Invitation Card", systemImage: "envelope.fill") {
+                    lobbyInviteDirectionRawValue = LobbyInviteDirection.invitationCard.rawValue
+                    viewModel.activateCleanLobbyInviteEntry()
+                }
+                .accessibilityIdentifier("uls.uxLab.cleanShot.lobbyInviteInvitationCard")
+
+                Button("Join", systemImage: "person.badge.plus") {
+                    activateCleanFixture(
+                        id: UXTestFixtures.lobbyInviteID,
+                        style: .framedShelf,
+                        actingAs: UXTestFixtures.alice
+                    )
+                }
+                .accessibilityIdentifier("uls.uxLab.cleanShot.lobbyJoin")
+
+                Button("Ready", systemImage: "checkmark.seal.fill") {
+                    activateCleanFixture(
+                        id: UXTestFixtures.lobbyReadyID,
+                        style: .framedShelf,
+                        actingAs: UXTestFixtures.host
+                    )
+                }
+                .accessibilityIdentifier("uls.uxLab.cleanShot.lobbyReady")
+            }
+            .accessibilityIdentifier("uls.uxLab.lobbyStates")
+
             Button("Setup", systemImage: "camera.viewfinder") {
                 activateCleanFixture(
                     id: UXTestFixtures.setupPlacementID,
@@ -181,6 +216,41 @@ struct UXTestingControlsView: View {
     private var controlsPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
+
+            HStack(spacing: 8) {
+                cleanShotChipButton(
+                    title: "Setup card",
+                    systemImage: "list.number",
+                    accessibilityLabel: "Setup card invite direction",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.lobbyInviteSetupCard"
+                ) {
+                    lobbyInviteDirectionRawValue = LobbyInviteDirection.setupCard.rawValue
+                    viewModel.activateCleanLobbyInviteEntry()
+                }
+
+                cleanShotChipButton(
+                    title: "Invitation",
+                    systemImage: "envelope.fill",
+                    accessibilityLabel: "Invitation card invite direction",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.lobbyInviteInvitationCard"
+                ) {
+                    lobbyInviteDirectionRawValue = LobbyInviteDirection.invitationCard.rawValue
+                    viewModel.activateCleanLobbyInviteEntry()
+                }
+
+                cleanShotChipButton(
+                    title: "Join",
+                    systemImage: "person.badge.plus",
+                    accessibilityLabel: "Clean lobby join",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.lobbyJoin"
+                ) {
+                    activateCleanFixture(
+                        id: UXTestFixtures.lobbyInviteID,
+                        style: .framedShelf,
+                        actingAs: UXTestFixtures.alice
+                    )
+                }
+            }
 
             HStack(spacing: 8) {
                 cleanShotChipButton(

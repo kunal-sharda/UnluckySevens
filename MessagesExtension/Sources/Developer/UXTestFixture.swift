@@ -58,6 +58,8 @@ enum UXTestFixtures {
 
     static let defaultFixtureID = turnAfterRoll.id
     static let defaultActorID = host
+    static let lobbyInviteID = "lobby-invite"
+    static let lobbyReadyID = "lobby-ready"
     static let setupPlacementID = "setup-placement"
     static let setupRoadPlacementID = "setup-road-placement"
     static let setupHandoffID = "setup-handoff"

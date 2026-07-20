@@ -123,6 +123,14 @@ final class LobbyDriverViewModel: ObservableObject {
         uxTestingChromeHiddenForScreenshot = false
     }
 
+    func activateCleanLobbyInviteEntry() {
+        uxTestingIsActive = false
+        clearActiveContext()
+        selectionStatus = "UX Lab loaded clean lobby invite entry"
+        setLastError(nil)
+        uxTestingChromeHiddenForScreenshot = true
+    }
+
     func recordUXTestingSettingsHookInvocation() {
         uxTestingSettingsHookInvocationCount &+= 1
     }
