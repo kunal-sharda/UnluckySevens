@@ -94,9 +94,9 @@ enum TranscriptBubbleImageRenderer {
             drawTray(rect: CGRect(x: 120, y: 150, width: 120, height: 34), color: style.secondary)
         case .robber:
             drawHex(center: CGPoint(x: 180, y: 132), radius: 58, fill: Palette.desert, stroke: style.accent)
-            drawRobber(center: CGPoint(x: 180, y: 122), size: 82, color: Palette.ink)
+            drawRobber(center: CGPoint(x: 180, y: 122), size: 82)
         case .steal:
-            drawRobber(center: CGPoint(x: 145, y: 122), size: 70, color: Palette.ink)
+            drawRobber(center: CGPoint(x: 145, y: 122), size: 70)
             drawResourceChip(center: CGPoint(x: 216, y: 126), radius: 30, color: style.accent)
         case .buildCity:
             drawHexCluster(center: CGPoint(x: 178, y: 126), radius: 30, count: 3)
@@ -222,11 +222,9 @@ enum TranscriptBubbleImageRenderer {
         right.stroke()
     }
 
-    private static func drawRobber(center: CGPoint, size: CGFloat, color: UIColor) {
-        color.setFill()
-        UIBezierPath(ovalIn: CGRect(x: center.x - size * 0.18, y: center.y - size * 0.55, width: size * 0.36, height: size * 0.36)).fill()
-        UIBezierPath(roundedRect: CGRect(x: center.x - size * 0.18, y: center.y - size * 0.20, width: size * 0.36, height: size * 0.48), cornerRadius: size * 0.14).fill()
-        UIBezierPath(ovalIn: CGRect(x: center.x - size * 0.32, y: center.y + size * 0.20, width: size * 0.64, height: size * 0.20)).fill()
+    private static func drawRobber(center: CGPoint, size: CGFloat) {
+        guard let context = UIGraphicsGetCurrentContext() else { return }
+        RobberPieceDrawing.draw(center: center, height: size, in: context)
     }
 
     private static func drawSettlement(center: CGPoint, size: CGFloat, fill: UIColor) {

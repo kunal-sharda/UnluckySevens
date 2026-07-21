@@ -29,6 +29,11 @@ final class GameBoardSnapshotRendererTests: XCTestCase {
 
         XCTAssertEqual(image.size.width, GameBoardSnapshotVariant.transcriptPreview.canvasSize.width, accuracy: 0.5)
         XCTAssertEqual(image.size.height, GameBoardSnapshotVariant.transcriptPreview.canvasSize.height, accuracy: 0.5)
+
+        let attachment = XCTAttachment(image: image)
+        attachment.name = "Approved robber on transcript board snapshot"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     private func makeRenderModel() -> GameBoardRenderModel? {

@@ -54,6 +54,8 @@ The approved initial-setup screen is a setup-specific state of that same Physica
 
 The approved Start-of-Turn screen is the pre-roll state of the same Physical Props table. A full-host charcoal focus veil keeps the mounted board faintly legible while centering a `Your Turn` ritual: executable owned Dev Cards and a physical dice pair when both choices are legal, or Roll alone after a pre-roll Dev action. The Dev chooser remains inside that focus layer and can close without consuming a card. Rolling decorates the Core-owned result with the dimensional dice bowl, offers skip while moving, waits for explicit continuation after settling, and crossfades directly to the result when Reduce Motion is enabled. The board host and geometry do not remount during these transitions.
 
+The approved product identity is a cool-grey physical robber piece marked with a warm-black wrapped domino mask and clay-red `7`, presented on dark felt with a thin antique-gold near-edge keyline. App and iMessage catalog assets are generated from the tracked SVG masters in `scripts/assets/` by `scripts/generate-icon-assets.sh`; shipping icon PNGs are full bleed and have no alpha channel. The live board robber and collapsed-message/status artwork share `RobberPieceGeometry` so the sphere, egg body, squat plinth, mask, and `7` do not drift between product surfaces. Tiny transcript uses may drop mask contour detail, but must preserve the grey silhouette, dark mask mass, and red `7`.
+
 Previous numbered terrain and tree passes were experimentation, not durable product truth. They were removed after their final outputs were integrated. New experiments belong in ignored `docs/design/workbench/` and are deleted when the decision closes.
 
 ## Human Calibration

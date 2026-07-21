@@ -444,19 +444,45 @@ final class GameBoardScene: SKScene {
 
     private func makeRobberNode(radius: CGFloat) -> SKNode {
         let node = SKNode()
-        node.position = CGPoint(x: 0, y: -radius * 0.38)
+        node.name = "robber"
+        node.position = CGPoint(x: 0, y: -radius * 0.28)
         node.zPosition = 40
 
-        let base = SKShapeNode(circleOfRadius: max(radius * 0.18, 8))
-        base.fillColor = GameBoardPalette.robber
-        base.strokeColor = .clear
-        node.addChild(base)
+        let artwork = SKNode()
+        artwork.name = "robber.artwork"
+        artwork.yScale = -1
+        let paths = RobberPieceGeometry.paths(center: .zero, height: max(radius * 0.82, 30))
 
-        let cap = SKShapeNode(circleOfRadius: max(radius * 0.11, 5))
-        cap.fillColor = GameBoardPalette.robberAccent
-        cap.strokeColor = .clear
-        cap.position = CGPoint(x: 0, y: max(radius * 0.12, 6))
-        node.addChild(cap)
+        for (name, path) in [("base", paths.base), ("body", paths.body), ("head", paths.head)] {
+            let shape = SKShapeNode(path: path)
+            shape.name = "robber.\(name)"
+            shape.fillColor = RobberPieceGeometry.pieceColor
+            shape.strokeColor = .clear
+            artwork.addChild(shape)
+        }
+
+        let mask = SKShapeNode(path: paths.mask)
+        mask.name = "robber.mask"
+        mask.fillColor = RobberPieceGeometry.maskColor
+        mask.strokeColor = .clear
+        artwork.addChild(mask)
+
+        let eyes = SKShapeNode(path: paths.eyes)
+        eyes.name = "robber.eyes"
+        eyes.fillColor = RobberPieceGeometry.pieceColor
+        eyes.strokeColor = .clear
+        artwork.addChild(eyes)
+
+        let seven = SKShapeNode(path: paths.seven)
+        seven.name = "robber.seven"
+        seven.fillColor = .clear
+        seven.strokeColor = RobberPieceGeometry.sevenColor
+        seven.lineWidth = paths.sevenLineWidth
+        seven.lineCap = .round
+        seven.lineJoin = .round
+        artwork.addChild(seven)
+
+        node.addChild(artwork)
 
         return node
     }

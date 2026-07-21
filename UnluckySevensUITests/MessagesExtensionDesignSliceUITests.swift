@@ -20,6 +20,31 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Unlucky Sevens - UX Lab panel")
     }
 
+    func testCaptureInstalledMessagesDrawerIcon() throws {
+        messages.launch()
+        handleFirstRunPrompts()
+        openExistingConversation()
+
+        let drawerButton = firstExistingElement(
+            [
+                messages.buttons["add"].firstMatch,
+                messages.buttons["Apps"].firstMatch,
+                messages.buttons["More"].firstMatch,
+                messages.buttons["App Store"].firstMatch,
+            ],
+            timeout: 4
+        )
+        XCTAssertTrue(drawerButton.exists, "Expected the Messages app drawer control.")
+        drawerButton.tap()
+
+        let appRow = messages.staticTexts["Unlucky Sevens"].firstMatch
+        for _ in 0..<8 where !appRow.exists {
+            messages.swipeUp()
+        }
+        XCTAssertTrue(appRow.waitForExistence(timeout: 4), "Expected the installed Unlucky Sevens drawer row.")
+        attachScreenshot(named: "Approved Unlucky Sevens Messages drawer icon")
+    }
+
     func testOpenMessagesExtensionAndCaptureLobbyInviteDirections() throws {
         openUnluckySevensExtension()
 
