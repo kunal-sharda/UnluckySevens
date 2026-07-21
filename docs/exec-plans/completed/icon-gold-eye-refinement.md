@@ -53,7 +53,7 @@ Ship the user-approved icon refinement: retain the cool-grey physical robber, wa
 - [x] Catalog assets regenerated and inspected.
 - [x] Owner doc and completion evidence updated.
 - [x] Rejected icon studies removed from the ignored workbench after selection.
-- [ ] Repository completion gate clears unrelated active-plan and workbench audit failures.
+- [x] Repository completion gate passed from the clean implementation commit.
 
 ### Decisions
 
@@ -70,4 +70,4 @@ Ship the user-approved icon refinement: retain the cool-grey physical robber, wa
 
 The square and wide production SVG masters now present the masked robber directly on felt with no hex or outer app frame. The mask apertures use a 1.4-unit antique-gold stroke at 72% opacity, while the entire mask silhouette uses a quieter 1.2-unit stroke at 55% opacity. No indentation or shine gradient was added to the robber or mask. The generator now rasterizes SVGs through WebKit at native 1024 output dimensions instead of enlarging Quick Look thumbnails, eliminating the observed pixelation before exact catalog downsizing. The canonical generator passed, all 27 PNGs are opaque at their declared sizes, direct 1024/180/60/54x40 inspection passed, `RobberPieceGeometryTests` passed 2 tests, the harsh product/UX re-review passed with no blockers, and the generated workspace MessagesExtension build including both asset catalogs succeeded.
 
-The selected plan's verification-contract check passed, but `make completion-gate PLAN=docs/exec-plans/active/icon-gold-eye-refinement.md` stopped in the repository-wide harness audit on an unrelated invalid `verified` status in `SRT-006` and unowned settings/tutorial workbench residue. This slice removed its own rejected icon studies and did not modify or delete unrelated in-flight artifacts. The production icon refinement is implemented and targeted verification passes, but the repository completion gate remains blocked by that external worktree state.
+The shared dirty worktree's first completion attempt stopped on unrelated settings/tutorial plan and workbench state. After the scoped implementation commit `9d16361`, `make completion-gate PLAN=docs/exec-plans/active/icon-gold-eye-refinement.md` passed from a clean detached worktree at that exact commit. Unrelated in-flight files were neither staged nor changed.
