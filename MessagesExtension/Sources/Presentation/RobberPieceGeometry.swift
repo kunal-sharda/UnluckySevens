@@ -16,7 +16,7 @@ enum RobberPieceGeometry {
     static let pieceColor = UIColor(red: CGFloat(0xA9) / 255, green: CGFloat(0xB5) / 255, blue: CGFloat(0xB6) / 255, alpha: 1)
     static let maskColor = UIColor(red: CGFloat(0x29) / 255, green: CGFloat(0x23) / 255, blue: CGFloat(0x1F) / 255, alpha: 1)
     static let maskContourColor = UIColor(red: CGFloat(0x5A) / 255, green: CGFloat(0x4C) / 255, blue: CGFloat(0x42) / 255, alpha: 0.72)
-    static let sevenColor = UIColor(red: CGFloat(0xBD) / 255, green: CGFloat(0x4D) / 255, blue: CGFloat(0x29) / 255, alpha: 1)
+    static let sevenColor = UIColor(red: CGFloat(0x9E) / 255, green: CGFloat(0x35) / 255, blue: CGFloat(0x42) / 255, alpha: 1)
 
     static func paths(center: CGPoint, height: CGFloat) -> Paths {
         let scale = height / 392
@@ -150,8 +150,8 @@ enum RobberPieceDrawing {
 
         context.setStrokeColor(RobberPieceGeometry.sevenColor.cgColor)
         context.setLineWidth(paths.sevenLineWidth)
-        context.setLineCap(.round)
-        context.setLineJoin(.round)
+        context.setLineCap(.square)
+        context.setLineJoin(.miter)
         context.addPath(paths.seven)
         context.strokePath()
         context.restoreGState()

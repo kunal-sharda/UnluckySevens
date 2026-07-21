@@ -10,17 +10,14 @@ wide_source="$repo_root/scripts/assets/unlucky-sevens-imessage-icon.svg"
 app_dir="$repo_root/App/Resources/Assets.xcassets/AppIcon.appiconset"
 message_dir="$repo_root/MessagesExtension/Resources/Assets.xcassets/iMessage App Icon.stickersiconset"
 
-qlmanage -t -s 1024 -o "$temp_dir" "$square_source" >/dev/null
-qlmanage -t -s 1024 -o "$temp_dir" "$wide_source" >/dev/null
-
-square_thumbnail="$temp_dir/$(basename "$square_source").png"
+square_thumbnail="$temp_dir/unlucky-sevens-icon-rasterized.png"
 square_render="$temp_dir/unlucky-sevens-icon-opaque.png"
-wide_thumbnail="$temp_dir/$(basename "$wide_source").png"
-wide_cropped="$temp_dir/unlucky-sevens-imessage-icon-cropped.png"
+wide_thumbnail="$temp_dir/unlucky-sevens-imessage-icon-rasterized.png"
 wide_render="$temp_dir/unlucky-sevens-imessage-icon-opaque.png"
+swift "$repo_root/scripts/render-icon-svg.swift" "$square_source" "$square_thumbnail" 1024 1024
+swift "$repo_root/scripts/render-icon-svg.swift" "$wide_source" "$wide_thumbnail" 1024 768
 swift "$repo_root/scripts/make-icon-png-opaque.swift" "$square_thumbnail" "$square_render"
-sips --cropToHeightWidth 768 1024 "$wide_thumbnail" --out "$wide_cropped" >/dev/null
-swift "$repo_root/scripts/make-icon-png-opaque.swift" "$wide_cropped" "$wide_render"
+swift "$repo_root/scripts/make-icon-png-opaque.swift" "$wide_thumbnail" "$wide_render"
 
 resize() {
   local source="$1"
