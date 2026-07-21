@@ -55,7 +55,7 @@ Ship the approved grey masked-robber identity across the app icon, iMessage exte
 - [x] Share normalized robber geometry between board and transcript/status artwork.
 - [x] Capture production icon, board, and transcript proof.
 - [x] Complete fresh constraint and product/UX review.
-- [ ] Run the standard completion gate, commit, and push.
+- [x] Run the standard completion gate, commit, and push.
 
 ### Decisions
 
@@ -82,7 +82,8 @@ Ship the approved grey masked-robber identity across the app icon, iMessage exte
 - 2026-07-20: Quick Look letterboxed the initial 4:3 raster and preserved an alpha channel despite full-bleed artwork. The tracked generator now center-crops the 4:3 thumbnail, uses a CoreGraphics/ImageIO conversion for color-safe opaque RGB masters, and derives every catalog size from those masters. Direct inspection found no white bands and the metadata audit reported zero alpha-bearing PNGs.
 - 2026-07-20: The first drawer capture exposed a stale pre-r14 icon cached by the simulator. A targeted uninstall/reinstall of only `com.unluckysevens.app` refreshed the extension registration and exposed a second defect: the legacy system `pngcrush` corrupted chromatic channels while removing alpha. Replacing it with the tracked CoreGraphics/ImageIO converter restored green felt, the grey piece, dark mask, and red `7`; the repeated harness test passed with the correct installed identity. The antique-gold keyline intentionally becomes subpixel at drawer scale and remains visible in larger assets.
 - 2026-07-20: The host declares `LSApplicationLaunchProhibited = true`, so it intentionally has no SpringBoard icon surface; the app catalog is verified through exact opaque assets and actool rather than an impossible home-screen capture.
+- 2026-07-20: The global harness audit in the shared worktree was blocked by unrelated in-flight settings/tutorial plan state. The icon implementation was committed as `c451c0f`, validated from a clean detached worktree at that exact commit, and pushed to `origin/ui-ux-single-device-testing` without staging or changing the unrelated work.
 
 ## Validation and Outcome
 
-The comparison, human approval, production assets, shared geometry, focused tests, clean standard build, metadata audit, installed-drawer proof, and direct board/collapsed-message inspection pass. Fresh constraint and product/UX review both pass with no blockers. The standard completion gate, commit, and push remain pending.
+The approved grey masked-robber identity ships in the app and iMessage catalogs, live board, and collapsed-message/status artwork. All 27 generated catalog PNGs are exact-size opaque RGB; focused icon tests passed, the corrected installed Messages drawer was captured on iPhone 17, both fresh reviewers passed with no blockers, and the standard completion gate passed from clean commit `c451c0f`. That implementation commit was pushed to `origin/ui-ux-single-device-testing`.
