@@ -97,3 +97,12 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - Proposed fix shape: route reducer, validation, and build-query costs through `CoreBuildCostsV1`, then add one regression test that covers every build and development-card cost consumer.
 - When to address: phase 15, before changing economy rules.
 - Links: [CoreBuildCostsV1.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/Packages/ULS_CoreGame/Sources/ULS_CoreGame/CoreBuildCostsV1.swift), [ARCHITECTURE.md](/Users/kunalsharda/Documents/Code/UnluckySevens/ARCHITECTURE.md)
+
+### TD-012 — ExecPlan terminal-state and flow-narration cleanup
+
+- Area: execution harness and product-plan freshness
+- Why it matters: repository audit found two plans with terminal contracts still under `active/`, while the lobby plan retains narration from the pre-Settings/Tutorial learning flow.
+- Current cost or risk: active-plan listings overstate in-flight work and stale wording can be mistaken for the current product contract even though owner docs and newer child plans disagree.
+- Proposed fix shape: run a fresh selected-plan gate for `discard-screen.md` and `branch-archive-and-master-baseline.md`, archive them without rewriting their historical evidence, and update the lobby plan to link the current Settings/Tutorial distinction while retaining its genuinely pending LIS constraints.
+- When to address: after the current Physical Trade checkpoint, before the next phase-level completion audit.
+- Links: [Discard Screen](active/discard-screen.md), [Branch Archive and Master Baseline](active/branch-archive-and-master-baseline.md), [Lobby Invite Screen](active/lobby-invite-screen.md), [Physical Trade Surface Correction](completed/physical-trade-surface-correction.md)

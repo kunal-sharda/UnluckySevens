@@ -1,5 +1,7 @@
 # Turn Screen Visual Direction
 
+> Superseded in part on 2026-07-21 and resolved on 2026-07-23: this completed record overstated Physical Props coverage for nested Trade surfaces. The corrected production family and approval evidence are recorded in [Physical Trade Surface Correction](physical-trade-surface-correction.md); the original historical assertions below remain preserved.
+
 ## Purpose and Outcome
 
 Approve the core visual and interaction metaphor for the active player’s normal post-roll Turn Screen before investing in another production implementation pass. The desired direction is a physical turn surface where available game objects expose executable actions, but the exact composition must be judged from a small honest comparison rather than inferred from prose or from the current production baseline.

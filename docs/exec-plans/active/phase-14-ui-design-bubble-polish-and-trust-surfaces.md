@@ -1,5 +1,7 @@
 # Phase 14 — UI Design, Bubble Polish, and Trust Surfaces
 
+> 2026-07-23 resolution: P14-004's overstated nested Trade visual coverage was corrected and explicitly approved through [Physical Trade Surface Correction](../completed/physical-trade-surface-correction.md). Earlier rejected Trade evidence remains invalid.
+
 ## Purpose and Outcome
 
 Phase 14 improves the player-facing trust surfaces around lobby entry, transcript bubbles, tabletop gameplay, and repeatable visual validation. The durable goal is a compact, tactile, trustworthy Messages experience whose canonical state survives reopen and device handoff, whose transcript reads like a game rather than a transport log, and whose board remains visually primary.
@@ -63,7 +65,7 @@ Phase-level visual approval is delegated to focused child plans. No unresolved v
 | P14-001 | mechanical | product and architecture owner docs | Canonical names, presentation-only bubble media, standalone Messages packaging, and Core-owned legality remain the durable implementation boundaries | owner-doc and focused test evidence retained in phase history | file:docs/product-specs/ui-flows.md; file:ARCHITECTURE.md; file:docs/decisions.md | pass | Landed outcomes are now owned outside this plan |
 | P14-002 | observable | QA owner docs | UX Lab and simulator capture paths remain repeatable design evidence lanes without replacing real-device release validation | owner-doc inspection | file:docs/quality/ux-lab.md; file:docs/quality/device-runbooks.md | pass | Durable harness behavior is documented in its owners |
 | P14-003 | judgment | UI flows | Invite surface reaches the approved rules/setup-card direction | focused child comparison and user approval | report:pending | pending | Remaining Phase 14 slice |
-| P14-004 | judgment | user direction | Post-roll Turn Screen metaphor is visually approved before further productionization | checkpointed child plan | file:docs/exec-plans/completed/turn-screen-visual-direction.md | pass | User approved the Physical Props direction on 2026-07-15 and its standard completion gate passed |
+| P14-004 | judgment | user direction | Post-roll Turn Screen metaphor and nested Physical Props surfaces are visually approved before further productionization | corrective checkpointed child plan | file:docs/exec-plans/completed/physical-trade-surface-correction.md; report:physical-trade-owner-approval-2026-07-23 | pass | The corrected production Trade family was approved after final three-state inspection |
 | P14-005 | judgment | user direction | Pre-roll Start-of-Turn ritual is visually approved before production routing | checkpointed child plan | file:docs/exec-plans/completed/start-of-turn-visual-direction.md | pass | User approved the direction and authorized productionization on 2026-07-18 |
 | P14-006 | judgment | user direction | Out-of-turn waiting and responder states reuse the approved shared table without exposing unavailable active-player actions | checkpointed child plan | file:docs/exec-plans/completed/not-primary-player-visual-direction.md | pass | User approved the corrected direction on 2026-07-18 and its standard completion gate passed |
 <!-- verification-contract:end -->
@@ -85,7 +87,7 @@ Phase-level visual approval is delegated to focused child plans. No unresolved v
 - [x] Lobby identity, transcript, packaging, UX Lab, board-art, and tabletop-foundation outcomes landed.
 - [x] Durable platform, QA, architecture, product, and design lessons promoted to owner docs.
 - [ ] Invite rules/setup-card direction approved and productionized.
-- [x] Post-roll Turn Screen direction approved and productionized through its child plan.
+- [x] Post-roll Turn Screen direction approved; the nested Trade correction was productionized and verified through its focused child plan.
 - [x] Start-of-Turn direction approved, production-routed, and verified through its child plan.
 - [x] Not Primary Player direction approved, productionized, and verified through its child plan.
 

@@ -3,6 +3,7 @@ import SwiftUI
 struct LobbyInviteDirectionProbeView: View {
     let direction: LobbyInviteDirection
     @Binding var displayNameDraft: String
+    let settings: () -> Void
     let tutorial: () -> Void
     let invite: () -> Void
 
@@ -17,6 +18,7 @@ struct LobbyInviteDirectionProbeView: View {
             case .invitationCard:
                 LobbyInvitationCardProbeView(
                     displayNameDraft: $displayNameDraft,
+                    settings: settings,
                     tutorial: tutorial,
                     invite: invite
                 )

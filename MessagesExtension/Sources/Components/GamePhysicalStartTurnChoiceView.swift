@@ -72,6 +72,7 @@ struct GamePhysicalStartTurnChoiceView: View {
                 .accessibilityLabel("Roll dice")
                 .accessibilityValue("Ready")
                 .accessibilityHint("Opens the full-screen dice bowl and rolls the dice")
+                .gameTutorialTarget(.rollButton)
             }
         }
         .frame(maxWidth: .infinity)

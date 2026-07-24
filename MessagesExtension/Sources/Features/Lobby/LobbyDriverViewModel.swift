@@ -22,6 +22,7 @@ final class LobbyDriverViewModel: ObservableObject {
     private let gameLedgerStore: TranscriptGameLedgerStore
     private let lobbyDisplayNamePreferenceStore: LobbyDisplayNamePreferenceStore
     private let allowsLocalLedgerStateRecovery = true
+    private let tutorialActorID: String?
 
     private weak var activeConversation: MSConversation?
     var onRequestDismiss: (() -> Void)?
@@ -49,8 +50,13 @@ final class LobbyDriverViewModel: ObservableObject {
     private var uxTestingAutoplayIsRunning = false
     #endif
 
-    init(userDefaults: UserDefaults = .standard) {
+    init(
+        userDefaults: UserDefaults = .standard,
+        tutorialState: CoreGameStateV1? = nil,
+        tutorialActorID: String? = nil
+    ) {
         self.userDefaults = userDefaults
+        self.tutorialActorID = tutorialActorID
         lobbyDisplayNamePreferenceStore = LobbyDisplayNamePreferenceStore(userDefaults: userDefaults)
         gameLedgerStore = TranscriptGameLedgerStore(userDefaults: userDefaults)
         if let rawValue = userDefaults.string(forKey: boardStrategyKey),
@@ -63,6 +69,12 @@ final class LobbyDriverViewModel: ObservableObject {
         let ledgerSnapshot = gameLedgerStore.bootstrapSnapshot()
         latestKnownStatesByGameId = ledgerSnapshot.latestKnownStatesByGameId
         refreshRecoveredGames()
+
+        if let tutorialState {
+            selectedState = tutorialState
+            activeSource = .tutorial
+            render(state: tutorialState, source: .local)
+        }
     }
 
     #if DEBUG
@@ -1720,7 +1732,7 @@ final class LobbyDriverViewModel: ObservableObject {
             transcriptActiveSource = .lastSentState
         case .localLedgerState:
             transcriptActiveSource = .localLedgerState
-        case .uxTesting:
+        case .uxTesting, .tutorial:
             transcriptActiveSource = nil
         case nil:
             transcriptActiveSource = nil
@@ -1783,6 +1795,8 @@ final class LobbyDriverViewModel: ObservableObject {
         case .localLedgerState:
             payloadSource = .localCache
         case .uxTesting:
+            payloadSource = .local
+        case .tutorial:
             payloadSource = .local
         }
         render(state: state, source: payloadSource)
@@ -2335,6 +2349,10 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func localActorIdentifier(for state: CoreGameStateV1?) -> String? {
+        if let tutorialActorID, let state, state.roster.contains(tutorialActorID) {
+            return tutorialActorID
+        }
+
         #if DEBUG
         if uxTestingIsActive, let state, state.roster.contains(uxTestingActorID) {
             return uxTestingActorID
@@ -2559,6 +2577,7 @@ final class LobbyDriverViewModel: ObservableObject {
         case lastSentState
         case localLedgerState
         case uxTesting
+        case tutorial
 
         var label: String {
             switch self {
@@ -2574,6 +2593,8 @@ final class LobbyDriverViewModel: ObservableObject {
                 return "localLedgerState"
             case .uxTesting:
                 return "uxTesting"
+            case .tutorial:
+                return "tutorial"
             }
         }
     }

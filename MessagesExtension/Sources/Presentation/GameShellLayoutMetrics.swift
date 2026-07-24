@@ -102,12 +102,12 @@ struct GamePhysicalTurnLayout: Equatable {
 
     func boardCenteringCorrection(
         boardGlobalFrame: CGRect,
-        displayHeight: CGFloat
+        displayGlobalFrame: CGRect
     ) -> CGFloat {
-        guard boardGlobalFrame.height > 0, displayHeight > 0 else { return 0 }
+        guard boardGlobalFrame.height > 0, displayGlobalFrame.height > 0 else { return 0 }
         let renderedIslandCenter = boardGlobalFrame.minY
             + (boardGlobalFrame.height * Self.canonicalIslandCenterYFraction)
-        return (displayHeight / 2) - renderedIslandCenter
+        return displayGlobalFrame.midY - renderedIslandCenter
     }
 
     private static func bounded(

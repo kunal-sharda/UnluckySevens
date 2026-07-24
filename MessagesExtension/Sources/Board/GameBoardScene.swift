@@ -478,8 +478,8 @@ final class GameBoardScene: SKScene {
         seven.fillColor = .clear
         seven.strokeColor = RobberPieceGeometry.sevenColor
         seven.lineWidth = paths.sevenLineWidth
-        seven.lineCap = .round
-        seven.lineJoin = .round
+        seven.lineCap = .square
+        seven.lineJoin = .miter
         artwork.addChild(seven)
 
         node.addChild(artwork)

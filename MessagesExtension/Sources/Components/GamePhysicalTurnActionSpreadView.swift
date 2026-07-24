@@ -43,9 +43,14 @@ struct GamePhysicalTurnActionSpreadView: View {
         HStack(spacing: 12) {
             HStack(spacing: 6) {
                 ForEach(hand.chips) { chip in
-                    GamePhysicalResourceHandCardView(chip: chip, isFaded: true)
+                    ZStack {
+                        GamePhysicalResourceHandCardView(chip: chip, isFaded: true)
+                    }
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("\(chip.shortLabel), \(chip.count) owned")
+                    .accessibilityIdentifier(
+                        "uls.physicalProps.handCard.\(chip.resource.rawValue)"
+                    )
                 }
             }
 
@@ -77,6 +82,7 @@ struct GamePhysicalTurnActionSpreadView: View {
                 : "Resource hand with owned Dev Cards."
         )
         .accessibilityIdentifier("uls.physicalProps.handSpread")
+        .gameTutorialTarget(.handSpread)
     }
 
     private var ownedDevStack: some View {
@@ -152,6 +158,7 @@ struct GamePhysicalTurnActionSpreadView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .accessibilityIdentifier("uls.physicalProps.devChooser")
         .accessibilityLabel("Playable Dev Cards")
+        .gameTutorialTarget(.devChooser)
     }
 
     private var accessibilityValue: String {
@@ -195,6 +202,7 @@ struct GamePhysicalTurnActionSpreadView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(buildAccessibilityLabel(item))
                 .accessibilityHint("Shows placement targets for \(item.title)")
+                .gameTutorialTarget(tutorialTarget(for: item.kind))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
@@ -267,5 +275,15 @@ struct GamePhysicalTurnActionSpreadView: View {
             .map { "\($0.shortLabel) \(item.cost.count(for: $0))" }
             .joined(separator: ", ")
         return "\(item.title), costs \(cost)"
+    }
+
+    private func tutorialTarget(
+        for kind: GameBuildShelfItem.Kind
+    ) -> GameTutorialTarget {
+        switch kind {
+        case .buildRoad: .buildRoad
+        case .buildSettlement: .buildSettlement
+        case .buildCity: .buildCity
+        }
     }
 }

@@ -35,18 +35,7 @@ struct GamePhysicalTurnTopBarView: View {
 
             HStack(spacing: 7) {
                 if let prompt {
-                    VStack(spacing: 4) {
-                        Text(prompt.text)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.82)
-                            .multilineTextAlignment(.center)
-
-                        Capsule()
-                            .fill(GamePhysicalTurnPalette.selectedKeyline)
-                            .frame(width: 22, height: 2)
-                    }
+                    GamePhysicalTurnPromptView(text: prompt.text)
                 } else if title != "Your turn" {
                     Text(title)
                         .font(.subheadline.weight(.semibold))
@@ -134,5 +123,24 @@ struct GamePhysicalTurnTopBarView: View {
                 .stroke(.black.opacity(0.30), lineWidth: 1)
         }
         .accessibilityHidden(true)
+    }
+}
+
+struct GamePhysicalTurnPromptView: View {
+    let text: String
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(text)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+                .multilineTextAlignment(.center)
+
+            Capsule()
+                .fill(GamePhysicalTurnPalette.selectedKeyline)
+                .frame(width: 22, height: 2)
+        }
     }
 }

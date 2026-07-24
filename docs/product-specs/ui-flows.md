@@ -15,6 +15,8 @@ This document summarizes the player-facing flows the UI must support in the curr
 - Reopening a real lobby bubble should show the normal lobby roster/start surface, even if no guest has joined yet. The host waits and starts from that selected bubble path, not from a synthetic post-send shell.
 - The roster locks when the host starts the game.
 - New games should default to seeded balanced board generation that avoids adjacent `6`/`8` number tokens. Fully random board rules may remain protocol-supported for tests or already-persisted state, but they are not the default first-beta product path.
+- Every lobby state exposes `Game Settings` and `Tutorial` as separate destinations. Settings opens as a centered tabletop overlay over the unchanged lobby; Tutorial opens the real game shell with deterministic local-only state.
+- Tutorial begins with a transient veil teaching tap-left for back and tap-right for next. Its first tap only dismisses the veil. Seventeen short lessons then teach setup, rolling and production, hand/building, trading, the seven/robber flow, development cards, ending/sending, strategy, and scoring/awards. Exit and the final right-side tap return to the same lobby state, and tutorial interaction never publishes game state.
 - Lobby UX should stay on the canonical game-state chain:
   - one invite `STATE`
   - joining publishes updated lobby `STATE`
@@ -41,19 +43,20 @@ This document summarizes the player-facing flows the UI must support in the curr
 - Roll.
 - The active local player’s normal pre-roll state uses the same mounted Physical Props table as setup and post-roll play. A full-host focus layer presents executable owned Dev Cards and Roll when both are legal, or Roll alone when no pre-roll Dev action remains.
 - Closing the pre-roll Dev chooser returns to the Dev-or-Roll choice without consuming a card. Completing a pre-roll Dev action returns to Roll alone; rolling is always deliberate and never automatic.
-- The dice transition decorates the Core-owned result rather than generating it. During motion the player may skip to that exact result; after settling, the result remains until explicit continuation. Reduce Motion moves directly to the settled result while preserving explicit continuation.
+- The dice transition decorates the Core-owned result rather than generating it. During motion the player may skip to that exact result; after settling, the result remains until explicit continuation. Reduce Motion moves directly to the settled result while preserving explicit continuation. The device-local `Skip animations` setting suppresses the authored roll and advances once to the same authoritative result.
 - Resolve either production or the full seven/robber subflow.
 - Optionally trade, build, buy or play allowed dev cards, and then end turn.
 - The active player’s normal `.afterRoll` Turn Screen uses five persistent zones: a compact top bar, public table rail, live board, reserved action well, and turn-object rail. Lobby, roll-needed, out-of-turn, forced-flow, settings, and game-over screens retain their existing compositions.
 - The top bar keeps fixed three-column geometry: Settings, centered two-line turn/roll status, and one Game Information object for players, public scores/card counts, awards, and a one-turn recap.
+- Settings uses the same centered tabletop overlay over the live game. It contains only the local `Skip animations` preference, read-only Standard rules / board strategy / 10-point victory facts, and `Show rules`. Rules is a scrollable reference inside Settings; Tutorial is not nested there.
 - The public table rail shows five physical resource Bank stacks and a separate `Dev Cards` pile with no counts while concealed. Tapping Bank reveals qualitative `H`, `M`, or `L` levels in place for all six piles; tapping again conceals them. Exact public counts are not shown visually or through accessibility on this surface.
 - The public `Dev Cards` pile remains visually and semantically separate from owned Dev Cards. Tapping the public pile is the sole Buy Dev affordance when Core says purchase is legal. Owned Dev Cards are nested inside Hand for inspection and play; Buy Dev never appears in Build.
 - The live board remains visually dominant and keeps one stable renderer, frame, camera, targets, and canonical-piece owner while action-well routes change.
-- The action well reserves a constant frame below the board. Hand opens there by default; Build, Trade, nested Dev selection, End confirmation, and Game Information replace it one at a time without moving the board, public rail, status, or turn rail. Bank reveal is an independent in-place public-information toggle and never consumes the well.
+- The action well reserves a constant frame below the board. Hand opens there by default; Build, the Trade chooser and live/pending summary, nested Dev selection, End confirmation, and Game Information replace it one at a time without moving the board, public rail, status, or turn rail. Full-size player-trade composition, recipient selection, and maritime exchange may overlay the mounted board without resizing or remounting it. Bank reveal is an independent in-place public-information toggle and never consumes the well.
 - The turn-object rail uses fixed `Hand · Build · Trade · End` anchors. An object exists only when its Core/query-derived action is executable now; an unavailable object leaves invisible, hitless, accessibility-hidden space so neighboring anchors do not move. Playable Dev Cards are entered from the owned-card stack inside Hand rather than a fifth rail object.
 - Hand shows the local player’s actual resource inventory plus a compact two-card owned-Dev prop. The prop summarizes the private inventory without trying to lay every card on the default surface; its complete VoiceOver value still reports every owned kind and playable/new status. Those private cards do not appear in public Game Information.
 - Build shows only currently executable Road, Settlement, and City choices. Setup/build target selection remains selection-first: tap once to select and the same target again to publish.
-- Trade appears only when a player or maritime route can actually be initiated, or when the current live offer can be inspected. The chooser, composer, and pending-offer state stay inside the fixed action well; switching away discards the local draft.
+- Trade appears only when a player or maritime route can actually be initiated, or when the current live offer can be inspected. The chooser and pending-offer state stay inside the fixed action well; the full-size composer and maritime exchange overlay the mounted board while preserving its frame. Switching away discards the local draft.
 - The owned Dev Cards object appears inside Hand; it opens only when at least one owned card is legally playable. Its opened spread shows the player’s full owned inventory, marks held or newly bought cards as non-interactive, and gives an action affordance only to cards Core says are legally playable. Monopoly/Year of Plenty resource choice and Knight/Road Building board choice stay within the same route.
 - End appears only when ending is legal and opens a compact inline `Keep Playing` / `End Turn` confirmation.
 - Selecting the active object closes it and clears its local draft or board selection. Selecting another turn object or Game Information replaces the current action-well contents and clears incompatible state. Toggling Bank reveal preserves the selected action.
@@ -75,16 +78,14 @@ This document summarizes the player-facing flows the UI must support in the curr
 - The normal post-roll action well starts on a chooser surface with:
   - `Player Trade`
   - `Maritime / Bank Trade`
-- `Player Trade` should be fully self-contained inside the trade panel. It should not depend on tapping controls in the lower shelf underneath it.
-- `Player Trade` should present three vertical sections in this order:
-  - `You Give`, using the current player hand chips as the interactive source
-  - `You Want`, using bank-style resource chips plus remaining public bank counts
-  - `Recipients`, as the only scrollable section in the composer
+- `Player Trade` is fully self-contained in one full-size felt panel over the mounted board. It does not depend on controls underneath it and must not shrink cards to fit the action well.
+- `Player Trade` presents full-size `Give` and `Get` resource-card stages backed by one draft. Card count badges and per-card quantity controls read and mutate the same quantities.
+- Recipient selection darkens the board and action tray through the physical bottom edge, then centers up to three full-size opponent rows with player identity, an obvious non-color selected state, `Cancel`, and `Send Offer`. Counter offers retain the actual fixed-recipient semantics.
 - Forced discard should use an explicit hand-chip pattern: the acting player selects the exact cards to discard, sees progress toward the required count, and cannot submit until the required total is selected.
 - Closing or switching away from trade should discard the current draft immediately for now.
 - After send, the normal post-roll Trade route stays on the pending live-offer state and marks its anchored object `Pending`; excluded shell states retain their established pending banner behavior.
-- `Maritime / Bank Trade` should use a quick-trade list because the legal option set is fully enumerable from the current hand and available ports.
-- The maritime quick-trade list should only show legal ratio-compliant options for the current hand and available port access.
+- `Maritime / Bank Trade` shows one complete legal exchange at a time, supports horizontal paging plus unboxed previous/next controls around an `N of M` position, and requires `Confirm Trade` for the visible exchange. The normal-turn Hand spread remains visible in its canonical frame.
+- Maritime options only include legal ratio-compliant exchanges for the current hand and available port access. Owned ports determine the best quoted ratio; bank and ports are not separate destinations the player must choose.
 - Targeted recipients can respond with `Accept`, `Decline`, or `Counter`.
 - `Counter` should use the same composer flow, but it is addressed only back to the current player.
 - Targeted responder actions should feel final from the responder side. `Accept`, `Decline`, and `Counter` should each publish canonical trade state immediately from the responder device. Normal trade UX must not require a manual "apply selected response" step or a separate response bubble workflow.

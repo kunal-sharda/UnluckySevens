@@ -78,14 +78,710 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Lobby Invite Direction - Invitation Card")
 
         messages.buttons["uls.lobby.gameSettings"].firstMatch.tap()
-        XCTAssertTrue(messages.navigationBars["Game settings"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.descendants(matching: .any)["uls.settings.surface"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.switches["uls.settings.skipAnimations"].firstMatch.exists)
         XCTAssertTrue(messages.staticTexts["Board"].firstMatch.exists)
         XCTAssertTrue(messages.staticTexts["Victory"].firstMatch.exists)
         messages.buttons["Done"].firstMatch.tap()
 
         tutorial.tap()
-        XCTAssertTrue(messages.navigationBars["Game rules"].firstMatch.waitForExistence(timeout: 4))
+        dismissTutorialNavigationCoach()
+        XCTAssertTrue(messages.staticTexts["Place a Settlement"].firstMatch.waitForExistence(timeout: 4))
+        messages.buttons["Exit"].firstMatch.tap()
+    }
+
+    func testCaptureSettingsRulesTutorialCheckpoint() throws {
+        openUnluckySevensExtension()
+        openUXLabPanel()
+        activateUXLabNestedQuickState(
+            title: "Invitation Card",
+            identifier: "uls.uxLab.cleanShot.lobbyInviteInvitationCard"
+        )
+        XCTAssertTrue(waitForInviteSlice(timeout: 12))
+
+        messages.buttons["uls.lobby.gameSettings"].firstMatch.tap()
+        XCTAssertTrue(messages.descendants(matching: .any)["uls.settings.surface"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.switches["uls.settings.skipAnimations"].firstMatch.exists)
+        XCTAssertTrue(messages.buttons["uls.settings.showRules"].firstMatch.exists)
+        attachScreenshot(named: "Settings Rules Tutorial - Settings")
+
+        messages.buttons["uls.settings.showRules"].firstMatch.tap()
+        XCTAssertTrue(messages.descendants(matching: .any)["uls.rules.surface"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.staticTexts["Build costs"].firstMatch.exists)
+        messages.navigationBars["Rules"].buttons.firstMatch.tap()
+        XCTAssertTrue(messages.descendants(matching: .any)["uls.settings.surface"].firstMatch.waitForExistence(timeout: 4))
         messages.buttons["Done"].firstMatch.tap()
+
+        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
+        XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
+        tutorial.tap()
+        dismissTutorialNavigationCoach()
+        assertTutorialProgress(title: "Place a Settlement")
+
+        for _ in 0..<7 {
+            messages.buttons["uls.tutorial.next"].firstMatch.tap()
+        }
+        assertTutorialProgress(title: "Trade")
+        attachScreenshot(named: "Settings Rules Tutorial - Player Trade")
+
+        for _ in 0..<9 {
+            messages.buttons["uls.tutorial.next"].firstMatch.tap()
+        }
+        assertTutorialProgress(title: "Win at Ten Points")
+        XCTAssertTrue(messages.buttons["uls.tutorial.done"].firstMatch.exists)
+        attachScreenshot(named: "Settings Rules Tutorial - Victory")
+        messages.buttons["uls.tutorial.done"].firstMatch.tap()
+        XCTAssertTrue(messages.buttons["uls.lobby.tutorial"].firstMatch.waitForExistence(timeout: 4))
+    }
+
+    func testPlaceTutorialTradeCheckpoint() throws {
+        openUnluckySevensExtension()
+
+        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
+        XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
+        tutorial.tap()
+
+        dismissTutorialNavigationCoach()
+
+        let next = messages.buttons["uls.tutorial.next"].firstMatch
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        for _ in 0..<7 {
+            next.tap()
+        }
+        assertTutorialProgress(title: "Trade")
+    }
+
+    func testCapturePhysicalTradeCorrectionTutorialCheckpoint() throws {
+        openUnluckySevensExtension()
+
+        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
+        XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
+        tutorial.tap()
+        dismissTutorialNavigationCoach()
+
+        let next = messages.buttons["uls.tutorial.next"].firstMatch
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        for _ in 0..<7 {
+            next.tap()
+        }
+
+        assertTutorialProgress(title: "Trade")
+        assertMinimumTarget(
+            messages.buttons["Exit tutorial"].firstMatch,
+            message: "The trade tutorial close control must preserve a 44-point target."
+        )
+        let tutorialBoard = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let tutorialBoardHost = turnElement(
+            identifier: "uls.tabletop.boardHost",
+            labels: ["Live game board host"]
+        )
+        let tutorialHand = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
+        XCTAssertTrue(tutorialBoard.waitForExistence(timeout: 4))
+        XCTAssertTrue(tutorialBoardHost.waitForExistence(timeout: 4))
+        XCTAssertTrue(tutorialHand.waitForExistence(timeout: 4))
+        // The production shell applies its island-centering correction from a
+        // global-frame preference on the next presentation update.
+        Thread.sleep(forTimeInterval: 1)
+        let tutorialBoardFrame = tutorialBoard.frame
+        let tutorialBoardHostFrame = tutorialBoardHost.frame
+        let tutorialHandFrame = tutorialHand.frame
+        let safeFrame = messages.windows.firstMatch.frame
+        assertElement(
+            tutorialBoard,
+            isContainedIn: safeFrame,
+            message: "The tutorial must keep the production board inside the device frame."
+        )
+        assertElement(
+            tutorialHand,
+            isContainedIn: safeFrame,
+            message: "The tutorial must keep Hand inside the device frame."
+        )
+        XCTAssertFalse(messages.staticTexts["8 / 17"].exists)
+        XCTAssertFalse(messages.staticTexts["Choose Give"].exists)
+        attachScreenshot(named: "Physical Trade Correction - Player Give Get")
+
+        next.tap()
+        assertTutorialProgress(title: "Trade")
+        assertFrame(
+            of: tutorialBoard,
+            matches: tutorialBoardFrame,
+            message: "Recipient selection must preserve the tutorial board frame."
+        )
+        assertFrame(
+            of: tutorialHand,
+            matches: tutorialHandFrame,
+            message: "Recipient selection must preserve the tutorial Hand frame."
+        )
+        XCTAssertFalse(messages.staticTexts["9 / 17"].exists)
+        XCTAssertFalse(messages.staticTexts["Choose players"].exists)
+        attachScreenshot(named: "Physical Trade Correction - Recipient Selection")
+
+        next.tap()
+        assertTutorialProgress(title: "Trade")
+        assertFrame(
+            of: tutorialBoard,
+            matches: tutorialBoardFrame,
+            message: "Maritime trade must preserve the tutorial board frame."
+        )
+        assertFrame(
+            of: tutorialHand,
+            matches: tutorialHandFrame,
+            message: "Maritime trade must preserve the tutorial Hand frame."
+        )
+        XCTAssertFalse(messages.staticTexts["10 / 17"].exists)
+        XCTAssertFalse(messages.staticTexts["Ports cut cost"].exists)
+        XCTAssertFalse(messages.staticTexts["Swipe trades"].exists)
+        XCTAssertFalse(messages.staticTexts["Swipe for other legal trades"].exists)
+        let tutorialMaritimeHand = turnElement(
+            identifier: "uls.physicalTrade.maritimeHandSpread",
+            labels: []
+        )
+        let tutorialMaritimePosition = turnElement(
+            identifier: "uls.physicalTrade.maritimePosition",
+            labels: []
+        )
+        XCTAssertTrue(
+            tutorialMaritimeHand.waitForExistence(timeout: 4),
+            "Maritime trade must retain the normal-turn resource hand."
+        )
+        XCTAssertTrue(
+            tutorialMaritimePosition.waitForExistence(timeout: 4),
+            "Multiple maritime exchanges must expose their current position."
+        )
+        assertElement(
+            tutorialMaritimeHand,
+            isContainedIn: safeFrame,
+            message: "The maritime resource hand must stay on screen without clipping."
+        )
+        assertElement(
+            tutorialMaritimePosition,
+            isContainedIn: safeFrame,
+            message: "The maritime exchange position must stay on screen without clipping."
+        )
+        let tutorialMaritimeHandFrame = tutorialMaritimeHand.frame
+        attachScreenshot(named: "Physical Trade Correction - Maritime Exchange")
+
+        for _ in 0..<7 {
+            next.tap()
+        }
+        let done = messages.buttons["uls.tutorial.done"].firstMatch
+        XCTAssertTrue(done.waitForExistence(timeout: 4))
+        done.tap()
+        loadTurnGameplaySlice()
+        let productionBoard = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let productionBoardHost = turnElement(
+            identifier: "uls.tabletop.boardHost",
+            labels: ["Live game board host"]
+        )
+        let productionHand = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
+        let productionHandSpread = turnElement(
+            identifier: "uls.physicalProps.actionSpread",
+            labels: []
+        )
+        XCTAssertTrue(productionBoard.waitForExistence(timeout: 4))
+        XCTAssertTrue(productionBoardHost.waitForExistence(timeout: 4))
+        XCTAssertTrue(productionHand.waitForExistence(timeout: 4))
+        if !productionHandSpread.waitForExistence(timeout: 1), !productionHand.isSelected {
+            productionHand.tap()
+        }
+        XCTAssertTrue(productionHandSpread.waitForExistence(timeout: 4))
+        Thread.sleep(forTimeInterval: 1)
+        assertFrame(
+            of: productionBoardHost,
+            matches: tutorialBoardHostFrame,
+            message: "The tutorial SpriteKit board host must use the production frame."
+        )
+        assertFrame(
+            of: productionBoard,
+            matches: tutorialBoardFrame,
+            message: "The tutorial board must use the production Physical Props frame."
+        )
+        assertFrame(
+            of: productionHand,
+            matches: tutorialHandFrame,
+            message: "The tutorial Hand must use the production Physical Props frame."
+        )
+        assertFrame(
+            of: productionHandSpread,
+            matches: tutorialMaritimeHandFrame,
+            message: "The maritime resource hand must use the normal-turn Physical Props frame."
+        )
+    }
+
+    func testPhysicalTradeCorrectionProductionGeometry() throws {
+        openUnluckySevensExtension()
+        loadTurnGameplaySlice()
+
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let trade = turnElement(identifier: "uls.turnObject.trade", labels: ["Trade"])
+        XCTAssertTrue(board.waitForExistence(timeout: 4))
+        XCTAssertTrue(trade.waitForExistence(timeout: 4))
+        let normalHandSpread = turnElement(
+            identifier: "uls.physicalProps.actionSpread",
+            labels: []
+        )
+        if !normalHandSpread.waitForExistence(timeout: 1) {
+            let hand = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
+            if !hand.isSelected {
+                hand.tap()
+            }
+        }
+        XCTAssertTrue(normalHandSpread.waitForExistence(timeout: 4))
+        let fixedBoardFrame = board.frame
+        let normalHandSpreadFrame = normalHandSpread.frame
+        let safeFrame = messages.windows.firstMatch.frame
+
+        trade.tap()
+        let playerTrade = messages.buttons["Player Trade"].firstMatch
+        XCTAssertTrue(playerTrade.waitForExistence(timeout: 4))
+        playerTrade.tap()
+
+        let giveWood = messages.buttons["Add Wood to Give"].firstMatch
+        let getBrick = messages.buttons["Add Brick to Get"].firstMatch
+        let composerClose = messages.buttons["Close trade"].firstMatch
+        let chooseRecipients = messages.buttons["Choose Players"].firstMatch
+
+        assertMinimumTarget(giveWood, message: "Give resource cards must preserve 44-point targets.")
+        assertMinimumTarget(getBrick, message: "Get resource cards must preserve 44-point targets.")
+        assertMinimumTarget(composerClose, message: "Composer Close must preserve a 44-point target.")
+        assertMinimumTarget(chooseRecipients, message: "Choose Players must preserve a 44-point target.")
+        for control in [giveWood, getBrick, composerClose, chooseRecipients] {
+            assertElement(control, isContainedIn: safeFrame, message: "Every Give/Get control must stay on screen without clipping.")
+        }
+
+        giveWood.tap()
+        XCTAssertEqual(giveWood.value as? String, "1 selected, 5 available")
+        giveWood.tap()
+        XCTAssertEqual(giveWood.value as? String, "2 selected, 5 available")
+        getBrick.tap()
+        XCTAssertEqual(getBrick.value as? String, "1 selected, 19 available")
+        let giveRemove = messages.buttons["uls.physicalTrade.give.wood.remove"].firstMatch
+        let getRemove = messages.buttons["uls.physicalTrade.get.brick.remove"].firstMatch
+        assertMinimumTarget(giveRemove, message: "Selected Give cards must expose a 44-point decrement target.")
+        assertMinimumTarget(getRemove, message: "Selected Get cards must expose a 44-point decrement target.")
+        assertElement(giveRemove, isContainedIn: safeFrame, message: "The Give decrement control must stay on screen without clipping.")
+        assertElement(getRemove, isContainedIn: safeFrame, message: "The Get decrement control must stay on screen without clipping.")
+        XCTAssertEqual(giveWood.value as? String, "2 selected, 5 available")
+        XCTAssertEqual(getBrick.value as? String, "1 selected, 19 available")
+        XCTAssertEqual(giveRemove.value as? String, "2 selected")
+        XCTAssertEqual(getRemove.value as? String, "1 selected")
+        giveRemove.tap()
+        XCTAssertEqual(giveWood.value as? String, "1 selected, 5 available")
+        XCTAssertEqual(giveRemove.value as? String, "1 selected")
+        giveWood.tap()
+        XCTAssertEqual(giveWood.value as? String, "2 selected, 5 available")
+        XCTAssertEqual(giveRemove.value as? String, "2 selected")
+        assertFrame(of: board, matches: fixedBoardFrame, message: "Give/Get composition must not move the board.")
+
+        chooseRecipients.tap()
+        let maya = messages.buttons["Maya"].firstMatch
+        let theo = messages.buttons["Theo"].firstMatch
+        let recipientClose = messages.buttons.matching(
+            NSPredicate(format: "label == %@", "Close trade")
+        ).element(boundBy: 1)
+        let recipientCancel = messages.buttons["Cancel"].firstMatch
+        let sendOffer = messages.buttons["Send Offer"].firstMatch
+        assertMinimumTarget(maya, message: "Recipient rows must preserve 44-point targets.")
+        assertMinimumTarget(theo, message: "Recipient rows must preserve 44-point targets.")
+        assertMinimumTarget(recipientClose, message: "Recipient Close must preserve a 44-point target.")
+        assertMinimumTarget(recipientCancel, message: "Recipient Cancel must preserve a 44-point target.")
+        assertMinimumTarget(sendOffer, message: "Send Offer must preserve a 44-point target.")
+        maya.tap()
+        XCTAssertTrue(maya.isSelected)
+        XCTAssertFalse(theo.isSelected)
+        for control in [maya, theo, recipientClose, recipientCancel, sendOffer] {
+            assertElement(control, isContainedIn: safeFrame, message: "Every recipient overlay control must stay on screen without clipping.")
+        }
+        assertFrame(of: board, matches: fixedBoardFrame, message: "Recipient selection must not move the board.")
+
+        recipientCancel.tap()
+        XCTAssertTrue(trade.waitForExistence(timeout: 4))
+        trade.tap()
+        let maritime = messages.buttons["Maritime / Bank"].firstMatch
+        XCTAssertTrue(maritime.waitForExistence(timeout: 4))
+        maritime.tap()
+
+        let firstExchange = messages.descendants(matching: .any).matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Give ")
+        ).firstMatch
+        let confirmMaritime = messages.buttons["Confirm Trade"].firstMatch
+        let maritimeClose = messages.buttons["Close trade"].firstMatch
+        let maritimeHandSpread = turnElement(
+            identifier: "uls.physicalTrade.maritimeHandSpread",
+            labels: []
+        )
+        let maritimePosition = turnElement(
+            identifier: "uls.physicalTrade.maritimePosition",
+            labels: []
+        )
+        let previousMaritime = messages.buttons["Previous exchange"].firstMatch
+        let nextMaritime = messages.buttons["Next exchange"].firstMatch
+        XCTAssertTrue(firstExchange.waitForExistence(timeout: 4))
+        XCTAssertTrue(confirmMaritime.waitForExistence(timeout: 4))
+        XCTAssertTrue(maritimeHandSpread.waitForExistence(timeout: 4))
+        XCTAssertTrue(maritimePosition.waitForExistence(timeout: 4))
+        assertMinimumTarget(maritimeClose, message: "Maritime Close must preserve a 44-point target.")
+        assertMinimumTarget(confirmMaritime, message: "Confirm Trade must preserve a 44-point target.")
+        assertMinimumTarget(previousMaritime, message: "Previous exchange must preserve a 44-point target.")
+        assertMinimumTarget(nextMaritime, message: "Next exchange must preserve a 44-point target.")
+        assertElement(maritimeClose, isContainedIn: safeFrame, message: "Maritime Close must stay on screen without clipping.")
+        assertElement(firstExchange, isContainedIn: safeFrame, message: "The visible maritime exchange must not clip horizontally or vertically.")
+        assertElement(confirmMaritime, isContainedIn: safeFrame, message: "Confirm Trade must stay on screen without clipping.")
+        assertElement(maritimeHandSpread, isContainedIn: safeFrame, message: "The normal-turn Hand must remain visible without clipping.")
+        assertElement(maritimePosition, isContainedIn: safeFrame, message: "The maritime exchange position must remain visible without clipping.")
+        assertElement(previousMaritime, isContainedIn: safeFrame, message: "Previous exchange must remain visible without clipping.")
+        assertElement(nextMaritime, isContainedIn: safeFrame, message: "Next exchange must remain visible without clipping.")
+        XCTAssertTrue(firstExchange.label.contains("Give"))
+        XCTAssertTrue(firstExchange.label.contains("for"))
+        XCTAssertEqual(confirmMaritime.value as? String, firstExchange.label)
+        XCTAssertFalse(previousMaritime.isEnabled)
+        XCTAssertTrue(nextMaritime.isEnabled)
+        let firstConfirmedExchange = String(describing: confirmMaritime.value)
+        nextMaritime.tap()
+        XCTAssertTrue(
+            waitForValueChange(
+                of: confirmMaritime,
+                from: firstConfirmedExchange,
+                timeout: 4
+            ),
+            "Paging forward must update the exchange confirmed by the production action."
+        )
+        XCTAssertTrue(previousMaritime.isEnabled)
+        XCTAssertEqual(maritimePosition.label, "Exchange 2 of 20")
+        assertFrame(
+            of: maritimeHandSpread,
+            matches: normalHandSpreadFrame,
+            message: "Maritime trade must preserve the normal-turn Hand frame."
+        )
+        assertFrame(of: board, matches: fixedBoardFrame, message: "Maritime paging must not move the board.")
+    }
+
+    func testPhysicalTradeCorrectionLiveRoutes() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        activateUXLabQuickState(
+            title: "Pending",
+            identifier: "uls.uxLab.cleanShot.pendingTrade"
+        )
+
+        let pendingTrade = turnElement(identifier: "uls.turnObject.trade", labels: ["Trade"])
+        XCTAssertTrue(pendingTrade.waitForExistence(timeout: 8))
+        pendingTrade.tap()
+
+        let pendingSurface = turnElement(identifier: "uls.turn.tradeSurface", labels: [])
+        let replaceOffer = messages.buttons["Replace Offer"].firstMatch
+        XCTAssertTrue(pendingSurface.waitForExistence(timeout: 4))
+        assertMinimumTarget(
+            replaceOffer,
+            message: "The production pending route must retain a 44-point Replace Offer target."
+        )
+
+        restoreUXLabChrome()
+        loadNotPrimaryOfferSlice()
+        let incomingTrade = turnElement(identifier: "uls.turnObject.trade", labels: ["Trade"])
+        XCTAssertTrue(incomingTrade.waitForExistence(timeout: 8))
+        incomingTrade.tap()
+
+        let incomingSurface = turnElement(identifier: "uls.turn.tradeSurface", labels: [])
+        let counter = messages.buttons["Counter"].firstMatch
+        XCTAssertTrue(incomingSurface.waitForExistence(timeout: 4))
+        assertMinimumTarget(
+            messages.buttons["Accept"].firstMatch,
+            message: "The production incoming route must retain a 44-point Accept target."
+        )
+        assertMinimumTarget(
+            messages.buttons["Decline"].firstMatch,
+            message: "The production incoming route must retain a 44-point Decline target."
+        )
+        assertMinimumTarget(
+            counter,
+            message: "The production incoming route must retain a 44-point Counter target."
+        )
+
+        counter.tap()
+        XCTAssertTrue(
+            messages.staticTexts["Counter Trade"].firstMatch.waitForExistence(timeout: 4),
+            "Counter must enter the same production Give/Get composer."
+        )
+        assertMinimumTarget(
+            messages.buttons["Add Wood to Give"].firstMatch,
+            message: "Counter must reuse the production Give card controls."
+        )
+
+        messages.buttons["Close trade"].firstMatch.tap()
+        restoreUXLabChrome()
+    }
+
+    func testPlaceTutorialFirstTapZonesCheckpoint() throws {
+        openUnluckySevensExtension()
+
+        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
+        XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
+        tutorial.tap()
+
+        let startPrompt = messages.staticTexts["Tap once to start"].firstMatch
+        XCTAssertTrue(startPrompt.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.staticTexts["Tap left side"].firstMatch.exists)
+        XCTAssertTrue(messages.staticTexts["Tap right side"].firstMatch.exists)
+        dismissTutorialNavigationCoach()
+        XCTAssertTrue(startPrompt.waitForNonExistence(timeout: 4))
+        XCTAssertFalse(messages.staticTexts["1 / 17"].firstMatch.exists)
+        XCTAssertTrue(messages.staticTexts["Place a Settlement"].firstMatch.exists)
+    }
+
+    func testCaptureEveryTutorialScreen() throws {
+        openUnluckySevensExtension()
+
+        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
+        XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
+        tutorial.tap()
+
+        let startPrompt = messages.staticTexts["Tap once to start"].firstMatch
+        XCTAssertTrue(startPrompt.waitForExistence(timeout: 4))
+        attachScreenshot(named: "Tutorial 00 - Navigation")
+        messages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(startPrompt.waitForNonExistence(timeout: 4))
+
+        let titles = [
+            "Place a Settlement",
+            "Connect the Road",
+            "Roll the Dice",
+            "Read Production",
+            "Use Your Hand",
+            "Choose What to Build",
+            "Place on a Highlight",
+            "Offer a Player Trade",
+            "Choose Trade Partners",
+            "Use the Bank or a Port",
+            "Discard After a Seven",
+            "Move the Robber",
+            "Choose a Victim",
+            "Play a Development Card",
+            "End and Send the Turn",
+            "Build a Strong Position",
+            "Win at Ten Points",
+        ]
+
+        for (index, title) in titles.enumerated() {
+            let progress = messages.descendants(matching: .any)["uls.tutorial.progress"].firstMatch
+            let expectedTitle = (7...9).contains(index) ? "Trade" : title
+            XCTAssertTrue(
+                progress.waitForExistence(timeout: 4),
+                "Expected visible tutorial progress for step \(index + 1)."
+            )
+            XCTAssertEqual(progress.label, expectedTitle)
+            attachScreenshot(named: String(format: "Tutorial %02d - %@", index + 1, title))
+
+            if index < titles.count - 1 {
+                messages.coordinate(
+                    withNormalizedOffset: CGVector(dx: 0.82, dy: 0.50)
+                ).tap()
+            }
+        }
+    }
+
+    private func assertTutorialProgress(
+        title: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let progress = messages.descendants(matching: .any)["uls.tutorial.progress"].firstMatch
+        XCTAssertTrue(progress.waitForExistence(timeout: 4), file: file, line: line)
+        XCTAssertEqual(progress.label, title, file: file, line: line)
+    }
+
+    func testPlaceSettingsOverlayCheckpoint() throws {
+        openUnluckySevensExtension()
+
+        let settings = messages.buttons["uls.lobby.gameSettings"].firstMatch
+        XCTAssertTrue(settings.waitForExistence(timeout: 4))
+        settings.tap()
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.settings.surface"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+    }
+
+    func testSkipAnimationsPersistsWhenSettingsReopens() throws {
+        openUnluckySevensExtension()
+
+        let settings = messages.buttons["uls.lobby.gameSettings"].firstMatch
+        XCTAssertTrue(settings.waitForExistence(timeout: 4))
+        settings.tap()
+
+        let toggle = messages.switches["uls.settings.skipAnimations"].firstMatch
+        XCTAssertTrue(toggle.waitForExistence(timeout: 4))
+        if (toggle.value as? String) != "0" {
+            toggle.tap()
+        }
+        toggle.tap()
+        XCTAssertEqual(toggle.value as? String, "1")
+
+        messages.buttons["Done"].firstMatch.tap()
+        XCTAssertTrue(settings.waitForExistence(timeout: 4))
+        settings.tap()
+
+        let reopenedToggle = messages.switches["uls.settings.skipAnimations"].firstMatch
+        XCTAssertTrue(reopenedToggle.waitForExistence(timeout: 4))
+        XCTAssertEqual(reopenedToggle.value as? String, "1")
+
+        reopenedToggle.tap()
+        messages.buttons["Done"].firstMatch.tap()
+    }
+
+    func testGameplaySettingsOpensOverTheLiveTable() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        loadTurnGameplaySlice()
+        collapseUXLabPanelIfExpanded()
+
+        let settings = turnElement(identifier: "", labels: ["Settings"])
+        XCTAssertTrue(settings.waitForExistence(timeout: 4))
+        settings.tap()
+
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.settings.surface"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+        XCTAssertTrue(messages.descendants(matching: .any)["uls.tabletop.board"].firstMatch.exists)
+
+        messages.buttons["Done"].firstMatch.tap()
+        XCTAssertTrue(turnElement(identifier: "uls.tabletop.board", labels: []).waitForExistence(timeout: 4))
+    }
+
+    func testAdvancePreparedMessagesToSettingsOverlay() throws {
+        let appRow = messages.staticTexts["Unlucky Sevens"].firstMatch
+        XCTAssertTrue(appRow.waitForExistence(timeout: 4))
+        appRow.tap()
+
+        let settings = messages.buttons["uls.lobby.gameSettings"].firstMatch
+        XCTAssertTrue(settings.waitForExistence(timeout: 4))
+        settings.tap()
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.settings.surface"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+    }
+
+    func testAdvanceSettingsOverlayToTradeTutorial() throws {
+        let done = messages.buttons["Done"].firstMatch
+        XCTAssertTrue(done.waitForExistence(timeout: 4))
+        done.tap()
+
+        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
+        XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
+        tutorial.tap()
+
+        dismissTutorialNavigationCoach()
+
+        let next = messages.buttons["uls.tutorial.next"].firstMatch
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        for _ in 0..<7 {
+            next.tap()
+        }
+        assertTutorialProgress(title: "Trade")
+    }
+
+    func testAdvanceSettingsOverlayToCleanIntroOverlay() throws {
+        let done = messages.buttons["Done"].firstMatch
+        XCTAssertTrue(done.waitForExistence(timeout: 4))
+        done.tap()
+
+        openUXLabPanel()
+        activateUXLabNestedQuickState(
+            title: "Invitation Card",
+            identifier: "uls.uxLab.cleanShot.lobbyInviteInvitationCard"
+        )
+        XCTAssertTrue(waitForInviteSlice(timeout: 8))
+
+        messages.buttons["uls.lobby.gameSettings"].firstMatch.tap()
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.settings.surface"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+    }
+
+    func testAdvanceSettingsOverlayToBuildTutorial() throws {
+        let done = messages.buttons["Done"].firstMatch
+        XCTAssertTrue(done.waitForExistence(timeout: 4))
+        done.tap()
+
+        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
+        XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
+        tutorial.tap()
+
+        dismissTutorialNavigationCoach()
+
+        for expectedStep in 2...6 {
+            let next = messages.buttons["uls.tutorial.next"].firstMatch
+            XCTAssertTrue(next.waitForExistence(timeout: 4))
+            next.tap()
+            XCTAssertTrue(
+                messages.staticTexts["\(expectedStep) / 17"].firstMatch.waitForExistence(timeout: 4)
+            )
+        }
+    }
+
+    func testAdvanceOpenTutorialToBuildUsingVisibleControls() throws {
+        for expectedStep in 2...6 {
+            let next = messages.buttons["uls.tutorial.next"].firstMatch
+            XCTAssertTrue(next.waitForExistence(timeout: 4))
+            next.tap()
+            XCTAssertTrue(
+                messages.staticTexts["\(expectedStep) / 17"].firstMatch.waitForExistence(timeout: 4)
+            )
+        }
+    }
+
+    func testPlaceTutorialVictoryCheckpoint() throws {
+        openUnluckySevensExtension()
+
+        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
+        XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
+        tutorial.tap()
+
+        dismissTutorialNavigationCoach()
+
+        let next = messages.buttons["uls.tutorial.next"].firstMatch
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        for _ in 0..<16 {
+            next.tap()
+        }
+        XCTAssertTrue(
+            messages.staticTexts["Win at Ten Points"].firstMatch.waitForExistence(timeout: 4)
+        )
+    }
+
+    func testAdvanceOpenTutorialToTradeCheckpoint() throws {
+        let next = messages.buttons["uls.tutorial.next"].firstMatch
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        for _ in 0..<7 {
+            next.tap()
+        }
+        assertTutorialProgress(title: "Trade")
+    }
+
+    func testAdvanceOpenTutorialToVictoryCheckpoint() throws {
+        let next = messages.buttons["uls.tutorial.next"].firstMatch
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        for _ in 0..<9 {
+            next.tap()
+        }
+        XCTAssertTrue(
+            messages.staticTexts["Win at Ten Points"].firstMatch.waitForExistence(timeout: 4)
+        )
+    }
+
+    func testAdvanceOpenTutorialThreeStepsToVictoryCheckpoint() throws {
+        for expectedStep in 9...17 {
+            let next = messages.buttons["uls.tutorial.next"].firstMatch
+            XCTAssertTrue(next.waitForExistence(timeout: 4))
+            next.tap()
+            XCTAssertTrue(
+                messages.staticTexts["\(expectedStep) / 17"].firstMatch.waitForExistence(timeout: 4)
+            )
+        }
+        XCTAssertTrue(messages.buttons["uls.tutorial.done"].firstMatch.exists)
     }
 
     private func restoreUXLabChrome() {
@@ -598,6 +1294,11 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         let initialSettingsHookValue = String(describing: settingsHookEvidence.value)
         settingsButton.tap()
         XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.settings.surface"]
+                .firstMatch.waitForExistence(timeout: 4),
+            "Expected Settings to open over gameplay."
+        )
+        XCTAssertTrue(
             waitForValueChange(
                 of: settingsHookEvidence,
                 from: initialSettingsHookValue,
@@ -605,6 +1306,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             ),
             "Expected Settings to invoke the root navigation hook without requiring a destination in this slice."
         )
+        messages.buttons["Done"].firstMatch.tap()
         let handButton = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
         XCTAssertTrue(handButton.waitForExistence(timeout: 4), "Expected the fixed Hand object.")
         let buildButton = turnElement(identifier: "uls.turnObject.build", labels: ["Build"])
@@ -1070,17 +1772,15 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             "VoiceOver must announce the pending offer while preserving the stable Trade label."
         )
         tradeButton.tap()
-        XCTAssertTrue(messages.staticTexts["Your Offer"].firstMatch.waitForExistence(timeout: 4))
         let replaceOffer = messages.buttons["Replace Offer"].firstMatch
         XCTAssertTrue(
             waitForHittable(replaceOffer, timeout: 4),
             "Pending Trade must keep Replace Offer pinned and reachable."
         )
-        XCTAssertTrue(messages.staticTexts["Responses"].firstMatch.exists)
         XCTAssertTrue(tradeButton.isSelected)
-        attachScreenshot(named: "Unlucky Sevens - pending active player trade")
+        attachScreenshot(named: "Physical Trade Correction - Pending Offer")
         replaceOffer.tap()
-        XCTAssertTrue(messages.staticTexts["You Give"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.buttons["uls.physicalTrade.advance"].firstMatch.waitForExistence(timeout: 4))
     }
 
     func testSettleTurnBankForDirectStill() throws {
@@ -1106,7 +1806,6 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(tradeButton.waitForExistence(timeout: 8))
         XCTAssertEqual(tradeButton.value as? String, "Pending offer")
         tradeButton.tap()
-        XCTAssertTrue(messages.staticTexts["Your Offer"].firstMatch.waitForExistence(timeout: 4))
         XCTAssertTrue(waitForHittable(messages.buttons["Replace Offer"].firstMatch, timeout: 4))
         Thread.sleep(forTimeInterval: 1)
     }
@@ -1907,6 +2606,15 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         handle.tap()
     }
 
+    private func dismissTutorialNavigationCoach() {
+        let startPrompt = messages.staticTexts["Tap once to start"].firstMatch
+        XCTAssertTrue(startPrompt.waitForExistence(timeout: 4))
+        let coach = messages.buttons["uls.tutorial.navigationCoach"].firstMatch
+        XCTAssertTrue(coach.waitForExistence(timeout: 4))
+        coach.tap()
+        XCTAssertTrue(startPrompt.waitForNonExistence(timeout: 4))
+    }
+
     private func attachScreenshot(named name: String) {
         // Messages embeds the extension through multiple compositing surfaces. A
         // screenshot taken in the first idle turn after a tray transition can
@@ -1994,6 +2702,16 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(frame.minY, container.minY - compositorTolerance, message)
         XCTAssertLessThanOrEqual(frame.maxX, container.maxX + compositorTolerance, message)
         XCTAssertLessThanOrEqual(frame.maxY, container.maxY + compositorTolerance, message)
+    }
+
+    private func assertMinimumTarget(
+        _ element: XCUIElement,
+        message: String
+    ) {
+        let floatingPointTolerance: CGFloat = 0.01
+        XCTAssertTrue(element.waitForExistence(timeout: 4), message)
+        XCTAssertGreaterThanOrEqual(element.frame.width + floatingPointTolerance, 44, message)
+        XCTAssertGreaterThanOrEqual(element.frame.height + floatingPointTolerance, 44, message)
     }
 
     private func assertPersistentTurnGeometry(

@@ -215,11 +215,11 @@ final class GameShellLayoutMetricsTests: XCTestCase {
         let layout = GamePhysicalTurnLayout.resolve(
             availableSize: CGSize(width: 430, height: 932)
         )
-        let boardFrame = CGRect(x: 0, y: 130, width: 430, height: 520)
-        let displayHeight: CGFloat = 932
+        let displayFrame = CGRect(x: 0, y: 14, width: 430, height: 932)
+        let boardFrame = CGRect(x: 0, y: 144, width: 430, height: 520)
         let correction = layout.boardCenteringCorrection(
             boardGlobalFrame: boardFrame,
-            displayHeight: displayHeight
+            displayGlobalFrame: displayFrame
         )
 
         let centeredIsland = boardFrame.minY
@@ -227,7 +227,7 @@ final class GameShellLayoutMetricsTests: XCTestCase {
             + correction
         XCTAssertEqual(
             centeredIsland,
-            displayHeight / 2,
+            displayFrame.midY,
             accuracy: 1.0 / 3.0
         )
     }

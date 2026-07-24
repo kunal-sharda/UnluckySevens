@@ -6,6 +6,8 @@ Establish one coherent lobby presentation from the first invitation through gues
 
 Parent: [Phase 14](phase-14-ui-design-bubble-polish-and-trust-surfaces.md).
 
+The Settings, Rules, and full lobby Tutorial work is owned by the focused [Settings, Rules, and Click-Through Tutorial](settings-rules-tutorial.md) child plan.
+
 ## Execution Settings
 
 - Validation profile: `standard`

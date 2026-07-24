@@ -85,6 +85,7 @@ struct GamePhysicalSetupOrderRailView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("uls.setup.orderRail")
         .accessibilityValue("3 placement slots shown")
+        .gameTutorialTarget(.setupOrder)
     }
 
     private func color(for entry: GameSetupPlacementModel.OrderEntry) -> Color {

@@ -77,6 +77,7 @@ struct GamePhysicalSetupPieceRailView: View {
         .accessibilityLabel(title)
         .accessibilityValue(accessibilityValue(isActive: isActive, isComplete: isComplete))
         .accessibilityIdentifier(accessibilityIdentifier)
+        .gameTutorialTarget(kind == .road ? .setupRoadPiece : .setupSettlementPiece)
     }
 
     private func accessibilityValue(isActive: Bool, isComplete: Bool) -> String {

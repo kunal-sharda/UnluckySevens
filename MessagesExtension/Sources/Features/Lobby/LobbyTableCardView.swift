@@ -4,7 +4,8 @@ struct LobbyTableCardView: View {
     let model: LobbyScreenModel
     @Binding var displayNameDraft: String
     let canSaveDisplayName: Bool
-    let showRules: () -> Void
+    let showSettings: () -> Void
+    let showTutorial: () -> Void
     let invite: () -> Void
     let join: () -> Void
     let saveDisplayName: () -> Void
@@ -20,6 +21,7 @@ struct LobbyTableCardView: View {
             }
 
             LobbySeatTableView(model: model)
+            gameSettingsButton
 
             if let nameEditor = model.nameEditor {
                 nameEditorView(nameEditor)
@@ -49,7 +51,7 @@ struct LobbyTableCardView: View {
 
             Spacer(minLength: 8)
 
-            Button("Game rules", systemImage: "questionmark", action: showRules)
+            Button("Tutorial", systemImage: "questionmark", action: showTutorial)
                 .labelStyle(.iconOnly)
                 .font(.body.bold())
                 .foregroundStyle(LobbyPalette.cream)
@@ -57,8 +59,42 @@ struct LobbyTableCardView: View {
                 .background(Circle().fill(Color.white.opacity(0.08)))
                 .overlay(Circle().stroke(LobbyPalette.openSeatEdge, lineWidth: 1))
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("uls.lobby.rulesHelp")
+                .accessibilityLabel("Tutorial")
+                .accessibilityIdentifier("uls.lobby.tutorial")
         }
+    }
+
+    private var gameSettingsButton: some View {
+        Button(action: showSettings) {
+            HStack(spacing: 12) {
+                Image(systemName: "gearshape.fill")
+                    .foregroundStyle(LobbyPalette.clay)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Game Settings")
+                        .font(GameTheme.headingFont)
+                        .foregroundStyle(LobbyPalette.cream)
+                    Text("Standard rules · Balanced board · 10 points")
+                        .font(GameTheme.metaFont)
+                        .foregroundStyle(LobbyPalette.mutedCream)
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "chevron.right")
+                    .font(.footnote.bold())
+                    .foregroundStyle(LobbyPalette.mutedCream)
+            }
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+            .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 9))
+            .overlay {
+                RoundedRectangle(cornerRadius: 9)
+                    .stroke(LobbyPalette.openSeatEdge, lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("uls.lobby.gameSettings")
     }
 
     private var titleBlock: some View {

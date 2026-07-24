@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GamePhysicalDiceRollOverlayView: View {
     let result: GameDiceRollResult?
+    let skipsAnimations: Bool
     let onComplete: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
@@ -28,7 +29,7 @@ struct GamePhysicalDiceRollOverlayView: View {
                     GameDiceBowlSceneView(
                         result: displayedResult,
                         isActive: result != nil,
-                        isSettled: phase == .settled,
+                        isSettled: phase == .settled || skipsAnimations,
                         onAnimationFinished: finishRolling
                     )
                         .frame(maxWidth: 380)
@@ -53,12 +54,12 @@ struct GamePhysicalDiceRollOverlayView: View {
         .accessibilityLabel(phase == .settled ? "Rolled \(displayedResult.first) and \(displayedResult.second)" : "Rolling dice")
         .accessibilityHint(phase.accessibilityHint)
         .task {
-            if accessibilityReduceMotion {
+            if accessibilityReduceMotion || skipsAnimations {
                 phase = .settled
             }
         }
         .onChange(of: result) { _, newValue in
-            phase = newValue == nil || !accessibilityReduceMotion ? .rolling : .settled
+            phase = newValue == nil || (!accessibilityReduceMotion && !skipsAnimations) ? .rolling : .settled
         }
     }
 

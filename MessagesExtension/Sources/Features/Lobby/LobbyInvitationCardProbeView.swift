@@ -2,7 +2,7 @@ import SwiftUI
 
 struct LobbyInvitationCardProbeView: View {
     @Binding var displayNameDraft: String
-    @State private var showsGameSettings = false
+    let settings: () -> Void
     let tutorial: () -> Void
     let invite: () -> Void
 
@@ -36,7 +36,7 @@ struct LobbyInvitationCardProbeView: View {
                                 LobbyInvitePlayerStrip(isExpanded: true)
 
                                 LobbyInviteGameSettingsButton {
-                                    showsGameSettings = true
+                                    settings()
                                 }
                                 .padding(.top, GameTheme.blockSpacing)
 
@@ -59,9 +59,6 @@ struct LobbyInvitationCardProbeView: View {
                     .padding(.bottom, 24)
                 }
             }
-        }
-        .sheet(isPresented: $showsGameSettings) {
-            LobbyGameSettingsSheet()
         }
     }
 

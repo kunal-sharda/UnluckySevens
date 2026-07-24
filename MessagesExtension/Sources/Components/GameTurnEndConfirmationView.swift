@@ -27,5 +27,6 @@ struct GameTurnEndConfirmationView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("uls.turn.endConfirmation")
         .accessibilityLabel("End turn confirmation")
+        .gameTutorialTarget(.endTurnConfirmation)
     }
 }

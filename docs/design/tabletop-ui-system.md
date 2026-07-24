@@ -134,7 +134,7 @@ The document owns **why and when** a role is used. The listed code owns exact nu
 | Unavailable choice within visible inventory | Object may remain visible when ownership/public information matters, but it is subdued. | Disabled with an explanatory accessibility value or hint. |
 | Destructive confirmation | Compact inline confirmation, with the safe action first and destructive action clearly named. | Never a full-screen warning for an ordinary turn action. |
 
-Selection ownership is singular: choosing Hand, Build, Trade, nested Dev, End, or Game Information replaces the active action-well surface and clears incompatible local draft state. Public information toggles such as Bank reveal may remain independent when the product contract explicitly says so.
+Selection ownership is singular: choosing Hand, Build, Trade, nested Dev, End, or Game Information replaces the active action-well surface and clears incompatible local draft state. Trade’s chooser and live/pending summary own the action well; its full-size player composer, recipient veil, and maritime exchange may overlay the mounted board without changing table geometry. Public information toggles such as Bank reveal may remain independent when the product contract explicitly says so.
 
 ## 7. Layout and Responsive Contract
 
@@ -144,7 +144,7 @@ Selection ownership is singular: choosing Hand, Build, Trade, nested Dev, End, o
 - Public cards, action-well contents, and bottom props remain inside the board's visual width unless a deliberate public grouping requires less width.
 - The canonical island—not merely its teal container—is centered on the full display for the fully expanded gameplay host.
 - Top bar, public rail, board frame, action well, and prop rail keep stable resolved frames while nested routes change.
-- Internal action content may scroll or scale within its reserved region; it must not push the board.
+- Internal action content may scroll or scale within its reserved region; approved full-size Trade overlays may cover the board, but no action surface may push, resize, or remount it.
 - Compact and tall phones use the same hierarchy. Wider hosts may increase reserved dimensions within the resolver's bounds but do not invent a separate composition.
 - Safe areas and the Messages host grabber remain clear. Interactive objects may be visually smaller than 44pt only when wrapped by an invisible 44×44pt target.
 

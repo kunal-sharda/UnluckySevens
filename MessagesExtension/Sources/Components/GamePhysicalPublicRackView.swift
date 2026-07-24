@@ -36,6 +36,7 @@ struct GamePhysicalPublicRackView: View {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("uls.tabletop.bankRack")
+            .gameTutorialTarget(.bankRack)
             .accessibilityLabel("Bank")
             .accessibilityValue(bankAccessibilityValue)
             .accessibilityHint(

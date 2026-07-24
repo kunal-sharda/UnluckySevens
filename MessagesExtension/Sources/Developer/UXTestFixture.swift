@@ -51,9 +51,11 @@ enum UXTestFixtures {
         waitingOnDiscard,
         pendingDiscard,
         robberMove,
+        robberVictim,
         tradeOffer,
         multiTypeTradeOffer,
         gameOver,
+        tutorialVictory,
     ]
 
     static let defaultFixtureID = turnAfterRoll.id
@@ -68,6 +70,8 @@ enum UXTestFixtures {
     static let multiTypeTradeOfferID = "multi-type-trade-offer"
     static let waitingOnAliceID = "waiting-on-alice"
     static let waitingOnDiscardID = "waiting-on-discard"
+    static let robberVictimID = "robber-victim"
+    static let tutorialVictoryID = "tutorial-victory"
 
     static func fixture(id: String) -> UXTestFixture {
         all.first { $0.id == id } ?? turnAfterRoll
@@ -257,6 +261,27 @@ enum UXTestFixtures {
         )
     )
 
+    private static let robberVictim = UXTestFixture(
+        id: robberVictimID,
+        title: "Robber victim",
+        detail: "The robber moved beside an opponent; the active player must choose a victim.",
+        defaultActorID: host,
+        state: {
+            let state = robberMove.state
+            for tileID in state.legalRobberMoveTiles(for: host) {
+                guard let moved = try? apply(
+                    intent: .moveRobber(tileID: tileID),
+                    to: state,
+                    actor: host
+                ) else { continue }
+                if moved.turnState?.step == .needsRobberSteal {
+                    return moved
+                }
+            }
+            preconditionFailure("Robber victim fixture requires a destination beside an opponent.")
+        }()
+    )
+
     private static let tradeOffer = UXTestFixture(
         id: "trade-offer",
         title: "Trade offer received",
@@ -338,6 +363,22 @@ enum UXTestFixtures {
                 rollTotal: 8,
                 actions: [.rollDice, .buildCity, .endTurn]
             ),
+            turnState: TurnStateV1(
+                step: .afterRoll,
+                lastRoll: DiceRollV1(d1: 5, d2: 3)
+            )
+        )
+    )
+
+    private static let tutorialVictory = UXTestFixture(
+        id: tutorialVictoryID,
+        title: "Tutorial victory table",
+        detail: "A live table whose game information shows ten points and both awards.",
+        defaultActorID: host,
+        state: makeTurnFixture(
+            rev: 17,
+            currentPlayer: host,
+            revealedVictoryPointsByPlayer: [host: 5],
             turnState: TurnStateV1(
                 step: .afterRoll,
                 lastRoll: DiceRollV1(d1: 5, d2: 3)

@@ -44,6 +44,7 @@ struct GameTurnGameInfoView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("uls.turn.gameInfo")
+        .gameTutorialTarget(.gameInfo)
     }
 }
 

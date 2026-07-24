@@ -2,11 +2,23 @@ import SwiftUI
 
 struct LobbyShellView: View {
     @ObservedObject var viewModel: LobbyDriverViewModel
-    @State private var showsRulesHelp = false
+    let onSettingsTap: () -> Void
+    let onTutorialTap: () -> Void
+
     #if DEBUG
     @AppStorage(LobbyInviteDirection.defaultsKey)
     private var inviteDirectionRawValue = LobbyInviteDirection.invitationCard.rawValue
     #endif
+
+    init(
+        viewModel: LobbyDriverViewModel,
+        onSettingsTap: @escaping () -> Void = {},
+        onTutorialTap: @escaping () -> Void = {}
+    ) {
+        self.viewModel = viewModel
+        self.onSettingsTap = onSettingsTap
+        self.onTutorialTap = onTutorialTap
+    }
 
     var body: some View {
         let model = viewModel.lobbyScreenModel
@@ -17,7 +29,8 @@ struct LobbyShellView: View {
                 LobbyInviteDirectionProbeView(
                     direction: LobbyInviteDirection(rawValue: inviteDirectionRawValue) ?? .invitationCard,
                     displayNameDraft: $viewModel.lobbyDisplayNameDraft,
-                    tutorial: showRules,
+                    settings: onSettingsTap,
+                    tutorial: onTutorialTap,
                     invite: viewModel.inviteNewGame
                 )
             } else {
@@ -26,9 +39,6 @@ struct LobbyShellView: View {
             #else
             lobbyTable(model: model)
             #endif
-        }
-        .sheet(isPresented: $showsRulesHelp) {
-            LobbyRulesHelpSheet()
         }
     }
 
@@ -49,7 +59,8 @@ struct LobbyShellView: View {
                     model: model,
                     displayNameDraft: $viewModel.lobbyDisplayNameDraft,
                     canSaveDisplayName: viewModel.canPublishLobbyDisplayName,
-                    showRules: showRules,
+                    showSettings: onSettingsTap,
+                    showTutorial: onTutorialTap,
                     invite: viewModel.inviteNewGame,
                     join: viewModel.publishLobbyJoinState,
                     saveDisplayName: viewModel.publishLobbyDisplayName,
@@ -61,9 +72,6 @@ struct LobbyShellView: View {
         }
     }
 
-    private func showRules() {
-        showsRulesHelp = true
-    }
 }
 
 enum LobbyPalette {
@@ -137,43 +145,5 @@ private struct LobbyHexWatermark: View {
     private var hex: some View {
         LobbyHexagonShape()
             .frame(width: 58, height: 50)
-    }
-}
-
-private struct LobbyRulesHelpSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Text("Build roads, settlements, and cities by collecting resources from dice rolls.")
-                    .font(GameTheme.bodyFont)
-
-                rule("Roll", systemImage: "dice.fill", detail: "Dice decide which board tiles produce resources.")
-                rule("Trade", systemImage: "arrow.left.arrow.right", detail: "Swap resources with the table when you need a better hand.")
-                rule("Build", systemImage: "hammer.fill", detail: "Spend resources to expand toward ten victory points.")
-                rule("Robber", systemImage: "figure.wave", detail: "A seven moves the robber and can force large hands to discard.")
-            }
-            .navigationTitle("Game rules")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done", action: dismiss.callAsFunction)
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-
-    private func rule(_ title: String, systemImage: String, detail: String) -> some View {
-        Label {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(GameTheme.headingFont)
-                Text(detail).font(GameTheme.metaFont).foregroundStyle(.secondary)
-            }
-        } icon: {
-            Image(systemName: systemImage)
-                .foregroundStyle(GameTheme.accent)
-        }
     }
 }
