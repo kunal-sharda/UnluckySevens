@@ -50,7 +50,7 @@ Reconcile the repository after the completed icon, transcript-preview, tutorial,
 - [x] Terminal plans archived and owner-doc links refreshed.
 - [x] Diff and doc-freshness checks passed.
 - [x] Completion gate passed.
-- [ ] Intended changes committed and pushed.
+- [x] Intended changes committed and pushed.
 
 ### Decisions
 
@@ -69,5 +69,7 @@ Reconcile the repository after the completed icon, transcript-preview, tutorial,
 - Simulator/browser/local app: the underlying integrated UI slice previously passed the 262-test MessagesExtension suite and installed seventeen-state tutorial replay.
 - Device/manual: connected-iPad proof remains owned by the responsive-adaptation plan.
 - Judgment: no new judgment introduced.
-- Release/config: pending commit and direct branch push.
+- Release/config: integration commit `7d20642` pushed to `origin/ui-ux-single-device-testing`.
 - Deferred: Notion mirror update awaits a connected Notion tool.
+
+The repository closeout is complete: terminal plans are archived, three substantive plans remain active, the selected lightweight completion gate passed, and the reviewed integration commit was pushed. The Notion mirror remains an external follow-up because its connector was unavailable during this session.
