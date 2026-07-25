@@ -8,44 +8,35 @@ struct TranscriptBubbleCopy: Equatable {
 
 enum TranscriptBubbleVisual: Equatable {
     case none
-    case lobbyInvite
-    case action(TranscriptActionBubbleVisual)
+    case lobby(LobbyScreenModel)
+    case board(TranscriptBoardVisual)
+    case trade(TranscriptTradeVisual)
+    case gameOver(TranscriptGameOverVisual)
 }
 
-struct TranscriptActionBubbleVisual: Equatable {
-    let kind: TranscriptActionBubbleKind
-    let title: String
-}
-
-enum TranscriptActionBubbleKind: Equatable {
-    case gameStarted
-    case setupSettlement
-    case setupRoad
-    case setupComplete
-    case roll(total: Int?)
-    case rollSeven
-    case discard
-    case robber
-    case steal
-    case buildRoad
-    case buildSettlement
-    case buildCity
-    case trade
-    case maritimeTrade
-    case devCard
-    case endTurn
-    case gameOver
+struct TranscriptBoardVisual: Equatable {
+    let renderModel: GameBoardRenderModel
+    let showsNumberTokens: Bool
 }
 
 enum TranscriptBubbleCopyBuilder {
-    static func invite(for _: CoreGameStateV1) -> TranscriptBubbleCopy {
-        titled("Lobby Invite", summary: "Open this bubble to join the game.", visual: .lobbyInvite)
+    static func invite(for state: CoreGameStateV1) -> TranscriptBubbleCopy {
+        titled(
+            "Game Invite",
+            summary: "Open this bubble to join the game.",
+            visual: lobbyVisual(for: state)
+        )
     }
 
     static func lobbyJoin(to state: CoreGameStateV1, joiningPlayer: String) -> TranscriptBubbleCopy {
         let joiningName = displayName(for: joiningPlayer, in: state)
-        let playerCountCopy = "\(state.roster.count) players are now in the lobby."
-        return titled("\(joiningName) Joined", summary: playerCountCopy)
+        let count = state.roster.count
+        let playerCountCopy = count == 1 ? "1 player at the table." : "\(count) players at the table."
+        return titled(
+            "\(joiningName) Joined",
+            summary: playerCountCopy,
+            visual: lobbyVisual(for: state)
+        )
     }
 
     static func lobbyRename(
@@ -56,20 +47,26 @@ enum TranscriptBubbleCopyBuilder {
     ) -> TranscriptBubbleCopy {
         let updatedDisplayName = displayName(for: player, in: to)
         if previousDisplayName == updatedDisplayName {
-            return titled("Name Updated", summary: "\(updatedDisplayName) updated their lobby name.")
+            return titled(
+                "Name Updated",
+                summary: "\(updatedDisplayName) updated their display name.",
+                visual: lobbyVisual(for: to)
+            )
         }
 
         return titled(
             "Name Updated",
-            summary: "\(previousDisplayName) is now \(updatedDisplayName)."
+            summary: "\(previousDisplayName) is now \(updatedDisplayName).",
+            visual: lobbyVisual(for: to)
         )
     }
 
     static func startGame(from _: CoreGameStateV1, to: CoreGameStateV1) -> TranscriptBubbleCopy {
-        actionTitled(
+        boardTitled(
             "Game Started",
             summary: "\(to.roster.count) players are entering setup.",
-            kind: .gameStarted
+            state: to,
+            showsNumberTokens: false
         )
     }
 
@@ -80,31 +77,35 @@ enum TranscriptBubbleCopyBuilder {
     ) -> TranscriptBubbleCopy {
         let actorName = displayName(for: actor, in: state)
         if state.phase == .turn {
-            return actionTitled(
+            return boardTitled(
                 "Setup Complete",
                 summary: "Opening turn: \(displayName(for: state.currentPlayer, in: state)).",
-                kind: .setupComplete
+                state: state,
+                showsNumberTokens: true
             )
         }
 
         switch intent {
         case .placeSetupSettlement:
-            return actionTitled(
+            return boardTitled(
                 "Settlement Placed",
                 summary: "\(actorName) placed a setup settlement.",
-                kind: .setupSettlement
+                state: state,
+                showsNumberTokens: false
             )
         case .placeSetupRoad:
-            return actionTitled(
+            return boardTitled(
                 "Road Placed",
                 summary: "\(actorName) placed a setup road.",
-                kind: .setupRoad
+                state: state,
+                showsNumberTokens: false
             )
         case .placeSetupPair:
-            return actionTitled(
+            return boardTitled(
                 "Setup Placed",
                 summary: "\(actorName) finished a setup placement.",
-                kind: .setupSettlement
+                state: state,
+                showsNumberTokens: false
             )
         }
     }
@@ -116,10 +117,10 @@ enum TranscriptBubbleCopyBuilder {
     ) -> TranscriptBubbleCopy {
         if state.phase == .gameOver {
             let winner = displayName(for: state.winnerPlayer, in: state)
-            return actionTitled(
+            return titled(
                 "\(winner) Wins",
                 summary: "Game over at \(state.winningVictoryPoints) points.",
-                kind: .gameOver
+                visual: gameOverVisual(for: state, winner: winner)
             )
         }
 
@@ -130,84 +131,98 @@ enum TranscriptBubbleCopyBuilder {
             let title = rollTotal.map { "Rolled \($0)" } ?? "Dice Rolled"
             let summary: String
             if rollTotal == 7 {
-                summary = "Discards and robber movement are next."
+                summary = "Players discard, then the robber moves."
             } else {
                 summary = "\(actorName) rolled and play continues."
             }
-            return actionTitled(
+            return boardTitled(
                 title,
                 summary: summary,
-                kind: rollTotal == 7 ? .rollSeven : .roll(total: rollTotal)
+                state: state
             )
         case .submitDiscard:
             if let nextPending = nextPendingDiscarder(in: state) {
-                return actionTitled(
+                return boardTitled(
                     "Discard Submitted",
                     summary: "Waiting on \(nextPending) to discard.",
-                    kind: .discard
+                    state: state
                 )
             }
-            return actionTitled(
+            return boardTitled(
                 "Discard Submitted",
                 summary: "All required discards are in. Robber movement is next.",
-                kind: .discard
+                state: state
             )
         case .moveRobber:
             if state.turnState?.step == .needsRobberSteal {
-                return actionTitled(
+                return boardTitled(
                     "Robber Moved",
                     summary: "\(actorName) must choose a player to steal from.",
-                    kind: .robber
+                    state: state
                 )
             }
-            return actionTitled("Robber Moved", summary: "\(actorName) moved the robber.", kind: .robber)
+            return boardTitled(
+                "Robber Moved",
+                summary: "\(actorName) moved the robber.",
+                state: state
+            )
         case let .selectStealVictim(victim):
-            return actionTitled(
+            return boardTitled(
                 "Card Stolen",
                 summary: "\(actorName) stole from \(displayName(for: victim, in: state)).",
-                kind: .steal
+                state: state
             )
         case .buildRoad:
-            return actionTitled("Road Built", summary: "\(actorName) built a road.", kind: .buildRoad)
+            return boardTitled("Road Built", summary: "\(actorName) built a road.", state: state)
         case .buildSettlement:
-            return actionTitled(
+            return boardTitled(
                 "Settlement Built",
                 summary: "\(actorName) built a settlement.",
-                kind: .buildSettlement
+                state: state
             )
         case .buildCity:
-            return actionTitled("City Built", summary: "\(actorName) built a city.", kind: .buildCity)
+            return boardTitled("City Built", summary: "\(actorName) built a city.", state: state)
         case let .proposeTrade(_, _, recipients):
-            return actionTitled(
+            return titled(
                 "Trade Offered",
                 summary: "\(actorName) offered a trade\(tradeRecipientSummary(for: recipients, in: state)).",
-                kind: .trade
+                visual: liveTradeVisual(for: state)
             )
         case .acceptTrade:
-            return actionTitled("Trade Accepted", summary: "\(actorName) accepted the trade.", kind: .trade)
+            return boardTitled("Trade Accepted", summary: "\(actorName) accepted the trade.", state: state)
         case .declineTrade:
-            return actionTitled("Trade Declined", summary: "\(actorName) declined the trade.", kind: .trade)
+            return titled(
+                "Trade Declined",
+                summary: "\(actorName) declined the trade.",
+                visual: state.activeTradeOffer == nil
+                    ? boardVisual(for: state, showsNumberTokens: true)
+                    : liveTradeVisual(for: state)
+            )
         case .counterTrade:
-            return actionTitled("Counteroffer Sent", summary: "\(actorName) proposed a counteroffer.", kind: .trade)
+            return titled(
+                "Counteroffer Sent",
+                summary: "\(actorName) proposed a counteroffer.",
+                visual: liveTradeVisual(for: state)
+            )
         case .maritimeTrade:
-            return actionTitled(
-                "Maritime Trade",
-                summary: "\(actorName) traded with the bank.",
-                kind: .maritimeTrade
+            return boardTitled(
+                "Bank or Port Trade",
+                summary: "\(actorName) completed a Bank or Port trade.",
+                state: state
             )
         case .buyDevCard:
-            return actionTitled("Dev Card Bought", summary: "\(actorName) bought a development card.", kind: .devCard)
+            return boardTitled("Dev Card Bought", summary: "\(actorName) bought a development card.", state: state)
         case .playKnight, .playMonopoly, .playYearOfPlenty, .playRoadBuilding, .revealVictoryPoint:
-            return actionTitled(
+            return boardTitled(
                 devCardTitle(for: intent),
                 summary: devCardSummary(for: intent, actorName: actorName),
-                kind: .devCard
+                state: state
             )
         case .endTurn:
-            return actionTitled(
+            return boardTitled(
                 "Turn Ended",
                 summary: "Next turn: \(displayName(for: state.currentPlayer, in: state)).",
-                kind: .endTurn
+                state: state
             )
         }
     }
@@ -224,19 +239,79 @@ enum TranscriptBubbleCopyBuilder {
         )
     }
 
-    private static func actionTitled(
+    private static func boardTitled(
         _ title: String,
         summary: String,
-        kind: TranscriptActionBubbleKind
+        state: CoreGameStateV1,
+        showsNumberTokens: Bool = true
     ) -> TranscriptBubbleCopy {
         titled(
             title,
             summary: summary,
-            visual: .action(
-                TranscriptActionBubbleVisual(
-                    kind: kind,
-                    title: title
-                )
+            visual: boardVisual(for: state, showsNumberTokens: showsNumberTokens)
+        )
+    }
+
+    private static func lobbyVisual(for state: CoreGameStateV1) -> TranscriptBubbleVisual {
+        .lobby(LobbyScreenModelBuilder.transcriptSnapshot(state: state))
+    }
+
+    private static func liveTradeVisual(for state: CoreGameStateV1) -> TranscriptBubbleVisual {
+        guard
+            let panel = GameTradePanelModelBuilder.build(state: state, actingAs: nil),
+            let offer = panel.activeOffer
+        else {
+            return boardVisual(for: state, showsNumberTokens: true)
+        }
+
+        let allEligibleRecipients = Set(state.roster.filter { $0 != offer.proposerPlayerID })
+        let recipientScopeLabel = Set(offer.recipientPlayerIDs) == allEligibleRecipients
+            ? "To everyone"
+            : offer.recipientsLabel
+
+        return .trade(
+            TranscriptTradeVisual(
+                offer: offer,
+                participantStatuses: panel.participantStatuses.filter(\.isTargeted),
+                recipientScopeLabel: recipientScopeLabel
+            )
+        )
+    }
+
+    private static func gameOverVisual(
+        for state: CoreGameStateV1,
+        winner: String
+    ) -> TranscriptBubbleVisual {
+        guard let renderModel = GameBoardRenderModelBuilder.build(state: state) else {
+            return .none
+        }
+
+        let scoreLine = state.roster
+            .map {
+                "\(displayName(for: $0, in: state)) \(victoryPoints(for: $0, in: state))"
+            }
+            .joined(separator: " · ")
+        return .gameOver(
+            TranscriptGameOverVisual(
+                renderModel: renderModel,
+                winnerTitle: "\(winner) won",
+                scoreLine: scoreLine
+            )
+        )
+    }
+
+    private static func boardVisual(
+        for state: CoreGameStateV1,
+        showsNumberTokens: Bool
+    ) -> TranscriptBubbleVisual {
+        guard let renderModel = GameBoardRenderModelBuilder.build(state: state) else {
+            return .none
+        }
+
+        return .board(
+            TranscriptBoardVisual(
+                renderModel: renderModel,
+                showsNumberTokens: showsNumberTokens
             )
         )
     }

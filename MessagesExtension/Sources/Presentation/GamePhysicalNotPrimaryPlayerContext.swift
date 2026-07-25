@@ -49,7 +49,7 @@ enum GamePhysicalNotPrimaryPlayerContext: Equatable {
         case .incomingTrade:
             return .answerTradeOffer
         case .waitingForDiscard:
-            return nil
+            return .waitingForDiscard
         }
     }
 
@@ -61,13 +61,6 @@ enum GamePhysicalNotPrimaryPlayerContext: Equatable {
         fallback: String,
         discardPanel: GameDiscardPanelModel?
     ) -> String {
-        guard self == .waitingForDiscard else {
-            return fallback
-        }
-
-        guard let nextPlayer = discardPanel?.waitingPlayers.first else {
-            return "Waiting for discard"
-        }
-        return "Waiting for \(nextPlayer) to discard"
+        fallback
     }
 }

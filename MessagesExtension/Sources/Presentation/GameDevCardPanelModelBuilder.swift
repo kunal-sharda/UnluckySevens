@@ -44,7 +44,7 @@ enum GameDevCardPanelModelBuilder {
 
         guard let actingAs else {
             return GameDevCardPanelModel(
-                message: "Development-card actions are unavailable without a local player identity.",
+                message: "Open the latest game message to use Dev Cards.",
                 cards: makeCards(
                     playableCounts: playableCounts,
                     heldCounts: heldCounts,
@@ -172,7 +172,7 @@ enum GameDevCardPanelModelBuilder {
                 selectedActionKind: selectedActionKind,
                 timingNotes: timingNotes,
                 draftSummary: yearOfPlentySummary(first: selection.first, second: selection.second),
-                confirmTitle: "Play Year Of Plenty",
+                confirmTitle: "Play Year of Plenty",
                 canConfirm: selection.first != nil && selection.second != nil
             )
         case .devCardRoadBuildingFirst:
@@ -264,7 +264,7 @@ enum GameDevCardPanelModelBuilder {
         return GameDevCardAction(
             kind: .playKnight,
             title: "Play Knight",
-            detail: "Choose a robber tile, then choose a victim only if the new tile has multiple eligible steals.",
+            detail: "Move the robber, then choose a victim if more than one player is available.",
             systemImage: "shield.lefthalf.filled"
         )
     }
@@ -286,9 +286,9 @@ enum GameDevCardPanelModelBuilder {
         }
         let detail: String
         if let bestPreview {
-            detail = "Choose any resource from the bank strip. Best current target is \(resourceLabel(bestPreview.resource)) for up to \(bestPreview.claimCount) cards."
+            detail = "Best target: \(resourceLabel(bestPreview.resource)), up to \(bestPreview.claimCount) cards."
         } else {
-            detail = "Choose any resource from the bank strip."
+            detail = "Choose a resource from the Bank."
         }
 
         return GameDevCardAction(
@@ -310,8 +310,8 @@ enum GameDevCardPanelModelBuilder {
 
         return GameDevCardAction(
             kind: .playYearOfPlenty,
-            title: "Play Year Of Plenty",
-            detail: "Choose two resources from the bank strip. The same resource can be picked twice only when the bank still has two.",
+            title: "Play Year of Plenty",
+            detail: "Choose two resources from the Bank. You may take the same resource twice when two remain.",
             systemImage: "leaf.fill"
         )
     }
@@ -327,7 +327,7 @@ enum GameDevCardPanelModelBuilder {
         return GameDevCardAction(
             kind: .playRoadBuilding,
             title: "Play Road Building",
-            detail: "Choose a first road, then a connected second road. The action only appears when a full two-road pair is legal.",
+            detail: "Place two connected Roads.",
             systemImage: "road.lanes"
         )
     }
@@ -357,19 +357,19 @@ enum GameDevCardPanelModelBuilder {
     ) -> String {
         if state.devCardActionPlayedThisTurn {
             if playActions.contains(where: { $0.kind == .revealVictoryPoint }) {
-                return "You already used a non-Victory Point development-card action this turn. Winning Victory Point reveals may still be available."
+                return "You can still reveal a winning Victory Point card."
             }
-            return "You already used a non-Victory Point development-card action this turn."
+            return "You've played a development card this turn."
         }
 
         if playActions.isEmpty {
             if playableCounts.isEmpty, heldCounts.isEmpty, newCounts.isEmpty {
-                return "You do not have any development cards available right now."
+                return "You don't have any development cards yet."
             }
-            return "No legal development-card play is available from the current state."
+            return "No development cards are available right now."
         }
 
-        return "Choose one of your legal development cards to begin a board or bank selection flow."
+        return "Choose a development card."
     }
 
     private static func waitingMessage(
@@ -380,10 +380,10 @@ enum GameDevCardPanelModelBuilder {
         newCounts: [GameDevCardCount]
     ) -> String {
         if playableCounts.isEmpty, heldCounts.isEmpty, newCounts.isEmpty {
-            return "Waiting for \(playerName(currentPlayer, in: state)) to use development cards."
+            return "Waiting for \(playerName(currentPlayer, in: state))."
         }
 
-        return "You can review your development cards here, but only \(playerName(currentPlayer, in: state)) can act right now."
+        return "Waiting for \(playerName(currentPlayer, in: state))'s turn."
     }
 
     private static func makeTimingNotes(
@@ -393,30 +393,7 @@ enum GameDevCardPanelModelBuilder {
         heldCounts: [GameDevCardCount],
         newCounts: [GameDevCardCount]
     ) -> [String] {
-        var notes: [String] = []
-
-        if !newCounts.isEmpty {
-            notes.append("Newly bought non-Victory Point development cards stay locked until your next turn.")
-        }
-
-        if let actingAs, state.devCardActionPlayedThisTurn, actingAs == state.currentPlayer {
-            notes.append("Only one non-Victory Point development-card action can be played per turn.")
-        } else if !playableCounts.isEmpty {
-            notes.append("Only one non-Victory Point development-card action can be played per turn.")
-        }
-
-        if victoryPointCount(in: newCounts) > 0 ||
-            victoryPointCount(in: playableCounts) > 0 ||
-            victoryPointCount(in: heldCounts) > 0
-        {
-            notes.append("Victory Point cards only reveal when the reveal would immediately win the game.")
-        }
-
-        if !heldCounts.isEmpty {
-            notes.append("Held cards listed outside Playable stay hidden until their timing and legality requirements are met.")
-        }
-
-        return notes
+        []
     }
 
     private static func actionableCounts(
@@ -615,9 +592,9 @@ enum GameDevCardPanelModelBuilder {
             return "Locked until your next turn."
         }
         if held > 0 && playable == 0 {
-            return "Not legal right now."
+            return "Not available this turn."
         }
-        return "No legal play."
+        return "Not available now."
     }
 
     private static func canChooseYearOfPlenty(from options: [BankResourceOptionV1]) -> Bool {
@@ -641,10 +618,10 @@ enum GameDevCardPanelModelBuilder {
 
     private static func yearOfPlentyMessage(first: ResourceV1?, second: ResourceV1?) -> String {
         if first == nil {
-            return "Choose the first resource from the bank strip."
+            return "Choose the first resource from the Bank."
         }
         if second == nil {
-            return "Choose the second resource from the bank strip."
+            return "Choose the second resource from the Bank."
         }
         return "Confirm the selected resource pair."
     }

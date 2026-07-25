@@ -67,8 +67,8 @@ Run this after any lobby join/start UX change.
 10. Confirm `Start Game` stays unavailable until at least two players appear in that reopened host lobby, then start from device A.
 11. From device B, open the start `STATE` and confirm the extension resolves the new setup context cleanly.
 12. Confirm the fresh invite, join, rename, and start bubbles all use descriptive product copy instead of revision/debug text.
-13. Confirm the first invite bubble shows the branded Unlucky Sevens invite image, while join and rename bubbles remain text-only.
-14. Confirm the start bubble shows a concise action-card graphic rather than a full board thumbnail.
+13. Confirm invite, join, and rename bubbles show the production four-seat table with the current roster and open seats.
+14. Confirm the start bubble shows the production board without number tokens.
 15. On both devices, if the thread now contains more than one recoverable game or stale lobby context, confirm the compact `Game` / `Games` recovery chip opens the correct latest known lobby or game context without requiring transcript hunting.
 
 ### Real Device Messages Lifecycle
@@ -97,7 +97,7 @@ Run this after any action-flow change that affects turns, trades, robber, or dev
    - `Roll pending` before the active player rolls
    - `Roll: <d1> + <d2> = <total>` after the active player rolls
 6. Confirm fresh turn/setup bubbles use `Unlucky Sevens: <descriptive title>` copy with a short human-readable summary instead of `ULS STATE` or revision text.
-7. Confirm setup, roll/build/trade/robber/end-turn, and game-over bubbles show concise action-card graphics with minimal in-image words.
+7. Confirm setup bubbles show the production board without number tokens, then roll/build/trade/robber/end-turn and game-over bubbles show the current production board with number tokens and pieces.
 8. Reopen/select old bubbles and confirm payload still decodes from the URL-backed state, not from image or display text.
 9. Confirm no bubble or context step silently drops during cross-device play.
 

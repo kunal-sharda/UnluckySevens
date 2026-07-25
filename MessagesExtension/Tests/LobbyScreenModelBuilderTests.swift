@@ -18,9 +18,11 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
         )
 
         XCTAssertTrue(model.showsInviteEntryHero)
-        XCTAssertEqual(model.title, "A table is open")
+        XCTAssertEqual(model.title, "Start an Unlucky Sevens Game")
+        XCTAssertEqual(model.subtitle, "")
         XCTAssertEqual(model.inviteButton?.title, "Send Invite")
-        XCTAssertEqual(model.nameEditor?.title, "Playing as")
+        XCTAssertEqual(model.nameEditor?.title, "Display Name")
+        XCTAssertEqual(model.nameEditor?.helperText, "")
         XCTAssertNil(model.joinButton)
         XCTAssertNil(model.startButton)
     }
@@ -42,7 +44,8 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(model.title, "Invite Friends")
+        XCTAssertEqual(model.title, "Waiting for Players")
+        XCTAssertEqual(model.subtitle, "")
         XCTAssertFalse(model.showsInviteEntryHero)
         XCTAssertEqual(model.participants.count, 1)
         XCTAssertEqual(model.participants.first?.detailText, "Host")
@@ -69,6 +72,8 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
         )
 
         XCTAssertEqual(model.title, "Ready to Start")
+        XCTAssertEqual(model.subtitle, "")
+        XCTAssertEqual(model.helperText, "")
         XCTAssertFalse(model.showsInviteEntryHero)
         XCTAssertEqual(model.participants.count, 2)
         XCTAssertEqual(Set(model.participants.map(\.displayName)).count, 2)
@@ -93,6 +98,8 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
         )
 
         XCTAssertEqual(model.title, "Invite Sent")
+        XCTAssertEqual(model.subtitle, "Return to the chat. Reopen the latest invite to see who joined.")
+        XCTAssertEqual(model.participants.count, 1)
         XCTAssertFalse(model.showsInviteEntryHero)
         XCTAssertNil(model.startButton)
         XCTAssertNil(model.joinButton)
@@ -116,7 +123,11 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(model.title, "Join This Game")
+        XCTAssertEqual(model.title, "Join the Table")
+        XCTAssertEqual(
+            model.subtitle,
+            "\(PlayerPseudonymResolver.displayName(for: host, in: state)) invited you to play Unlucky Sevens."
+        )
         XCTAssertFalse(model.showsInviteEntryHero)
         XCTAssertEqual(model.joinButton?.title, "Join Game")
         XCTAssertNil(model.startButton)
@@ -146,7 +157,9 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
         )
 
         XCTAssertEqual(model.participants.last?.displayName, "Kunal")
-        XCTAssertEqual(model.nameEditor?.title, "Your Name")
+        XCTAssertEqual(model.title, "You're In")
+        XCTAssertEqual(model.nameEditor?.title, "Display Name")
+        XCTAssertEqual(model.nameEditor?.helperText, "")
         XCTAssertEqual(model.nameEditor?.saveButton?.title, "Save Name")
     }
 

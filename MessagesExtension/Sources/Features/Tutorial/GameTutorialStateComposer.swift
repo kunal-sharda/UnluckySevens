@@ -35,12 +35,6 @@ enum GameTutorialStateComposer {
             return robberMoveState
         case .chooseVictim:
             return robberVictimState
-        case .victoryAwards:
-            return makeState(
-                rev: 17,
-                revealedVictoryPoints: [localPlayer: 5],
-                turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 5, d2: 3))
-            )
         case .readProduction,
              .useHand,
              .buildCosts,

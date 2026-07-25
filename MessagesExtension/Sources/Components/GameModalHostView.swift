@@ -329,28 +329,30 @@ struct GameModalHostView: View {
     private func copy(for mode: GameMode) -> (title: String, message: String, systemImage: String)? {
         switch mode {
         case .setup:
-            let message = setupInstruction ?? "Tap the highlighted placement to continue setup."
-            return ("Setup Placement", message, "house.lodge.fill")
+            guard let setupInstruction else {
+                return nil
+            }
+            return ("Setup Placement", setupInstruction, "house.lodge.fill")
         case .buildRoad:
-            return ("Build Road", "Select a legal road location on the board.", "road.lanes")
+            return ("Build Road", "Choose a glowing road location.", "road.lanes")
         case .buildSettlement:
-            return ("Build Settlement", "Select a legal settlement location on the board.", "house.fill")
+            return ("Build Settlement", "Choose a glowing corner.", "house.fill")
         case .buildCity:
-            return ("Build City", "Select one of your highlighted settlements to upgrade.", "building.2.fill")
+            return ("Build City", "Choose a glowing settlement to upgrade.", "building.2.fill")
         case .robberMove:
-            return ("Move The Robber", "Tap a highlighted tile to move the robber. If a victim is available, the next step will ask you to pick who to steal from.", "figure.fall")
+            return ("Move the Robber", "Choose a glowing tile. If anyone is beside it, you'll choose a victim next.", "figure.fall")
         case .robberVictim:
-            return ("Steal A Card", "Choose one eligible victim. Only players adjacent to the robber's new tile and holding cards are shown.", "person.crop.circle.badge.questionmark")
+            return ("Steal a Card", "Choose a marked player beside the robber.", "person.crop.circle.badge.questionmark")
         case .playDevCard:
-            return ("Dev Cards", "Choose a development card to play, then complete the required board or bank selections.", "sparkles.rectangle.stack.fill")
+            return ("Dev Cards", "Choose a card, then follow the prompts.", "sparkles.rectangle.stack.fill")
         case .devCardKnightMove:
             return ("Play Knight", "Choose the robber tile on the board.", "shield.lefthalf.filled")
         case .devCardKnightVictim:
-            return ("Knight Victim", "Choose which highlighted player to steal from.", "person.crop.circle.badge.questionmark")
+            return ("Choose a Victim", "Choose a marked player to steal from.", "person.crop.circle.badge.questionmark")
         case .devCardMonopoly:
             return ("Play Monopoly", "Choose a resource from the bank strip, then confirm.", "shippingbox.fill")
         case .devCardYearOfPlenty:
-            return ("Year Of Plenty", "Choose two resources from the bank strip, then confirm.", "leaf.fill")
+            return ("Year of Plenty", "Choose two resources from the Bank, then confirm.", "leaf.fill")
         case .devCardRoadBuildingFirst:
             return ("Road Building", "Choose the first road on the board.", "road.lanes")
         case .devCardRoadBuildingSecond:

@@ -31,7 +31,7 @@ final class GameShellProjectionBuilderTests: XCTestCase {
         XCTAssertNil(projection.setupGuidanceText)
         XCTAssertNil(projection.discardPanelModel)
         XCTAssertTrue(projection.robberVictimOptions.isEmpty)
-        XCTAssertEqual(projection.tradePanelModel?.roleTitle, "Trade Desk")
+        XCTAssertEqual(projection.tradePanelModel?.roleTitle, "Trade")
         XCTAssertEqual(projection.boardHash, state.board?.boardHash)
         XCTAssertEqual(projection.visibleHands, "A: w:2, b:1, s:1, wh:1, o:1 | B: 0")
     }
@@ -65,7 +65,7 @@ final class GameShellProjectionBuilderTests: XCTestCase {
 
         XCTAssertEqual(tradeProjection.tradePanelModel?.participantStatuses.first?.playerID, "B")
         XCTAssertEqual(tradeProjection.tradePanelModel?.participantStatuses.first?.state, .countered)
-        XCTAssertTrue(tradeProjection.tradePanelModel?.message.contains("Counters are visible") == true)
+        XCTAssertEqual(tradeProjection.tradePanelModel?.message, "Review the counters below.")
 
         let discardState = makeTurnState(
             currentPlayer: "A",

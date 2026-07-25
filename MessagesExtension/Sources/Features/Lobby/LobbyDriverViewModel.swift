@@ -1554,7 +1554,7 @@ final class LobbyDriverViewModel: ObservableObject {
             successStatus = "Published monopoly play"
         case let .yearOfPlenty(first, second):
             guard let first, let second else {
-                setLastError("Year Of Plenty needs two resources.")
+                setLastError("Year of Plenty needs two resources.")
                 return false
             }
             draftAction = DevCardInteractionResolver.draftPlayYearOfPlentyIntent(
@@ -2547,7 +2547,20 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func setLastError(_ message: String?) {
-        lastError = message ?? "-"
+        guard let message else {
+            lastError = "-"
+            return
+        }
+
+        #if DEBUG
+        print("[Unlucky Sevens] \(message)")
+        if message.contains("UX Lab") || message.contains("autoplay") {
+            lastError = message
+            return
+        }
+        #endif
+
+        lastError = PlayerFacingErrorCopy.message(for: message)
     }
 
     private func session(for policy: TranscriptSessionPolicy) -> MSSession {

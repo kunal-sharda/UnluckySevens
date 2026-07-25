@@ -5,6 +5,12 @@ import ULS_CoreGame
 
 final class GameBoardScene: SKScene {
     static let backdropOverscan: CGFloat = 96
+    static let robberHeightScale: CGFloat = 0.64
+    static let robberMinimumHeight: CGFloat = 20
+
+    static func robberHeight(forTileRadius radius: CGFloat) -> CGFloat {
+        max(radius * robberHeightScale, robberMinimumHeight)
+    }
 
     static func numberTokenPipCount(for number: Int) -> Int {
         guard (2...12).contains(number), number != 7 else { return 0 }
@@ -445,13 +451,16 @@ final class GameBoardScene: SKScene {
     private func makeRobberNode(radius: CGFloat) -> SKNode {
         let node = SKNode()
         node.name = "robber"
-        node.position = CGPoint(x: 0, y: -radius * 0.28)
+        node.position = .zero
         node.zPosition = 40
 
         let artwork = SKNode()
         artwork.name = "robber.artwork"
         artwork.yScale = -1
-        let paths = RobberPieceGeometry.paths(center: .zero, height: max(radius * 0.82, 30))
+        let paths = RobberPieceGeometry.paths(
+            center: .zero,
+            height: Self.robberHeight(forTileRadius: radius)
+        )
 
         for (name, path) in [("base", paths.base), ("body", paths.body), ("head", paths.head)] {
             let shape = SKShapeNode(path: path)

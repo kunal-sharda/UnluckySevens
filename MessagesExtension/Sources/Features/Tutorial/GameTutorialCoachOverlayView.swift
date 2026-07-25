@@ -10,7 +10,7 @@ struct GameTutorialCoachOverlayView: View {
     }
 
     private let standardBubbleSize = CGSize(width: 174, height: 68)
-    private let tradeBubbleSize = CGSize(width: 138, height: 46)
+    private let tradeBubbleSize = CGSize(width: 154, height: 46)
     private let edgeInset: CGFloat = 10
     private let topExclusionHeight: CGFloat = 72
 
@@ -125,7 +125,7 @@ struct GameTutorialCoachOverlayView: View {
         let size = bubbleSize(for: callout)
         let halfWidth = min(size.width, availableSize.width - 28) / 2
         let halfHeight = size.height / 2
-        let gap = isTradeCallout(callout) ? 72.0 : 18.0
+        let gap = isTradeCallout(callout) ? 10.0 : 18.0
         let proposed: CGPoint
 
         switch placement {
@@ -232,25 +232,51 @@ struct GameTutorialCoachOverlayView: View {
             .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
     }
 
+    @ViewBuilder
     private func calloutBubble(_ callout: GameTutorialCallout) -> some View {
         let size = bubbleSize(for: callout)
-        return Text(callout.text)
-            .font(GameTheme.chipFont)
-            .foregroundStyle(GameTheme.ink)
-            .multilineTextAlignment(.leading)
-            .lineLimit(3)
-            .frame(width: size.width - 24, alignment: .leading)
-            .frame(height: size.height - 14, alignment: .leading)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(GameTheme.surface, in: RoundedRectangle(cornerRadius: 10))
-            .overlay {
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(GameTheme.accent, lineWidth: 2)
-            }
-            .shadow(color: .black.opacity(0.22), radius: 5, y: 2)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(callout.text)
+        if isTradeCallout(callout) {
+            Text(callout.text)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .frame(width: size.width - 20, height: size.height - 12)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .background(
+                    GameTheme.felt.opacity(0.98),
+                    in: RoundedRectangle(cornerRadius: 9)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 9)
+                        .stroke(
+                            GamePhysicalTurnPalette.selectedKeyline,
+                            lineWidth: 1.5
+                        )
+                }
+                .shadow(color: .black.opacity(0.24), radius: 3, y: 1)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(callout.text)
+        } else {
+            Text(callout.text)
+                .font(GameTheme.chipFont)
+                .foregroundStyle(GameTheme.ink)
+                .multilineTextAlignment(.leading)
+                .lineLimit(3)
+                .frame(width: size.width - 24, alignment: .leading)
+                .frame(height: size.height - 14, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(GameTheme.surface, in: RoundedRectangle(cornerRadius: 10))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(GameTheme.accent, lineWidth: 2)
+                }
+                .shadow(color: .black.opacity(0.22), radius: 5, y: 2)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(callout.text)
+        }
     }
 
     private func bubbleSize(for callout: GameTutorialCallout) -> CGSize {

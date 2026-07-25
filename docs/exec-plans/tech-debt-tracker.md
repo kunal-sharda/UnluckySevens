@@ -40,9 +40,9 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - Area: UI architecture
 - Why it matters: the engine boundaries are clean, but the extension target is still vulnerable to becoming monolithic and mixing product authority, transcript recovery, board update coordination, and debug tooling.
 - Current cost or risk: slower UI iteration, board redraw churn, and harder reviewability when host-boundary logic and feature logic live in the same places.
-- Proposed fix shape: split the extension internally by host lifecycle/context recovery, transport adaptation, lobby/game orchestration, board-scene coordination, and debug/operator surfaces.
+- Proposed fix shape: split the extension internally by host lifecycle/context recovery, transport adaptation, lobby/game orchestration, board-scene coordination, and debug/operator surfaces. Isolate the required Messages selection watch behind a cancellable lifecycle component instead of leaving its manual polling token and scheduling inside `MessagesViewController`, and migrate presentation ownership away from the catch-all `LobbyDriverViewModel` without changing Core or transport authority.
 - When to address: phase 15.
-- Links: [ARCHITECTURE.md](/Users/kunalsharda/Documents/Code/UnluckySevens/ARCHITECTURE.md)
+- Links: [ARCHITECTURE.md](/Users/kunalsharda/Documents/Code/UnluckySevens/ARCHITECTURE.md), [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift), [MessagesViewController.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/App/MessagesViewController.swift)
 
 ### TD-004 — `MessagesExtensionTests` duplicates selected extension sources
 
@@ -66,10 +66,10 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 
 - Area: `MessagesExtension` board rendering, `ULS_CoreGame` query economy, SwiftUI projection churn
 - Why it matters: the 2026-04-12 render/perf audit traced observable device lag to a stack of pure rebuilds that happen on every state update, every tap, and every overlay change.
-- Current cost or risk: real-device responsiveness will remain worse than necessary until the topology/layout/projection allocations are eliminated, and every new board or shell feature pays the same amplification.
-- Proposed fix shape: work the ordered audit list — cache topology/render geometry, precompute layout, memoize render-model building, split debug and render projections, and reduce the published debug surface that the shell does not actually read.
+- Current cost or risk: real-device responsiveness will remain worse than necessary until the topology/layout/projection allocations are eliminated, and every new board or shell feature pays the same amplification. The current shell projection still mixes product models with a large stringified diagnostic surface, while `LobbyDriverViewModel` retains a writable pass-through facade for those legacy fields.
+- Proposed fix shape: work the ordered audit list — cache topology/render geometry, precompute layout, memoize render-model building, split debug and render projections, remove unused writable projection pass-throughs, and keep only diagnostics that have a named DEBUG or operator consumer.
 - When to address: phase 15.
-- Links: [2026-04-12 render/perf audit](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-12-render-performance.md)
+- Links: [2026-04-12 render/perf audit](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-12-render-performance.md), [GameShellProjection.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/GameShellProjection.swift), [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift)
 
 ### TD-009 — Simultaneous targeted trade accept is still nondeterministic
 
@@ -98,11 +98,46 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - When to address: phase 15, before changing economy rules.
 - Links: [CoreBuildCostsV1.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/Packages/ULS_CoreGame/Sources/ULS_CoreGame/CoreBuildCostsV1.swift), [ARCHITECTURE.md](/Users/kunalsharda/Documents/Code/UnluckySevens/ARCHITECTURE.md)
 
-### TD-012 — ExecPlan terminal-state and flow-narration cleanup
+### TD-012 — Resolved: ExecPlan terminal-state and flow-narration cleanup
 
 - Area: execution harness and product-plan freshness
 - Why it matters: repository audit found two plans with terminal contracts still under `active/`, while the lobby plan retains narration from the pre-Settings/Tutorial learning flow.
-- Current cost or risk: active-plan listings overstate in-flight work and stale wording can be mistaken for the current product contract even though owner docs and newer child plans disagree.
-- Proposed fix shape: run a fresh selected-plan gate for `discard-screen.md` and `branch-archive-and-master-baseline.md`, archive them without rewriting their historical evidence, and update the lobby plan to link the current Settings/Tutorial distinction while retaining its genuinely pending LIS constraints.
-- When to address: after the current Physical Trade checkpoint, before the next phase-level completion audit.
-- Links: [Discard Screen](active/discard-screen.md), [Branch Archive and Master Baseline](active/branch-archive-and-master-baseline.md), [Lobby Invite Screen](active/lobby-invite-screen.md), [Physical Trade Surface Correction](completed/physical-trade-surface-correction.md)
+- Resolution: terminal branch-maintenance, discard, Settings/Tutorial, and UI-flow-audit plans moved to `completed/`; the lobby plan now links the completed learning-surface work while retaining only its genuinely pending release invite constraints.
+- Resolved: 2026-07-25.
+- Links: [Discard Screen](completed/discard-screen.md), [Branch Archive and Master Baseline](completed/branch-archive-and-master-baseline.md), [Settings, Rules, and Click-Through Tutorial](completed/settings-rules-tutorial.md), [UI Flow Contract Audit](completed/ui-flow-contract-audit.md), [Lobby Invite Screen](active/lobby-invite-screen.md)
+
+### TD-013 — Superseded UI types remain in the production source target
+
+- Area: `MessagesExtension` source hygiene
+- Why it matters: rejected or replaced implementations should leave the shipping source graph once their successor is established, otherwise future searches and refactors cannot distinguish current UI from historical scaffolding.
+- Current cost or risk: `ActionDockView`, `LobbyGameSettingsSheet`, and `GameDevCardChimneyMarkView` have no source references outside their declarations but are still compiled into the extension target through the broad source glob.
+- Proposed fix shape: delete the three unreferenced types, regenerate through the canonical script, build the Messages target, and add a lightweight orphan-type/reference scan to structural-cleanup reviews rather than creating permanent tooling for a three-file deletion.
+- When to address: immediately; this is a small direct cleanup that does not need to wait for phase 15.
+- Links: [ActionDockView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Components/ActionDockView.swift), [LobbyGameSettingsSheet.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyGameSettingsSheet.swift), [GameDevCardChimneyMarkView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Components/GameDevCardChimneyMarkView.swift)
+
+### TD-014 — Legacy tabletop presentation branches coexist with Physical Props
+
+- Area: gameplay UI architecture, visual-system migration
+- Why it matters: the extension still carries `framedShelf`, `framelessShelf`, `feltTools`, and `physicalProps` presentation families plus parallel tray, modal, trade, and freeze-overlay implementations.
+- Current cost or risk: every gameplay change must reason about multiple visual systems, legacy branches can survive only because DEBUG comparison controls still exercise them, and release states not yet migrated can silently preserve an older product language.
+- Proposed fix shape: inventory the release routes that still resolve to the old stack, finish or explicitly defer their product migration, keep approved comparison fixtures under DEBUG only, and then remove unreachable legacy bodies and layout modes with focused route and installed-host coverage.
+- When to address: start at phase 14 closeout and finish as an early phase 15 slice; do not bulk-delete until remaining release routes are mapped.
+- Links: [GameTabletopLayoutStyle.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/GameTabletopLayoutStyle.swift), [GameShellView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Game/GameShellView.swift), [GameModalHostView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Components/GameModalHostView.swift)
+
+### TD-015 — Local game ledger has no retention or schema lifecycle
+
+- Area: transcript recovery, local persistence
+- Why it matters: `TranscriptGameLedgerStore` persists a complete canonical-state payload for every indexed game in `UserDefaults`, but has no record version, retention bound, or corrupt-entry cleanup.
+- Current cost or risk: long-running beta installs can accumulate stale payloads indefinitely, and decode or encode failures currently fail soft without removing the bad entry or preserving an actionable recovery diagnostic.
+- Proposed fix shape: version the stored record, cap retained inactive games using a documented policy, remove or quarantine corrupt entries, expose a useful recovery failure signal, and add migration, pruning, and corruption tests.
+- When to address: phase 15 before broad beta accumulation; pull forward if TestFlight recovery diagnostics show ledger growth or decode failures.
+- Links: [TranscriptGameLedger.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/TranscriptGameLedger.swift), [Messages host lessons](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/messages-host.md)
+
+### TD-016 — Board-art owner docs and runtime asset usage disagree
+
+- Area: board assets, design source of truth, repository hygiene
+- Why it matters: `DESIGN.md` and the durable cleanup receipt identify `BoardTiles` as production terrain assets, while the current runtime renderer loads `BoardStamps` and `BoardMiniStamps`; the six `tile_*` images have no discovered runtime reference.
+- Current cost or risk: agents cannot safely decide whether the binary tiles are protected production inputs or superseded baggage, so cleanup can either delete approved art or preserve unused assets and stale documentation indefinitely.
+- Proposed fix shape: make one explicit design decision based on the installed production board: either restore `BoardTiles` as the renderer input, or declare the stamp-based board canonical, update `DESIGN.md` and the cleanup receipt, and remove superseded tile and uncolored merchant-ship assets after reference and installed-bundle verification.
+- When to address: immediately after the current visual checkpoint, before aggressive asset cleanup or phase 15 decomposition.
+- Links: [DESIGN.md](/Users/kunalsharda/Documents/Code/UnluckySevens/DESIGN.md), [GameBoardTileArt.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Board/GameBoardTileArt.swift), [cleanup receipt](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/design/cleanup-receipt.md)

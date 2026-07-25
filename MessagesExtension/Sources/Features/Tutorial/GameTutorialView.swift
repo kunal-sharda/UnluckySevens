@@ -57,11 +57,16 @@ struct GameTutorialView: View {
                     .zIndex(20)
             }
         }
-        .overlay(alignment: .top) {
+        .overlay(alignment: .topLeading) {
             if !showsNavigationCoach, !isTradeStep {
-                topBar
+                exitButton
                     .padding(GameTheme.shellPadding)
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            }
+        }
+        .overlay(alignment: .top) {
+            if !showsNavigationCoach, !isTradeStep {
+                tutorialProgressAccessibilityMarker
             }
         }
         .background(GameTheme.appBackground.ignoresSafeArea())
@@ -108,32 +113,32 @@ struct GameTutorialView: View {
         .accessibilityElement(children: .contain)
     }
 
-    private var topBar: some View {
-        HStack(spacing: 10) {
-            Button("Exit", action: onDismiss)
-                .font(GameTheme.chipFont)
+    private var exitButton: some View {
+        Button(action: onDismiss) {
+            Image(systemName: "xmark")
+                .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(GameTheme.surface)
-                .frame(minWidth: 52, minHeight: 44)
-                .background(GameTheme.felt.opacity(0.96), in: RoundedRectangle(cornerRadius: 9))
-                .accessibilityIdentifier("uls.tutorial.exit")
-
-            Spacer(minLength: 0)
-
-            Text(step.title)
-                .font(GameTheme.chipFont)
-                .bold()
-                .foregroundStyle(GameTheme.surface)
-                .padding(.horizontal, 10)
-                .frame(minHeight: 44)
-                .background(GameTheme.felt.opacity(0.96), in: RoundedRectangle(cornerRadius: 9))
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(step.title)
-                .accessibilityValue("Tutorial")
-                .accessibilityHint(step.guidance)
-                .accessibilityIdentifier("uls.tutorial.progress")
+                .frame(width: 44, height: 44)
+                .background(GameTheme.felt, in: Circle())
+                .overlay {
+                    Circle()
+                        .stroke(GameTheme.accent.opacity(0.72), lineWidth: 1.5)
+                }
+                .contentShape(Circle())
         }
-        .padding(.horizontal, 6)
-        .background(GameTheme.felt, in: RoundedRectangle(cornerRadius: 10))
+        .buttonStyle(.plain)
+        .accessibilityLabel("Exit tutorial")
+        .accessibilityIdentifier("uls.tutorial.exit")
+    }
+
+    private var tutorialProgressAccessibilityMarker: some View {
+        Color.clear
+            .frame(width: 1, height: 1)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(step.title)
+            .accessibilityValue("Tutorial")
+            .accessibilityHint(step.guidance)
+            .accessibilityIdentifier("uls.tutorial.progress")
     }
 
     private var isTradeStep: Bool {

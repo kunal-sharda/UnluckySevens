@@ -5,9 +5,26 @@ struct GamePhysicalIncomingTradeView: View {
 
     let offer: GameTradeOfferSummary
     let actions: GameTradeResponderActions
+    let assetBundle: Bundle
     let onAccept: () -> Void
     let onDecline: () -> Void
     let onCounter: () -> Void
+
+    init(
+        offer: GameTradeOfferSummary,
+        actions: GameTradeResponderActions,
+        assetBundle: Bundle = .main,
+        onAccept: @escaping () -> Void,
+        onDecline: @escaping () -> Void,
+        onCounter: @escaping () -> Void
+    ) {
+        self.offer = offer
+        self.actions = actions
+        self.assetBundle = assetBundle
+        self.onAccept = onAccept
+        self.onDecline = onDecline
+        self.onCounter = onCounter
+    }
 
     var body: some View {
         VStack(spacing: 8) {
@@ -58,7 +75,8 @@ struct GamePhysicalIncomingTradeView: View {
                     face: .resource(chip.resource),
                     size: CGSize(width: 27, height: 34),
                     count: chip.count,
-                    stackDepth: 1
+                    stackDepth: 1,
+                    assetBundle: assetBundle
                 )
             }
         }

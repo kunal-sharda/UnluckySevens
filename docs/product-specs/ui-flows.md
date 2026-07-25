@@ -1,133 +1,393 @@
 # UI Flows
 
-This document summarizes the player-facing flows the UI must support in the current product direction.
+This document owns the player-facing behavior and journey structure for the current product. It describes what the UI must make possible and understandable. Core owns game rules and legality, [Architecture](../../ARCHITECTURE.md) owns runtime boundaries, [Decisions](../decisions.md) owns locked calls, and [Design](../../DESIGN.md) owns visual language.
 
-## Lobby Flow
+## How to Read This Contract
 
-- A player starts a game from Messages and sends an invite/game-state bubble into a thread.
-- Before the first invite is sent, the lobby surface should be a simple invite entry screen focused on one action: invite players to Unlucky Sevens. Its visual metaphor should be a board-game rules/setup card, not a generic form: printed setup facts, compact rule-card hierarchy, an RSVP-style player-name line, and one `Send Invite` action.
-- Immediately after sending the initial invite, the extension dismisses back to the Messages thread instead of pretending the local post-send shell is a live lobby.
-- Other players join before the host starts.
-- Joining should feel like a game action, not a draft-composition flow. A player should not need an extra manual send step after choosing `Join`.
-- A player may enter a custom display name before joining, and joined players may update that name later while the lobby is still open.
-- The app should remember the local player's preferred lobby name on that device and prefill future invite/join drafts from that preference.
-- Lobby-entered display names are table-local canonical metadata. If no custom name is set, the UI falls back to deterministic per-game aliases.
-- Reopening a real lobby bubble should show the normal lobby roster/start surface, even if no guest has joined yet. The host waits and starts from that selected bubble path, not from a synthetic post-send shell.
-- The roster locks when the host starts the game.
-- New games should default to seeded balanced board generation that avoids adjacent `6`/`8` number tokens. Fully random board rules may remain protocol-supported for tests or already-persisted state, but they are not the default first-beta product path.
-- Every lobby state exposes `Game Settings` and `Tutorial` as separate destinations. Settings opens as a centered tabletop overlay over the unchanged lobby; Tutorial opens the real game shell with deterministic local-only state.
-- Tutorial begins with a transient veil teaching tap-left for back and tap-right for next. Its first tap only dismisses the veil. Seventeen short lessons then teach setup, rolling and production, hand/building, trading, the seven/robber flow, development cards, ending/sending, strategy, and scoring/awards. Exit and the final right-side tap return to the same lobby state, and tutorial interaction never publishes game state.
-- Lobby UX should stay on the canonical game-state chain:
-  - one invite `STATE`
-  - joining publishes updated lobby `STATE`
-  - one host-published start `STATE`
+Not every sentence has the same weight:
 
-## Setup Flow
+- **Invariant** — release-blocking behavior or trust boundary. Do not violate it silently.
+- **Required flow** — the player journey and available actions the current product must support.
+- **Presentation direction** — the approved way that flow is currently expressed. It may change only through explicit design approval.
+- **Known gap** — the current implementation or proof does not meet the contract. Gaps are listed together near the end.
 
-- Players place two settlement-road pairs in snake order.
-- The second completed placement grants starting resources from adjacent non-desert tiles.
-- The UI must make placement order and legality legible without inventing setup rules locally.
-- Setup should feel guided and blocking: the player should always know whether the next action is settlement placement or road placement.
-- Setup uses the same full-size live board as normal play. Its public rail becomes a three-slot placement carousel showing the current placement and next two placements, while its lower rail shows exactly one settlement and one road for the active placement pair.
-- Setup advances into the existing first-turn screen only after the authoritative Core phase changes to `.turn`; the presentation does not predict that handoff.
-- Setup and build placement should be selection-first rather than one-tap publish:
-  - first tap selects a legal node or edge
-  - the player confirms by tapping the same selected target again
-  - tapping a different legal target changes the selection instead of publishing immediately
-  - setup/build confirmation should not replace the utility shelf header tabs or make `Hand` / `Bank` / `Players` unreachable on larger hosts
+When code and this document disagree, code/tests establish what the app currently does, but they do not automatically redefine intended product behavior. Surface the conflict and resolve it explicitly.
 
-## Turn Flow
+## End-to-End Journey
 
-- Optional non-VP dev-card play before or after the roll, subject to core timing rules and never for a non-VP card bought on the same turn.
-- Victory Point cards stay hidden unless revealing them would immediately win the game.
-- Roll.
-- The active local player’s normal pre-roll state uses the same mounted Physical Props table as setup and post-roll play. A full-host focus layer presents executable owned Dev Cards and Roll when both are legal, or Roll alone when no pre-roll Dev action remains.
-- Closing the pre-roll Dev chooser returns to the Dev-or-Roll choice without consuming a card. Completing a pre-roll Dev action returns to Roll alone; rolling is always deliberate and never automatic.
-- The dice transition decorates the Core-owned result rather than generating it. During motion the player may skip to that exact result; after settling, the result remains until explicit continuation. Reduce Motion moves directly to the settled result while preserving explicit continuation. The device-local `Skip animations` setting suppresses the authored roll and advances once to the same authoritative result.
-- Resolve either production or the full seven/robber subflow.
-- Optionally trade, build, buy or play allowed dev cards, and then end turn.
-- The active player’s normal `.afterRoll` Turn Screen uses five persistent zones: a compact top bar, public table rail, live board, reserved action well, and turn-object rail. Lobby, roll-needed, out-of-turn, forced-flow, settings, and game-over screens retain their existing compositions.
-- The top bar keeps fixed three-column geometry: Settings, centered two-line turn/roll status, and one Game Information object for players, public scores/card counts, awards, and a one-turn recap.
-- Settings uses the same centered tabletop overlay over the live game. It contains only the local `Skip animations` preference, read-only Standard rules / board strategy / 10-point victory facts, and `Show rules`. Rules is a scrollable reference inside Settings; Tutorial is not nested there.
-- The public table rail shows five physical resource Bank stacks and a separate `Dev Cards` pile with no counts while concealed. Tapping Bank reveals qualitative `H`, `M`, or `L` levels in place for all six piles; tapping again conceals them. Exact public counts are not shown visually or through accessibility on this surface.
-- The public `Dev Cards` pile remains visually and semantically separate from owned Dev Cards. Tapping the public pile is the sole Buy Dev affordance when Core says purchase is legal. Owned Dev Cards are nested inside Hand for inspection and play; Buy Dev never appears in Build.
-- The live board remains visually dominant and keeps one stable renderer, frame, camera, targets, and canonical-piece owner while action-well routes change.
-- The action well reserves a constant frame below the board. Hand opens there by default; Build, the Trade chooser and live/pending summary, nested Dev selection, End confirmation, and Game Information replace it one at a time without moving the board, public rail, status, or turn rail. Full-size player-trade composition, recipient selection, and maritime exchange may overlay the mounted board without resizing or remounting it. Bank reveal is an independent in-place public-information toggle and never consumes the well.
-- The turn-object rail uses fixed `Hand · Build · Trade · End` anchors. An object exists only when its Core/query-derived action is executable now; an unavailable object leaves invisible, hitless, accessibility-hidden space so neighboring anchors do not move. Playable Dev Cards are entered from the owned-card stack inside Hand rather than a fifth rail object.
-- Hand shows the local player’s actual resource inventory plus a compact two-card owned-Dev prop. The prop summarizes the private inventory without trying to lay every card on the default surface; its complete VoiceOver value still reports every owned kind and playable/new status. Those private cards do not appear in public Game Information.
-- Build shows only currently executable Road, Settlement, and City choices. Setup/build target selection remains selection-first: tap once to select and the same target again to publish.
-- Trade appears only when a player or maritime route can actually be initiated, or when the current live offer can be inspected. The chooser and pending-offer state stay inside the fixed action well; the full-size composer and maritime exchange overlay the mounted board while preserving its frame. Switching away discards the local draft.
-- The owned Dev Cards object appears inside Hand; it opens only when at least one owned card is legally playable. Its opened spread shows the player’s full owned inventory, marks held or newly bought cards as non-interactive, and gives an action affordance only to cards Core says are legally playable. Monopoly/Year of Plenty resource choice and Knight/Road Building board choice stay within the same route.
-- End appears only when ending is legal and opens a compact inline `Keep Playing` / `End Turn` confirmation.
-- Selecting the active object closes it and clears its local draft or board selection. Selecting another turn object or Game Information replaces the current action-well contents and clears incompatible state. Toggling Bank reveal preserves the selected action.
-- Action-well replacement uses an opacity-only transition when Reduce Motion is enabled; every interactive object keeps at least a 44-by-44-point hit region and a stable VoiceOver label.
-- Outside the approved setup, normal pre-roll, normal post-roll, and eligible not-primary-player Physical Props states, the established lower tray and overlay-shelf behavior remains unchanged.
-- Dev-card actions should be choice-driven for Knight, Monopoly, Year of Plenty, and Road Building rather than expanding into a deep form flow or hiding behind defaults.
-- Victory Point cards remain visible to their owner in Hand/inventory; they enter the Dev selection surface only when revealing them would immediately win the game.
-- Knight should stage through robber-tile choice first and only ask for an explicit victim when the chosen tile has multiple eligible steals.
-- Guided board flows should use a compact bottom-center in-board hint pill rather than a large floating HUD card.
-- The hint pill should be single-line by default and shift upward when the overlay shelf is open so it never sits inside the shelf overlap zone.
-- The only valid overlap in the shell is the deliberate shelf-over-board overlay at the bottom edge. Utility tabs, dock buttons, board chrome, and content regions must otherwise stack without collision or wrapping.
-- If the active player reaches the win threshold on their turn, the game ends immediately.
-- Forced subflows such as discard and robber movement should feel blocking rather than like optional side actions.
-- When multiple players must discard after a `7`, only the next pending discarder in locked roster order should see an enabled discard action. Each discard publishes canonical `STATE` immediately while robber movement stays blocked until the discard queue is empty.
+| Stage | Player sees | Primary action | Publishes canonical state? |
+| --- | --- | --- | --- |
+| New game | First-invite surface | Send Invite | Yes |
+| Open lobby | Current roster and open seats | Join, rename, or Start Game | Yes |
+| Setup | Live numberless board and placement order | Place two settlement-road pairs | Yes, after each confirmed placement |
+| Start of turn | Mounted table beneath a focused roll choice | Play an eligible Dev Card or Roll | Yes |
+| Action turn | Current board, hand, legal actions, and public table state | Build, trade, buy/play Dev Cards, or End Turn | Yes |
+| Seven flow | Blocking discard/robber sequence | Discard, move robber, then choose a victim if required | Yes, one authoritative step at a time |
+| Waiting | Current public table and reason for waiting | Inspect only, or answer a targeted trade/discard prompt | Only when the local player owns the required action |
+| Game over | Final board, winner, score summary, and recap | Inspect result | No further gameplay state |
+| Reopen | Latest recoverable state for the selected game | Continue from the latest known revision | No, until a new action is taken |
 
-## Trade Flow
+## Cross-Flow Invariants
 
-- The current player enters trade from the normal post-roll `Trade` object; excluded shell states retain their established trade affordances.
-- The normal post-roll action well starts on a chooser surface with:
-  - `Player Trade`
-  - `Maritime / Bank Trade`
-- `Player Trade` is fully self-contained in one full-size felt panel over the mounted board. It does not depend on controls underneath it and must not shrink cards to fit the action well.
-- `Player Trade` presents full-size `Give` and `Get` resource-card stages backed by one draft. Card count badges and per-card quantity controls read and mutate the same quantities.
-- Recipient selection darkens the board and action tray through the physical bottom edge, then centers up to three full-size opponent rows with player identity, an obvious non-color selected state, `Cancel`, and `Send Offer`. Counter offers retain the actual fixed-recipient semantics.
-- Forced discard should use an explicit hand-chip pattern: the acting player selects the exact cards to discard, sees progress toward the required count, and cannot submit until the required total is selected.
-- Closing or switching away from trade should discard the current draft immediately for now.
-- After send, the normal post-roll Trade route stays on the pending live-offer state and marks its anchored object `Pending`; excluded shell states retain their established pending banner behavior.
-- `Maritime / Bank Trade` shows one complete legal exchange at a time, supports horizontal paging plus unboxed previous/next controls around an `N of M` position, and requires `Confirm Trade` for the visible exchange. The normal-turn Hand spread remains visible in its canonical frame.
-- Maritime options only include legal ratio-compliant exchanges for the current hand and available port access. Owned ports determine the best quoted ratio; bank and ports are not separate destinations the player must choose.
-- Targeted recipients can respond with `Accept`, `Decline`, or `Counter`.
-- `Counter` should use the same composer flow, but it is addressed only back to the current player.
-- Targeted responder actions should feel final from the responder side. `Accept`, `Decline`, and `Counter` should each publish canonical trade state immediately from the responder device. Normal trade UX must not require a manual "apply selected response" step or a separate response bubble workflow.
-- The first applied targeted `Accept` should resolve the trade and close the live offer.
-- If every targeted player declines, the live offer should close.
-- Non-targeted players should still be able to inspect the live trade state so the table can follow what is happening.
-- Bank and port trades should feel distinct from player-to-player trade offers.
-- Pending trade state should stay legible from the shell and later bubble copy rather than disappearing into a deep modal.
-- The shell should keep trade status visible while the offer is pending.
+These are the most important UI requirements:
 
-## Audit and Game-Over Flow
+1. **Core owns rules and legality.** Presentation renders query/engine outputs; it does not invent a second rules engine.
+2. **Canonical state remains visible.** The UI must not obscure whose turn it is, what is pending, the next legal action, or the committed result.
+3. **The board stays mounted.** Opening Hand, Build, Trade, Dev Cards, End confirmation, Game Information, or another action surface must not resize, remount, or shift the live board.
+4. **Private information stays private.** Local hands and owned Dev Cards never leak through public game information, transcript copy, accessibility, or preview art.
+5. **One interaction owner at a time.** An overlay or forced flow owns its controls and cannot depend on obscured controls underneath it.
+6. **Publishing is deliberate and authoritative.** Local drafts are not canonical state. A confirmed action publishes one validated state transition through the current game session.
+7. **Unavailable actions do not masquerade as available.** They are absent or inert, hitless, and accessibility-hidden without moving stable neighboring controls.
+8. **Messages remains the host.** After publication, the transcript bubble communicates the result; richer inspection and actions live in the expanded extension.
+9. **Accessibility is behavioral.** Interactive targets are at least 44 by 44 points, icon controls have stable labels, important state is not color-only, and authored motion honors Reduce Motion and the local Skip Animations preference.
+10. **Host resizing preserves continuity.** Normal Messages resizing keeps the board live and interactive rather than replacing it with a stale snapshot.
 
-- Minimum end-of-game clarity in the default shell should show:
-  - the winner clearly
-  - a compact final score summary
-  - a short last-turn recap when available
-- One round of history should be available without overwhelming the main screen.
-- A fuller dispute view exists for deliberate inspection.
-- The win state should preserve the final game summary.
+## Lobby and Game Start
 
-## Bubble Experience
+### Required Flow
 
-- The transcript bubble should carry enough information to understand the current moment at a glance.
-- Fresh transcript bubbles should use product copy in the form `Unlucky Sevens: <descriptive title>` plus a short summary of the latest lobby, setup, or turn change.
-- The first lobby invite bubble may include a branded programmatic Unlucky Sevens image so the thread reads as an invitation before anyone joins.
-- Lobby join and lobby name-update bubbles should stay text-only to avoid noisy roster-edit snapshots.
-- Setup, turn, and game-over `STATE` bubbles may include concise action-card graphics keyed by move type. The image is presentation only; the canonical state must still decode from the URL payload.
-- The bubble image should use as few words as possible. The caption and summary carry the readable move copy.
-- If image rendering is unavailable, publishing should still send the same caption and summary as a text-only bubble.
-- The expanded Messages view should remain the place for richer actions and board interaction.
-- The primary shell status language should stay compact and direct:
-  - `Your turn`
-  - `Waiting on <player>`
-- The top shell summary should show dice state during turn play:
-  - `Roll pending`
-  - `Roll: 4 + 3 = 7`
-- Player-facing names in the shell should prefer the lobby-set custom name for that table, with deterministic per-game aliases as the fallback.
-- The main screen should avoid persistent stacked cards. On the normal post-roll screen, Hand, Game Information, build choices, trade, and dev-card actions replace one another inside the reserved action well; Bank levels reveal independently in the public rail, and other states continue to use their existing shelf ownership.
-- The board must not resize or remount when the normal post-roll action well changes or when an existing lower shelf opens elsewhere.
-- During interactive Messages-host resize, the gameplay-height board should stay live. Host drag should update viewport/camera cheaply in place, then perform one settled redraw after the host stops moving instead of snapshot-freezing and remounting the board.
-- At the normal fully-extended gameplay height, the live board should stay interactive throughout host drag. Normal resize should not enter a board freeze mode or require a board reload to recover.
-- Outside the narrow top grabber strip, drags should stay inside the game. Board drags should pan/zoom the board, shelf drags should stay local to the shelf, and only the top strip should be able to hand off to Messages-host resize.
-- On iPad-sized but vertically short Messages hosts, the lower shelf should fall back to the compact vertical layout instead of using oversized pad minima that clip or disable `Hand`, `Bank`, and `Players`.
-- When the app has recoverable canonical state for one or more games, the shell should expose a compact `Game` / `Games` recovery affordance that can reopen the latest known state for that game without forcing the user to hunt for the right transcript bubble first.
-- The bubble should support lobby readability as well as in-game readability; joining and host-start should stay on the same canonical state chain instead of creating avoidable transcript clutter.
+| Moment | UI requirement | Result |
+| --- | --- | --- |
+| Before first invite | One obvious Send Invite action, preferred-name field, read-only game settings, and Tutorial | Sends the initial lobby `STATE`, then dismisses to Messages |
+| Guest opens invite | Current roster, open seats, name field, and Join | Join publishes immediately; no second manual send step |
+| Joined player reopens | Canonical roster and editable local display name | Rename publishes an updated lobby `STATE` |
+| Host reopens lobby | Canonical roster and Start Game when valid | Start locks the roster and publishes the setup state |
+| Host views its just-sent message locally | Informational waiting state | Does not become a second start authority |
+
+Additional requirements:
+
+- Preferred lobby name is device-local prefill convenience. The submitted display name becomes table-local canonical metadata.
+- If no custom name exists, deterministic per-game aliases are used.
+- Reopening a real lobby bubble shows the normal roster/start surface even when only the host has joined.
+- New games default to the seeded balanced board strategy that avoids adjacent `6` and `8` tokens.
+- Every lobby state exposes Game Settings and Tutorial as separate destinations.
+- The canonical publication chain is one invite `STATE`, joined/renamed lobby `STATE` updates, then one host-published start `STATE`.
+
+### Presentation Direction
+
+The first-invite surface is a contained tabletop invitation card, not a generic form or a miniature gameplay table. It uses compact identity, four player slots, a name field, read-only game settings, Tutorial, and one Send Invite action. Joined and host-ready states remain roster-led with one obvious next action.
+
+## Initial Setup
+
+### Required Flow
+
+1. The active player places a settlement.
+2. The same player places a connected road.
+3. Setup continues in snake order until every player has placed twice.
+4. The second completed placement grants starting resources from adjacent non-desert tiles.
+5. The UI advances into the first turn only after Core changes the authoritative phase to `.turn`.
+
+Placement is selection-first:
+
+- First tap selects a legal node or edge.
+- Tapping a different legal target changes the selection.
+- Tapping the selected target again confirms and publishes.
+- The UI never predicts legality or the setup-to-turn handoff.
+
+### Presentation Direction
+
+- Setup uses the same full-size live board as normal play, with number tokens withheld from transcript preview art.
+- A three-slot placement rail shows the current placement plus the next two.
+- The lower rail exposes exactly one settlement and one road for the active placement pair.
+- Placement order, active player, legal targets, and “tap again” confirmation remain legible.
+- Glowing legal targets remain visible for both placement pairs. The first pair alone adds `Choose a glowing corner.` for the settlement and `Choose a glowing road beside your settlement.` for the connected road; the second pair relies on the learned visual language.
+
+## Turn Lifecycle
+
+### Required Flow
+
+| Phase | Player choice | UI responsibility |
+| --- | --- | --- |
+| Start of turn | Play an eligible non-VP Dev Card or Roll | Show only currently legal pre-roll choices |
+| Dice settled | Continue from the authoritative result | Do not generate or alter the Core-owned roll |
+| Production | Inspect payouts and changed state | Keep the board and public state readable |
+| Seven | Complete the blocking discard/robber flow | Do not expose ordinary optional actions |
+| Action phase | Hand, Build, Trade, Buy/Play Dev Card, Game Information, or End | Show only executable actions and preserve local drafts only while their route stays open |
+| End confirmation | Keep Playing or End Turn | Publish the handoff only after confirmation |
+| Waiting | Inspect current table and wait reason | Do not show active-player actions |
+
+Turn rules relevant to presentation:
+
+- Eligible non-VP Dev Cards may be played before or after rolling, subject to Core timing.
+- A non-VP card bought this turn is not playable this turn.
+- Victory Point cards remain private and are revealed only when Core allows an immediate win.
+- Rolling is deliberate and never automatic.
+- Reaching the win threshold ends the game immediately.
+
+### Start-of-Turn Presentation
+
+- The normal pre-roll state keeps the mounted Physical Props table beneath a focused full-host choice layer.
+- If both are legal, the layer shows owned executable Dev Cards and Roll. Otherwise it shows Roll alone.
+- Closing the Dev chooser returns without consuming a card.
+- Completing a pre-roll Dev action returns to Roll alone.
+- Dice animation decorates the already-authoritative result. Skip, Reduce Motion, and Skip Animations all resolve to that same result and still require explicit continuation.
+
+### Normal Post-Roll Presentation
+
+The normal active-player screen has five stable zones:
+
+1. top status and utilities;
+2. public Bank and Dev Cards rail;
+3. live board;
+4. reserved action well;
+5. fixed Hand, Build, Trade, and End rail.
+
+Behavioral requirements:
+
+- The top area exposes Settings, current turn/roll state, and Game Information.
+- Bank reveal shows qualitative `H`, `M`, or `L` levels only. Exact public counts remain concealed visually and through accessibility.
+- Public Dev Cards and privately owned Dev Cards remain distinct.
+- The public Dev pile is the sole Buy Dev affordance; Buy Dev does not appear under Build.
+- Hand owns the local resource inventory and owned Dev Cards.
+- Build exposes only executable Road, Settlement, and City choices.
+- Trade appears only when a player/maritime route can begin or a live offer can be inspected.
+- End appears only when ending is legal and opens Keep Playing / End Turn confirmation.
+- Selecting the current route closes it and clears its local draft or board selection.
+- Selecting another route replaces the current action surface and clears incompatible local state.
+- Bank reveal is independent and does not replace the selected action.
+
+## Upper Amber Instruction
+
+The upper instruction is the short action heading centered between Settings and Game Information with a small amber line beneath it. It is a shared presentation surface, not general status text.
+
+### Contract
+
+- It appears only when the mounted Physical Props screen is asking for one immediate choice or displaying the status of one live trade.
+- It replaces the passive turn/dice content in that center slot; the two utility buttons remain mounted.
+- Exactly one upper instruction may appear at a time.
+- Copy is concise, forward-looking Title Case with no terminal punctuation.
+- The amber line means “this is the current interaction,” not merely emphasis or decoration.
+- The instruction is derived from the active presentation route, Core-owned phase, and local draft state. Individual components must not invent competing headings.
+- The visible text is also the center slot’s accessibility label. The line is decorative and accessibility-hidden.
+- Exact typography, spacing, and keyline dimensions belong to the shared component and [Design](../../DESIGN.md), not to each flow.
+
+### Canonical Heading Map
+
+| Interaction state | Upper instruction |
+| --- | --- |
+| Build chooser | `Choose a Piece` |
+| Road placement | `Place a Road` |
+| Selected road or settlement target | `Tap Again to Build` |
+| Settlement placement | `Place a Settlement` |
+| City placement | `Upgrade to a City` |
+| Selected city target | `Tap Again to Upgrade` |
+| Trade chooser | `Choose How to Trade` |
+| Player-trade draft | `Make an Offer` |
+| Maritime trade | `Trade with Bank or Port` |
+| Sent live offer | `Waiting for Replies` |
+| Targeted incoming offer | `Review the Offer` |
+| Passive wait for required discards | `Waiting for Other Players` |
+| Dev Card chooser | `Choose a Dev Card` |
+| Knight robber destination | `Move the Robber` |
+| Knight victim selection | `Choose a Player` |
+| Monopoly resource selection | `Choose a Resource` |
+| Year of Plenty before a selection | `Choose Two Resources` |
+| Year of Plenty after one selection | `Choose One More` |
+| Road Building first placement | `Place the First Road` |
+| Road Building second placement | `Place the Second Road` |
+
+### Current Exclusions
+
+The current UI does not use the upper amber instruction in these states:
+
+- normal idle play, which shows current turn/dice status;
+- start of turn, which uses the focused Roll / Dev Card choice layer;
+- setup, which uses its setup-specific placement header;
+- active seven discard and robber resolution, which use blocking or in-board guidance; passive players waiting for required discards use the upper amber instruction;
+- ordinary waiting, which uses player/turn status;
+- Settings, Game Information, Bank reveal, and End confirmation.
+
+This records current behavior, not yet an approved universal boundary. In particular, the owner must decide whether forced seven actions should also claim the upper amber instruction.
+
+## Forced Seven, Discard, and Robber
+
+### Required Flow
+
+1. After a `7`, players holding more than seven cards discard half, rounded down.
+2. Only the next pending discarder in locked roster order receives an enabled discard action.
+3. Each discard publishes canonical state immediately.
+4. Robber movement remains blocked until the discard queue is empty.
+5. The current player moves the robber to a legal tile.
+6. If one victim is eligible, Core may resolve the steal without another choice. If multiple victims are eligible, the player explicitly chooses one.
+
+### Presentation Direction
+
+- Forced actions look blocking, not like optional tray actions.
+- Discard uses the real hand-card language, shows progress toward the exact required count, permits correction, and enables Confirm only at the required total.
+- Robber and Dev Card board choices use compact in-board guidance rather than a large floating HUD.
+- The active discarder sees `Discard Cards` and `Choose exactly [N] cards`. Passive players see `Waiting for Other Players` without a subtitle or another player’s action controls.
+
+## Trade
+
+### Offer Flow
+
+1. The active player opens Trade.
+2. The chooser offers Player Trade and Maritime / Bank Trade when legal.
+3. Player Trade composes Give and Get quantities from one shared draft.
+4. The sender chooses one or more eligible recipients.
+5. Send Offer publishes the live canonical offer.
+6. The active player sees the pending offer state until it resolves or is replaced.
+
+Player Trade requirements:
+
+- The full composer is self-contained and must not depend on controls underneath it.
+- Give/Get cards, badges, and quantity controls mutate the same draft values.
+- Recipient selection supports multiple players and exposes a non-color selected state.
+- Switching away or closing discards the unsent local draft.
+- Counter offers use the same composer but are addressed only to the original proposer.
+
+### Response Flow
+
+- A targeted recipient may Accept, Decline, or Counter.
+- Each response publishes immediately from the responder’s device; there is no second “apply response” step.
+- The first applied Accept resolves and closes the offer.
+- The offer closes after every targeted player declines.
+- Non-targeted players may inspect the public offer but cannot respond.
+
+### Maritime / Bank Flow
+
+- The app shows one complete legal exchange at a time.
+- Previous/next paging and `N of M` communicate the available options.
+- Confirm Trade is required.
+- Options use the player’s best legal ratio from bank and owned ports; players do not choose bank versus port as separate destinations.
+
+## Game Information, History Boundary, and Game Over
+
+### Required Flow
+
+- Game Information exposes public player names, scores, public card counts, awards, current-player state, and one short previous-turn recap when available.
+- Game over preserves the final board, clearly identifies the winner, and shows a compact final score summary plus the last-turn recap when available.
+- Private hands and private Dev Card identities never enter these views.
+
+### History Boundary
+
+- The product does not expose a full player-facing audit or dispute-history view.
+- Game Information keeps only the short previous-turn recap described above.
+- Canonical audit data may continue to support determinism, validation, and internal state interpretation without becoming a browsing surface.
+- A skippable animation that replays the immediately previous turn after a player opens a bubble on their turn is a deferred concept, not part of the current contract. If pursued, it requires a separate interaction, privacy, recovery, and animation specification.
+
+## Settings, Rules, and Tutorial
+
+### Settings and Rules
+
+- Settings opens as a centered tabletop overlay over the exact lobby or game surface that invoked it.
+- It contains only Skip Animations, read-only Standard/Balanced/10-point facts, and Show Rules.
+- Rules remains inside the same utility context.
+- Tutorial is a separate lobby destination, not a Settings row.
+- Skip Animations is device-local and never enters canonical state, hashes, or transport.
+
+### Tutorial Navigation
+
+- Tutorial is available from every lobby state.
+- It renders deterministic local-only state through the production game shell.
+- Its first screen is a transient veil explaining tap-left for Back and tap-right for Next.
+- The first tap dismisses the veil without advancing.
+- Afterward, the left and right halves navigate; explicit accessibility actions provide the same behavior.
+- A compact exit control remains available without resizing or covering the board.
+- Exit and the final right-side tap return to the invoking lobby state.
+- Tutorial never publishes or mutates a real game.
+
+### Tutorial Lesson Map
+
+| # | Lesson | Real surface taught |
+| --- | --- | --- |
+| 1 | Place Your First Settlement | Setup order and a glowing intersection |
+| 2 | Add a Road | Connected glowing road edge |
+| 3 | Roll to Begin | Start-of-turn roll action |
+| 4 | Follow the Roll | Number tokens, buildings, and robber blocking |
+| 5 | Check Your Hand | Spendable resources and owned Dev Cards |
+| 6 | Pick a Build | Road, settlement, and city costs |
+| 7 | Choose a Glowing Spot | Available build targets |
+| 8 | Make an Offer | Give/Get composer |
+| 9 | Choose Who Gets It | One or more players and Send Offer |
+| 10 | Use Your Best Rate | Best Bank or Port exchange |
+| 11 | Discard on Seven | Exact-count discard composer |
+| 12 | Move the Robber | Legal robber destination |
+| 13 | Choose a Victim | Eligible steal target |
+| 14 | Play a Dev Card | Playable versus held/new cards |
+| 15 | Send the Turn | End confirmation and Messages handoff |
+| 16 | Strategy | One centered three-tip card covering probability dots, purposeful Road/Dev Card investment, and scoring |
+
+The final Strategy lesson dims but does not replace or remount the production board. One centered tabletop card presents three ordered tips:
+
+1. more dots under a number mean a stronger spot for that resource, and covering several resources makes a position more flexible;
+2. Roads open new settlement spots and can earn Longest Road, Knights build toward Largest Army, and Victory Point cards score 1;
+3. Cities and the Longest Road/Largest Army awards score 2 points, while settlements score 1 point each.
+
+The Strategy card replaces the separate strategy and final-scoring lessons. It is one surface with three rows, not three nested cards, and it remains skippable through the normal tutorial navigation.
+
+## Transcript Bubbles and Publishing
+
+### Invariants
+
+- `MSMessage.url` remains the canonical payload. Caption, summary, and image are presentation metadata and fail soft.
+- Updates for one game reuse the same per-game `MSSession`, allowing Messages to collapse earlier rich state.
+- Caption and summary preserve readable event history even when prior images collapse.
+- If image rendering fails, the same caption and summary still publish.
+- Preview art is non-interactive and never carries response controls or private information.
+
+Player-facing language has three jobs:
+
+- **Amber instruction** — forward-looking action in the expanded app.
+- **Transcript outcome** — past-tense receipt in Messages.
+- **Preview image** — compact public view of canonical state.
+
+### Event-to-Preview Families
+
+The upper amber column points to the canonical map above; `—` means that state uses another instruction surface.
+
+| Game condition | Upper amber instruction | Transcript outcomes | Preview |
+| --- | --- | --- | --- |
+| Lobby invitation or roster change | — | `Lobby Invite`, `<player> Joined`, `Name Updated` | Production player table |
+| Initial setup | — | `Game Started`, `Settlement Placed`, `Road Placed`, `Setup Placed`, `Setup Complete` | Numberless production board |
+| Roll and turn handoff | — | `Rolled <total>`, fail-soft `Dice Rolled`, `Turn Ended` | Numbered production board |
+| Seven and robber | — | `Discard Submitted`, `Robber Moved`, `Card Stolen` | Numbered board with committed robber state |
+| Construction | `Choose a Piece` and placement variants | `Road Built`, `Settlement Built`, `City Built` | Numbered board with committed piece |
+| Player trade | `Choose How to Trade`, `Make an Offer`, `Waiting for Replies`, `Review the Offer` | `Trade Offered`, `Counteroffer Sent`, `Trade Accepted`, `Trade Declined` | Shared public trade receipt while live; otherwise board |
+| Bank or Port trade | `Trade with Bank or Port` | `Bank or Port Trade` | Numbered board |
+| Development Cards | `Choose a Dev Card` and card-specific choices | `Dev Card Bought` and card-specific played/revealed receipts | Numbered board with committed public change |
+| Game over | — | `<player> Wins` | Final board plus score summary |
+
+The current publishing inventory contains 28 semantic outcomes: three lobby publications, five setup outcomes, nineteen turn intents, and one game-over override. `Dice Rolled` is a fail-soft title, not a separate event.
+
+Additional requirements:
+
+- A live shared trade receipt shows proposer, public terms, recipients, and public response status when relevant. Accept/Decline/Counter controls remain in the expanded app.
+- Discard art never exposes discarded cards or private hand contents.
+- Resource payouts, bank changes, award changes, private hand changes, local drafts, validation errors, and prompt-only transitions do not publish independent transcript events.
+- Any new independently published lobby/setup/turn outcome must update `TranscriptBubbleCopyBuilder`, its exhaustive tests, and this family assignment in the same change.
+
+## Recovery and Messages-Host Adaptation
+
+### Recovery
+
+- The app tracks the latest locally recoverable state per game.
+- When recovery data exists, a compact Game/Games affordance can reopen the latest known state without requiring the player to find the newest transcript bubble.
+- Selecting an older bubble resolves to the latest known revision for that game and communicates that redirection.
+
+### Host Adaptation
+
+- Layout derives from live container width and height, never a hard-coded device model.
+- The board remains live during normal host drag and updates its viewport/camera in place.
+- Only the narrow top grabber region may hand dragging back to Messages; board and shelf gestures remain local elsewhere.
+- Wide but vertically short hosts use the compact lower-surface layout instead of clipping phone or iPad assumptions.
+- Real-device iPad proof remains required before responsive adaptation is considered fully verified.
+
+## Known Contract Gaps
+
+| ID | Type | Current mismatch | Required disposition |
+| --- | --- | --- | --- |
+| UI-GAP-001 | Current violation | The approved first-invite Invitation Card is still DEBUG-only. Release routes the empty invite state through the generic lobby table. | Productionize the approved invitation direction or explicitly replace that direction through owner approval. |
+| UI-GAP-003 | Pending proof | Responsive host logic exists and has focused tests, but connected-iPad visual approval remains pending. | Complete both real-iPad entry-path checks before calling the adaptation verified. |
+
+## Evidence Anchors
+
+Material behavior is currently exercised by:
+
+- lobby model, membership, identity, and preferred-name tests;
+- setup placement, board-commit, turn-action, discard, robber, trade, Dev Card, and game-over presentation tests;
+- transcript copy, image-family, session, and recovery tests;
+- board resize/layout tests and installed Messages-host UI journeys;
+- the full seventeen-state tutorial replay: navigation veil plus sixteen lessons.
+
+These tests prove current implementation behavior. Judgment requirements and pending real-device proof remain governed by the active ExecPlans and owner checkpoints.

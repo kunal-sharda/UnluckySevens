@@ -5,14 +5,14 @@ struct LobbyInviteNameField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: GameTheme.chipSpacing) {
-            Label("Your name", systemImage: "person.fill")
+            Label("Display Name", systemImage: "person.fill")
                 .font(GameTheme.metaFont.bold())
                 .foregroundStyle(GameTheme.ink)
 
             TextField(
-                "How friends will see you",
+                "Display Name",
                 text: $displayName,
-                prompt: Text("How friends will see you")
+                prompt: Text("Name")
                     .foregroundStyle(GameTheme.mutedInk)
             )
                 .textInputAutocapitalization(.words)

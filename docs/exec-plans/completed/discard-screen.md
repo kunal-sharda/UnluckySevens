@@ -110,4 +110,4 @@ Finish the forced-discard screen so a player can understand the requirement, com
 
 ## Validation and Outcome
 
-The shared-board-frame and flat-ocean correction is implemented with all discard constraints and required fresh reviews passing. The standard verification-contract check passes. Repository-level completion remains blocked only by 60 unrelated unowned `docs/design/workbench/` studies; clearing or assigning that scratch is outside this plan's authority.
+The shared-board-frame and flat-ocean correction is implemented with all discard constraints and required fresh reviews passing. The standard verification-contract check passes. The unrelated design-workbench residue recorded during the slice was removed by a later approved cleanup, so no implementation, review, or repository work remains in this plan.

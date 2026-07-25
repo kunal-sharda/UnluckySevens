@@ -14,6 +14,7 @@ struct GameTabletopPortraitCardView: View {
     let overlayText: String?
     let isFaded: Bool
     let stackDepth: Int
+    let assetBundle: Bundle
 
     init(
         face: Face,
@@ -21,7 +22,8 @@ struct GameTabletopPortraitCardView: View {
         count: Int? = nil,
         overlayText: String? = nil,
         isFaded: Bool = false,
-        stackDepth: Int = 1
+        stackDepth: Int = 1,
+        assetBundle: Bundle = .main
     ) {
         self.face = face
         self.size = size
@@ -29,6 +31,7 @@ struct GameTabletopPortraitCardView: View {
         self.overlayText = overlayText
         self.isFaded = isFaded
         self.stackDepth = max(stackDepth, 1)
+        self.assetBundle = assetBundle
     }
 
     var body: some View {
@@ -83,10 +86,11 @@ struct GameTabletopPortraitCardView: View {
             GameTabletopResourceStampView(
                 resource: resource,
                 size: CGSize(width: size.width * 0.45, height: size.height * 0.42),
-                usesMiniatureAsset: false
+                usesMiniatureAsset: false,
+                assetBundle: assetBundle
             )
         case .developmentBack:
-            Image("factory")
+            Image("factory", bundle: assetBundle)
                 .renderingMode(.original)
                 .resizable()
                 .scaledToFit()

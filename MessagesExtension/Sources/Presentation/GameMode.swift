@@ -106,7 +106,7 @@ enum GameMode: Equatable {
         case .devCardMonopoly:
             return "Monopoly"
         case .devCardYearOfPlenty:
-            return "Year Of Plenty"
+            return "Year of Plenty"
         case .devCardRoadBuildingFirst:
             return "Road Building"
         case .devCardRoadBuildingSecond:
@@ -117,39 +117,6 @@ enum GameMode: Equatable {
     }
 
     var subtitle: String {
-        switch self {
-        case .idle:
-            return ""
-        case .setup:
-            return "Tap the highlighted road connected to the settlement you just placed."
-        case .buildRoad:
-            return "Tap a highlighted edge to build a road."
-        case .buildSettlement:
-            return "Tap a highlighted node to build a settlement."
-        case .buildCity:
-            return "Tap a highlighted settlement to upgrade it into a city."
-        case .robberMove:
-            return "Robber movement is required before turn play can continue."
-        case .robberVictim:
-            return "Robber victim selection is required before turn play can continue."
-        case .trade:
-            return "Open the trade panel above the shelf to compose offers or review live responses."
-        case .playDevCard:
-            return "Choose a development card to play."
-        case .devCardKnightMove:
-            return "Tap a highlighted tile to move the robber."
-        case .devCardKnightVictim:
-            return "Tap a highlighted victim to steal."
-        case .devCardMonopoly:
-            return "Choose the resource to claim from every opponent."
-        case .devCardYearOfPlenty:
-            return "Choose two resources from the bank."
-        case .devCardRoadBuildingFirst:
-            return "Tap the first highlighted road."
-        case .devCardRoadBuildingSecond:
-            return "Tap the second highlighted road."
-        case .discard:
-            return "Discard resolution is required before robber handling can continue."
-        }
+        ""
     }
 }

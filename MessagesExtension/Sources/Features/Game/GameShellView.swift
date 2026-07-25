@@ -1381,7 +1381,7 @@ struct GameShellView: View {
         case .playDevCard,
              .devCardMonopoly,
              .devCardYearOfPlenty:
-            return "Play dev card"
+            return "Choose a Dev Card"
         case .idle:
             return statusLine.title
         }
@@ -3005,10 +3005,12 @@ struct GameTradeOverlayView: View {
                     .font(GameTheme.headingFont)
                     .foregroundStyle(GameTheme.ink)
 
-                Text(panelModel.message)
-                    .font(GameTheme.metaFont)
-                    .foregroundStyle(GameTheme.mutedInk)
-                    .fixedSize(horizontal: false, vertical: true)
+                if !panelModel.message.isEmpty {
+                    Text(panelModel.message)
+                        .font(GameTheme.metaFont)
+                        .foregroundStyle(GameTheme.mutedInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             Spacer(minLength: 0)
@@ -3041,7 +3043,7 @@ struct GameTradeOverlayView: View {
                 )
 
                 physicalTradeChoice(
-                    title: "Maritime / Bank",
+                    title: "Bank or Port",
                     assetName: "merchant_ship_colored",
                     isDisabled: panelModel.maritimeOptions.isEmpty,
                     action: onChooseMaritimeTrade
@@ -3139,10 +3141,10 @@ struct GameTradeOverlayView: View {
             )
 
             chooserCard(
-                title: "Maritime / Bank",
+                title: "Bank or Port",
                 detail: panelModel.maritimeOptions.isEmpty
-                    ? "No legal port or bank trades are available from your current hand."
-                    : "Pick from the legal mixed list of quick trades.",
+                    ? "No Bank or Port trades are available with your hand."
+                    : "Choose an available exchange.",
                 systemImage: "ferry.fill",
                 isDisabled: panelModel.maritimeOptions.isEmpty,
                 action: onChooseMaritimeTrade
@@ -3222,7 +3224,7 @@ struct GameTradeOverlayView: View {
     private var maritimeOptionsList: some View {
         VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
             if panelModel.maritimeOptions.isEmpty {
-                Text("No legal maritime or bank trades are available right now.")
+                Text("No Bank or Port trades are available right now.")
                     .font(GameTheme.metaFont)
                     .foregroundStyle(GameTheme.mutedInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -3319,7 +3321,7 @@ struct GameTradeOverlayView: View {
         case let .playerDraft(draft):
             return draft.isCounter ? "Counter Trade" : "Player Trade"
         case .maritime:
-            return "Maritime / Bank"
+            return "Bank or Port"
         case .liveOffer:
             return panelModel.roleTitle
         }

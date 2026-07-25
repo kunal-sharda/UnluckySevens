@@ -86,8 +86,8 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
         tutorial.tap()
         dismissTutorialNavigationCoach()
-        XCTAssertTrue(messages.staticTexts["Place a Settlement"].firstMatch.waitForExistence(timeout: 4))
-        messages.buttons["Exit"].firstMatch.tap()
+        assertTutorialProgress(title: "Place Your First Settlement")
+        messages.buttons["uls.tutorial.exit"].firstMatch.tap()
     }
 
     func testCaptureSettingsRulesTutorialCheckpoint() throws {
@@ -116,7 +116,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
         tutorial.tap()
         dismissTutorialNavigationCoach()
-        assertTutorialProgress(title: "Place a Settlement")
+        assertTutorialProgress(title: "Place Your First Settlement")
 
         for _ in 0..<7 {
             messages.buttons["uls.tutorial.next"].firstMatch.tap()
@@ -124,12 +124,12 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         assertTutorialProgress(title: "Trade")
         attachScreenshot(named: "Settings Rules Tutorial - Player Trade")
 
-        for _ in 0..<9 {
+        for _ in 0..<8 {
             messages.buttons["uls.tutorial.next"].firstMatch.tap()
         }
-        assertTutorialProgress(title: "Win at Ten Points")
+        assertTutorialProgress(title: "Strategy")
         XCTAssertTrue(messages.buttons["uls.tutorial.done"].firstMatch.exists)
-        attachScreenshot(named: "Settings Rules Tutorial - Victory")
+        attachScreenshot(named: "Settings Rules Tutorial - Strategy")
         messages.buttons["uls.tutorial.done"].firstMatch.tap()
         XCTAssertTrue(messages.buttons["uls.lobby.tutorial"].firstMatch.waitForExistence(timeout: 4))
     }
@@ -153,6 +153,16 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
     func testCapturePhysicalTradeCorrectionTutorialCheckpoint() throws {
         openUnluckySevensExtension()
+        let restoreChrome = messages.buttons["uls.uxLab.restoreChrome"].firstMatch
+        if restoreChrome.waitForExistence(timeout: 2) {
+            restoreChrome.tap()
+        }
+        openUXLabPanel()
+        activateUXLabNestedQuickState(
+            title: "Invitation Card",
+            identifier: "uls.uxLab.cleanShot.lobbyInviteInvitationCard"
+        )
+        XCTAssertTrue(waitForInviteSlice(timeout: 12))
 
         let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
         XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
@@ -267,6 +277,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         let done = messages.buttons["uls.tutorial.done"].firstMatch
         XCTAssertTrue(done.waitForExistence(timeout: 4))
         done.tap()
+        restoreUXLabChrome()
         loadTurnGameplaySlice()
         let productionBoard = turnElement(identifier: "uls.tabletop.board", labels: [])
         let productionBoardHost = turnElement(
@@ -525,8 +536,8 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(messages.staticTexts["Tap right side"].firstMatch.exists)
         dismissTutorialNavigationCoach()
         XCTAssertTrue(startPrompt.waitForNonExistence(timeout: 4))
-        XCTAssertFalse(messages.staticTexts["1 / 17"].firstMatch.exists)
-        XCTAssertTrue(messages.staticTexts["Place a Settlement"].firstMatch.exists)
+        XCTAssertFalse(messages.staticTexts["1 / 16"].firstMatch.exists)
+        assertTutorialProgress(title: "Place Your First Settlement")
     }
 
     func testCaptureEveryTutorialScreen() throws {
@@ -543,23 +554,22 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(startPrompt.waitForNonExistence(timeout: 4))
 
         let titles = [
-            "Place a Settlement",
-            "Connect the Road",
-            "Roll the Dice",
-            "Read Production",
-            "Use Your Hand",
-            "Choose What to Build",
-            "Place on a Highlight",
-            "Offer a Player Trade",
-            "Choose Trade Partners",
-            "Use the Bank or a Port",
-            "Discard After a Seven",
+            "Place Your First Settlement",
+            "Add a Road",
+            "Roll to Begin",
+            "Follow the Roll",
+            "Check Your Hand",
+            "Pick a Build",
+            "Choose a Glowing Spot",
+            "Make an Offer",
+            "Choose Who Gets It",
+            "Use Your Best Rate",
+            "Discard on Seven",
             "Move the Robber",
             "Choose a Victim",
-            "Play a Development Card",
-            "End and Send the Turn",
-            "Build a Strong Position",
-            "Win at Ten Points",
+            "Play a Dev Card",
+            "Send the Turn",
+            "Strategy",
         ]
 
         for (index, title) in titles.enumerated() {
@@ -717,7 +727,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             XCTAssertTrue(next.waitForExistence(timeout: 4))
             next.tap()
             XCTAssertTrue(
-                messages.staticTexts["\(expectedStep) / 17"].firstMatch.waitForExistence(timeout: 4)
+                messages.staticTexts["\(expectedStep) / 16"].firstMatch.waitForExistence(timeout: 4)
             )
         }
     }
@@ -744,12 +754,10 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
         let next = messages.buttons["uls.tutorial.next"].firstMatch
         XCTAssertTrue(next.waitForExistence(timeout: 4))
-        for _ in 0..<16 {
+        for _ in 0..<15 {
             next.tap()
         }
-        XCTAssertTrue(
-            messages.staticTexts["Win at Ten Points"].firstMatch.waitForExistence(timeout: 4)
-        )
+        assertTutorialProgress(title: "Strategy")
     }
 
     func testAdvanceOpenTutorialToTradeCheckpoint() throws {
@@ -764,21 +772,19 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
     func testAdvanceOpenTutorialToVictoryCheckpoint() throws {
         let next = messages.buttons["uls.tutorial.next"].firstMatch
         XCTAssertTrue(next.waitForExistence(timeout: 4))
-        for _ in 0..<9 {
+        for _ in 0..<8 {
             next.tap()
         }
-        XCTAssertTrue(
-            messages.staticTexts["Win at Ten Points"].firstMatch.waitForExistence(timeout: 4)
-        )
+        assertTutorialProgress(title: "Strategy")
     }
 
     func testAdvanceOpenTutorialThreeStepsToVictoryCheckpoint() throws {
-        for expectedStep in 9...17 {
+        for expectedStep in 9...16 {
             let next = messages.buttons["uls.tutorial.next"].firstMatch
             XCTAssertTrue(next.waitForExistence(timeout: 4))
             next.tap()
             XCTAssertTrue(
-                messages.staticTexts["\(expectedStep) / 17"].firstMatch.waitForExistence(timeout: 4)
+                messages.staticTexts["\(expectedStep) / 16"].firstMatch.waitForExistence(timeout: 4)
             )
         }
         XCTAssertTrue(messages.buttons["uls.tutorial.done"].firstMatch.exists)
@@ -1051,7 +1057,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
         let board = turnElement(identifier: "uls.tabletop.board", labels: [])
         let publicRail = turnElement(identifier: "uls.turn.publicRail", labels: [])
-        let prompt = turnElement(identifier: "", labels: ["Waiting for Theo to discard"])
+        let prompt = turnElement(identifier: "", labels: ["Waiting for Other Players"])
         let hand = messages.descendants(matching: .any)
             .matching(
                 NSPredicate(

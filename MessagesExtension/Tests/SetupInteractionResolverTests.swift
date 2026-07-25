@@ -8,7 +8,7 @@ final class SetupInteractionResolverTests: XCTestCase {
         let settlementState = makeSetupState(step: .placeSettlement)
         XCTAssertEqual(
             SetupInteractionResolver.guidanceText(state: settlementState, actingAs: "A"),
-            "Tap a highlighted node to place your settlement."
+            "Choose a glowing corner."
         )
 
         let settlement = settlementState.legalSetupSettlementNodes(for: "A").first ?? 0
@@ -21,7 +21,15 @@ final class SetupInteractionResolverTests: XCTestCase {
         )
         XCTAssertEqual(
             SetupInteractionResolver.guidanceText(state: roadState, actingAs: "A"),
-            "Tap the highlighted road connected to the settlement you just placed."
+            "Choose a glowing road beside your settlement."
+        )
+    }
+
+    func testGuidanceTextIsRemovedForTheSecondPlacementPair() {
+        let state = makeSetupState(step: .placeSettlement, turnIndex: 2)
+
+        XCTAssertNil(
+            SetupInteractionResolver.guidanceText(state: state, actingAs: "A")
         )
     }
 
@@ -95,7 +103,8 @@ final class SetupInteractionResolverTests: XCTestCase {
     private func makeSetupState(
         step: SetupStepV1,
         placements: [String: PlayerSetupPlacementsV1] = [:],
-        lastPlacedSettlementNode: NodeID? = nil
+        lastPlacedSettlementNode: NodeID? = nil,
+        turnIndex: Int = 0
     ) -> CoreGameStateV1 {
         let board = BoardSetupV1(
             resourcesByTile: [.wood] + Array(repeating: .desert, count: 18),
@@ -125,7 +134,7 @@ final class SetupInteractionResolverTests: XCTestCase {
             board: board,
             setupState: SetupStateV1(
                 order: makeSetupOrder(roster: ["A", "B"]),
-                turnIndex: 0,
+                turnIndex: turnIndex,
                 step: step,
                 placements: placements,
                 lastPlacedSettlementNode: lastPlacedSettlementNode

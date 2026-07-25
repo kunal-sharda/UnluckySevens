@@ -21,9 +21,9 @@ enum ActiveGameRecoveryModelBuilder {
         let title: String
         switch state.phase {
         case .lobby:
-            title = "Lobby"
+            title = "Waiting for Players"
         case .setup:
-            title = "Setup — \(currentPlayerName)"
+            title = "\(currentPlayerName) is placing"
         case .turn:
             title = "\(currentPlayerName)'s turn"
         case .gameOver:
@@ -31,8 +31,9 @@ enum ActiveGameRecoveryModelBuilder {
             title = "\(winnerName) won"
         }
 
-        let subtitle = "rev \(state.rev) · \(state.phase.rawValue.capitalized) · \(state.roster.count) players"
-        let detail = shortGameIdentifier(state.gameId)
+        let playerCount = state.roster.count
+        let subtitle = playerCount == 1 ? "1 player" : "\(playerCount) players"
+        let detail = ""
 
         return ActiveGameRecoverySummary(
             id: state.gameId,
@@ -45,10 +46,4 @@ enum ActiveGameRecoveryModelBuilder {
         )
     }
 
-    private static func shortGameIdentifier(_ gameId: String) -> String {
-        if gameId.count <= 12 {
-            return gameId
-        }
-        return "\(gameId.prefix(6))...\(gameId.suffix(4))"
-    }
 }

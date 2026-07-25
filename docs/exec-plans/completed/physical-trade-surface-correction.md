@@ -4,7 +4,7 @@
 
 Correct the overstated Physical Props trade closure. Player composition, recipient selection, maritime trading, and live/pending offers now use the production tabletop language while preserving the mounted board, normal Hand geometry, and existing trade behavior. Tutorial composes those production controls on the actual board without publishing state.
 
-This plan corrects the trade claim in [Turn Screen Visual Direction](../completed/turn-screen-visual-direction.md) and resolves the affected dependency in [Settings, Rules, and Click-Through Tutorial](settings-rules-tutorial.md). Behavior is owned by [UI Flows](../../product-specs/ui-flows.md); visual language is owned by [Design](../../../DESIGN.md) and the [Tabletop UI System](../../design/tabletop-ui-system.md).
+This plan corrects the trade claim in [Turn Screen Visual Direction](turn-screen-visual-direction.md) and resolves the affected dependency in [Settings, Rules, and Click-Through Tutorial](settings-rules-tutorial.md). Behavior is owned by [UI Flows](../../product-specs/ui-flows.md); visual language is owned by [Design](../../../DESIGN.md) and the [Tabletop UI System](../../design/tabletop-ui-system.md).
 
 ## Execution Settings
 

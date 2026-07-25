@@ -157,14 +157,9 @@ struct GameDiscardComposerView: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(waitingTitle(panel))
+                Text("Waiting for Other Players")
                     .font(.headline)
                     .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-
-                Text("The robber moves after each required player discards in order.")
-                    .font(.footnote)
-                    .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .accessibilityElement(children: .combine)
@@ -179,13 +174,6 @@ struct GameDiscardComposerView: View {
         selectedCount == requiredCount
             ? "Ready to discard"
             : "Choose exactly \(requiredCount) cards"
-    }
-
-    private func waitingTitle(_ panel: GameDiscardPanelModel) -> String {
-        guard let nextPlayer = panel.waitingPlayers.first else {
-            return "Waiting for discards"
-        }
-        return "Waiting for \(nextPlayer)"
     }
 
     private func resourceLabel(_ resource: ResourceV1) -> String {

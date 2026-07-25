@@ -15,11 +15,15 @@ enum SetupInteractionResolver {
             return nil
         }
 
+        guard setupState.turnIndex < state.roster.count else {
+            return nil
+        }
+
         switch setupState.step {
         case .placeSettlement:
-            return "Tap a highlighted node to place your settlement."
+            return "Choose a glowing corner."
         case .placeRoad:
-            return "Tap the highlighted road connected to the settlement you just placed."
+            return "Choose a glowing road beside your settlement."
         case .done:
             return nil
         }

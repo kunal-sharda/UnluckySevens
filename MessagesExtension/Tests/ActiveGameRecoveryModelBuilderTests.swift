@@ -13,7 +13,8 @@ final class ActiveGameRecoveryModelBuilderTests: XCTestCase {
         )
 
         XCTAssertTrue(summary.title.contains("turn"))
-        XCTAssertTrue(summary.subtitle.contains("rev 7"))
+        XCTAssertEqual(summary.subtitle, "3 players")
+        XCTAssertEqual(summary.detail, "")
         XCTAssertTrue(summary.isLastActive)
         XCTAssertFalse(summary.isCurrentSelection)
     }

@@ -54,10 +54,10 @@ final class UXTestingFixturesTests: XCTestCase {
             discardPanel: panel
         )
         XCTAssertEqual(context, .waitingForDiscard)
-        XCTAssertNil(context?.headerPrompt)
+        XCTAssertEqual(context?.headerPrompt, .waitingForDiscard)
         XCTAssertEqual(
             context?.headerTitle(fallback: "Waiting", discardPanel: panel),
-            "Waiting for Theo to discard"
+            "Waiting"
         )
     }
 

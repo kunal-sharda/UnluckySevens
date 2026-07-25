@@ -141,7 +141,7 @@ struct GamePhysicalTurnActionSpreadView: View {
             }
             return parts.joined(separator: ", ")
         }
-        .joined(separator: "; ")
+        .joined(separator: ". ")
     }
 
     private var devCardSpread: some View {

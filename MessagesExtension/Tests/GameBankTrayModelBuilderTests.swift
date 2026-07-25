@@ -40,7 +40,7 @@ final class GameBankTrayModelBuilderTests: XCTestCase {
         )
 
         XCTAssertEqual(model.title, "Bank")
-        XCTAssertEqual(model.subtitle, "Choose the resource to claim from every opponent.")
+        XCTAssertEqual(model.subtitle, "Choose a resource to collect from every opponent.")
         XCTAssertEqual(model.chips.count, 5)
 
         let oreChip = model.chips.first(where: { $0.resource == ResourceV1.ore })

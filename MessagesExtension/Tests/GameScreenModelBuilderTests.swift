@@ -165,7 +165,7 @@ final class GameScreenModelBuilderTests: XCTestCase {
                 GameActionDockItem(kind: .roll, title: "Roll", systemImage: "die.face.5", isEnabled: true),
                 GameActionDockItem(kind: .endTurn, title: "End Turn", systemImage: "flag.fill", isEnabled: true),
                 GameActionDockItem(kind: .build, title: "Build", systemImage: "hammer.fill", isEnabled: false),
-                GameActionDockItem(kind: .devCards, title: "Play Dev", systemImage: "sparkles.rectangle.stack.fill", isEnabled: false),
+                GameActionDockItem(kind: .devCards, title: "Dev Cards", systemImage: "sparkles.rectangle.stack.fill", isEnabled: false),
             ]
         )
         XCTAssertTrue(model.actionDock.utilityItems.isEmpty)
@@ -218,7 +218,7 @@ final class GameScreenModelBuilderTests: XCTestCase {
                 GameActionDockItem(kind: .trade, title: "Trade", systemImage: "arrow.left.arrow.right", isEnabled: false),
                 GameActionDockItem(kind: .endTurn, title: "End Turn", systemImage: "flag.fill", isEnabled: true),
                 GameActionDockItem(kind: .build, title: "Build", systemImage: "hammer.fill", isEnabled: true),
-                GameActionDockItem(kind: .devCards, title: "Play Dev", systemImage: "sparkles.rectangle.stack.fill", isEnabled: false),
+                GameActionDockItem(kind: .devCards, title: "Dev Cards", systemImage: "sparkles.rectangle.stack.fill", isEnabled: false),
             ],
             utilityItems: [],
             buildShelfItems: []

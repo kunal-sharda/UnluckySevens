@@ -49,10 +49,10 @@ enum GameBankTrayModelBuilder {
     private static func subtitle(for mode: GameMode, draft: GameDevCardDraft?) -> String? {
         switch mode {
         case .devCardMonopoly:
-            return "Choose the resource to claim from every opponent."
+            return "Choose a resource to collect from every opponent."
         case .devCardYearOfPlenty:
             guard let draft else {
-                return "Choose two resources from the bank."
+                return "Choose two resources from the Bank."
             }
             switch draft {
             case let .yearOfPlenty(first, second):
@@ -64,7 +64,7 @@ enum GameBankTrayModelBuilder {
                 }
                 return "Confirm the selected pair."
             default:
-                return "Choose two resources from the bank."
+                return "Choose two resources from the Bank."
             }
         default:
             return nil

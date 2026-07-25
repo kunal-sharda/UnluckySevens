@@ -237,7 +237,7 @@ enum GameScreenModelBuilder {
                 ),
                 GameActionDockItem(
                     kind: .devCards,
-                    title: "Play Dev",
+                    title: "Dev Cards",
                     systemImage: "sparkles.rectangle.stack.fill",
                     isEnabled: actionAvailability.canPlayDevCards
                 ),
@@ -329,7 +329,7 @@ enum GameScreenModelBuilder {
         case .counterTrade:
             return "countered trade"
         case .maritimeTrade:
-            return "maritime trade"
+            return "Bank or Port trade"
         case .buyDevCard:
             return "bought dev card"
         case .playKnight:

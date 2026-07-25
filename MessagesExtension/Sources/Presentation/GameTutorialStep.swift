@@ -49,7 +49,6 @@ struct GameTutorialStep: Identifiable, Equatable {
         case developmentCards
         case endTurn
         case strategy
-        case victoryAwards
     }
 
     let id: ID
@@ -61,153 +60,163 @@ struct GameTutorialStep: Identifiable, Equatable {
     static let all: [GameTutorialStep] = [
         .init(
             id: .setupSettlement,
-            title: "Place a Settlement",
-            guidance: "Everyone places twice. The order reverses for round two, so choose one of the marked legal intersections when your name is current.",
-            previewAccessibilityLabel: "The real setup board with legal settlement intersections and the setup order visible.",
+            title: "Place Your First Settlement",
+            guidance: "Everyone places twice. Round two reverses the order. Choose a glowing corner when your name is current.",
+            previewAccessibilityLabel: "Setup board with the placement order and available settlement corners glowing.",
             callouts: [
-                .init(number: 1, target: .setupOrder, placement: .below, text: "Round two reverses the order"),
-                .init(number: 2, target: .board, targetPoint: UnitPoint(x: 0.28, y: 0.47), placement: .trailing, text: "Tap a marked legal intersection"),
+                .init(number: 1, target: .setupOrder, placement: .below, text: "You place twice. Round two goes in reverse."),
+                .init(number: 2, target: .board, targetPoint: UnitPoint(x: 0.28, y: 0.47), placement: .trailing, text: "Start on a glowing corner."),
             ]
         ),
         .init(
             id: .setupRoad,
-            title: "Connect the Road",
-            guidance: "Place one road on a marked edge touching the settlement. After your second settlement, each adjacent producing tile adds its resource to your hand.",
-            previewAccessibilityLabel: "The real setup board after a settlement, with connected legal road edges highlighted.",
+            title: "Add a Road",
+            guidance: "Add one road beside your settlement. After your second settlement, each neighboring producing tile adds its resource to your hand.",
+            previewAccessibilityLabel: "Setup board after a settlement, with connected road edges glowing.",
             callouts: [
-                .init(number: 1, target: .board, targetPoint: UnitPoint(x: 0.31, y: 0.43), placement: .trailing, text: "Choose a connected marked edge"),
-                .init(number: 2, target: .setupRoadPiece, placement: .above, text: "Settlement, then road"),
+                .init(number: 1, target: .board, targetPoint: UnitPoint(x: 0.31, y: 0.43), placement: .trailing, text: "Add a road beside your settlement."),
+                .init(number: 2, target: .setupRoadPiece, placement: .above, text: "Your second spot deals starting cards."),
             ]
         ),
         .init(
             id: .rollDice,
-            title: "Roll the Dice",
-            guidance: "Every normal turn starts with a roll. Development cards that are eligible before rolling remain available beside it.",
-            previewAccessibilityLabel: "The real start-of-turn surface with the Roll control visible.",
+            title: "Roll to Begin",
+            guidance: "Every normal turn starts with a roll. Development cards available before rolling appear beside the dice.",
+            previewAccessibilityLabel: "Start-of-turn surface with the Roll control available.",
             callouts: [
-                .init(number: 1, target: .rollButton, placement: .below, text: "Roll first to produce resources"),
+                .init(number: 1, target: .rollButton, placement: .below, text: "Roll to see which tiles produce."),
             ]
         ),
         .init(
             id: .readProduction,
-            title: "Read Production",
+            title: "Follow the Roll",
             guidance: "When the dice total matches a tile, each adjacent settlement gains one matching resource and each city gains two. The robber stops its tile from producing.",
-            previewAccessibilityLabel: "The real post-roll board, numbered terrain, bank, structures, and robber.",
+            previewAccessibilityLabel: "Post-roll board with numbered terrain, nearby buildings, and a robber blocking one tile.",
             callouts: [
-                .init(number: 1, target: .board, targetPoint: UnitPoint(x: 0.42, y: 0.35), placement: .leading, text: "The rolled number pays adjacent buildings"),
-                .init(number: 2, target: .board, targetPoint: UnitPoint(x: 0.25, y: 0.66), placement: .trailing, text: "The robber stops this tile"),
+                .init(number: 1, target: .board, targetPoint: UnitPoint(x: 0.42, y: 0.35), placement: .leading, text: "Matching numbers pay nearby buildings."),
+                .init(number: 2, target: .board, targetPoint: UnitPoint(x: 0.25, y: 0.66), placement: .trailing, text: "The robber blocks this tile."),
             ]
         ),
         .init(
             id: .useHand,
-            title: "Use Your Hand",
+            title: "Check Your Hand",
             guidance: "Your hand shows every resource you can spend and separates owned development cards.",
-            previewAccessibilityLabel: "The real resource hand and owned development-card stack.",
+            previewAccessibilityLabel: "Your resource hand and owned development-card stack.",
             callouts: [
-                .init(number: 1, target: .handSpread, placement: .above, text: "These are your spendable cards"),
+                .init(number: 1, target: .handSpread, placement: .above, text: "These are the cards you can spend."),
             ]
         ),
         .init(
             id: .buildCosts,
-            title: "Choose What to Build",
+            title: "Pick a Build",
             guidance: "Roads, settlements, and cities print their resource cost below the piece. A city replaces one of your settlements.",
-            previewAccessibilityLabel: "The real build spread showing roads, settlements, cities, and their printed costs.",
+            previewAccessibilityLabel: "Build choices showing Roads, settlements, cities, and their costs.",
             callouts: [
-                .init(number: 1, target: .buildSettlement, placement: .above, text: "Compare costs; cities replace settlements"),
+                .init(number: 1, target: .buildSettlement, placement: .above, text: "Each piece shows its cost. Cities replace settlements."),
             ]
         ),
         .init(
             id: .legalPlacement,
-            title: "Place on a Highlight",
-            guidance: "After choosing a piece, only legal board targets highlight. Cities replace one of your settlements.",
-            previewAccessibilityLabel: "The real board in settlement-placement mode with legal intersections highlighted.",
+            title: "Choose a Glowing Spot",
+            guidance: "After choosing a piece, available board targets glow. Tap a spot again to confirm the build.",
+            previewAccessibilityLabel: "Board in settlement-placement mode with available intersections glowing.",
             callouts: [
-                .init(number: 1, target: .board, targetPoint: UnitPoint(x: 0.28, y: 0.39), placement: .trailing, text: "Only highlighted targets are legal"),
+                .init(number: 1, target: .board, targetPoint: UnitPoint(x: 0.28, y: 0.39), placement: .trailing, text: "Tap a glowing spot twice to build."),
             ]
         ),
         .init(
             id: .playerTrade,
-            title: "Offer a Player Trade",
+            title: "Make an Offer",
             guidance: "Choose the cards you will give, then the cards you want back. You will select who receives the offer next.",
-            previewAccessibilityLabel: "The real player-trade composer with give, want, and recipient sections.",
-            callouts: []
+            previewAccessibilityLabel: "Player-trade composer with Give and Get selections.",
+            callouts: [
+                .init(
+                    number: 1,
+                    target: .tradeGive,
+                    placement: .above,
+                    text: "Pick what you’ll give and what you want."
+                ),
+            ]
         ),
         .init(
             id: .tradeRecipients,
-            title: "Choose Trade Partners",
+            title: "Choose Who Gets It",
             guidance: "Send the offer to one or more players. Their accept, decline, or counter response returns through Messages.",
-            previewAccessibilityLabel: "The real player-trade composer scrolled to its recipient choices.",
-            callouts: []
+            previewAccessibilityLabel: "Player-trade composer showing the players who can receive the offer.",
+            callouts: [
+                .init(
+                    number: 1,
+                    target: .tradeRecipients,
+                    placement: .below,
+                    text: "Choose the players, then send the offer."
+                ),
+            ]
         ),
         .init(
             id: .bankTrade,
-            title: "Use the Bank or a Port",
-            guidance: "The legal trade list automatically uses the best ratio from the bank and any ports you control.",
-            previewAccessibilityLabel: "The real maritime and bank trade list showing legal ratios.",
-            callouts: []
+            title: "Use Your Best Rate",
+            guidance: "The trade list automatically uses your best Bank or Port rate.",
+            previewAccessibilityLabel: "Bank or Port trade list showing the best available rate.",
+            callouts: [
+                .init(
+                    number: 1,
+                    target: .maritimeOptions,
+                    placement: .above,
+                    text: "Your best Bank or Port rate is shown."
+                ),
+            ]
         ),
         .init(
             id: .discard,
-            title: "Discard After a Seven",
+            title: "Discard on Seven",
             guidance: "If you hold more than seven cards when a seven rolls, choose half your hand, rounded down, before the robber moves.",
-            previewAccessibilityLabel: "The real forced-discard composer showing the required count and selectable hand.",
+            previewAccessibilityLabel: "Forced-discard composer showing the exact required count and your selectable hand.",
             callouts: [
-                .init(number: 1, target: .discardSurface, placement: .above, text: "Choose exactly half your hand"),
+                .init(number: 1, target: .discardSurface, placement: .above, text: "Choose half your hand, then confirm."),
             ]
         ),
         .init(
             id: .moveRobber,
             title: "Move the Robber",
             guidance: "Move the robber to another highlighted terrain tile. That tile stops producing while the robber remains there.",
-            previewAccessibilityLabel: "The real board in robber-movement mode with legal destination tiles highlighted.",
+            previewAccessibilityLabel: "Board with available robber destinations glowing.",
             callouts: [
-                .init(number: 1, target: .board, targetPoint: UnitPoint(x: 0.50, y: 0.50), placement: .trailing, text: "Move it to a highlighted tile"),
+                .init(number: 1, target: .board, targetPoint: UnitPoint(x: 0.50, y: 0.50), placement: .trailing, text: "Move the robber to a glowing tile."),
             ]
         ),
         .init(
             id: .chooseVictim,
             title: "Choose a Victim",
             guidance: "Maya and Theo both touch the robber tile. Choose one marked opponent to steal one random resource card from.",
-            previewAccessibilityLabel: "The real board in robber-victim mode with eligible opposing structures highlighted.",
+            previewAccessibilityLabel: "Board with neighboring players available for a robber steal.",
             callouts: [
-                .init(number: 1, target: .board, targetPoint: UnitPoint(x: 0.68, y: 0.41), placement: .leading, text: "Tap Maya’s marked building"),
+                .init(number: 1, target: .board, targetPoint: UnitPoint(x: 0.68, y: 0.41), placement: .leading, text: "Choose a neighboring player."),
             ]
         ),
         .init(
             id: .developmentCards,
-            title: "Play a Development Card",
-            guidance: "You may play one non-VP development card per turn. A card bought during this turn becomes playable on a later turn.",
-            previewAccessibilityLabel: "The real development-card chooser showing playable and unavailable cards.",
+            title: "Play a Dev Card",
+            guidance: "You may play one non-Victory Point development card per turn. Cards bought this turn wait until your next turn.",
+            previewAccessibilityLabel: "Development-card chooser showing which cards are available now.",
             callouts: [
-                .init(number: 1, target: .devChooser, placement: .above, text: "Bright cards are playable now"),
+                .init(number: 1, target: .devChooser, placement: .above, text: "Bright cards can be played now."),
             ]
         ),
         .init(
             id: .endTurn,
-            title: "End and Send the Turn",
+            title: "Send the Turn",
             guidance: "End Turn confirms your actions and sends the updated game to the next player in Messages.",
-            previewAccessibilityLabel: "The real End Turn confirmation controls.",
+            previewAccessibilityLabel: "End Turn confirmation that sends the updated board to the chat.",
             callouts: [
-                .init(number: 1, target: .endTurnConfirmation, targetPoint: UnitPoint(x: 0.78, y: 0.72), placement: .above, text: "Confirm to send the updated game"),
+                .init(number: 1, target: .endTurnConfirmation, targetPoint: UnitPoint(x: 0.78, y: 0.72), placement: .above, text: "End Turn sends the new board to the chat."),
             ]
         ),
         .init(
             id: .strategy,
-            title: "Build a Strong Position",
-            guidance: "Spread across useful numbers and resource types. Turn surpluses into what you need through trades and ports, and watch opponents nearing either award.",
-            previewAccessibilityLabel: "The real public board showing varied numbers, resources, ports, roads, and opposing positions.",
-            callouts: [
-                .init(number: 1, target: .handSpread, placement: .above, text: "Trade surpluses; watch both awards"),
-            ]
-        ),
-        .init(
-            id: .victoryAwards,
-            title: "Win at Ten Points",
-            guidance: "Settlements score 1 VP, cities score 2, and VP cards score 1. Longest Road and Largest Army add 2 VP each. Be the first player to reach 10 points on your turn.",
-            previewAccessibilityLabel: "The real game information panel showing victory points and both two-point awards over the public board.",
-            callouts: [
-                .init(number: 1, target: .gameInfo, placement: .above, text: "First to 10 · Settlement/VP card 1 · City/award 2"),
-            ]
+            title: "Strategy",
+            guidance: "More dots mean stronger production. Roads and development cards can help earn points. Settlements score 1 point, while cities and awards score 2.",
+            previewAccessibilityLabel: "Board dimmed behind a Strategy card with production, investment, and scoring tips.",
+            callouts: []
         ),
     ]
 }

@@ -29,8 +29,8 @@ final class GameDevCardPanelModelBuilderTests: XCTestCase {
         XCTAssertEqual(panel.confirmTitle, nil)
         XCTAssertFalse(panel.canConfirm)
         XCTAssertFalse(panel.showsBackButton)
-        XCTAssertTrue(panel.message.contains("Choose one of your legal development cards"))
-        XCTAssertTrue(panel.timingNotes.contains { $0.contains("Only one non-Victory Point") })
+        XCTAssertEqual(panel.message, "Choose a development card.")
+        XCTAssertTrue(panel.timingNotes.isEmpty)
         XCTAssertTrue(panel.cards.contains(where: { $0.kind == .knight && $0.isEnabled }))
         XCTAssertTrue(panel.cards.contains(where: { $0.kind == .monopoly && $0.isEnabled }))
     }
@@ -60,7 +60,7 @@ final class GameDevCardPanelModelBuilderTests: XCTestCase {
 
         XCTAssertTrue(panel.playActions.contains(where: { $0.kind == .playKnight }))
         XCTAssertTrue(panel.playActions.contains(where: { $0.kind == .revealVictoryPoint }))
-        XCTAssertTrue(panel.message.contains("Choose one of your legal development cards"))
+        XCTAssertEqual(panel.message, "Choose a development card.")
     }
 
     func testBuildForNonCurrentPlayerShowsWaitingMessage() throws {
@@ -105,7 +105,7 @@ final class GameDevCardPanelModelBuilderTests: XCTestCase {
         XCTAssertEqual(panel.heldCounts.first(where: { $0.title == "Victory Point" })?.count, 1)
         XCTAssertEqual(panel.newCounts.first(where: { $0.title == "Year of Plenty" })?.count, 1)
         XCTAssertFalse(panel.playActions.contains(where: { $0.kind == .revealVictoryPoint }))
-        XCTAssertTrue(panel.timingNotes.contains { $0.contains("Victory Point cards only reveal") })
+        XCTAssertTrue(panel.timingNotes.isEmpty)
         XCTAssertTrue(panel.cards.contains(where: { $0.kind == .victoryPoint && !$0.isEnabled }))
         XCTAssertTrue(panel.cards.contains(where: { $0.kind == .yearOfPlenty && !$0.isEnabled }))
     }
@@ -145,7 +145,7 @@ final class GameDevCardPanelModelBuilderTests: XCTestCase {
         )
 
         XCTAssertEqual(panel.playActions.map(\.kind), [.revealVictoryPoint])
-        XCTAssertTrue(panel.message.contains("Winning Victory Point reveals may still be available"))
+        XCTAssertEqual(panel.message, "You can still reveal a winning Victory Point card.")
     }
 
     func testMonopolyStageRequiresExplicitResourceSelection() throws {

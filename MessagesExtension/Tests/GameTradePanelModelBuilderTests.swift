@@ -3,7 +3,7 @@ import XCTest
 @testable import MessagesExtension
 
 final class GameTradePanelModelBuilderTests: XCTestCase {
-    func testBuildIdlePanelForCurrentPlayerShowsTradeDesk() throws {
+    func testBuildIdlePanelForCurrentPlayerUsesConciseTradeTitle() throws {
         let state = makeState(
             currentPlayer: "A",
             resourcesByPlayer: [
@@ -20,9 +20,9 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
         )
 
         XCTAssertNil(panel.activeOffer)
-        XCTAssertEqual(panel.roleTitle, "Trade Desk")
+        XCTAssertEqual(panel.roleTitle, "Trade")
+        XCTAssertEqual(panel.message, "")
         XCTAssertNil(panel.responderActions)
-        XCTAssertFalse(panel.message.isEmpty)
     }
 
     func testBuildActiveOfferForTargetedResponderShowsResponderActions() throws {
@@ -88,7 +88,7 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
         )
 
         XCTAssertEqual(panel.roleTitle, "Your Offer")
-        XCTAssertTrue(panel.message.contains("Counters are visible"))
+        XCTAssertEqual(panel.message, "Review the counters below.")
         XCTAssertEqual(panel.participantStatuses.first(where: { $0.playerID == "B" })?.state, .countered)
         XCTAssertEqual(panel.participantStatuses.first(where: { $0.playerID == "C" })?.state, .waiting)
         XCTAssertTrue(panel.canReplaceOffer)
@@ -118,7 +118,7 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
 
         XCTAssertEqual(panel.roleTitle, "Table Offer")
         XCTAssertNil(panel.responderActions)
-        XCTAssertTrue(panel.message.contains("not sent to you"))
+        XCTAssertEqual(panel.message, "This offer wasn't sent to you.")
     }
 
     func testBuildActiveOfferForResponderWithoutRequiredCardsDisablesAccept() throws {
@@ -146,7 +146,7 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
         XCTAssertEqual(panel.responderActions?.canAccept, false)
         XCTAssertEqual(panel.responderActions?.canDecline, true)
         XCTAssertEqual(panel.responderActions?.canCounter, true)
-        XCTAssertTrue(panel.message.contains("cannot accept"))
+        XCTAssertEqual(panel.message, "You don't have the cards to accept. Decline or counter instead.")
     }
 
     private func makeState(

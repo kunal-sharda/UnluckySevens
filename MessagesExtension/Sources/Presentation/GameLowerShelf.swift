@@ -28,7 +28,7 @@ enum GameLowerShelf: String, Equatable {
         case .build:
             return "Build"
         case .devCards:
-            return "Play Dev"
+            return "Dev Cards"
         case .forcedFlow:
             return "Flow"
         }

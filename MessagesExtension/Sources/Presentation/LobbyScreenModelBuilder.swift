@@ -1,6 +1,21 @@
 import ULS_CoreGame
 
 enum LobbyScreenModelBuilder {
+    static func transcriptSnapshot(state: CoreGameStateV1) -> LobbyScreenModel {
+        build(
+            context: LobbyScreenContext(
+                selectedState: state,
+                localActor: nil,
+                activeContextSource: "transcriptSnapshot",
+                staleWarning: "-",
+                lastError: "-",
+                canInvite: false,
+                canJoin: false,
+                canStartGame: false
+            )
+        )
+    }
+
     static func build(context: LobbyScreenContext) -> LobbyScreenModel {
         let warningText = normalizedWarning(context: context)
 
@@ -13,14 +28,14 @@ enum LobbyScreenModelBuilder {
 
         return LobbyScreenModel(
             showsInviteEntryHero: true,
-            title: "A table is open",
-            subtitle: "Catan-style play in this Messages chat.",
+            title: "Start an Unlucky Sevens Game",
+            subtitle: "",
             warningText: warningText,
-            participantsTitle: "Lobby",
+            participantsTitle: "Players",
             participants: [],
-            participantsEmptyTitle: "No Lobby Selected",
+            participantsEmptyTitle: "Start a Game",
             participantsEmptySystemImage: "person.3.sequence.fill",
-            participantsEmptyDescription: "Select an invite bubble or send a new one to open the lobby.",
+            participantsEmptyDescription: "Send an invite to this chat.",
             nameEditor: buildInviteEntryNameEditor(context: context),
             inviteButton: context.canInvite
                 ? LobbyActionButtonModel(
@@ -31,7 +46,7 @@ enum LobbyScreenModelBuilder {
                 : nil,
             joinButton: nil,
             startButton: nil,
-            helperText: "Friends join from the Messages bubble."
+            helperText: ""
         )
     }
 
@@ -43,7 +58,6 @@ enum LobbyScreenModelBuilder {
         let host = state.roster.first
         let visiblePlayers = state.roster
         let participants = participantSummaries(for: state, context: context, visiblePlayers: visiblePlayers)
-        let joinedCount = participants.count
         let localActor = context.localActor
         let isLocalHost = localActor == host
         let localHasJoined = localActor.map(state.roster.contains) ?? false
@@ -55,20 +69,20 @@ enum LobbyScreenModelBuilder {
 
         if context.canStartGame {
             title = "Ready to Start"
-            subtitle = "\(joinedCount) players are ready. Start when you want to lock the roster."
-            helperText = "Starting publishes the setup state and locks the roster."
+            subtitle = ""
+            helperText = ""
         } else if isLocalHost {
-            title = "Invite Friends"
-            subtitle = "Share the invite and wait for at least one guest to join."
-            helperText = "Starting stays disabled until at least two players appear in the lobby."
+            title = "Waiting for Players"
+            subtitle = ""
+            helperText = ""
         } else if localHasJoined {
-            title = "Joined Lobby"
+            title = "You're In"
             subtitle = "Waiting for \(displayName(host, state: state)) to start the game."
-            helperText = "You are in the pending roster for this lobby."
+            helperText = ""
         } else {
-            title = "Join This Game"
-            subtitle = "Join now and wait for \(displayName(host, state: state)) to start."
-            helperText = "Joining publishes updated lobby state immediately. The host decides when to start."
+            title = "Join the Table"
+            subtitle = "\(displayName(host, state: state)) invited you to play Unlucky Sevens."
+            helperText = ""
         }
 
         return LobbyScreenModel(
@@ -76,11 +90,11 @@ enum LobbyScreenModelBuilder {
             title: title,
             subtitle: subtitle,
             warningText: warningText,
-            participantsTitle: "Joined Players",
+            participantsTitle: "Players",
             participants: participants,
             participantsEmptyTitle: "No Joined Players",
             participantsEmptySystemImage: "person.3.sequence.fill",
-            participantsEmptyDescription: "Join from the latest lobby bubble in Messages to appear here.",
+            participantsEmptyDescription: "Players appear here as they join.",
             nameEditor: nameEditor,
             inviteButton: nil,
             joinButton: context.canJoin
@@ -153,9 +167,9 @@ enum LobbyScreenModelBuilder {
         let alias = aliasFallbackName(localActor, state: state)
         if state.roster.contains(localActor) {
             return LobbyNameEditorModel(
-                title: "Your Name",
+                title: "Display Name",
                 placeholder: alias,
-                helperText: "Save a custom name for this table. Leave it empty to keep your alias.",
+                helperText: "",
                 saveButton: LobbyActionButtonModel(
                     title: "Save Name",
                     systemImage: "checkmark.circle.fill",
@@ -166,9 +180,9 @@ enum LobbyScreenModelBuilder {
 
         if context.canJoin {
             return LobbyNameEditorModel(
-                title: "Your Name",
+                title: "Display Name",
                 placeholder: alias,
-                helperText: "Optional. If you set a name before joining, it will publish with your join.",
+                helperText: "",
                 saveButton: nil
             )
         }
@@ -184,9 +198,9 @@ enum LobbyScreenModelBuilder {
         }
 
         return LobbyNameEditorModel(
-            title: "Playing as",
+            title: "Display Name",
             placeholder: "Name",
-            helperText: "Remembered for the next invite.",
+            helperText: "",
             saveButton: nil
         )
     }
@@ -212,18 +226,18 @@ enum LobbyScreenModelBuilder {
         LobbyScreenModel(
             showsInviteEntryHero: false,
             title: "Invite Sent",
-            subtitle: "Let players join from the bubble in Messages. Reopen the latest lobby bubble when you're ready to start.",
+            subtitle: "Return to the chat. Reopen the latest invite to see who joined.",
             warningText: warningText,
-            participantsTitle: "Waiting",
-            participants: [],
-            participantsEmptyTitle: "Lobby Lives in Messages",
+            participantsTitle: "Players",
+            participants: participantSummaries(for: state, context: context, visiblePlayers: state.roster),
+            participantsEmptyTitle: "Waiting for Players",
             participantsEmptySystemImage: "ellipsis.message.fill",
-            participantsEmptyDescription: "This screen is only the local post-send state. Return to the thread and reopen the latest lobby bubble after players join.",
+            participantsEmptyDescription: "Players appear here as they join.",
             nameEditor: nil,
             inviteButton: nil,
             joinButton: nil,
             startButton: nil,
-            helperText: "Do not start from this post-send shell. The real lobby roster and start action only appear from the latest lobby bubble in the conversation."
+            helperText: ""
         )
     }
 }

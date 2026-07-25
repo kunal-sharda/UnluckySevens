@@ -134,6 +134,10 @@ let project = Project(
                 "MessagesExtension/Sources/Board/GameBoardSnapshotVariant.swift",
                 "MessagesExtension/Sources/Board/GameBoardTarget.swift",
                 "MessagesExtension/Sources/Board/GameBoardTileArt.swift",
+                "MessagesExtension/Sources/Components/GameFinalScoreStripView.swift",
+                "MessagesExtension/Sources/Components/GameTabletopPortraitCardView.swift",
+                "MessagesExtension/Sources/Components/GameTabletopResourceStampView.swift",
+                "MessagesExtension/Sources/Components/GameTradeReceiptView.swift",
             ],
             resources: ["MessagesExtension/Resources/**"],
             dependencies: [

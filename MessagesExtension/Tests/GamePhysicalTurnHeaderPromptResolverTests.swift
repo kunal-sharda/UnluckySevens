@@ -4,27 +4,26 @@ import XCTest
 final class GamePhysicalTurnHeaderPromptResolverTests: XCTestCase {
     func testEveryPhysicalInstructionHeaderUsesTheApprovedTitleCaseCopy() {
         let expected: [(GamePhysicalTurnHeaderPrompt, String)] = [
-            (.chooseDevOrRoll, "Choose Dev or Roll"),
             (.choosePiece, "Choose a Piece"),
             (.placeRoad, "Place a Road"),
-            (.tapAgainToPlace, "Tap Again to Place"),
+            (.tapAgainToPlace, "Tap Again to Build"),
             (.placeSettlement, "Place a Settlement"),
             (.upgradeCity, "Upgrade to a City"),
             (.tapAgainToUpgrade, "Tap Again to Upgrade"),
-            (.chooseTrade, "Choose a Trade"),
+            (.chooseTrade, "Choose How to Trade"),
             (.makeOffer, "Make an Offer"),
-            (.tradeWithBank, "Trade with the Bank"),
-            (.waitingForPlayers, "Waiting for Players"),
-            (.answerTradeOffer, "Answer the Trade Offer"),
-            (.waitingForDiscard, "Waiting for Discard"),
+            (.tradeWithBank, "Trade with Bank or Port"),
+            (.waitingForPlayers, "Waiting for Replies"),
+            (.answerTradeOffer, "Review the Offer"),
+            (.waitingForDiscard, "Waiting for Other Players"),
             (.chooseDevCard, "Choose a Dev Card"),
             (.moveRobber, "Move the Robber"),
             (.choosePlayer, "Choose a Player"),
             (.chooseResource, "Choose a Resource"),
             (.chooseTwoResources, "Choose Two Resources"),
             (.chooseOneMore, "Choose One More"),
-            (.placeFirstRoad, "Place First Road"),
-            (.placeSecondRoad, "Place Second Road"),
+            (.placeFirstRoad, "Place the First Road"),
+            (.placeSecondRoad, "Place the Second Road"),
         ]
 
         XCTAssertEqual(expected.count, GamePhysicalTurnHeaderPrompt.allCases.count)

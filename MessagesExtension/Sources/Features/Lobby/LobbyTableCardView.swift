@@ -43,10 +43,6 @@ struct LobbyTableCardView: View {
                 Text("Unlucky Sevens")
                     .font(GameTheme.headingFont)
                     .foregroundStyle(LobbyPalette.cream)
-
-                Label(statusLabel, systemImage: statusSystemImage)
-                    .font(GameTheme.metaFont)
-                    .foregroundStyle(LobbyPalette.mutedCream)
             }
 
             Spacer(minLength: 8)
@@ -105,10 +101,12 @@ struct LobbyTableCardView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier(model.showsInviteEntryHero ? "uls.lobby.inviteTitle" : "uls.lobby.title")
 
-            Text(model.subtitle)
-                .font(GameTheme.bodyFont)
-                .foregroundStyle(LobbyPalette.mutedCream)
-                .fixedSize(horizontal: false, vertical: true)
+            if !model.subtitle.isEmpty {
+                Text(model.subtitle)
+                    .font(GameTheme.bodyFont)
+                    .foregroundStyle(LobbyPalette.mutedCream)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
@@ -156,10 +154,12 @@ struct LobbyTableCardView: View {
                     .stroke(LobbyPalette.openSeatEdge, lineWidth: 1)
             )
 
-            Text(editor.helperText)
-                .font(GameTheme.metaFont)
-                .foregroundStyle(LobbyPalette.mutedCream)
-                .fixedSize(horizontal: false, vertical: true)
+            if !editor.helperText.isEmpty {
+                Text(editor.helperText)
+                    .font(GameTheme.metaFont)
+                    .foregroundStyle(LobbyPalette.mutedCream)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
@@ -200,18 +200,7 @@ struct LobbyTableCardView: View {
 
     @ViewBuilder
     private var footer: some View {
-        if model.startButton != nil {
-            Label {
-                Text("Starting locks these seats and hands the table to initial placement.")
-            } icon: {
-                Image(systemName: "arrow.right.circle.fill")
-                    .foregroundStyle(LobbyPalette.moss)
-            }
-            .font(GameTheme.metaFont)
-            .foregroundStyle(LobbyPalette.mutedCream)
-            .fixedSize(horizontal: false, vertical: true)
-            .accessibilityIdentifier("uls.lobby.setupHandoff")
-        } else {
+        if !model.helperText.isEmpty {
             Text(model.helperText)
                 .font(GameTheme.metaFont)
                 .foregroundStyle(LobbyPalette.mutedCream)
@@ -236,19 +225,4 @@ struct LobbyTableCardView: View {
         }
     }
 
-    private var statusLabel: String {
-        if model.startButton != nil { return "Table ready" }
-        if model.joinButton != nil { return "Invitation received" }
-        if model.showsInviteEntryHero { return "New table" }
-        if model.participants.isEmpty { return "Invitation sent" }
-        return "Lobby open"
-    }
-
-    private var statusSystemImage: String {
-        if model.startButton != nil { return "checkmark.seal.fill" }
-        if model.joinButton != nil { return "envelope.open.fill" }
-        if model.showsInviteEntryHero { return "plus.message.fill" }
-        if model.participants.isEmpty { return "ellipsis.message.fill" }
-        return "person.2.fill"
-    }
 }

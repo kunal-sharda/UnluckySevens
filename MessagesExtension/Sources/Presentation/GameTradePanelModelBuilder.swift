@@ -34,8 +34,8 @@ enum GameTradePanelModelBuilder {
     ) -> GameTradePanelModel {
         guard let actingAs else {
             return GameTradePanelModel(
-                roleTitle: "Trade Desk",
-                message: "Trade actions need your joined local Messages identity before they can be authored from this device.",
+                roleTitle: "Trade",
+                message: "Open the latest game message to trade.",
                 activeOffer: nil,
                 participantStatuses: [],
                 responderActions: nil,
@@ -47,8 +47,8 @@ enum GameTradePanelModelBuilder {
 
         guard actingAs == state.currentPlayer else {
             return GameTradePanelModel(
-                roleTitle: "Waiting For Offer",
-                message: "Only \(playerName(state.currentPlayer, in: state)) can open a new trade on this turn.",
+                roleTitle: "Trade",
+                message: "Waiting for \(playerName(state.currentPlayer, in: state))'s turn.",
                 activeOffer: nil,
                 participantStatuses: [],
                 responderActions: nil,
@@ -58,16 +58,9 @@ enum GameTradePanelModelBuilder {
             )
         }
 
-        let message: String
-        if maritimeOptions.isEmpty {
-            message = "Start a player trade from the chooser, or take a maritime trade later if your hand or ports unlock one."
-        } else {
-            message = "Choose a player trade or pick one of the legal maritime / bank quick trades."
-        }
-
         return GameTradePanelModel(
-            roleTitle: "Trade Desk",
-            message: message,
+            roleTitle: "Trade",
+            message: "",
             activeOffer: nil,
             participantStatuses: [],
             responderActions: nil,
@@ -147,9 +140,9 @@ enum GameTradePanelModelBuilder {
         if isCurrentPlayer {
             roleTitle = "Your Offer"
             if participantStatuses.contains(where: { $0.state == .countered }) {
-                message = "Counters are visible below. Replace the live offer if you want to answer one."
+                message = "Review the counters below."
             } else {
-                message = "Trade is waiting on targeted player responses."
+                message = "Waiting for replies."
             }
         } else if isTargetedResponder {
             roleTitle = "Incoming Offer"
@@ -163,13 +156,13 @@ enum GameTradePanelModelBuilder {
                     message = "You sent a counteroffer back to \(proposerDisplay)."
                 }
             } else if responderActions?.canAccept == false {
-                message = "You can decline or counter this offer, but you cannot accept it with your current hidden hand."
+                message = "You don't have the cards to accept. Decline or counter instead."
             } else {
-                message = "Accept, decline, or counter this offer."
+                message = ""
             }
         } else {
             roleTitle = "Table Offer"
-            message = "This trade is visible to the table, but it was not sent to you."
+            message = "This offer wasn't sent to you."
         }
 
         return GameTradePanelModel(
@@ -183,7 +176,7 @@ enum GameTradePanelModelBuilder {
                 receiveLabel: isCurrentPlayer ? "You want" : "\(proposerDisplay) wants",
                 receive: handChips(from: offer.receive),
                 recipientPlayerIDs: offer.recipients,
-                recipientsLabel: recipientNames.isEmpty ? "No recipients" : "To " + recipientNames.joined(separator: ", ")
+                recipientsLabel: recipientNames.isEmpty ? "No players selected" : "To " + recipientNames.joined(separator: ", ")
             ),
             participantStatuses: participantStatuses,
             responderActions: responderActions,

@@ -40,7 +40,9 @@ struct GameTutorialPreviewView: View {
                 }
 
             if showsCoachMarks {
-                if usesAccessibleCalloutList {
+                if step.id == .strategy {
+                    GameTutorialStrategyCardView()
+                } else if usesAccessibleCalloutList {
                     accessibleCoachMarks
                 }
             }
@@ -140,8 +142,7 @@ struct GameTutorialPreviewView: View {
              .useHand,
              .buildCosts,
              .endTurn,
-             .strategy,
-             .victoryAwards: .idle
+             .strategy: .idle
         }
     }
 
@@ -177,8 +178,6 @@ struct GameTutorialPreviewView: View {
             .devCards
         case .endTurn:
             .endTurnConfirmation
-        case .victoryAwards:
-            .gameInfo
         case .setupSettlement,
              .setupRoad,
              .rollDice,
@@ -193,12 +192,7 @@ struct GameTutorialPreviewView: View {
     }
 
     private var minimumActionSurfaceHeight: CGFloat? {
-        switch step.id {
-        case .victoryAwards:
-            224
-        default:
-            nil
-        }
+        nil
     }
 
     private var tutorialTradeTarget: GameTutorialTarget? {

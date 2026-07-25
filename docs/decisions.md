@@ -100,6 +100,7 @@ Recommended canonical state cadence per turn:
 - Fresh current-player gameplay actions publish updated canonical `STATE` on that same canonical game session.
 - Fresh forced-discard and targeted trade-response publishes also stay on that same canonical game session so the game transcript remains one thread.
 - If the shell can recover canonical `STATE` for a game, it should prefer recovered game state over any raw responder artifact or stale transcript selection.
+- Rich transcript previews reuse production components: canonical lobby states render the current four-seat table, setup states render the board without number tokens, and post-setup states render the current board. These images are presentation-only and fail soft to the unchanged caption and summary.
 
 Current transition rule:
 - Preferred transport source is always message URL query `payload`.

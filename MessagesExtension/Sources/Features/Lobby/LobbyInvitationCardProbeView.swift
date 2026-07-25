@@ -24,7 +24,7 @@ struct LobbyInvitationCardProbeView: View {
                                 .overlay(GameTheme.outline.opacity(0.32))
                                 .padding(.top, GameTheme.blockSpacing)
 
-                            Text("Invite Your Table")
+                            Text("Start an Unlucky Sevens Game")
                                 .font(GameTheme.displayFont)
                                 .foregroundStyle(GameTheme.ink)
                                 .padding(.top, GameTheme.blockSpacing)

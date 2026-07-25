@@ -1,5 +1,6 @@
 import CoreGraphics
 import SpriteKit
+import UIKit
 import ULS_CoreGame
 import XCTest
 @testable import MessagesExtension
@@ -78,6 +79,57 @@ final class GameBoardSceneTests: XCTestCase {
         for label in labels {
             XCTAssertNotNil(label.attributedText)
             XCTAssertEqual(label.frame.midX, 0, accuracy: 0.01, "Expected \(label.text ?? "number") to be optically centered.")
+        }
+    }
+
+    @MainActor
+    func testRobberScalesAndCentersAcrossBoardReferenceSizes() throws {
+        let renderModel = makeRenderModel()
+        let referenceSizes = [
+            CGSize(width: 240, height: 180),
+            CGSize(width: 360, height: 260),
+            CGSize(width: 768, height: 600),
+        ]
+
+        for referenceSize in referenceSizes {
+            let scene = GameBoardScene(size: referenceSize)
+            scene.update(
+                renderModel: renderModel,
+                referenceSize: referenceSize,
+                viewportSize: referenceSize,
+                overlayModel: .empty
+            )
+
+            let robber = try XCTUnwrap(
+                descendants(of: scene).first(where: { $0.name == "robber" })
+            )
+            let artwork = try XCTUnwrap(
+                robber.children.first(where: { $0.name == "robber.artwork" })
+            )
+            let pieceBounds = artwork.children
+                .filter { ["robber.base", "robber.body", "robber.head"].contains($0.name) }
+                .map(\.frame)
+                .reduce(CGRect.null) { $0.union($1) }
+            let layout = GameBoardLayout(size: referenceSize, geometry: renderModel.geometry)
+
+            XCTAssertEqual(robber.position.x, 0, accuracy: 0.001)
+            XCTAssertEqual(robber.position.y, 0, accuracy: 0.001)
+            XCTAssertEqual(pieceBounds.midX, 0, accuracy: 0.01)
+            XCTAssertEqual(pieceBounds.midY, 0, accuracy: 0.01)
+            XCTAssertEqual(
+                pieceBounds.height,
+                GameBoardScene.robberHeight(forTileRadius: layout.tileRadius),
+                accuracy: 0.01
+            )
+
+            let view = SKView(frame: CGRect(origin: .zero, size: referenceSize))
+            view.presentScene(scene)
+            let texture = try XCTUnwrap(view.texture(from: scene))
+            let image = UIImage(cgImage: texture.cgImage())
+            let attachment = XCTAttachment(image: image)
+            attachment.name = "Robber centered \(Int(referenceSize.width))x\(Int(referenceSize.height))"
+            attachment.lifetime = .keepAlways
+            add(attachment)
         }
     }
 

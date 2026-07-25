@@ -69,7 +69,7 @@ struct GamePhysicalTradeSurfaceView: View {
             )
 
             tradeChoice(
-                title: "Maritime / Bank",
+                title: "Bank or Port",
                 assetName: "merchant_ship_colored",
                 isDisabled: panelModel.maritimeOptions.isEmpty,
                 action: onChooseMaritimeTrade
@@ -482,7 +482,7 @@ struct GamePhysicalTradeSurfaceView: View {
     private var maritime: some View {
         VStack(spacing: 10) {
             ZStack {
-                Text("Maritime Trade")
+                        Text("Bank or Port Trade")
                     .font(.headline)
                     .foregroundStyle(GamePhysicalTurnPalette.primaryText)
 
@@ -509,7 +509,7 @@ struct GamePhysicalTradeSurfaceView: View {
             }
 
             if panelModel.maritimeOptions.isEmpty {
-                Text("No legal bank or port trades")
+                Text("No Bank or Port trades available")
                     .font(.body)
                     .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
                     .frame(maxWidth: .infinity, minHeight: 88)

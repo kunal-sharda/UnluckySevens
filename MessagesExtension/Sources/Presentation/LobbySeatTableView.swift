@@ -20,7 +20,7 @@ struct LobbySeatTableView: View {
                         .font(GameTheme.headingFont.monospacedDigit())
                         .foregroundStyle(LobbyPalette.cream)
 
-                    Text("Standard board · Async turns")
+                    Text("Standard board")
                         .font(GameTheme.metaFont)
                         .foregroundStyle(LobbyPalette.mutedCream)
                         .lineLimit(1)
@@ -81,9 +81,10 @@ struct LobbySeatTableView: View {
 
     private var tableCountLabel: String {
         if model.showsInviteEntryHero {
-            return "Open table"
+            return "1 player at the table"
         }
-        return "\(model.participants.count) joined"
+        let count = model.participants.count
+        return count == 1 ? "1 player at the table" : "\(count) players at the table"
     }
 
     private var slots: [Seat] {

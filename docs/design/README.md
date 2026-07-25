@@ -4,6 +4,7 @@
 
 - `references/manifest.json` lists the small set of explicitly user-approved durable binary references. It is currently empty.
 - [cleanup-receipt.md](cleanup-receipt.md) records the one-time numbered-pass cleanup, reduction, and production-asset hash proof.
+- [app-language-audit.md](app-language-audit.md) records the approved and implemented tutorial and app-wide player-language contract. Durable visual and verbal direction is summarized in `DESIGN.md`; the audit remains supporting evidence.
 - `workbench/` is ignored local scratch for candidates and comparison work. A checkpointed active ExecPlan must explicitly own it while a decision is pending; the harness reports owned files as an in-flight notice. Empty it when the decision closes so unowned residue fails the audit.
 
 Keep outcomes and decisions, not numbered iteration history.

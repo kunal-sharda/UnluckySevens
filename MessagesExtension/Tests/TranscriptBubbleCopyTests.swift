@@ -9,11 +9,15 @@ final class TranscriptBubbleCopyTests: XCTestCase {
         let copy = TranscriptBubbleCopyBuilder.lobbyJoin(to: state, joiningPlayer: "guest")
 
         XCTAssertEqual(copy.caption, "Unlucky Sevens: Kunal Joined")
-        XCTAssertEqual(copy.summary, "2 players are now in the lobby.")
-        XCTAssertEqual(copy.visual, .none)
+        XCTAssertEqual(copy.summary, "2 players at the table.")
+        guard case let .lobby(model) = copy.visual else {
+            return XCTFail("Expected the updated lobby table visual.")
+        }
+        XCTAssertEqual(model.participants.count, 2)
+        XCTAssertEqual(model.participants.last?.displayName, "Kunal")
     }
 
-    func testLobbyVisualsKeepOnlyInitialInviteGraphic() {
+    func testLobbyVisualsTrackCurrentRosterAndNames() {
         let state = makeLobbyState(roster: ["host", "guest"], customNames: ["guest": "Kunal"])
 
         let inviteCopy = TranscriptBubbleCopyBuilder.invite(for: state)
@@ -24,22 +28,27 @@ final class TranscriptBubbleCopyTests: XCTestCase {
             previousDisplayName: "Kunal"
         )
 
-        XCTAssertEqual(inviteCopy.visual, .lobbyInvite)
-        XCTAssertEqual(renameCopy.visual, .none)
+        guard case let .lobby(inviteModel) = inviteCopy.visual else {
+            return XCTFail("Expected an invite lobby table visual.")
+        }
+        guard case let .lobby(renameModel) = renameCopy.visual else {
+            return XCTFail("Expected a renamed lobby table visual.")
+        }
+        XCTAssertEqual(inviteModel.participants.count, 2)
+        XCTAssertEqual(renameModel.participants.last?.displayName, "Kunal")
     }
 
-    func testStartGameUsesActionVisual() throws {
+    func testStartGameUsesNumberlessBoardVisual() throws {
         let fromState = makeLobbyState(roster: ["A", "B"], customNames: [:])
         let toState = makeSetupState()
 
         let copy = TranscriptBubbleCopyBuilder.startGame(from: fromState, to: toState)
 
-        let visual = try XCTUnwrap(actionVisual(from: copy))
-        XCTAssertEqual(visual.title, "Game Started")
-        XCTAssertEqual(visual.kind, .gameStarted)
+        let visual = try XCTUnwrap(boardVisual(from: copy))
+        XCTAssertFalse(visual.showsNumberTokens)
     }
 
-    func testSetupIntentUsesActionVisual() throws {
+    func testSetupIntentUsesNumberlessBoardVisual() throws {
         let state = makeSetupState()
 
         let copy = TranscriptBubbleCopyBuilder.setupIntent(
@@ -48,9 +57,8 @@ final class TranscriptBubbleCopyTests: XCTestCase {
             actor: "A"
         )
 
-        let visual = try XCTUnwrap(actionVisual(from: copy))
-        XCTAssertEqual(visual.title, "Settlement Placed")
-        XCTAssertEqual(visual.kind, .setupSettlement)
+        let visual = try XCTUnwrap(boardVisual(from: copy))
+        XCTAssertFalse(visual.showsNumberTokens)
     }
 
     func testTurnEndUsesNextPlayerSummary() {
@@ -61,10 +69,10 @@ final class TranscriptBubbleCopyTests: XCTestCase {
 
         XCTAssertEqual(copy.caption, "Unlucky Sevens: Turn Ended")
         XCTAssertEqual(copy.summary, "Next turn: Kunal.")
-        XCTAssertEqual(actionVisual(from: copy)?.kind, .endTurn)
+        XCTAssertEqual(boardVisual(from: copy)?.showsNumberTokens, true)
     }
 
-    func testGameOverUsesActionVisual() throws {
+    func testGameOverUsesFinalScoreVisual() {
         let state = makeTurnState(
             currentPlayer: "A",
             customNames: ["A": "Avery"],
@@ -76,10 +84,64 @@ final class TranscriptBubbleCopyTests: XCTestCase {
 
         let copy = TranscriptBubbleCopyBuilder.turnIntent(.endTurn, actor: "A", resultingState: state)
 
-        let visual = try XCTUnwrap(actionVisual(from: copy))
         XCTAssertEqual(copy.caption, "Unlucky Sevens: Avery Wins")
-        XCTAssertEqual(visual.title, "Avery Wins")
-        XCTAssertEqual(visual.kind, .gameOver)
+        guard case let .gameOver(visual) = copy.visual else {
+            return XCTFail("Expected the final board and score visual.")
+        }
+        XCTAssertEqual(visual.winnerTitle, "Avery won")
+        XCTAssertTrue(visual.scoreLine.contains("Avery"))
+    }
+
+    func testLiveTradeToAllPlayersUsesSharedReceipt() {
+        let state = makeTradeState(recipients: ["B", "C"])
+
+        let copy = TranscriptBubbleCopyBuilder.turnIntent(
+            .proposeTrade(
+                give: ResourceHandV1(wheat: 2),
+                receive: ResourceHandV1(ore: 1),
+                recipients: ["B", "C"]
+            ),
+            actor: "A",
+            resultingState: state
+        )
+
+        guard case let .trade(visual) = copy.visual else {
+            return XCTFail("Expected the shared live-trade receipt.")
+        }
+        XCTAssertEqual(visual.offer.proposerDisplay, "Avery")
+        XCTAssertEqual(visual.recipientScopeLabel, "To everyone")
+    }
+
+    func testPartialTradeDeclineKeepsSharedReceipt() {
+        let state = makeTradeState(recipients: ["B", "C"])
+
+        let copy = TranscriptBubbleCopyBuilder.turnIntent(
+            .declineTrade(decliningPlayer: "B", offerHash: "offer"),
+            actor: "B",
+            resultingState: state
+        )
+
+        guard case .trade = copy.visual else {
+            return XCTFail("Expected the live receipt while another recipient can respond.")
+        }
+    }
+
+    func testResolvedTradeReturnsToBoard() {
+        let state = makeTurnState(currentPlayer: "A", customNames: ["A": "Avery"])
+
+        let accepted = TranscriptBubbleCopyBuilder.turnIntent(
+            .acceptTrade(acceptingPlayer: "B", offerHash: "offer"),
+            actor: "B",
+            resultingState: state
+        )
+        let finalDecline = TranscriptBubbleCopyBuilder.turnIntent(
+            .declineTrade(decliningPlayer: "B", offerHash: "offer"),
+            actor: "B",
+            resultingState: state
+        )
+
+        XCTAssertNotNil(boardVisual(from: accepted))
+        XCTAssertNotNil(boardVisual(from: finalDecline))
     }
 
     private func makeLobbyState(
@@ -160,8 +222,45 @@ final class TranscriptBubbleCopyTests: XCTestCase {
         ).rehashed()
     }
 
-    private func actionVisual(from copy: TranscriptBubbleCopy) -> TranscriptActionBubbleVisual? {
-        guard case let .action(visual) = copy.visual else {
+    private func makeTradeState(recipients: [String]) -> CoreGameStateV1 {
+        let roster = ["A", "B", "C"]
+        let base = CoreGameStateV1(
+            gameId: "bubble-copy-trade",
+            rev: 4,
+            prevHash: "prev",
+            stateHash: "",
+            roster: roster,
+            currentPlayer: "A",
+            playerDisplayNamesByPlayer: [
+                "A": "Avery",
+                "B": "Maya",
+                "C": "Theo",
+            ],
+            phase: .turn,
+            seed: 1,
+            diceRngState: 2,
+            robberRngState: 3,
+            resourcesByPlayer: Dictionary(uniqueKeysWithValues: roster.map { ($0, .zero) }),
+            activeTradeOffer: TradeOfferV1(
+                offerHash: "offer",
+                proposer: "A",
+                give: ResourceHandV1(wheat: 2),
+                receive: ResourceHandV1(ore: 1),
+                recipients: recipients,
+                createdRev: 4
+            ),
+            boardRules: BoardRulesV1(strategy: .randomV1),
+            board: StandardBoardGeneratorV1.generate(
+                boardSeed: SeedDeriver(masterSeed: 1).seed(for: .board),
+                rules: BoardRulesV1(strategy: .randomV1)
+            ),
+            turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 4, d2: 2))
+        )
+        return base.rehashed()
+    }
+
+    private func boardVisual(from copy: TranscriptBubbleCopy) -> TranscriptBoardVisual? {
+        guard case let .board(visual) = copy.visual else {
             return nil
         }
         return visual

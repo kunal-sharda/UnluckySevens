@@ -90,9 +90,11 @@ struct ActiveGamesOverlayView: View {
                 .font(GameTheme.chipFont)
                 .foregroundStyle(GameTheme.mutedInk)
 
-            Text(game.detail)
-                .font(.caption2)
-                .foregroundStyle(GameTheme.mutedInk)
+            if !game.detail.isEmpty {
+                Text(game.detail)
+                    .font(.caption2)
+                    .foregroundStyle(GameTheme.mutedInk)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
