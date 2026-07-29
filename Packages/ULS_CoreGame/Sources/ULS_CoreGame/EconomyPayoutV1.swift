@@ -54,7 +54,8 @@ internal func applyProductionPayout(
     settlementsByNode: [NodeID: String],
     citiesByNode: [NodeID: String],
     resourcesByPlayer: [String: ResourceHandV1],
-    bankResources: ResourceHandV1
+    bankResources: ResourceHandV1,
+    eligiblePlayers: Set<String>? = nil
 ) -> EconomyUpdateV1 {
     guard rollTotal != 7, let board else {
         return EconomyUpdateV1(resourcesByPlayer: resourcesByPlayer, bankResources: bankResources)
@@ -77,13 +78,19 @@ internal func applyProductionPayout(
         }
 
         for node in economyTopology.tiles[tileID].nodes {
-            if let owner = citiesByNode[node], resourcesByPlayer[owner] != nil {
+            if let owner = citiesByNode[node],
+               resourcesByPlayer[owner] != nil,
+               eligiblePlayers?.contains(owner) != false
+            {
                 let current = owedByPlayer[owner] ?? .zero
                 owedByPlayer[owner] = current.adding(2, for: resource)
                 continue
             }
 
-            if let owner = settlementsByNode[node], resourcesByPlayer[owner] != nil {
+            if let owner = settlementsByNode[node],
+               resourcesByPlayer[owner] != nil,
+               eligiblePlayers?.contains(owner) != false
+            {
                 let current = owedByPlayer[owner] ?? .zero
                 owedByPlayer[owner] = current.addingOne(for: resource)
             }

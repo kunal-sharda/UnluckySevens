@@ -8,13 +8,15 @@ final class ActiveGameRecoveryModelBuilderTests: XCTestCase {
 
         let summary = ActiveGameRecoveryModelBuilder.build(
             from: state,
+            updatedAt: 1_700_000_000,
             isLastActive: true,
             isCurrentSelection: false
         )
 
-        XCTAssertTrue(summary.title.contains("turn"))
-        XCTAssertEqual(summary.subtitle, "3 players")
-        XCTAssertEqual(summary.detail, "")
+        XCTAssertTrue(summary.title.contains("&"))
+        XCTAssertTrue(summary.subtitle.contains("turn"))
+        XCTAssertTrue(summary.detail.contains("Updated"))
+        XCTAssertFalse(summary.isFinished)
         XCTAssertTrue(summary.isLastActive)
         XCTAssertFalse(summary.isCurrentSelection)
     }
@@ -24,11 +26,13 @@ final class ActiveGameRecoveryModelBuilderTests: XCTestCase {
 
         let summary = ActiveGameRecoveryModelBuilder.build(
             from: state,
+            updatedAt: 1_700_000_000,
             isLastActive: false,
             isCurrentSelection: true
         )
 
-        XCTAssertTrue(summary.title.contains("won"))
+        XCTAssertTrue(summary.subtitle.contains("won"))
+        XCTAssertTrue(summary.isFinished)
         XCTAssertTrue(summary.isCurrentSelection)
     }
 

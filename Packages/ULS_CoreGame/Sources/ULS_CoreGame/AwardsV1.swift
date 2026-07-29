@@ -11,16 +11,20 @@ internal struct AwardStateV1: Equatable {
 
 internal func recomputeAwards(from previous: CoreGameStateV1, for state: CoreGameStateV1) -> AwardStateV1 {
     let largestArmy = resolveLargestArmy(
-        roster: state.roster,
+        roster: state.activePlayers,
         knightsPlayedByPlayer: state.knightsPlayedByPlayer,
-        previousOwner: previous.largestArmyOwner
+        previousOwner: state.isActivePlayer(previous.largestArmyOwner ?? "")
+            ? previous.largestArmyOwner
+            : nil
     )
     let longestRoad = resolveLongestRoad(
-        roster: state.roster,
+        roster: state.activePlayers,
         roadsByEdge: state.roadsByEdge,
         settlementsByNode: state.settlementsByNode,
         citiesByNode: state.citiesByNode,
-        previousOwner: previous.longestRoadOwner
+        previousOwner: state.isActivePlayer(previous.longestRoadOwner ?? "")
+            ? previous.longestRoadOwner
+            : nil
     )
     return AwardStateV1(
         largestArmyOwner: largestArmy.owner,

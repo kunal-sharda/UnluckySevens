@@ -66,7 +66,7 @@ enum ActionAuthoringStateResolver {
                 return lhs.state.rev < rhs.state.rev
             }
             if lhs.state.stateHash != rhs.state.stateHash {
-                return lhs.source.priority < rhs.source.priority
+                return lhs.state.stateHash < rhs.state.stateHash
             }
             return lhs.source.priority < rhs.source.priority
         }

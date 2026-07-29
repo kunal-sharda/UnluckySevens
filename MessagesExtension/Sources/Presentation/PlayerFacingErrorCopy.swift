@@ -37,6 +37,21 @@ enum PlayerFacingErrorCopy {
         if message.contains("start failed") || message.contains("initialize setup") {
             return "Couldn't start the game. Reopen the latest invite and try again."
         }
+        if message.contains("missing message payload") {
+            return "This message doesn't contain a game. Ask the sender to resend the latest game state."
+        }
+        if message.contains("unsupported transport") {
+            return "This game message uses an unsupported version. Update Unlucky Sevens, then ask the sender to resend it."
+        }
+        if message.contains("invalid canonical state hash") {
+            return "This game message failed its integrity check. Ask the sender to resend the latest state."
+        }
+        if message.contains("corrupt local recovery") {
+            return "The saved copy on this device is damaged. Open a valid game bubble or ask a player to resend it."
+        }
+        if message.contains("malformed game payload") {
+            return "This game message is damaged. Ask the sender to resend the latest state."
+        }
         if message.contains("publish failed") || message.contains("publication failed") {
             return "Couldn't send the game update. Check your connection and try again."
         }

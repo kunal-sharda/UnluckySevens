@@ -4,6 +4,9 @@ import ProjectDescription
 let localSigningXcconfigPath = "Config/LocalSigning.xcconfig"
 let appIconSettings: SettingsDictionary = [
     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+    // A standalone Messages container has no executable entry point for
+    // Xcode's debug-dylib trampoline.
+    "ENABLE_DEBUG_DYLIB": "NO",
 ]
 let messagesExtensionIconSettings: SettingsDictionary = [
     "ASSETCATALOG_COMPILER_APPICON_NAME": "iMessage App Icon",

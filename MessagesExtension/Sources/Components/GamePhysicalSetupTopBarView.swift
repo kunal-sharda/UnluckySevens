@@ -3,10 +3,17 @@ import SwiftUI
 struct GamePhysicalSetupTopBarView: View {
     let model: GameSetupPlacementModel
     let onSettingsTap: () -> Void
+    let onGamesTap: () -> Void
     let onGameInfoTap: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
+            Button("Games", systemImage: "square.stack.3d.up.fill", action: onGamesTap)
+                .labelStyle(.iconOnly)
+                .font(.system(size: 20, weight: .semibold))
+                .frame(width: 44, height: 44)
+                .accessibilityIdentifier("uls.game.games")
+
             Button("Settings", systemImage: "gearshape.fill", action: onSettingsTap)
                 .labelStyle(.iconOnly)
                 .font(.system(size: 20, weight: .semibold))

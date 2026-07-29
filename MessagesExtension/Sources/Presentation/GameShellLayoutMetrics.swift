@@ -58,6 +58,8 @@ struct GamePhysicalTurnLayout: Equatable {
     static let publicObjectGap: CGFloat = 28
     static let publicLabelGap: CGFloat = 8
     static let publicBankCardGap: CGFloat = 2
+    static let endOutcomeColumnMaxWidth: CGFloat = 150
+    static let accessibilityEndTopBarHeight: CGFloat = 88
 
     // The authored port ring sits just above the SpriteKit host's geometric
     // midpoint. This renderer-owned ratio remains stable as the host scales.
@@ -128,6 +130,16 @@ struct GameShellLayoutMetrics: Equatable {
     static let minimumUtilityShelfScrollHeight: CGFloat = 150
     static let phoneNormalTurnActionWellHeight: CGFloat = 184
     static let padNormalTurnActionWellHeight: CGFloat = 220
+
+    static func endResultRailHeight(
+        availableHeight: CGFloat,
+        isAccessibilitySize: Bool
+    ) -> CGFloat {
+        if isAccessibilitySize {
+            return min(max(availableHeight * 0.30, 220), 280)
+        }
+        return min(max(availableHeight * 0.175, 140), 148)
+    }
 
     private static let phoneHeaderRatio: CGFloat = 0.083
     private static let padHeaderRatio: CGFloat = 0.090

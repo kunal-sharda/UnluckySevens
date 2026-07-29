@@ -15,11 +15,28 @@ struct LobbySetupCardProbeView: View {
                         Divider().overlay(GameTheme.outline.opacity(0.24))
                         LobbyInviteProgressRail()
                         Divider().overlay(GameTheme.outline.opacity(0.24))
-                        LobbyInviteNameField(displayName: $displayNameDraft)
+                        LobbyInviteNameField(
+                            editor: LobbyNameEditorModel(
+                                title: "Display Name",
+                                placeholder: "Name",
+                                helperText: "",
+                                saveButton: nil
+                            ),
+                            displayName: $displayNameDraft,
+                            canSaveDisplayName: false,
+                            saveDisplayName: {}
+                        )
                     }
                 }
 
-                LobbyInvitePrimaryButton(invite: invite)
+                LobbyInvitePrimaryButton(
+                    model: LobbyActionButtonModel(
+                        title: "Send Invite",
+                        systemImage: "plus.message.fill",
+                        isEnabled: true
+                    ),
+                    action: invite
+                )
 
                 Text("Friends join from the invite bubble. You begin setup when the table is ready.")
                     .font(GameTheme.metaFont)

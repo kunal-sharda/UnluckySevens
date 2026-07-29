@@ -36,6 +36,9 @@ enum TranscriptStateSelection {
         _ state: CoreGameStateV1,
         in latestKnownStatesByGameId: [String: CoreGameStateV1]
     ) -> [String: CoreGameStateV1] {
+        guard (try? validateCanonicalSnapshot(state)) != nil else {
+            return latestKnownStatesByGameId
+        }
         var updatedStates = latestKnownStatesByGameId
 
         guard let existing = updatedStates[state.gameId] else {
@@ -43,7 +46,7 @@ enum TranscriptStateSelection {
             return updatedStates
         }
 
-        if state.rev > existing.rev || (state.rev == existing.rev && state.stateHash != existing.stateHash) {
+        if state.rev > existing.rev || (state.rev == existing.rev && state.stateHash > existing.stateHash) {
             updatedStates[state.gameId] = state
         }
 

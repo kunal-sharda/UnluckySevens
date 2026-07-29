@@ -55,6 +55,65 @@ final class TranscriptStateSelectionTests: XCTestCase {
         XCTAssertEqual(recorded["state-selection"]?.rev, 3)
     }
 
+    func testRecordingEqualRevisionChoosesLexicographicallyGreatestValidHash() {
+        let first = makeTurnState(rev: 2)
+        let sibling = CoreGameStateV1(
+            gameId: first.gameId,
+            rev: first.rev,
+            prevHash: first.prevHash,
+            stateHash: "",
+            roster: first.roster,
+            currentPlayer: first.currentPlayer,
+            playerDisplayNamesByPlayer: ["host-player": "Avery"],
+            phase: first.phase,
+            seed: first.seed,
+            diceRngState: first.diceRngState,
+            robberRngState: first.robberRngState,
+            resourcesByPlayer: first.resourcesByPlayer,
+            bankResources: first.bankResources,
+            turnState: first.turnState
+        ).rehashed()
+
+        let firstThenSibling = TranscriptStateSelection.recording(
+            sibling,
+            in: [first.gameId: first]
+        )
+        let siblingThenFirst = TranscriptStateSelection.recording(
+            first,
+            in: [sibling.gameId: sibling]
+        )
+
+        let expectedHash = max(first.stateHash, sibling.stateHash)
+        XCTAssertEqual(firstThenSibling[first.gameId]?.stateHash, expectedHash)
+        XCTAssertEqual(siblingThenFirst[first.gameId]?.stateHash, expectedHash)
+    }
+
+    func testRecordingRejectsInvalidCanonicalHash() {
+        let valid = makeTurnState(rev: 2)
+        let invalid = CoreGameStateV1(
+            gameId: valid.gameId,
+            rev: 3,
+            prevHash: valid.stateHash,
+            stateHash: "tampered",
+            roster: valid.roster,
+            currentPlayer: valid.currentPlayer,
+            phase: valid.phase,
+            seed: valid.seed,
+            diceRngState: valid.diceRngState,
+            robberRngState: valid.robberRngState,
+            resourcesByPlayer: valid.resourcesByPlayer,
+            bankResources: valid.bankResources,
+            turnState: valid.turnState
+        )
+
+        let recorded = TranscriptStateSelection.recording(
+            invalid,
+            in: [valid.gameId: valid]
+        )
+
+        XCTAssertEqual(recorded[valid.gameId], valid)
+    }
+
     private func makeTurnState(rev: Int) -> CoreGameStateV1 {
         CoreGameStateV1(
             gameId: "state-selection",

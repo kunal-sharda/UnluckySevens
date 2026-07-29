@@ -65,7 +65,7 @@ Additional requirements:
 
 ### Presentation Direction
 
-The first-invite surface is a contained tabletop invitation card, not a generic form or a miniature gameplay table. It uses compact identity, four player slots, a name field, read-only game settings, Tutorial, and one Send Invite action. Joined and host-ready states remain roster-led with one obvious next action.
+The first-invite surface is a full-canvas cocktail-table invitation rather than a generic form. A real numberless board sits inside the physical table, four attached stations communicate the roster, and compact identity, read-only game settings, Tutorial, Games, and one primary action complete the surface. Invite, Join, Ready, and waiting states share this composition and keep one obvious next action.
 
 ## Initial Setup
 
@@ -346,9 +346,13 @@ The upper amber column points to the canonical map above; `—` means that state
 | Player trade | `Choose How to Trade`, `Make an Offer`, `Waiting for Replies`, `Review the Offer` | `Trade Offered`, `Counteroffer Sent`, `Trade Accepted`, `Trade Declined` | Shared public trade receipt while live; otherwise board |
 | Bank or Port trade | `Trade with Bank or Port` | `Bank or Port Trade` | Numbered board |
 | Development Cards | `Choose a Dev Card` and card-specific choices | `Dev Card Bought` and card-specific played/revealed receipts | Numbered board with committed public change |
-| Game over | — | `<player> Wins` | Final board plus score summary |
+| Game over by victory | — | `<player> Wins` | Final board plus score summary |
+| Player resignation | `Resign from this game?` | `<player> Resigned` | Continuing numbered or setup board |
+| Draw proposal and vote | Draw actions in Games | `Draw Proposed`, `Draw Vote`, `Draw Declined`, `Draw Agreed` | Continuing board, or final board after unanimous agreement |
+| Host end | `End this game?` with draw-first soft guard | `Game Ended` | Final board plus neutral score summary |
+| Recovery republication | — | `Game Restored` | Unchanged phase-appropriate canonical preview |
 
-The current publishing inventory contains 28 semantic outcomes: three lobby publications, five setup outcomes, nineteen turn intents, and one game-over override. `Dice Rolled` is a fail-soft title, not a separate event.
+The publishing inventory includes lobby, setup, turn, victory, resignation, draw, host-end, and unchanged recovery outcomes. `Dice Rolled` is a fail-soft title, not a separate event.
 
 Additional requirements:
 
@@ -362,8 +366,25 @@ Additional requirements:
 ### Recovery
 
 - The app tracks the latest locally recoverable state per game.
-- When recovery data exists, a compact Game/Games affordance can reopen the latest known state without requiring the player to find the newest transcript bubble.
+- A dedicated Games destination is available from the fresh invitation/loading card and the current-game top bar; it never overlays or blocks an in-progress board.
+- Games separates Active and Finished records and identifies them by player names, phase/result, and update time.
+- The local list may include games retained from other Unlucky Sevens conversations. Publish actions enable only when the saved roster is compatible with the currently open Messages conversation; Messages does not expose a durable identifier that can distinguish two chats with the same participant set.
+- Joined players can Open, Resend Latest State, Archive locally, Resign, propose or vote on a draw, and—if they are the original host—End an Active game. Finished games remain openable, resendable, and locally archivable.
+- Resend publishes the unchanged validated state with the same revision and hash under a `Game Restored` receipt.
+- Active games remain until local archive; the device keeps only the eight most recently updated Finished games.
 - Selecting an older bubble resolves to the latest known revision for that game and communicates that redirection.
+- Equal-revision valid siblings resolve to the lexicographically greatest state hash so selection is order-independent.
+- Missing, malformed, unsupported, integrity-failed, and corrupt-local recovery states receive distinct guidance.
+
+### Resignation and terminal states
+
+- Ordinary victory ends at 10 or more canonical VP and rejects later gameplay actions.
+- Any active joined player can resign during setup or turn after destructive confirmation, provided at least one active player remains.
+- Resignation is non-terminal. The player stays in roster/history; their pieces remain inert blockers, their hand returns to the bank, development cards retire, and all active rules skip them. Existing players continue from the next legal setup slot or turn.
+- Any active player can propose a draw. The proposer automatically approves; every remaining active player must approve. Rejection clears the proposal and play continues, with no timeout.
+- The original inviter remains host even after resigning and can end unilaterally. If no draw has been attempted, the host decision leads with `Propose Draw` while retaining `End Game Anyway`.
+- Agreed draw and host end are neutral terminal results: no winner is declared, while final scores, recap, and board remain inspectable. Victory continues to present the winner.
+- `New Game` returns to the fresh invitation entry without sending, rematching, or archiving the completed game.
 
 ### Host Adaptation
 

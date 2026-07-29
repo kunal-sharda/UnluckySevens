@@ -3,13 +3,13 @@
 This file records **locked product + architecture decisions** for the MVP.  
 If a change is desired, update this file **first**, then update code/tests.
 
-**Last updated:** 2026-07-11
+**Last updated:** 2026-07-29
 
 ---
 
 ## 1) Product scope and packaging
 
-- MVP is **full standard Catan** (base game) inside iMessage: setup → normal turns → win at 10 VP.
+- MVP is **full standard Catan** (base game) inside iMessage: setup → normal turns → win at 10 VP, with non-terminal player resignation, unanimous draws, and a host-only neutral end.
 - No custom “twists” or house rules in MVP (twists come later).
 - Platform: iOS + iPadOS (Messages).
 - Product distribution target: **standalone iMessage app**.
@@ -23,6 +23,7 @@ If a change is desired, update this file **first**, then update code/tests.
 - **No backend** for MVP. The iMessage thread is the “storage.”
 - If the message thread is deleted, the game is effectively lost (acceptable for MVP).
 - **Fixed roster** at game start: host invites → players join → host starts → roster locks.
+- The device-local recovery ledger keeps active games until local archive and keeps the eight most recent finished games. Local archive never mutates canonical game state; a later valid bubble can restore the record.
 
 ---
 
@@ -39,6 +40,9 @@ If a change is desired, update this file **first**, then update code/tests.
   - can view the game and their own hand
   - may publish canonical `STATE` directly for rules-defined responder actions that do not advance turn ownership
   - forced discard and targeted trade responses validate as the **responding player's** action while `currentPlayer` stays on the turn owner
+- Resignation does not end the game. A resigned player remains in canonical history, their pieces remain inert blockers, their hand returns to the bank, their development cards retire, and setup/turn/production/trade/vote/award/win logic excludes them.
+- Any active player may propose a draw and automatically approves it. Every remaining active player must approve; one rejection clears the vote and play continues. There is no timeout.
+- The original inviter remains host authority even after resigning and may end the game unilaterally. The host UI offers a draw first when none has been attempted, but retains `End Game Anyway`. An agreed draw or host end declares no winner; ordinary 10+ VP victory remains unchanged.
 - Pre-TestFlight legacy join/setup/current-player transcript intents are intentionally unsupported in the app runtime. The compatibility boundary starts with TestFlight builds, not earlier dev-era transcripts.
 
 ---
@@ -100,6 +104,8 @@ Recommended canonical state cadence per turn:
 - Fresh current-player gameplay actions publish updated canonical `STATE` on that same canonical game session.
 - Fresh forced-discard and targeted trade-response publishes also stay on that same canonical game session so the game transcript remains one thread.
 - If the shell can recover canonical `STATE` for a game, it should prefer recovered game state over any raw responder artifact or stale transcript selection.
+- A joined player may resend an unchanged validated snapshot under a `Game Restored` receipt. Resend preserves revision and hash and does not advance play.
+- Recovery publication reuses a selected same-game or cached in-memory session when possible. If no live session survives, it creates a fresh recovery bubble; persisted `MSSession` archival remains disallowed until proven by a two-device replacement experiment.
 - Rich transcript previews reuse production components: canonical lobby states render the current four-seat table, setup states render the board without number tokens, and post-setup states render the current board. These images are presentation-only and fail soft to the unchanged caption and summary.
 
 Current transition rule:

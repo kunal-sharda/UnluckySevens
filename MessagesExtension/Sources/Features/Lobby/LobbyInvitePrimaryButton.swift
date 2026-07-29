@@ -1,10 +1,11 @@
 import SwiftUI
 
 struct LobbyInvitePrimaryButton: View {
-    let invite: () -> Void
+    let model: LobbyActionButtonModel
+    let action: () -> Void
 
     var body: some View {
-        Button("Send Invite", systemImage: "paperplane.fill", action: invite)
+        Button(model.title, systemImage: model.systemImage, action: action)
             .font(GameTheme.headingFont)
             .foregroundStyle(GamePhysicalTurnPalette.primaryText)
             .frame(maxWidth: .infinity, minHeight: 52)
@@ -17,7 +18,8 @@ struct LobbyInvitePrimaryButton: View {
                     .stroke(GamePhysicalTurnPalette.selectedKeyline, lineWidth: 1.5)
             }
             .buttonStyle(.plain)
-            .accessibilityHint("Sends a new game invitation to this Messages conversation")
-            .accessibilityIdentifier("uls.lobby.action.Send Invite")
+            .disabled(!model.isEnabled)
+            .opacity(model.isEnabled ? 1 : 0.5)
+            .accessibilityIdentifier("uls.lobby.action.\(model.title)")
     }
 }

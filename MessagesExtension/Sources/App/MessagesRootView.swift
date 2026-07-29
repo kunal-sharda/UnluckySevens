@@ -26,23 +26,20 @@ struct MessagesRootView: View {
                 LobbyShellView(
                     viewModel: viewModel,
                     onSettingsTap: showSettings,
-                    onTutorialTap: showTutorial
+                    onTutorialTap: showTutorial,
+                    onGamesTap: showGames
                 )
             case .game:
                 GameShellView(
                     viewModel: viewModel,
                     onSettingsTap: showGameplaySettings,
+                    onGamesTap: showGames,
                     preferences: appPreferences
                 )
             }
         }
-        .allowsHitTesting(utilityRoute != .tutorial)
-        .accessibilityHidden(utilityRoute == .tutorial)
-        .overlay(alignment: .topLeading) {
-            if utilityRoute != .tutorial {
-                ActiveGamesOverlayView(viewModel: viewModel)
-            }
-        }
+        .allowsHitTesting(utilityRoute == nil)
+        .accessibilityHidden(utilityRoute != nil)
         .overlay {
             if utilityRoute == .settings {
                 AppSettingsView(
@@ -64,10 +61,22 @@ struct MessagesRootView: View {
                 .zIndex(30)
             }
         }
+        .overlay {
+            if utilityRoute == .games {
+                GamesLibraryView(
+                    viewModel: viewModel,
+                    dismiss: dismissUtility
+                )
+                .transition(.move(edge: .leading).combined(with: .opacity))
+                .zIndex(25)
+            }
+        }
         #if DEBUG
         .overlay(alignment: .topTrailing) {
             if utilityRoute != .tutorial {
                 UXTestingControlsView(viewModel: viewModel)
+                    .padding(.top, 48)
+                    .zIndex(100)
             }
         }
         .overlay(alignment: .topLeading) {
@@ -92,6 +101,10 @@ struct MessagesRootView: View {
 
     private func showTutorial() {
         utilityRoute = .tutorial
+    }
+
+    private func showGames() {
+        utilityRoute = .games
     }
 
     private func dismissUtility() {

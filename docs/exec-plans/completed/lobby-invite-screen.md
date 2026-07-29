@@ -4,7 +4,7 @@
 
 Establish one coherent lobby presentation from the first invitation through guest joining and host readiness, ending at the existing host-owned handoff into setup. The screen should feel like opening and filling a physical board-game table inside Messages, while keeping the canonical lobby `STATE` chain and existing transport behavior unchanged.
 
-Parent: [Phase 14](phase-14-ui-design-bubble-polish-and-trust-surfaces.md).
+Parent: [Phase 14](../active/phase-14-ui-design-bubble-polish-and-trust-surfaces.md).
 
 The completed Settings, Rules, and full lobby Tutorial work is recorded by the focused [Settings, Rules, and Click-Through Tutorial](../completed/settings-rules-tutorial.md) child plan.
 
@@ -44,20 +44,20 @@ Round budget: two visual rounds by default. While approval is pending, do not cl
 <!-- verification-contract:start -->
 | ID | Class | Source | Acceptance | Verification | Evidence | Status | Rationale |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| LIS-001 | mechanical | decisions and architecture | Invite, join, and start preserve the canonical lobby `STATE` chain and setup transition ownership | focused presentation tests plus code inspection | pending | pending | No protocol or rules changes are authorized |
-| LIS-002 | observable | UI flows | First invite, guest join, joined/waiting, and host ready states each expose one clear next action and accurate roster context | installed harness journey and direct still inspection | pending | pending | Representative comparison is not yet captured |
-| LIS-003 | observable | accessibility and Messages-host contracts | Interactive controls retain 44-point targets, semantic text behavior, stable VoiceOver labels, and usable compact-host layout | focused UI assertions and code inspection | pending | pending | Must be verified after the checkpointed direction is rendered |
-| LIS-004 | judgment | DESIGN and tabletop UI system | The lobby reads as a compact premium tabletop invitation rather than a generic form or nested dashboard | explicit user verdict after captures | pending | pending | Approval gate is open |
-| LIS-005 | observable | UI flows and messages-host lessons | Post-send waiting stays informational, joining publishes immediately, and only the selected canonical lobby exposes host start | existing focused tests and harness checks | pending | pending | Existing behavior must not regress during visual work |
+| LIS-001 | mechanical | decisions and architecture | Invite, join, and start preserve the canonical lobby `STATE` chain and setup transition ownership | focused presentation tests plus code inspection | command:LobbyScreenModelBuilderTests-6-pass-2026-07-25; report:lobby-behavior-review-pass-2026-07-25 | pass | Refactor is presentation-only and retains the existing invite, join, name, and start callbacks |
+| LIS-002 | observable | UI flows | First invite, guest join, joined/waiting, and host ready states each expose one clear next action and accurate roster context | installed harness journey and direct still inspection | artifact:/tmp/unluckysevens-lobby-lifecycle-verified; command:testCaptureProductionLobbyLifecycle-pass-2026-07-25 | pass | Invite, Join, and Ready are captured; focused model tests cover passive joined and waiting variants |
+| LIS-003 | observable | accessibility and Messages-host contracts | Interactive controls retain 44-point targets, semantic text behavior, stable VoiceOver labels, and usable compact-host layout | focused UI assertions and code inspection | command:testCaptureProductionLobbyLifecycle-pass-2026-07-25; command:testOpenMessagesExtensionAndCaptureLobbyInviteDirections-pass-2026-07-25 | pass | Primary actions are asserted 44-point, hittable, and fully contained; Tutorial and Settings are exercised end to end |
+| LIS-004 | judgment | DESIGN and tabletop UI system | The lobby reads as a compact premium tabletop invitation rather than a generic form or nested dashboard | explicit user verdict after captures | verdict:user-approved-productionization-2026-07-25; report:lobby-product-ux-review-pass-2026-07-25 | pass | User approved the four-row Invitation Card direction and authorized productionization |
+| LIS-005 | observable | UI flows and messages-host lessons | Post-send waiting stays informational, joining publishes immediately, and only the selected canonical lobby exposes host start | existing focused tests and harness checks | command:LobbyScreenModelBuilderTests-6-pass-2026-07-25; report:lobby-constraint-audit-pass-2026-07-25 | pass | Model coverage proves passive post-send and selected-host action ownership without changing canonical transport |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
 | Reviewer | Required | Verdict | Evidence |
 | --- | --- | --- | --- |
-| constraint-auditor | yes | pending | Required after approval and productionization |
+| constraint-auditor | yes | pass | Fresh review on 2026-07-25 found LIS-001 through LIS-005 satisfied by the current diff and exact artifacts |
 | architecture | no | not-applicable | Trigger only if presentation boundaries or dependency direction change |
-| behavioral | yes | pending | Required after productionization because join/start state presentation is observable |
-| product-ux | yes | pending | Required once after productionization; user owns the comparison gate |
+| behavioral | yes | pass | Fresh review on 2026-07-25 found canonical routing, roster semantics, copy, and action ownership correct |
+| product-ux | yes | pass | Fresh high-detail review on 2026-07-25 found no blocking issues in Send, Join, or Ready |
 <!-- fresh-review:end -->
 
 ## Living Record
@@ -76,7 +76,9 @@ Round budget: two visual rounds by default. While approval is pending, do not cl
 - [x] The rejected full-host cream interpretation was replaced with a felt-host composition whose contained invitation card uses the available height.
 - [x] User approval recorded for the refined Invitation Card composition, copy, and muted-paper direction.
 - [x] User provisionally accepted the neutral-stone card and control surfaces, with a whole-app visual consistency pass still required.
-- [ ] Approved direction productionized and standard completion gate passed.
+- [x] User explicitly approved productionizing the Invitation Card across the lobby lifecycle.
+- [x] Approved direction productionized and fresh standard-profile reviews passed.
+- [x] Standard completion gate passed.
 
 ### Decisions
 
@@ -94,6 +96,7 @@ Round budget: two visual rounds by default. While approval is pending, do not cl
 - 2026-07-19: At the user's direction, the invitation neutrals move decisively away from generic warm beige. The card is a low-chroma sage-gray derived from the felt family; open seats, Game Settings, and the name field use a deeper moss-neutral. Amber remains reserved for the host/selection state and dark wood for the primary action.
 - 2026-07-19: The visible sage cast was too thematic for the invitation surface. The next checkpoint uses near-neutral stone for both the card and controls, with only a slight green bias to relate them to the felt; amber and wood retain their established semantic roles.
 - 2026-07-19: The user provisionally accepted the neutral-stone checkpoint for delivery. This does not close the visual judgment constraint: the lobby must still be reviewed beside the rest of the app before the direction is treated as durable or the completion gate can pass.
+- 2026-07-25: The user authorized productionization after confirming the earlier lobby invite work had not yet reached the release path. The approved Invitation Card now becomes the single visual shell for fresh invite, selected guest join, joined/waiting, host-ready, and post-send recovery states; the existing `LobbyScreenModelBuilder` and canonical lobby `STATE` behavior remain unchanged.
 - 2026-07-18: The full-felt physical-seat direction is rejected before comparison. Felt is the gameplay table metaphor and is not the right dominant material for the invitation/setup guide.
 - 2026-07-18: The first rules-card direction is rejected. It read as a giant beige form with dashboard chips, excessive explanatory copy, and too little sense of a live table. It is not an implementation baseline for round two.
 - 2026-07-18: Round two keeps one persistent felt table and uses four physical seat/name markers as the central lobby object. Invite, Join, and Ready change by filling that table rather than swapping card layouts.
@@ -122,5 +125,7 @@ Checkpoint evidence produced on the designated iPhone 17 / iOS 26.5 simulator:
 - Muted-paper color checkpoint: project generation, workspace `build-for-testing`, and the installed focused UI journey passed. The direct capture shows the dedicated invitation surface reading as a desaturated felt-tinted paper while the warmer settings/input surfaces retain their existing hierarchy. Tutorial and settings interactions remain green. The user approved this direction; productionization and the standard completion gate remain pending.
 - Sage-form color checkpoint: the card moved further toward a low-chroma sage-gray and the open seats, settings disclosure, and name field now share one explicit moss-neutral surface. Computed contrast is 4.58:1 for muted text on controls and 5.72:1 on the card. Project generation, workspace `build-for-testing`, the installed focused UI journey, and direct capture passed. User verdict on this exact palette remains pending.
 - Neutral-stone color checkpoint: the card and secondary controls now use near-neutral stone surfaces with only a slight green bias. Computed contrast is 4.56:1 for muted text on controls and 5.78:1 on the card. Project generation, workspace `build-for-testing`, the installed focused UI journey, and direct capture passed. User verdict on this exact palette remains pending.
+- Production closeout: the approved Invitation Card is now the release-path shell for first invite, selected guest join, joined/waiting, host-ready, and post-send states. `LobbyScreenModelBuilderTests` passed 6/6; `testCaptureProductionLobbyLifecycle` passed with exact Send, Join, and Ready attachments and action containment/hittability assertions; and `testOpenMessagesExtensionAndCaptureLobbyInviteDirections` passed through Settings and Tutorial. Fresh constraint, behavioral, and product-UX reviews all passed.
+- Standard completion gate: `make completion-gate PLAN=docs/exec-plans/active/lobby-invite-screen.md` passed on 2026-07-25, including verification-contract enforcement, harness audit, `git diff --check`, doc freshness, project generation, and the generic Messages-extension simulator build.
 
-The first failed attempts were stale-installed-extension evidence and a too-tall direct UX panel route. The durable harness now uses the compact `States → Lobby` menu and the repo-documented explicit-install recovery. The completion gate remains intentionally blocked while LIS-002 through LIS-005 and the user approval gate are pending.
+The first failed attempts were stale-installed-extension evidence and a too-tall direct UX panel route. The durable harness uses the compact `States → Lobby` menu and the repo-documented explicit-install recovery. The verification contract, fresh reviews, and standard completion gate are green.

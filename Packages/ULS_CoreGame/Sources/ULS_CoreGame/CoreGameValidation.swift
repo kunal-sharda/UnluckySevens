@@ -69,6 +69,8 @@ public enum CoreGameError: Error, Equatable {
     case victoryPointRevealNotWinning
     case awardStateInvalid
     case victoryStateInvalid
+    case gameResultInvalid
+    case gameLifecycleIntentInvalid
     case auditLogInvalid
     case gameAlreadyOver
 }
@@ -93,6 +95,14 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
 
     guard to.prevHash == from.stateHash else {
         throw CoreGameError.prevHashMismatch
+    }
+
+    if lifecycleStateChanged(from: from, to: to) {
+        guard matchesLifecycleTransition(from: from, to: to, actor: actor) else {
+            throw CoreGameError.gameResultInvalid
+        }
+        try validateCanonicalSnapshot(to)
+        return
     }
 
     guard isAuthorizedActorForTransition(from: from, to: to, actor: actor) else {
@@ -142,6 +152,13 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
     if !isStartTransition {
         guard to.roster == from.roster else {
             throw CoreGameError.rosterChanged
+        }
+        guard
+            to.resignedPlayers == from.resignedPlayers,
+            to.drawVote == from.drawVote,
+            to.hasAttemptedDrawVote == from.hasAttemptedDrawVote
+        else {
+            throw CoreGameError.gameLifecycleIntentInvalid
         }
 
         guard to.seed == from.seed else {
@@ -203,6 +220,10 @@ private func isAuthorizedActorForTransition(
         return isAuthorizedActorForLobbyTransition(from: from, to: to, actor: actor)
     }
 
+    guard from.isActivePlayer(actor) else {
+        return false
+    }
+
     guard let expectedAction = try? expectedAuditActionForTransition(from: from, to: to) else {
         return actor == from.currentPlayer
     }
@@ -249,6 +270,33 @@ private func isAuthorizedActorForTransition(
 
     default:
         return actor == from.currentPlayer
+    }
+}
+
+private func lifecycleStateChanged(
+    from: CoreGameStateV1,
+    to: CoreGameStateV1
+) -> Bool {
+    from.resignedPlayers != to.resignedPlayers
+        || from.drawVote != to.drawVote
+        || from.hasAttemptedDrawVote != to.hasAttemptedDrawVote
+        || (to.phase == .gameOver && to.gameResult?.reason != .victory)
+}
+
+private func matchesLifecycleTransition(
+    from: CoreGameStateV1,
+    to: CoreGameStateV1,
+    actor: String
+) -> Bool {
+    let intents: [GameLifecycleIntentV1] = [
+        .resign(anchoredTo: from),
+        .proposeDraw(anchoredTo: from),
+        .voteDraw(approve: true, anchoredTo: from),
+        .voteDraw(approve: false, anchoredTo: from),
+        .endGame(anchoredTo: from),
+    ]
+    return intents.contains { intent in
+        (try? apply(intent: intent, to: from, actor: actor)) == to
     }
 }
 
@@ -451,8 +499,8 @@ private func validateAwardTransition(
     }
 
     guard
-        (to.largestArmyOwner == nil || to.roster.contains(to.largestArmyOwner ?? "")),
-        (to.longestRoadOwner == nil || to.roster.contains(to.longestRoadOwner ?? ""))
+        (to.largestArmyOwner == nil || to.isActivePlayer(to.largestArmyOwner ?? "")),
+        (to.longestRoadOwner == nil || to.isActivePlayer(to.longestRoadOwner ?? ""))
     else {
         throw CoreGameError.awardStateInvalid
     }
@@ -498,14 +546,14 @@ private func validateVictoryTransition(
     isStartTransition: Bool
 ) throws {
     if isStartTransition {
-        guard to.winnerPlayer == nil, to.winningVictoryPoints == 0 else {
+        guard to.winnerPlayer == nil, to.winningVictoryPoints == 0, to.gameResult == nil else {
             throw CoreGameError.victoryStateInvalid
         }
         return
     }
 
     if to.phase != .gameOver {
-        guard to.winnerPlayer == nil, to.winningVictoryPoints == 0 else {
+        guard to.winnerPlayer == nil, to.winningVictoryPoints == 0, to.gameResult == nil else {
             throw CoreGameError.victoryStateInvalid
         }
         return
@@ -520,6 +568,13 @@ private func validateVictoryTransition(
     guard let winner = to.winnerPlayer, winner == from.currentPlayer else {
         throw CoreGameError.victoryStateInvalid
     }
+    guard
+        to.gameResult?.reason == .victory,
+        to.gameResult?.winnerPlayers == [winner],
+        to.gameResult?.endedByPlayer == nil
+    else {
+        throw CoreGameError.victoryStateInvalid
+    }
 
     let computedPoints = victoryPoints(for: winner, in: to)
     guard computedPoints >= 10 else {
@@ -527,6 +582,149 @@ private func validateVictoryTransition(
     }
     guard to.winningVictoryPoints == computedPoints else {
         throw CoreGameError.victoryStateInvalid
+    }
+}
+
+public func validateCanonicalSnapshot(_ state: CoreGameStateV1) throws {
+    try validateStateHash(state)
+
+    if let board = state.board, board.boardHash != board.rehashed().boardHash {
+        throw CoreGameError.invalidBoardHash
+    }
+
+    guard state.roster.contains(state.currentPlayer) else {
+        throw CoreGameError.turnCurrentPlayerNotInRoster
+    }
+
+    switch state.phase {
+    case .lobby:
+        guard state.setupState == nil else {
+            throw CoreGameError.setupStateMissing
+        }
+        guard state.turnState == nil else {
+            throw CoreGameError.turnStateUnexpected
+        }
+    case .setup:
+        guard let setupState = state.setupState else {
+            throw CoreGameError.setupStateMissing
+        }
+        guard state.turnState == nil else {
+            throw CoreGameError.turnStateUnexpected
+        }
+        guard setupState.turnIndex >= 0, setupState.turnIndex < setupState.order.count else {
+            throw CoreGameError.setupTurnIndexOutOfRange
+        }
+        guard state.currentPlayer == setupState.order[setupState.turnIndex] else {
+            throw CoreGameError.setupCurrentPlayerMismatch
+        }
+    case .turn:
+        guard state.setupState == nil else {
+            throw CoreGameError.setupStateMissing
+        }
+        guard state.turnState != nil else {
+            throw CoreGameError.turnStateMissing
+        }
+    case .gameOver:
+        guard state.setupState == nil else {
+            throw CoreGameError.setupStateMissing
+        }
+        guard state.turnState == nil else {
+            throw CoreGameError.turnStateUnexpected
+        }
+    }
+
+    guard state.resignedPlayers == state.roster.filter(state.resignedPlayers.contains) else {
+        throw CoreGameError.gameResultInvalid
+    }
+    guard state.resignedPlayers.allSatisfy({ player in
+        state.resourcesByPlayer[player] == .zero
+            && state.devCardsByPlayer[player] == .zero
+            && state.newDevCardsByPlayer[player] == .zero
+            && state.revealedVictoryPointsByPlayer[player, default: 0] == 0
+    }) else {
+        throw CoreGameError.gameResultInvalid
+    }
+    guard
+        state.largestArmyOwner.map(state.isActivePlayer) ?? true,
+        state.longestRoadOwner.map(state.isActivePlayer) ?? true
+    else {
+        throw CoreGameError.awardStateInvalid
+    }
+    if let vote = state.drawVote {
+        guard
+            state.hasAttemptedDrawVote,
+            state.isActivePlayer(vote.proposedBy),
+            !vote.approvals.isEmpty,
+            vote.approvals == state.activePlayers.filter(vote.approvals.contains),
+            vote.approvals.contains(vote.proposedBy)
+        else {
+            throw CoreGameError.gameResultInvalid
+        }
+    }
+
+    if state.phase != .gameOver {
+        guard
+            state.gameResult == nil,
+            state.winnerPlayer == nil,
+            state.winningVictoryPoints == 0,
+            state.isActivePlayer(state.currentPlayer)
+        else {
+            throw CoreGameError.gameResultInvalid
+        }
+        return
+    }
+
+    guard let result = state.gameResult else {
+        throw CoreGameError.gameResultInvalid
+    }
+    guard
+        state.setupState == nil,
+        state.turnState == nil,
+        state.drawVote == nil,
+        state.activeTradeOffer == nil,
+        state.tradeResponses.isEmpty
+    else {
+        throw CoreGameError.gameResultInvalid
+    }
+    guard result.winnerPlayers.allSatisfy(state.isActivePlayer) else {
+        throw CoreGameError.gameResultInvalid
+    }
+    guard result.finalScoresByPlayer == victoryPointsByPlayer(in: state) else {
+        throw CoreGameError.gameResultInvalid
+    }
+
+    switch result.reason {
+    case .victory:
+        guard
+            result.endedByPlayer == nil,
+            result.winnerPlayers.count == 1,
+            let winner = result.winnerPlayers.first,
+            winner == state.currentPlayer,
+            state.winnerPlayer == winner,
+            victoryPoints(for: winner, in: state) >= 10,
+            state.winningVictoryPoints == victoryPoints(for: winner, in: state)
+        else {
+            throw CoreGameError.gameResultInvalid
+        }
+    case .draw:
+        guard
+            result.winnerPlayers.isEmpty,
+            result.endedByPlayer == nil,
+            state.winnerPlayer == nil,
+            state.winningVictoryPoints == 0,
+            state.hasAttemptedDrawVote
+        else {
+            throw CoreGameError.gameResultInvalid
+        }
+    case .hostEnded:
+        guard
+            result.winnerPlayers.isEmpty,
+            result.endedByPlayer == state.hostPlayer,
+            state.winnerPlayer == nil,
+            state.winningVictoryPoints == 0
+        else {
+            throw CoreGameError.gameResultInvalid
+        }
     }
 }
 
@@ -1369,7 +1567,10 @@ private func validateTurnStepTransition(from: CoreGameStateV1, to: CoreGameState
             throw CoreGameError.turnStepMismatch
         }
 
-        let expectedRequirements = requiredDiscardsForValidation(from.resourcesByPlayer)
+        let expectedRequirements = requiredDiscardsForValidation(
+            from.resourcesByPlayer,
+            players: from.activePlayers
+        )
         guard toTurn.discardRequirementsByPlayer == expectedRequirements else {
             throw CoreGameError.turnStepMismatch
         }
@@ -1512,7 +1713,8 @@ private func expectedEconomyAfterTransition(
             settlementsByNode: from.settlementsByNode,
             citiesByNode: from.citiesByNode,
             resourcesByPlayer: from.resourcesByPlayer,
-            bankResources: from.bankResources
+            bankResources: from.bankResources,
+            eligiblePlayers: Set(from.activePlayers)
         )
     }
 
@@ -1931,7 +2133,8 @@ private func expectedEconomyAfterDevCardIfAny(from: CoreGameStateV1, to: CoreGam
             settlementsByNode: from.settlementsByNode,
             citiesByNode: from.citiesByNode,
             resourcesByPlayer: from.resourcesByPlayer,
-            currentPlayer: player
+            currentPlayer: player,
+            eligiblePlayers: Set(from.activePlayers)
         )
         if victims.isEmpty {
             if to.resourcesByPlayer == from.resourcesByPlayer && to.bankResources == from.bankResources {
@@ -2054,9 +2257,13 @@ private func ownershipFromSetupPlacements(_ placements: [String: PlayerSetupPlac
     return (settlementsByNode, roadsByEdge)
 }
 
-private func requiredDiscardsForValidation(_ resourcesByPlayer: [String: ResourceHandV1]) -> [String: Int] {
+private func requiredDiscardsForValidation(
+    _ resourcesByPlayer: [String: ResourceHandV1],
+    players: [String]
+) -> [String: Int] {
     var result: [String: Int] = [:]
-    for (player, hand) in resourcesByPlayer {
+    for player in players {
+        let hand = resourcesByPlayer[player] ?? .zero
         if hand.totalCount > 7 {
             result[player] = hand.totalCount / 2
         }
@@ -2531,7 +2738,8 @@ private func eligibleRobberVictimsForValidation(
     settlementsByNode: [NodeID: String],
     citiesByNode: [NodeID: String],
     resourcesByPlayer: [String: ResourceHandV1],
-    currentPlayer: String
+    currentPlayer: String,
+    eligiblePlayers: Set<String>
 ) -> [String] {
     guard tileID >= 0, tileID < validationTopology.tiles.count else {
         return []
@@ -2541,6 +2749,7 @@ private func eligibleRobberVictimsForValidation(
     for node in validationTopology.tiles[tileID].nodes {
         if let cityOwner = citiesByNode[node],
            cityOwner != currentPlayer,
+           eligiblePlayers.contains(cityOwner),
            (resourcesByPlayer[cityOwner] ?? .zero).totalCount > 0
         {
             victims.insert(cityOwner)
@@ -2549,6 +2758,7 @@ private func eligibleRobberVictimsForValidation(
 
         if let settlementOwner = settlementsByNode[node],
            settlementOwner != currentPlayer,
+           eligiblePlayers.contains(settlementOwner),
            (resourcesByPlayer[settlementOwner] ?? .zero).totalCount > 0
         {
             victims.insert(settlementOwner)
@@ -2643,6 +2853,10 @@ private func validationStateWithRoads(state: CoreGameStateV1, roadsByEdge: [Edge
         longestRoadLength: state.longestRoadLength,
         winnerPlayer: state.winnerPlayer,
         winningVictoryPoints: state.winningVictoryPoints,
+        gameResult: state.gameResult,
+        resignedPlayers: state.resignedPlayers,
+        drawVote: state.drawVote,
+        hasAttemptedDrawVote: state.hasAttemptedDrawVote,
         auditLog: state.auditLog,
         lastTurnRecap: state.lastTurnRecap,
         activeTradeOffer: state.activeTradeOffer,

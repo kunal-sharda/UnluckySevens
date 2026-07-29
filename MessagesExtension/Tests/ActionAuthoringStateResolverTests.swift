@@ -21,8 +21,14 @@ final class ActionAuthoringStateResolverTests: XCTestCase {
     }
 
     func testResolvePrefersLatestKnownStateWhenRevisionMatchesButHashDiffers() {
-        let selectedState = makeTurnState(rev: 5, currentPlayer: "host-player")
-        let latestState = makeTurnState(rev: 5, currentPlayer: "guest-player")
+        let firstSibling = makeTurnState(rev: 5, currentPlayer: "host-player")
+        let secondSibling = makeTurnState(rev: 5, currentPlayer: "guest-player")
+        let selectedState = firstSibling.stateHash < secondSibling.stateHash
+            ? firstSibling
+            : secondSibling
+        let latestState = firstSibling.stateHash > secondSibling.stateHash
+            ? firstSibling
+            : secondSibling
 
         let resolution = ActionAuthoringStateResolver.resolve(
             gameId: selectedState.gameId,

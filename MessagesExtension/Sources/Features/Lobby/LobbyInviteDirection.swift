@@ -3,4 +3,8 @@ enum LobbyInviteDirection: String, CaseIterable {
 
     case setupCard
     case invitationCard
+    case tabletopCandidate
+    case artifactCandidate
+    case spatialCandidate
+    case cocktailTableCandidate
 }

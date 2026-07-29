@@ -5,10 +5,18 @@ struct GameTurnTopBarView: View {
     let subtitle: String
     let isGameInfoOpen: Bool
     let onSettingsTap: () -> Void
+    let onGamesTap: () -> Void
     let onGameInfoTap: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
+            topObjectButton(
+                title: "Games",
+                systemImage: "square.stack.3d.up.fill",
+                isSelected: false,
+                action: onGamesTap
+            )
+
             topObjectButton(
                 title: "Settings",
                 systemImage: "gearshape.fill",

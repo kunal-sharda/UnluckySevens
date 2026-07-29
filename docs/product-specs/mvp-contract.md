@@ -15,6 +15,8 @@ The current MVP includes:
 - deterministic balanced board generation and gameplay randomness
 - a bubble-first experience where the game remains legible from transcript bubbles and the expanded view
 - secrecy-safe UI that shows opponents by hand size, not hand composition
+- local recovery management for active and finished games, including open, unchanged resend, and device-local archive
+- canonical non-terminal resignation, unanimous draw, host-only neutral end, ordinary victory, final scores, recap, and a fresh New Game entry
 
 ## Explicit Non-Goals
 
@@ -34,6 +36,7 @@ The UI and engine should preserve these product qualities:
 - new games avoid adjacent red-number tokens by default while preserving seeded, deterministic board setup
 - the board and audit surfaces explain the current state without leaking hidden information
 - common actions stay compact enough for an iMessage context
+- interrupted players can recover or resend a valid game without changing its revision, and terminal state remains inspectable
 
 ## Relationship to Other Docs
 

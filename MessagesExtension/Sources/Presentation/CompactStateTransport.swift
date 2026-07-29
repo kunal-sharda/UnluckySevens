@@ -6,7 +6,7 @@ enum CompactStateTransportError: Error {
 }
 
 private enum CompactStateCodec {
-    static let transportForm = "compactStateV2"
+    static let transportForm = "compactStateV4"
 
     static func encodePhase(_ phase: PhaseV1) -> Int {
         switch phase {
@@ -661,6 +661,14 @@ private struct CompactStateTransportV1: Codable, Equatable {
     let longestRoadLength: Int
     let winnerPlayerIndex: Int?
     let winningVictoryPoints: Int
+    let gameResultReasonCode: Int?
+    let gameResultWinnerPlayerIndices: [Int]?
+    let gameResultEndedByPlayerIndex: Int?
+    let gameResultFinalScores: [Int]?
+    let resignedPlayerIndices: [Int]
+    let drawVoteProposerIndex: Int?
+    let drawVoteApprovalIndices: [Int]?
+    let hasAttemptedDrawVote: Bool
     let auditLog: [CompactAuditEntryTransportV1]
     let lastTurnRecap: CompactTurnRecapTransportV1?
     let activeTradeOffer: CompactTradeOfferTransportV1?
@@ -702,6 +710,32 @@ private struct CompactStateTransportV1: Codable, Equatable {
         longestRoadLength = state.longestRoadLength
         winnerPlayerIndex = try state.winnerPlayer.map { try CompactStateCodec.index(for: $0, in: rosterIndexMap) }
         winningVictoryPoints = state.winningVictoryPoints
+        gameResultReasonCode = state.gameResult.map {
+            switch $0.reason {
+            case .victory: return 0
+            case .draw: return 1
+            case .hostEnded: return 2
+            }
+        }
+        gameResultWinnerPlayerIndices = try state.gameResult?.winnerPlayers.map {
+            try CompactStateCodec.index(for: $0, in: rosterIndexMap)
+        }
+        gameResultEndedByPlayerIndex = try state.gameResult?.endedByPlayer.map {
+            try CompactStateCodec.index(for: $0, in: rosterIndexMap)
+        }
+        gameResultFinalScores = state.gameResult.map { result in
+            state.roster.map { result.finalScoresByPlayer[$0] ?? 0 }
+        }
+        resignedPlayerIndices = try state.resignedPlayers.map {
+            try CompactStateCodec.index(for: $0, in: rosterIndexMap)
+        }
+        drawVoteProposerIndex = try state.drawVote.map {
+            try CompactStateCodec.index(for: $0.proposedBy, in: rosterIndexMap)
+        }
+        drawVoteApprovalIndices = try state.drawVote?.approvals.map {
+            try CompactStateCodec.index(for: $0, in: rosterIndexMap)
+        }
+        hasAttemptedDrawVote = state.hasAttemptedDrawVote
         auditLog = try state.auditLog.map { try CompactAuditEntryTransportV1(entry: $0, rosterIndexMap: rosterIndexMap) }
         lastTurnRecap = try state.lastTurnRecap.map { try CompactTurnRecapTransportV1(recap: $0, rosterIndexMap: rosterIndexMap) }
         activeTradeOffer = try state.activeTradeOffer.map { try CompactTradeOfferTransportV1(offer: $0, rosterIndexMap: rosterIndexMap) }
@@ -738,6 +772,52 @@ private struct CompactStateTransportV1: Codable, Equatable {
             }
         }
 
+        let gameResult: GameResultV1?
+        if
+            let gameResultReasonCode,
+            let winnerIndices = gameResultWinnerPlayerIndices,
+            let gameResultFinalScores,
+            gameResultFinalScores.count == roster.count
+        {
+            let reason: GameEndReasonV1 = switch gameResultReasonCode {
+            case 0: .victory
+            case 1: .draw
+            case 2: .hostEnded
+            default: throw CompactStateTransportError.invalidPayload
+            }
+            gameResult = GameResultV1(
+                reason: reason,
+                winnerPlayers: try winnerIndices.map {
+                    try CompactStateCodec.player(at: $0, in: roster)
+                },
+                endedByPlayer: try gameResultEndedByPlayerIndex.map {
+                    try CompactStateCodec.player(at: $0, in: roster)
+                },
+                finalScoresByPlayer: Dictionary(
+                    uniqueKeysWithValues: roster.enumerated().map {
+                        ($0.element, gameResultFinalScores[$0.offset])
+                    }
+                )
+            )
+        } else {
+            gameResult = nil
+        }
+
+        let resignedPlayers = try resignedPlayerIndices.map {
+            try CompactStateCodec.player(at: $0, in: roster)
+        }
+        let drawVote: DrawVoteV1?
+        if let drawVoteProposerIndex, let drawVoteApprovalIndices {
+            drawVote = DrawVoteV1(
+                proposedBy: try CompactStateCodec.player(at: drawVoteProposerIndex, in: roster),
+                approvals: try drawVoteApprovalIndices.map {
+                    try CompactStateCodec.player(at: $0, in: roster)
+                }
+            )
+        } else {
+            drawVote = nil
+        }
+
         return CoreGameStateV1(
             gameId: gameId,
             rev: rev,
@@ -764,6 +844,10 @@ private struct CompactStateTransportV1: Codable, Equatable {
             longestRoadLength: longestRoadLength,
             winnerPlayer: try winnerPlayerIndex.map { try CompactStateCodec.player(at: $0, in: roster) },
             winningVictoryPoints: winningVictoryPoints,
+            gameResult: gameResult,
+            resignedPlayers: resignedPlayers,
+            drawVote: drawVote,
+            hasAttemptedDrawVote: hasAttemptedDrawVote,
             auditLog: try auditLog.map { try $0.rehydrated(roster: roster) },
             lastTurnRecap: try lastTurnRecap?.rehydrated(roster: roster),
             activeTradeOffer: try activeTradeOffer?.rehydrated(roster: roster),
@@ -899,6 +983,14 @@ private struct CompactStateTransportV1: Codable, Equatable {
         case longestRoadLength = "t"
         case winnerPlayerIndex = "w"
         case winningVictoryPoints = "W"
+        case gameResultReasonCode = "G"
+        case gameResultWinnerPlayerIndices = "H"
+        case gameResultEndedByPlayerIndex = "Q"
+        case gameResultFinalScores = "J"
+        case resignedPlayerIndices = "I"
+        case drawVoteProposerIndex = "D"
+        case drawVoteApprovalIndices = "V"
+        case hasAttemptedDrawVote = "F"
         case auditLog = "a"
         case lastTurnRecap = "R"
         case activeTradeOffer = "A"

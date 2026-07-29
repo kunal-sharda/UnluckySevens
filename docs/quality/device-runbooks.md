@@ -69,7 +69,7 @@ Run this after any lobby join/start UX change.
 12. Confirm the fresh invite, join, rename, and start bubbles all use descriptive product copy instead of revision/debug text.
 13. Confirm invite, join, and rename bubbles show the production four-seat table with the current roster and open seats.
 14. Confirm the start bubble shows the production board without number tokens.
-15. On both devices, if the thread now contains more than one recoverable game or stale lobby context, confirm the compact `Game` / `Games` recovery chip opens the correct latest known lobby or game context without requiring transcript hunting.
+15. On both devices, if the thread now contains more than one recoverable game or stale lobby context, confirm Games on the invitation/loading card opens the correct latest known lobby or game context without requiring transcript hunting.
 
 ### Real Device Messages Lifecycle
 
@@ -80,8 +80,8 @@ Run this after phase-13 stability work or when explicitly validating Messages ho
 3. Switch away from Messages and return.
 4. Reopen the same bubble and confirm the shell still resolves the correct context.
 5. Select an older bubble after a newer one exists and record whether the host keeps you on stale context, upgrades to the latest known state, or fails to recover.
-6. If the selected bubble is stale or unrelated but the game is known locally, use the compact `Game` / `Games` recovery chip and confirm the shell restores the latest known canonical state for the intended game.
-7. Force-close and relaunch Messages, then record whether context can still be recovered from the selected bubble or from the active-games recovery chip.
+6. If the selected bubble is stale or unrelated but the game is known locally, use Games from the invitation/loading card or current-game top bar and confirm the shell restores the latest known canonical state for the intended game.
+7. Force-close and relaunch Messages, then record whether context can still be recovered from the selected bubble or the Games destination.
 
 ### Real Device Turn-Taking Smoke
 
@@ -299,13 +299,26 @@ These were the highest-signal device checks from the host-stability phase. Reuse
    - create a newer canonical `STATE`
    - reopen an older bubble for the same game
    - confirm the app prefers the latest recovered state for that game
-4. Active-games recovery:
-   - with no useful selected state bubble open, use the in-app `Game/Games` recovery chip
+4. Games recovery:
+   - with no useful selected state bubble open, use Games from the invitation/loading card; while a game is open, use Games from its top bar
    - confirm the latest known canonical state for the intended game reopens correctly
-5. Full standard-match pass:
+   - confirm Active and Finished grouping, unchanged `Game Restored` resend, and device-local archive
+   - confirm publish actions are unavailable when the current Messages participant set is incompatible with the saved roster
+   - after archive, tap a later valid bubble and confirm the game returns to the local list
+5. Resignation, draw, and host end:
+   - resign once as the current player and once as a waiting player
+   - confirm both devices keep the same active roster order, skip the resigned player, preserve their inert pieces, and agree on returned hand/development-card retirement
+   - propose a draw, reject it once, then propose again and approve unanimously; confirm both devices show the same neutral result and final scores
+   - as the original host, verify the draw-first soft guard and then `End Game Anyway`; repeat after the host resigns and confirm host authority remains
+   - confirm host-end and draw results declare no winner and reject later gameplay actions
+   - use New Game from victory, agreed draw, and host-end results and confirm it returns to a fresh unsent invitation
+6. Session restart experiment:
+   - while a same-game session is live, securely archive the `MSSession`, force-close the extension, restore it, and publish from the restored canonical state
+   - retain session persistence only if two devices show replacement/collapse on the original game bubble; otherwise confirm the product creates a deliberate fresh `Game Restored` bubble
+7. Full standard-match pass:
    - run a complete real-device match from lobby through victory
    - verify setup, roll/production, trade, dev cards, robber/discard, end-turn progression, and winner-state summary on the corrected substrate
-6. If any of the above fail, capture:
+8. If any of the above fail, capture:
    - exact transcript bubble selected
    - whether a newer bubble existed
    - whether the active-games chip was available

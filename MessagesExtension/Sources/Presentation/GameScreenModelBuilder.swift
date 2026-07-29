@@ -5,6 +5,7 @@ enum GameScreenModelBuilder {
     static func build(context: GameScreenContext) -> GameScreenModel {
         let statusLine = makeStatusLine(context: context)
         let actionAvailability = resolvedActionAvailability(context: context)
+        let gameInfo = makeGameInfo(context: context)
 
         return GameScreenModel(
             header: GameHeaderModel(
@@ -22,7 +23,12 @@ enum GameScreenModelBuilder {
                 chips: makeHandChips(context: context)
             ),
             ownedDevCards: makeOwnedDevCards(context: context),
-            gameInfo: makeGameInfo(context: context),
+            gameInfo: gameInfo,
+            endScreen: GameEndScreenModelBuilder.build(
+                state: context.selectedState,
+                gameInfo: gameInfo,
+                winnerTitle: statusLine.title
+            ),
             devDeckCount: context.selectedState?.devDeck.count ?? 0,
             canBuyDevCard: actionAvailability.canBuyDevCard,
             actionDock: makeActionDockModel(
@@ -39,8 +45,8 @@ enum GameScreenModelBuilder {
         let currentPlayerDisplay = currentPlayer.map {
             PlayerPseudonymResolver.displayName(for: $0, in: state)
         } ?? "player"
-        let winnerDisplay = state?.winnerPlayer.map {
-            PlayerPseudonymResolver.displayName(for: $0, in: state)
+        let winnerDisplay = state?.gameResult.map {
+            joinedPlayerNames($0.winnerPlayers, in: state)
         }
 
         return GameShellStatusLineResolver.resolve(
@@ -49,8 +55,10 @@ enum GameScreenModelBuilder {
             currentPlayerDisplay: currentPlayerDisplay,
             subtitle: makeSubtitle(context: context),
             phase: state?.phase,
+            resultReason: state?.gameResult?.reason,
             winnerDisplay: winnerDisplay,
-            didLocalPlayerWin: context.actingAs == state?.winnerPlayer
+            didLocalPlayerWin: state?.gameResult?.winnerPlayers.contains(context.actingAs ?? "") == true,
+            didLocalPlayerResign: state?.resignedPlayers.contains(context.actingAs ?? "") == true
         )
     }
 
@@ -279,6 +287,25 @@ enum GameScreenModelBuilder {
         return "Final score: \(scoreLine)"
     }
 
+    private static func joinedPlayerNames(
+        _ players: [String],
+        in state: CoreGameStateV1?
+    ) -> String {
+        let names = players.map {
+            PlayerPseudonymResolver.displayName(for: $0, in: state)
+        }
+        switch names.count {
+        case 0:
+            return "Game"
+        case 1:
+            return names[0]
+        case 2:
+            return "\(names[0]) and \(names[1])"
+        default:
+            return "\(names.dropLast().joined(separator: ", ")), and \(names.last ?? "")"
+        }
+    }
+
     private static func recapSummary(for state: CoreGameStateV1) -> String? {
         guard let recap = state.lastTurnRecap else {
             return nil
@@ -290,6 +317,9 @@ enum GameScreenModelBuilder {
         }
 
         let actionText = recap.actions
+            .filter { action in
+                recap.rollTotal == nil || action != .rollDice
+            }
             .prefix(3)
             .map(actionLabel)
             .joined(separator: ", ")

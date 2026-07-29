@@ -29,6 +29,7 @@ Current fixtures cover:
 - `robber-move`
 - `trade-offer`
 - `game-over`
+- `Recovery Games`, which seeds one validated Active record and one validated Finished record for management journeys
 
 While UX Lab is active, the view model uses local fixture state and local actor override. It does not publish `MSMessage` bubbles; state-producing actions are applied back into the local preview path. That makes it useful for screen-by-screen design review and one-device dummy-user flow checks, but it does not validate transcript URL transport, bubble delivery, cross-device selection, same-session folding, or real Messages lifecycle behavior.
 
@@ -49,6 +50,8 @@ The clean setup gameplay capture path is `MessagesExtensionDesignSliceUITests/te
 The normal-turn gameplay capture path is `MessagesExtensionDesignSliceUITests/testOpenMessagesExtensionAndCaptureTurnGameplaySlice`. It opens the same UX Lab path, taps the DEBUG clean-shot `uls.uxLab.cleanShot.turnAfterRoll` control, waits for the `turn-after-roll` board, hides the UX Lab chrome, and exercises Hand, independent Bank reveal, Build, Trade, Hand-nested Dev, End, and Game Information routes. It asserts stable top/public-rail/board geometry and a stable DEBUG board-host identity while attaching route screenshots. Use the default Hand capture when judging board tile art independent of setup/build affordances.
 
 The active-proposer pending-trade capture path is `MessagesExtensionDesignSliceUITests/testOpenMessagesExtensionAndCapturePendingActivePlayerTradeSlice`. Its DEBUG clean-shot control loads `trade-offer` while acting as the proposer, then verifies the anchored `Pending` marker, live recipient responses, and replacement action inside the normal Turn Screen action well.
+
+The functional recovery/lifecycle paths are `testRecoveryGamesArchiveAndRestoreJourney`, `testRecoveryResendAndResignationContinuesJourney`, `testRecoveryGamesLibraryUsesDedicatedSurface`, `testRecoveryResignConfirmationExplainsContinuedPlay`, and `testHostEndOffersDrawBeforeUnilateralEnd`. They exercise the dedicated Games destination, local archive followed by later valid fixture restore, unchanged resend, non-terminal resignation, accurate confirmation copy, and the draw-first host-end soft guard. Because UX Lab applies publishes locally, these paths prove UI orchestration but not transcript delivery, session replacement, or cross-device agreement.
 
 Normal-turn board captures should not show empty corner caps or heavy empty-edge rails as if every placement target is active. Tile art should render at the canonical topology radius so painted hexes align with roads, ports, nodes, tokens, and hit testing. Passive tile seams may remain visible. Actual roads, settlements/cities, ports, and the robber may be visible as live SpriteKit pieces; legal setup/build node and edge highlights should appear only while the active mode can legally use those targets.
 

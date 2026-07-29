@@ -18,8 +18,9 @@ Use the tracked planning surfaces this way:
   - transcript previews, language, Settings, Rules, Tutorial, forced discard, and the masked-robber identity are closed
   - the approved first-invite card still needs release productionization across the lobby lifecycle
   - responsive host adaptation still needs both real-iPad entry-path checks and owner approval
+  - recovery and terminal behavior is in its functional Pass 1; a checkpointed UI-polish pass and a release-critical productization/TestFlight pass follow
 
-The next broad phase after this active polish work remains structural cleanup, unless TestFlight evidence forces a different priority.
+The immediate sequence is recovery/end-state Pass 1, one combined UI-polish approval pass, then full productization and the Internal TestFlight gate. Structural cleanup follows unless release evidence forces a different priority.
 
 ## Sequenced Next Phases
 
@@ -38,7 +39,6 @@ Priority focus:
 - retire superseded presentation branches and projection/debug facades after their release routes are mapped
 - deepen board/bubble visual regression coverage
 - fix remaining structural performance and layout-scaling issues
-- bound and version local transcript-recovery persistence
 
 Primary debt links:
 
@@ -71,11 +71,11 @@ Potential debt links:
 
 If time is constrained, prioritize remaining work in this order:
 
-1. Real-device TestFlight gate on the current build.
-2. Phase 14 product polish that improves player trust and first-use clarity.
-3. Direct cleanup of proven-orphan source plus resolution of the board-art source-of-truth mismatch.
-4. Phase 15 structural cleanup that improves long-term iteration speed and regression safety.
-5. Phase 16 only if beta evidence forces it.
+1. Finish functional recovery and terminal behavior without claiming visual completion.
+2. Approve and productionize one recovery/end-state UI-polish pass.
+3. Run the release-critical productization, real-device, archive, upload, and installed-TestFlight smoke gate.
+4. Direct cleanup of proven-orphan source plus resolution of the board-art source-of-truth mismatch.
+5. Phase 15 structural cleanup, then Phase 16 only if beta evidence forces it.
 
 ## Not Yet Phased
 

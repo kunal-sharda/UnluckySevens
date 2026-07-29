@@ -391,7 +391,7 @@ final class GameScreenModelBuilderTests: XCTestCase {
         XCTAssertEqual(robberModel.header.statusLine.subtitle, "Roll: 4 + 3 = 7")
     }
 
-    func testBuildShowsGameOverWinnerFinalScoreAndRecap() {
+    func testBuildShowsGameOverWinnerFinalScoreAndRecap() throws {
         let recap = TurnRecapV1(
             actor: "B",
             startRev: 10,
@@ -405,6 +405,15 @@ final class GameScreenModelBuilderTests: XCTestCase {
             settlementsByNode: [0: "A", 1: "C", 4: "B", 5: "B"],
             citiesByNode: [2: "B", 3: "B"],
             revealedVictoryPointsByPlayer: ["B": 4],
+            auditLog: [
+                AuditEntryV1(rev: 7, actor: "B", action: .playKnight),
+                AuditEntryV1(rev: 8, actor: "B", action: .playMonopoly),
+                AuditEntryV1(rev: 9, actor: "B", action: .playYearOfPlenty),
+                AuditEntryV1(rev: 10, actor: "B", action: .playRoadBuilding),
+                AuditEntryV1(rev: 11, actor: "B", action: .revealVictoryPoint),
+            ],
+            knightsPlayedByPlayer: ["B": 2],
+            turnState: nil,
             phase: .gameOver,
             winnerPlayer: "B",
             winningVictoryPoints: 10,
@@ -437,9 +446,119 @@ final class GameScreenModelBuilderTests: XCTestCase {
             )
         )
         XCTAssertTrue(model.header.metaText.contains("Last turn:"))
+        let endScreen = try XCTUnwrap(model.endScreen)
+        XCTAssertEqual(endScreen.winnerTitle, "You won")
+        XCTAssertEqual(endScreen.winningScoreText, "10 points")
+        XCTAssertEqual(endScreen.players.map(\.id), ["B", "A", "C"])
+        XCTAssertEqual(endScreen.players.map(\.victoryPoints), [10, 1, 1])
+        XCTAssertEqual(endScreen.players.map(\.isWinner), [true, false, false])
+        XCTAssertEqual(endScreen.players.map(\.isLocalPlayer), [true, false, false])
+        XCTAssertEqual(
+            endScreen.localDevelopmentCardGroups.map(\.kind),
+            [
+                .knight,
+                .monopoly,
+                .yearOfPlenty,
+                .roadBuilding,
+                .victoryPoint,
+            ]
+        )
+        XCTAssertEqual(
+            endScreen.localDevelopmentCardGroups.map(\.count),
+            [2, 1, 1, 1, 4]
+        )
+        XCTAssertEqual(
+            endScreen.players[0].scoreBreakdown,
+            GameEndScoreBreakdown(
+                buildingPoints: 6,
+                developmentCardPoints: 4,
+                largestArmyPoints: 0,
+                longestRoadPoints: 0
+            )
+        )
+        XCTAssertEqual(
+            endScreen.recapText,
+            "City sealed the win."
+        )
         XCTAssertTrue(model.actionDock.primaryItems.allSatisfy { !$0.isEnabled })
         XCTAssertTrue(model.actionDock.utilityItems.isEmpty)
         XCTAssertTrue(model.actionDock.buildShelfItems.isEmpty)
+    }
+
+    func testBuildNeutralHostEndHasNoWinningScore() throws {
+        let active = makeState(
+            currentPlayer: "A",
+            resourcesByPlayer: ["A": .zero, "B": .zero, "C": .zero]
+        )
+        let ended = try apply(
+            intent: .endGame(anchoredTo: active),
+            to: active,
+            actor: "A"
+        )
+
+        let model = GameScreenModelBuilder.build(
+            context: GameScreenContext(
+                selectedState: ended,
+                actingAs: "A",
+                contextBanner: "banner",
+                contextMeta: "meta",
+                actionAvailability: .none,
+                modeAvailability: .none
+            )
+        )
+
+        let endScreen = try XCTUnwrap(model.endScreen)
+        XCTAssertEqual(endScreen.winnerTitle, "Game ended")
+        XCTAssertNil(endScreen.winningScoreText)
+        XCTAssertEqual(
+            endScreen.resultDetail,
+            "Ended by \(PlayerPseudonymResolver.displayName(for: "A", in: ended))"
+        )
+        XCTAssertFalse(endScreen.players.contains(where: \.isWinner))
+    }
+
+    func testBuildShowsResignedPlayerAsSpectatorWhileGameContinues() throws {
+        let active = makeState(
+            currentPlayer: "A",
+            resourcesByPlayer: ["A": .zero, "B": .zero, "C": .zero],
+            citiesByNode: [0: "A", 1: "C"]
+        )
+        let continued = try apply(
+            intent: .resign(anchoredTo: active),
+            to: active,
+            actor: "B"
+        )
+
+        let resignerModel = GameScreenModelBuilder.build(
+            context: GameScreenContext(
+                selectedState: continued,
+                actingAs: "B",
+                contextBanner: "banner",
+                contextMeta: "meta",
+                actionAvailability: .none,
+                modeAvailability: .none
+            )
+        )
+        let observerModel = GameScreenModelBuilder.build(
+            context: GameScreenContext(
+                selectedState: continued,
+                actingAs: nil,
+                contextBanner: "banner",
+                contextMeta: "meta",
+                actionAvailability: .none,
+                modeAvailability: .none
+            )
+        )
+
+        XCTAssertEqual(
+            resignerModel.header.statusLine.title,
+            "Spectating \(PlayerPseudonymResolver.displayName(for: "A", in: continued))'s Turn"
+        )
+        XCTAssertNil(resignerModel.endScreen)
+        XCTAssertNil(observerModel.endScreen)
+        XCTAssertTrue(observerModel.header.statusLine.title.hasSuffix("'s Turn"))
+        XCTAssertEqual(continued.resignedPlayers, ["B"])
+        XCTAssertEqual(continued.phase, .turn)
     }
 
     private func makeState(
@@ -450,10 +569,12 @@ final class GameScreenModelBuilderTests: XCTestCase {
         revealedVictoryPointsByPlayer: [String: Int] = [:],
         devCardsByPlayer: [String: DevCardInventoryV1] = [:],
         newDevCardsByPlayer: [String: DevCardInventoryV1] = [:],
+        auditLog: [AuditEntryV1] = [],
+        knightsPlayedByPlayer: [String: Int] = [:],
         largestArmyOwner: String? = nil,
         longestRoadOwner: String? = nil,
         activeTradeOffer: TradeOfferV1? = nil,
-        turnState: TurnStateV1 = TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 4)),
+        turnState: TurnStateV1? = TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 4)),
         phase: PhaseV1 = .turn,
         winnerPlayer: String? = nil,
         winningVictoryPoints: Int = 0,
@@ -476,10 +597,12 @@ final class GameScreenModelBuilderTests: XCTestCase {
             devCardsByPlayer: devCardsByPlayer,
             newDevCardsByPlayer: newDevCardsByPlayer,
             revealedVictoryPointsByPlayer: revealedVictoryPointsByPlayer,
+            knightsPlayedByPlayer: knightsPlayedByPlayer,
             largestArmyOwner: largestArmyOwner,
             longestRoadOwner: longestRoadOwner,
             winnerPlayer: winnerPlayer,
             winningVictoryPoints: winningVictoryPoints,
+            auditLog: auditLog,
             lastTurnRecap: lastTurnRecap,
             activeTradeOffer: activeTradeOffer,
             settlementsByNode: settlementsByNode,

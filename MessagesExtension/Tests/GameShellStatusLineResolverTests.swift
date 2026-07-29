@@ -58,4 +58,39 @@ final class GameShellStatusLineResolverTests: XCTestCase {
         )
         XCTAssertEqual(loserLine.title, "A won")
     }
+
+    func testActiveResignedPlayerSeesSpectatingStatus() {
+        let line = GameShellStatusLineResolver.resolve(
+            actingAs: "B",
+            currentPlayer: "A",
+            currentPlayerDisplay: "A",
+            subtitle: "Roll pending",
+            phase: .turn,
+            didLocalPlayerResign: true
+        )
+
+        XCTAssertEqual(line.title, "Spectating A's Turn")
+    }
+
+    func testNeutralTerminalReasonsDoNotDeclareWinner() {
+        let draw = GameShellStatusLineResolver.resolve(
+            actingAs: "B",
+            currentPlayer: "A",
+            currentPlayerDisplay: "A",
+            subtitle: "Final scores",
+            phase: .gameOver,
+            resultReason: .draw
+        )
+        XCTAssertEqual(draw.title, "Draw")
+
+        let hostEnded = GameShellStatusLineResolver.resolve(
+            actingAs: "B",
+            currentPlayer: "A",
+            currentPlayerDisplay: "A",
+            subtitle: "Final scores",
+            phase: .gameOver,
+            resultReason: .hostEnded
+        )
+        XCTAssertEqual(hostEnded.title, "Game ended")
+    }
 }

@@ -6,6 +6,7 @@ struct GameScreenModel: Equatable {
     let handTray: GameHandTrayModel
     let ownedDevCards: [GameOwnedDevCardSummary]
     let gameInfo: GameInfoModel
+    let endScreen: GameEndScreenModel?
     let devDeckCount: Int
     let canBuyDevCard: Bool
     let actionDock: GameActionDockModel

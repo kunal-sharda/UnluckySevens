@@ -3,6 +3,39 @@ import ULS_CoreGame
 import XCTest
 
 final class UXTestingFixturesTests: XCTestCase {
+    func testRecoveryFixtureSupportsPersistedNonTerminalResignation() throws {
+        let active = try XCTUnwrap(UXTestFixtures.recoveryStates.first)
+        let resigned = try apply(
+            intent: .resign(anchoredTo: active),
+            to: active,
+            actor: UXTestFixtures.host
+        )
+
+        try validateCanonicalSnapshot(resigned)
+        let compactPayload = try CompactStateTransport.encode(resigned)
+        XCTAssertEqual(try CompactStateTransport.decode(compactPayload), resigned)
+
+        let suiteName = "UXTestingFixturesTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        let store = TranscriptGameLedgerStore(userDefaults: defaults)
+        store.record(
+            state: active,
+            payload: try CompactStateTransport.encode(active)
+        )
+        store.record(state: resigned, payload: compactPayload)
+
+        XCTAssertEqual(store.latestState(for: active.gameId), resigned)
+        XCTAssertTrue(
+            ActiveGameRecoveryModelBuilder.build(
+                from: resigned,
+                updatedAt: 0,
+                isLastActive: true,
+                isCurrentSelection: true
+            ).subtitle.contains("Kunal resigned")
+        )
+    }
+
     func testFixturesCoverSingleDeviceAuditSurfaces() {
         let fixtureIDs = Set(UXTestFixtures.all.map(\.id))
 

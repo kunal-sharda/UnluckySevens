@@ -7,12 +7,18 @@ enum GameShellStatusLineResolver {
         currentPlayerDisplay: String,
         subtitle: String,
         phase: PhaseV1? = nil,
+        resultReason: GameEndReasonV1? = nil,
         winnerDisplay: String? = nil,
-        didLocalPlayerWin: Bool = false
+        didLocalPlayerWin: Bool = false,
+        didLocalPlayerResign: Bool = false
     ) -> GameShellStatusLine {
         if phase == .gameOver {
             let title: String
-            if didLocalPlayerWin {
+            if resultReason == .draw {
+                title = "Draw"
+            } else if resultReason == .hostEnded {
+                title = "Game ended"
+            } else if didLocalPlayerWin {
                 title = "You won"
             } else if let winnerDisplay {
                 title = "\(winnerDisplay) won"
@@ -25,6 +31,13 @@ enum GameShellStatusLineResolver {
 
         guard let currentPlayer, !currentPlayer.isEmpty, currentPlayer != "-" else {
             return GameShellStatusLine(title: "Open game", subtitle: subtitle)
+        }
+
+        if didLocalPlayerResign {
+            return GameShellStatusLine(
+                title: "Spectating \(currentPlayerDisplay)'s Turn",
+                subtitle: subtitle
+            )
         }
 
         if actingAs == currentPlayer {

@@ -333,12 +333,14 @@ What went wrong:
 What we learned:
 
 - Messages-hosted recovery needs both substrate and surface.
-- Once the app knows about multiple recoverable games, it should expose a compact in-app recovery affordance rather than forcing transcript archaeology.
+- Once the app knows about multiple recoverable games, it should expose a dedicated in-app Games destination rather than forcing transcript archaeology.
 
 Current repo answer:
 
-- The shell now exposes a compact `Game` / `Games` recovery chip backed by the per-game ledger.
-- Recovering a game from that chip restores the latest known canonical state for that game and updates active context without requiring a fresh state bubble selection.
+- The fresh invitation/loading card and current-game top bar expose a Games destination backed by a versioned per-game ledger with Active and Finished sections. The ledger never floats over the live board.
+- The ledger validates canonical snapshots, repairs corrupt records, converges equal-revision siblings by greatest hash, retains active games until archive, and caps finished history at eight.
+- Joined players can reopen or resend the unchanged latest state. Local archive removes only the device record, so a later valid bubble can recreate it.
+- Recovery publish reuses a selected same-game or cached in-memory `MSSession`; after host restart, absence of a proven restorable session deliberately creates a fresh recovery bubble.
 
 ### 9. Messages layout classes are not enough; iPad host height is a separate constraint
 

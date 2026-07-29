@@ -38,6 +38,7 @@ Three or four people return to a Catan table inside an iMessage thread in short,
 - Opening or replacing an action-well surface must not resize, shift, freeze, or remount the live board, public rail, or top status.
 - Number tokens, roads, structures, ports, robber, and legal highlights remain separate live board layers; production terrain textures live under `MessagesExtension/Resources/Assets.xcassets/BoardTiles/`.
 - Icon-first controls require stable accessibility labels and identifiers.
+- Recovery and lifecycle management currently have a functional baseline only. The dedicated Games surface, Active/Finished grouping, continue-after-resign confirmation, draw/host-end decisions, neutral terminal summaries, and New Game reuse the existing felt/system vocabulary, but their final composition is intentionally pending the checkpointed recovery/end-state polish pass.
 
 ## Anti-References
 

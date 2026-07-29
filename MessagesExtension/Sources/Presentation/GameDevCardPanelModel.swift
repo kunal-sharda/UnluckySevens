@@ -5,7 +5,7 @@ struct GameDevCardCount: Identifiable, Equatable {
     var id: String { title }
 }
 
-enum GameDevCardVisualKind: String, CaseIterable, Identifiable, Equatable {
+enum GameDevCardVisualKind: String, CaseIterable, Identifiable, Equatable, Hashable {
     case knight
     case monopoly
     case yearOfPlenty

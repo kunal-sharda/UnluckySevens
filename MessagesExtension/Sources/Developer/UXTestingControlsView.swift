@@ -3,7 +3,7 @@ import SwiftUI
 
 struct UXTestingControlsView: View {
     @ObservedObject var viewModel: LobbyDriverViewModel
-    @State private var isExpanded = false
+    @State private var isExpanded = true
     @AppStorage(GameTabletopLayoutStyle.uxTestingDefaultsKey)
     private var tabletopLayoutStyleRawValue = GameTabletopLayoutStyle.framedShelf.rawValue
     @AppStorage(GameBoardOceanStyle.defaultsKey)
@@ -37,6 +37,11 @@ struct UXTestingControlsView: View {
 
     private var quickStateMenu: some View {
         Menu {
+            Button("Recovery Games", systemImage: "square.stack.3d.up.fill") {
+                viewModel.seedUXTestingRecoveryGames()
+            }
+            .accessibilityIdentifier("uls.uxLab.recoveryGames")
+
             Menu("Lobby", systemImage: "person.3.fill") {
                 Button("Setup Card", systemImage: "list.number") {
                     lobbyInviteDirectionRawValue = LobbyInviteDirection.setupCard.rawValue
@@ -49,6 +54,30 @@ struct UXTestingControlsView: View {
                     viewModel.activateCleanLobbyInviteEntry()
                 }
                 .accessibilityIdentifier("uls.uxLab.cleanShot.lobbyInviteInvitationCard")
+
+                Button("Tabletop Candidate", systemImage: "table.furniture.fill") {
+                    lobbyInviteDirectionRawValue = LobbyInviteDirection.tabletopCandidate.rawValue
+                    viewModel.activateCleanLobbyInviteEntry()
+                }
+                .accessibilityIdentifier("uls.uxLab.cleanShot.lobbyInviteTabletopCandidate")
+
+                Button("Invitation Artifact", systemImage: "envelope.open.fill") {
+                    lobbyInviteDirectionRawValue = LobbyInviteDirection.artifactCandidate.rawValue
+                    viewModel.activateCleanLobbyInviteEntry()
+                }
+                .accessibilityIdentifier("uls.uxLab.cleanShot.lobbyInviteArtifactCandidate")
+
+                Button("Spatial Lobby", systemImage: "person.3.sequence.fill") {
+                    lobbyInviteDirectionRawValue = LobbyInviteDirection.spatialCandidate.rawValue
+                    viewModel.activateCleanLobbyInviteEntry()
+                }
+                .accessibilityIdentifier("uls.uxLab.cleanShot.lobbyInviteSpatialCandidate")
+
+                Button("Cocktail Table", systemImage: "square.grid.3x3.square") {
+                    lobbyInviteDirectionRawValue = LobbyInviteDirection.cocktailTableCandidate.rawValue
+                    viewModel.activateCleanLobbyInviteEntry()
+                }
+                .accessibilityIdentifier("uls.uxLab.cleanShot.lobbyInviteCocktailTableCandidate")
 
                 Button("Join", systemImage: "person.badge.plus") {
                     activateCleanFixture(
@@ -118,6 +147,14 @@ struct UXTestingControlsView: View {
                 )
             }
             .accessibilityIdentifier("uls.uxLab.cleanShot.turnAfterRoll")
+
+            Button("End", systemImage: "trophy.fill") {
+                activateCleanFixture(
+                    id: "game-over",
+                    style: .physicalProps
+                )
+            }
+            .accessibilityIdentifier("uls.uxLab.cleanShot.gameOver")
 
             Button("Pending", systemImage: "arrow.left.arrow.right") {
                 activateCleanFixture(
@@ -262,6 +299,46 @@ struct UXTestingControlsView: View {
             }
 
             HStack(spacing: 8) {
+                cleanShotChipButton(
+                    title: "Tabletop",
+                    systemImage: "table.furniture.fill",
+                    accessibilityLabel: "Tabletop invitation candidate",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.lobbyInviteTabletopCandidate"
+                ) {
+                    lobbyInviteDirectionRawValue = LobbyInviteDirection.tabletopCandidate.rawValue
+                    viewModel.activateCleanLobbyInviteEntry()
+                }
+
+                cleanShotChipButton(
+                    title: "Artifact",
+                    systemImage: "envelope.open.fill",
+                    accessibilityLabel: "Invitation artifact candidate",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.lobbyInviteArtifactCandidate"
+                ) {
+                    lobbyInviteDirectionRawValue = LobbyInviteDirection.artifactCandidate.rawValue
+                    viewModel.activateCleanLobbyInviteEntry()
+                }
+
+                cleanShotChipButton(
+                    title: "Spatial",
+                    systemImage: "person.3.sequence.fill",
+                    accessibilityLabel: "Spatial lobby candidate",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.lobbyInviteSpatialCandidate"
+                ) {
+                    lobbyInviteDirectionRawValue = LobbyInviteDirection.spatialCandidate.rawValue
+                    viewModel.activateCleanLobbyInviteEntry()
+                }
+
+                cleanShotChipButton(
+                    title: "Cocktail",
+                    systemImage: "square.grid.3x3.square",
+                    accessibilityLabel: "Cocktail table lobby candidate",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.lobbyInviteCocktailTableCandidate"
+                ) {
+                    lobbyInviteDirectionRawValue = LobbyInviteDirection.cocktailTableCandidate.rawValue
+                    viewModel.activateCleanLobbyInviteEntry()
+                }
+
                 cleanShotChipButton(
                     title: "No rim",
                     systemImage: "square.dashed",
@@ -429,6 +506,14 @@ struct UXTestingControlsView: View {
             Spacer(minLength: 0)
 
             HStack(spacing: 6) {
+                cleanShotButton(
+                    systemImage: "square.stack.3d.up.fill",
+                    accessibilityLabel: "Recovery Games",
+                    accessibilityIdentifier: "uls.uxLab.recoveryGames.direct"
+                ) {
+                    viewModel.seedUXTestingRecoveryGames()
+                }
+
                 cleanShotButton(
                     systemImage: "hand.raised.fill",
                     accessibilityLabel: "Clean actionable discard",

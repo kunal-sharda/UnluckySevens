@@ -23,6 +23,10 @@ final class CompactStateTransportTests: XCTestCase {
         XCTAssertEqual(decoded.devDeck, state.devDeck)
         XCTAssertEqual(decoded.devCardsByPlayer, state.devCardsByPlayer)
         XCTAssertEqual(decoded.newDevCardsByPlayer, state.newDevCardsByPlayer)
+        XCTAssertEqual(decoded.gameResult, state.gameResult)
+        XCTAssertEqual(decoded.resignedPlayers, state.resignedPlayers)
+        XCTAssertEqual(decoded.drawVote, state.drawVote)
+        XCTAssertEqual(decoded.hasAttemptedDrawVote, state.hasAttemptedDrawVote)
         XCTAssertEqual(decoded.auditLog, state.auditLog)
         XCTAssertEqual(decoded.lastTurnRecap, state.lastTurnRecap)
         XCTAssertEqual(decoded.settlementsByNode, state.settlementsByNode)
@@ -31,6 +35,47 @@ final class CompactStateTransportTests: XCTestCase {
         XCTAssertEqual(decoded.boardRules, state.boardRules)
         XCTAssertEqual(decoded.board, state.board)
         XCTAssertEqual(decoded.turnState, state.turnState)
+    }
+
+    func testCompactStateTransportRoundTripsInactivePlayerAndDrawVote() throws {
+        let activeState = makeState()
+        let resigned = try apply(
+            intent: GameLifecycleIntentV1.resign(anchoredTo: activeState),
+            to: activeState,
+            actor: "B"
+        )
+        let state = try apply(
+            intent: .proposeDraw(anchoredTo: resigned),
+            to: resigned,
+            actor: "A"
+        )
+
+        let payload = try CompactStateTransport.encode(state)
+        let decoded = try CompactStateTransport.decode(payload)
+
+        XCTAssertEqual(decoded, state)
+        XCTAssertEqual(decoded.phase, .turn)
+        XCTAssertEqual(decoded.resignedPlayers, ["B"])
+        XCTAssertEqual(decoded.drawVote, DrawVoteV1(proposedBy: "A", approvals: ["A"]))
+        XCTAssertNoThrow(try validateCanonicalSnapshot(decoded))
+    }
+
+    func testCompactStateTransportRoundTripsNeutralHostEndResult() throws {
+        let activeState = makeState()
+        let state = try apply(
+            intent: .endGame(anchoredTo: activeState),
+            to: activeState,
+            actor: "A"
+        )
+
+        let payload = try CompactStateTransport.encode(state)
+        let decoded = try CompactStateTransport.decode(payload)
+
+        XCTAssertEqual(decoded, state)
+        XCTAssertEqual(decoded.gameResult?.reason, .hostEnded)
+        XCTAssertEqual(decoded.gameResult?.endedByPlayer, "A")
+        XCTAssertTrue(decoded.gameResult?.winnerPlayers.isEmpty == true)
+        XCTAssertNoThrow(try validateCanonicalSnapshot(decoded))
     }
 
     func testCompactStateTransportShrinksEnvelopePayload() throws {

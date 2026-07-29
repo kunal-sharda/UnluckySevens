@@ -7,6 +7,7 @@ struct GameShellView: View {
 
     let viewModel: LobbyDriverViewModel
     let onSettingsTap: () -> Void
+    let onGamesTap: () -> Void
     let preferences: AppPreferences
     private let initialModeOnReset: GameMode
     private let initialRouteOnReset: GameShellRoute
@@ -16,6 +17,7 @@ struct GameShellView: View {
     private static let shellResizeFreezeWatchdogNanoseconds: UInt64 = 1_200_000_000
 
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var shellProjection: GameShellProjection
     @State private var currentMode: GameMode = .idle
     @State private var selectedBoardTarget: GameBoardTarget?
@@ -44,6 +46,7 @@ struct GameShellView: View {
     init(
         viewModel: LobbyDriverViewModel,
         onSettingsTap: @escaping () -> Void = {},
+        onGamesTap: @escaping () -> Void = {},
         preferences: AppPreferences,
         initialMode: GameMode = .idle,
         initialRoute: GameShellRoute = .none,
@@ -53,6 +56,7 @@ struct GameShellView: View {
     ) {
         self.viewModel = viewModel
         self.onSettingsTap = onSettingsTap
+        self.onGamesTap = onGamesTap
         self.preferences = preferences
         initialModeOnReset = initialMode
         initialRouteOnReset = initialRoute
@@ -85,13 +89,16 @@ struct GameShellView: View {
             currentMode: currentMode,
             availability: screenModel.modeAvailability
         )
-        let tabletopLayoutStyle = resolvedTabletopLayoutStyle(
+        let resolvedStyle = resolvedTabletopLayoutStyle(
             isNormalPostRollTurn: isNormalPostRollTurn,
             isNormalPreRollTurn: isNormalPreRollTurn,
             hasNotPrimaryPlayerContext: notPrimaryPlayerContext != nil,
             isSetupPlacement: isSetup,
             isForcedDiscard: resolvedMode == .discard
         )
+        let tabletopLayoutStyle: GameTabletopLayoutStyle = isGameOver
+            ? .physicalProps
+            : resolvedStyle
         let shelfPresentation = resolvedShelfPresentation(
             mode: resolvedMode,
             usesPhysicalProps: tabletopLayoutStyle.usesPhysicalProps
@@ -142,11 +149,16 @@ struct GameShellView: View {
         let isPhysicalDiscard = usesPhysicalProps && resolvedMode == .discard
         let isActionablePhysicalDiscard = isPhysicalDiscard
             && projection.discardPanelModel?.action != nil
+        let isPhysicalGameOver = usesPhysicalProps
+            && isGameOver
+            && screenModel.endScreen != nil
         let isPhysicalGameplayTurn = isNormalPostRollTurn
             || isPhysicalStartTurn
             || isPhysicalNotPrimaryPlayer
             || isPhysicalSetup
             || isPhysicalDiscard
+            || isPhysicalGameOver
+        let showsPhysicalPublicRail = isPhysicalGameplayTurn
         let physicalHeaderPrompt: GamePhysicalTurnHeaderPrompt? = if isPhysicalStartTurn {
             nil
         } else if let notPrimaryPlayerContext {
@@ -159,7 +171,9 @@ struct GameShellView: View {
                 devCardDraft: devCardDraft
             )
         }
-        let physicalHeaderTitle = isActionablePhysicalDiscard
+        let physicalHeaderTitle = isPhysicalGameOver
+            ? "Game over"
+            : isActionablePhysicalDiscard
             ? "Discard cards"
             : notPrimaryPlayerContext?.headerTitle(
                 fallback: headerModel.statusLine.title,
@@ -227,7 +241,13 @@ struct GameShellView: View {
                 let shouldShowPendingTradeBanner = !isTradePanelPresented
                     && !isNormalPostRollTurn
                     && projection.tradePanelModel?.pendingBannerText != nil
-                let bottomTrayHeight = usesPhysicalProps
+                let endScreenHeight = GameShellLayoutMetrics.endResultRailHeight(
+                    availableHeight: shellSize.height,
+                    isAccessibilitySize: dynamicTypeSize.isAccessibilitySize
+                )
+                let bottomTrayHeight = isPhysicalGameOver
+                    ? endScreenHeight
+                    : usesPhysicalProps
                     ? physicalLayout.propRailHeight
                     : tabletopLayoutStyle.usesFeltTools
                     ? shellLayout.trayHeight
@@ -248,7 +268,9 @@ struct GameShellView: View {
                     + (notPrimaryPlayerContext == .incomingTrade ? 6 : 0)
                 // The 44-point handle extends six points beyond the legacy
                 // 38-point visual width; reserve that clearance above the tray.
-                let reservedTrayHeight = usesPhysicalProps
+                let reservedTrayHeight = isPhysicalGameOver
+                    ? bottomTrayHeight
+                    : usesPhysicalProps
                     ? physicalLayout.propRailHeight
                     : tabletopLayoutStyle.usesFeltTools
                     ? shellLayout.trayHeight
@@ -263,14 +285,26 @@ struct GameShellView: View {
                         0
                     )
                     : 0)
-                let feltToolSurfaceReservation = tabletopLayoutStyle.usesFeltTools && !isPhysicalSetup
+                let feltToolSurfaceReservation = tabletopLayoutStyle.usesFeltTools
+                    && !isPhysicalSetup
+                    && !isPhysicalGameOver
                     ? actionSurfaceHeight + tabletopSectionSpacing
                     : 0
+                let endBoardContractCorrection = isPhysicalGameOver
+                    ? max(
+                        actionSurfaceHeight
+                            + tabletopSectionSpacing
+                            - (bottomTrayHeight - physicalLayout.propRailHeight),
+                        0
+                    )
+                    : 0
                 let boardPresentationHeight = max(
-                    baseBoardPresentationHeight - feltToolSurfaceReservation,
+                    baseBoardPresentationHeight
+                        - feltToolSurfaceReservation
+                        - endBoardContractCorrection,
                     0
                 )
-                let publicRailHeight: CGFloat = isPhysicalGameplayTurn
+                let publicRailHeight: CGFloat = showsPhysicalPublicRail
                         ? (usesPhysicalProps
                         ? physicalLayout.publicRailHeight
                         : 86)
@@ -278,7 +312,7 @@ struct GameShellView: View {
                 let boardCanvasPresentationHeight = max(
                     boardPresentationHeight
                         - publicRailHeight
-                        - (isPhysicalGameplayTurn ? tabletopSectionSpacing : 0),
+                        - (showsPhysicalPublicRail ? tabletopSectionSpacing : 0),
                     0
                 )
                 let boardHostPresentationHeight = usesPhysicalProps
@@ -317,8 +351,12 @@ struct GameShellView: View {
                                         GamePhysicalSetupTopBarView(
                                             model: setupPlacementModel,
                                             onSettingsTap: onSettingsTap,
+                                            onGamesTap: onGamesTap,
                                             onGameInfoTap: handleGameInfoToggle
                                         )
+                                    } else if isPhysicalGameOver,
+                                              let endScreen = screenModel.endScreen {
+                                        GameEndTopTableauView(model: endScreen)
                                     } else if usesPhysicalProps {
                                         if let tutorialHeaderTitle {
                                             GamePhysicalTurnPromptView(text: tutorialHeaderTitle)
@@ -334,6 +372,7 @@ struct GameShellView: View {
                                                 prompt: physicalHeaderPrompt,
                                                 isGameInfoOpen: isGameInfoOpen,
                                                 onSettingsTap: onSettingsTap,
+                                                onGamesTap: onGamesTap,
                                                 onGameInfoTap: handleGameInfoToggle
                                             )
                                         }
@@ -343,6 +382,7 @@ struct GameShellView: View {
                                             subtitle: headerModel.statusLine.subtitle,
                                             isGameInfoOpen: isGameInfoOpen,
                                             onSettingsTap: onSettingsTap,
+                                            onGamesTap: onGamesTap,
                                             onGameInfoTap: handleGameInfoToggle
                                         )
                                     }
@@ -366,13 +406,23 @@ struct GameShellView: View {
                             }
                             .frame(
                                 height: usesPhysicalProps
-                                    ? physicalLayout.topBarHeight
+                                    ? (
+                                        isPhysicalGameOver
+                                            ? (
+                                                dynamicTypeSize.isAccessibilitySize
+                                                    ? GamePhysicalTurnLayout.accessibilityEndTopBarHeight
+                                                    : physicalLayout.topBarHeight
+                                            )
+                                                + tabletopSectionSpacing
+                                                + publicRailHeight
+                                            : physicalLayout.topBarHeight
+                                    )
                                     : shellLayout.headerHeight,
                                 alignment: .center
                             )
                             .accessibilityHidden(isPhysicalStartTurn)
 
-                            if isPhysicalGameplayTurn {
+                            if showsPhysicalPublicRail && !isPhysicalGameOver {
                                 Group {
                                     if let setupPlacementModel, isPhysicalSetup {
                                         GamePhysicalSetupOrderRailView(model: setupPlacementModel)
@@ -435,7 +485,9 @@ struct GameShellView: View {
                                 hintBottomInset: boardHintBottomInset,
                                 showsCreamFrame: tabletopLayoutStyle.showsCreamBoardFrame,
                                 boardContentVerticalOffset: usesPhysicalProps
-                                    ? (isPhysicalSetup ? 0 : physicalBoardCenteringOffset)
+                                    ? (isPhysicalSetup
+                                        ? 0
+                                        : physicalBoardCenteringOffset)
                                     : 0,
                                 frozenBoardImage: nil,
                                 reloadToken: viewModel.boardReloadToken,
@@ -639,6 +691,29 @@ struct GameShellView: View {
                                     : GameTheme.shellPadding
                             )
                             .zIndex(0.5)
+                        }
+
+                        if isPhysicalGameOver, let endScreen = screenModel.endScreen {
+                            GameEndResultRailView(
+                                model: endScreen,
+                                onNewGame: viewModel.prepareNewGame
+                            )
+                                .frame(height: bottomTrayHeight)
+                                .frame(maxWidth: lowerRailWidth)
+                                .padding(.horizontal, GameTheme.shellPadding)
+                                .offset(y: GameTheme.inlineSpacing)
+                                .zIndex(1)
+                        }
+
+                        if isGameOver, !isPhysicalGameOver, let endScreen = screenModel.endScreen {
+                            GameEndFunctionalFooterView(
+                                model: endScreen,
+                                onNewGame: viewModel.prepareNewGame
+                            )
+                            .frame(maxWidth: lowerRailWidth)
+                            .padding(.horizontal, GameTheme.shellPadding)
+                            .padding(.bottom, GameTheme.shellPadding)
+                            .zIndex(1)
                         }
 
 #if DEBUG

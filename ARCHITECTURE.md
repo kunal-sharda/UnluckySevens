@@ -57,7 +57,7 @@ Examples:
 - resource and bank invariants
 - trade acceptance resolution and expiry
 - dev-card effects
-- awards and victory
+- awards, inactive-player resignation, draw voting, victory, and canonical terminal results
 - secrecy-safe projections and legal-action queries
 
 ### Message protocol
@@ -90,12 +90,14 @@ The shipped transcript/runtime is `STATE`-only:
 - `STATE`
   - authoritative canonical snapshot of the game at a specific revision
 
-`SetupIntentV1` and `ULS_CoreGame.TurnIntentV1` are engine reducer inputs, not transcript compatibility payloads. Messages authoring wraps turn actions in a `TurnActionDraft` with actor and state-anchor metadata, then immediately applies the core reducer and publishes the resulting canonical `STATE`. `ULS_Transport` does not own action draft DTOs.
+`SetupIntentV1`, `ULS_CoreGame.TurnIntentV1`, and anchored `GameLifecycleIntentV1` values are engine reducer inputs, not transcript compatibility payloads. Messages authoring applies them locally against a game/revision/hash anchor and publishes only the resulting canonical `STATE`. `ULS_Transport` does not own action draft DTOs.
 
 Turn-advancing actions are still constrained by game rules:
 
 - the current player publishes canonical `STATE` for normal turn progression
 - responder actors may also publish canonical `STATE` directly for rules-defined off-turn actions that do not change `currentPlayer`, such as forced discard or targeted trade responses
+- any active player may publish a Core-produced resignation or draw-vote `STATE`; resignation preserves active play for the remaining roster
+- only the original inviter/host may publish a neutral host-end `STATE`, while ordinary victory remains reducer-owned
 
 This keeps the wire/runtime model simpler while preserving the asymmetric authority semantics that reduce desync risk in async Messages play.
 
@@ -112,6 +114,10 @@ Internal authoring actions must still be anchored to the current canonical base 
 
 The Messages UX uses one `MSSession` per game for canonical `STATE` updates so the main game bubble stays grouped across lobby, setup, turn play, responder actions, and game over.
 
+Session continuity is an in-memory host adaptation, not canonical persistence. Recovery publication reuses the selected same-game or cached in-memory `MSSession` when available. If extension restart leaves neither available, it deliberately starts a fresh recovery bubble; persisted `MSSession` archival is prohibited until a two-device replacement experiment proves it reliable.
+
+The local per-game ledger stores validated canonical snapshots independently of the compact wire representation. Higher revisions win; valid equal-revision siblings converge on the lexicographically greatest state hash. Active records persist until local archive, while only the eight most recently updated finished games are retained. Archive is device-local and a later valid transcript bubble can recreate the record.
+
 The protocol source of truth is the message URL payload. Pre-TestFlight dev-era summary mirroring, legacy envelopes, and retired transcript debug surfaces are intentionally unsupported on the current branch.
 
 ## Invariants That Shape the Codebase
@@ -124,6 +130,8 @@ Several invariants explain why the code is split this way:
 - the canonical state may contain hidden information, but the UI may only expose viewer-safe projections
 - transport is a boundary layer, not a rules engine
 - canonical `STATE` messages must stay within the payload budget
+- every decoded or persisted snapshot must pass canonical hash and terminal-result validation before selection
+- game-over state owns one canonical `GameResultV1` with reason and final scores; victory owns roster-ordered winners, while agreed draw and host end own no winners; pending setup, turn, draw, and trade state is absent
 
 These invariants are enforced by code and tests first, then documented in the owner docs.
 

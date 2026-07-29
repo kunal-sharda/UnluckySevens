@@ -158,6 +158,10 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
 
         XCTAssertEqual(model.participants.last?.displayName, "Kunal")
         XCTAssertEqual(model.title, "You're In")
+        XCTAssertEqual(
+            model.subtitle,
+            "Waiting for \(PlayerPseudonymResolver.displayName(for: host, in: state)) to start."
+        )
         XCTAssertEqual(model.nameEditor?.title, "Display Name")
         XCTAssertEqual(model.nameEditor?.helperText, "")
         XCTAssertEqual(model.nameEditor?.saveButton?.title, "Save Name")

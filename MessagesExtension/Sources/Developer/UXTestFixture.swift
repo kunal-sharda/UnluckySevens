@@ -81,6 +81,46 @@ enum UXTestFixtures {
         displayNames[actorID]
     }
 
+    static var recoveryStates: [CoreGameStateV1] {
+        [
+            reidentified(recoveryCoWinnerTurnState, gameId: "ux-recovery-active"),
+            reidentified(gameOver.state, gameId: "ux-recovery-finished"),
+        ]
+    }
+
+    private static var recoveryCoWinnerTurnState: CoreGameStateV1 {
+        makeState(
+            rev: 9,
+            currentPlayer: host,
+            phase: .turn,
+            settlementsByNode: [
+                4: host,
+                18: alice,
+                31: ben,
+            ],
+            citiesByNode: [
+                8: host,
+                25: alice,
+                42: ben,
+            ],
+            largestArmyOwner: nil,
+            largestArmySize: 0,
+            longestRoadOwner: nil,
+            longestRoadLength: 0,
+            lastTurnRecap: TurnRecapV1(
+                actor: alice,
+                startRev: 5,
+                endRev: 8,
+                rollTotal: 6,
+                actions: [.buildRoad, .endTurn]
+            ),
+            turnState: TurnStateV1(
+                step: .afterRoll,
+                lastRoll: DiceRollV1(d1: 3, d2: 5)
+            )
+        )
+    }
+
     private static let roster = [host, alice, ben]
     private static let displayNames = [
         host: "Kunal",
@@ -89,7 +129,7 @@ enum UXTestFixtures {
     ]
     private static let boardRules = BoardRulesV1(strategy: .noRedAdjacentV1)
     private static let board = StandardBoardGeneratorV1.generate(
-        boardSeed: 70_707,
+        boardSeed: SeedDeriver(masterSeed: 9_001).seed(for: .board),
         rules: boardRules
     )
     private static let fullBank = ResourceHandV1.standardBank
@@ -353,7 +393,27 @@ enum UXTestFixtures {
             rev: 18,
             currentPlayer: host,
             phase: .gameOver,
-            revealedVictoryPointsByPlayer: [host: 3],
+            revealedVictoryPointsByPlayer: [host: 2],
+            auditLog: [
+                AuditEntryV1(rev: 7, actor: host, action: .playKnight),
+                AuditEntryV1(rev: 15, actor: host, action: .playRoadBuilding),
+                AuditEntryV1(rev: 18, actor: host, action: .revealVictoryPoint),
+            ],
+            settlementsByNode: [
+                4: host,
+                12: host,
+                18: alice,
+                31: ben,
+            ],
+            citiesByNode: [
+                8: host,
+                20: host,
+                24: host,
+                25: alice,
+            ],
+            knightsPlayedByPlayer: [host: 1, alice: 1],
+            largestArmyOwner: nil,
+            largestArmySize: 0,
             winnerPlayer: host,
             winningVictoryPoints: 10,
             lastTurnRecap: TurnRecapV1(
@@ -363,10 +423,7 @@ enum UXTestFixtures {
                 rollTotal: 8,
                 actions: [.rollDice, .buildCity, .endTurn]
             ),
-            turnState: TurnStateV1(
-                step: .afterRoll,
-                lastRoll: DiceRollV1(d1: 5, d2: 3)
-            )
+            turnState: nil
         )
     )
 
@@ -394,12 +451,18 @@ enum UXTestFixtures {
         devCardsByPlayer: [String: DevCardInventoryV1] = defaultDevCardsByPlayer,
         newDevCardsByPlayer: [String: DevCardInventoryV1] = defaultNewDevCardsByPlayer,
         revealedVictoryPointsByPlayer: [String: Int] = [:],
+        auditLog: [AuditEntryV1] = [],
         activeTradeOffer: TradeOfferV1? = nil,
         tradeResponses: [TradeResponseV1] = [],
+        settlementsByNode: [NodeID: String] = defaultSettlements,
+        citiesByNode: [NodeID: String] = defaultCities,
+        knightsPlayedByPlayer: [String: Int] = [host: 2, alice: 1],
+        largestArmyOwner: String? = host,
+        largestArmySize: Int = 2,
         winnerPlayer: String? = nil,
         winningVictoryPoints: Int = 0,
         lastTurnRecap: TurnRecapV1? = nil,
-        turnState: TurnStateV1
+        turnState: TurnStateV1?
     ) -> CoreGameStateV1 {
         makeState(
             rev: rev,
@@ -409,8 +472,14 @@ enum UXTestFixtures {
             devCardsByPlayer: devCardsByPlayer,
             newDevCardsByPlayer: newDevCardsByPlayer,
             revealedVictoryPointsByPlayer: revealedVictoryPointsByPlayer,
+            auditLog: auditLog,
             activeTradeOffer: activeTradeOffer,
             tradeResponses: tradeResponses,
+            settlementsByNode: settlementsByNode,
+            citiesByNode: citiesByNode,
+            knightsPlayedByPlayer: knightsPlayedByPlayer,
+            largestArmyOwner: largestArmyOwner,
+            largestArmySize: largestArmySize,
             winnerPlayer: winnerPlayer,
             winningVictoryPoints: winningVictoryPoints,
             lastTurnRecap: lastTurnRecap,
@@ -430,6 +499,7 @@ enum UXTestFixtures {
         devCardsByPlayer: [String: DevCardInventoryV1] = defaultDevCardsByPlayer,
         newDevCardsByPlayer: [String: DevCardInventoryV1] = defaultNewDevCardsByPlayer,
         revealedVictoryPointsByPlayer: [String: Int] = [:],
+        auditLog: [AuditEntryV1] = [],
         activeTradeOffer: TradeOfferV1? = nil,
         tradeResponses: [TradeResponseV1] = [],
         settlementsByNode: [NodeID: String] = defaultSettlements,
@@ -438,6 +508,11 @@ enum UXTestFixtures {
         boardRules: BoardRulesV1? = boardRules,
         board: BoardSetupV1? = board,
         setupState: SetupStateV1? = nil,
+        knightsPlayedByPlayer: [String: Int] = [host: 2, alice: 1],
+        largestArmyOwner: String? = host,
+        largestArmySize: Int = 2,
+        longestRoadOwner: String? = alice,
+        longestRoadLength: Int = 5,
         winnerPlayer: String? = nil,
         winningVictoryPoints: Int = 0,
         lastTurnRecap: TurnRecapV1? = nil,
@@ -461,13 +536,14 @@ enum UXTestFixtures {
             devCardsByPlayer: devCardsByPlayer,
             newDevCardsByPlayer: newDevCardsByPlayer,
             revealedVictoryPointsByPlayer: revealedVictoryPointsByPlayer,
-            knightsPlayedByPlayer: [host: 2, alice: 1],
-            largestArmyOwner: host,
-            largestArmySize: 2,
-            longestRoadOwner: alice,
-            longestRoadLength: 5,
+            knightsPlayedByPlayer: knightsPlayedByPlayer,
+            largestArmyOwner: largestArmyOwner,
+            largestArmySize: largestArmySize,
+            longestRoadOwner: longestRoadOwner,
+            longestRoadLength: longestRoadLength,
             winnerPlayer: winnerPlayer,
             winningVictoryPoints: winningVictoryPoints,
+            auditLog: auditLog,
             lastTurnRecap: lastTurnRecap,
             activeTradeOffer: activeTradeOffer,
             tradeResponses: tradeResponses,
@@ -496,6 +572,51 @@ enum UXTestFixtures {
             roadsByEdge: [:],
             setupState: initializeSetupState(roster: roster)
         )
+    }
+
+    private static func reidentified(
+        _ state: CoreGameStateV1,
+        gameId: String
+    ) -> CoreGameStateV1 {
+        CoreGameStateV1(
+            gameId: gameId,
+            rev: state.rev,
+            prevHash: state.prevHash,
+            stateHash: "",
+            roster: state.roster,
+            currentPlayer: state.currentPlayer,
+            playerDisplayNamesByPlayer: state.playerDisplayNamesByPlayer,
+            phase: state.phase,
+            seed: state.seed,
+            diceRngState: state.diceRngState,
+            robberRngState: state.robberRngState,
+            resourcesByPlayer: state.resourcesByPlayer,
+            bankResources: state.bankResources,
+            devDeck: state.devDeck,
+            devCardsByPlayer: state.devCardsByPlayer,
+            newDevCardsByPlayer: state.newDevCardsByPlayer,
+            revealedVictoryPointsByPlayer: state.revealedVictoryPointsByPlayer,
+            devCardActionPlayedThisTurn: state.devCardActionPlayedThisTurn,
+            knightsPlayedByPlayer: state.knightsPlayedByPlayer,
+            largestArmyOwner: state.largestArmyOwner,
+            largestArmySize: state.largestArmySize,
+            longestRoadOwner: state.longestRoadOwner,
+            longestRoadLength: state.longestRoadLength,
+            winnerPlayer: state.winnerPlayer,
+            winningVictoryPoints: state.winningVictoryPoints,
+            gameResult: state.gameResult,
+            auditLog: state.auditLog,
+            lastTurnRecap: state.lastTurnRecap,
+            activeTradeOffer: state.activeTradeOffer,
+            tradeResponses: state.tradeResponses,
+            settlementsByNode: state.settlementsByNode,
+            citiesByNode: state.citiesByNode,
+            roadsByEdge: state.roadsByEdge,
+            boardRules: state.boardRules,
+            board: state.board,
+            setupState: state.setupState,
+            turnState: state.turnState
+        ).rehashed()
     }
 
     private static func makeSetupRoadPlacementState() -> CoreGameStateV1 {

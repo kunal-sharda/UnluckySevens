@@ -116,11 +116,11 @@ enum TranscriptBubbleCopyBuilder {
         resultingState state: CoreGameStateV1
     ) -> TranscriptBubbleCopy {
         if state.phase == .gameOver {
-            let winner = displayName(for: state.winnerPlayer, in: state)
+            let winner = winnerNames(in: state)
             return titled(
                 "\(winner) Wins",
                 summary: "Game over at \(state.winningVictoryPoints) points.",
-                visual: gameOverVisual(for: state, winner: winner)
+                visual: gameOverVisual(for: state, winnerTitle: "\(winner) won")
             )
         }
 
@@ -227,6 +227,108 @@ enum TranscriptBubbleCopyBuilder {
         }
     }
 
+    static func resignation(
+        resultingState state: CoreGameStateV1,
+        actor: String
+    ) -> TranscriptBubbleCopy {
+        let actorName = displayName(for: actor, in: state)
+        return boardTitled(
+            "\(actorName) Resigned",
+            summary: "\(actorName) left the game. \(displayName(for: state.currentPlayer, in: state)) has the turn.",
+            state: state,
+            showsNumberTokens: state.phase == .turn
+        )
+    }
+
+    static func drawProposed(
+        resultingState state: CoreGameStateV1,
+        actor: String
+    ) -> TranscriptBubbleCopy {
+        let actorName = displayName(for: actor, in: state)
+        return boardTitled(
+            "Draw Proposed",
+            summary: "\(actorName) proposed a draw. Every active player must agree.",
+            state: state,
+            showsNumberTokens: state.phase == .turn
+        )
+    }
+
+    static func drawVote(
+        resultingState state: CoreGameStateV1,
+        actor: String,
+        approved: Bool
+    ) -> TranscriptBubbleCopy {
+        let actorName = displayName(for: actor, in: state)
+        if state.phase == .gameOver {
+            return titled(
+                "Draw Agreed",
+                summary: "All active players agreed to a draw.",
+                visual: gameOverVisual(for: state, winnerTitle: "Draw")
+            )
+        }
+        if approved {
+            let approvals = state.drawVote?.approvals.count ?? 0
+            return boardTitled(
+                "Draw Vote",
+                summary: "\(actorName) agreed · \(approvals) of \(state.activePlayers.count) approvals.",
+                state: state,
+                showsNumberTokens: state.phase == .turn
+            )
+        }
+        return boardTitled(
+            "Draw Declined",
+            summary: "\(actorName) declined the draw. Play continues.",
+            state: state,
+            showsNumberTokens: state.phase == .turn
+        )
+    }
+
+    static func hostEnded(
+        resultingState state: CoreGameStateV1,
+        actor: String
+    ) -> TranscriptBubbleCopy {
+        let actorName = displayName(for: actor, in: state)
+        return titled(
+            "Game Ended",
+            summary: "\(actorName) ended the game as host. No winner was declared.",
+            visual: gameOverVisual(for: state, winnerTitle: "Game ended")
+        )
+    }
+
+    static func recoveryResend(
+        state: CoreGameStateV1,
+        actor: String
+    ) -> TranscriptBubbleCopy {
+        let actorName = displayName(for: actor, in: state)
+        let visual: TranscriptBubbleVisual
+        switch state.phase {
+        case .lobby:
+            visual = lobbyVisual(for: state)
+        case .setup:
+            visual = boardVisual(for: state, showsNumberTokens: false)
+        case .turn:
+            visual = boardVisual(for: state, showsNumberTokens: true)
+        case .gameOver:
+            let title: String
+            switch state.gameResult?.reason {
+            case .victory:
+                title = "\(winnerNames(in: state)) won"
+            case .draw:
+                title = "Draw"
+            case .hostEnded:
+                title = "Game ended"
+            case nil:
+                title = "Game over"
+            }
+            visual = gameOverVisual(for: state, winnerTitle: title)
+        }
+        return titled(
+            "Game Restored",
+            summary: "\(actorName) resent the latest game state.",
+            visual: visual
+        )
+    }
+
     private static func titled(
         _ title: String,
         summary: String,
@@ -280,7 +382,7 @@ enum TranscriptBubbleCopyBuilder {
 
     private static func gameOverVisual(
         for state: CoreGameStateV1,
-        winner: String
+        winnerTitle: String
     ) -> TranscriptBubbleVisual {
         guard let renderModel = GameBoardRenderModelBuilder.build(state: state) else {
             return .none
@@ -294,7 +396,7 @@ enum TranscriptBubbleCopyBuilder {
         return .gameOver(
             TranscriptGameOverVisual(
                 renderModel: renderModel,
-                winnerTitle: "\(winner) won",
+                winnerTitle: winnerTitle,
                 scoreLine: scoreLine
             )
         )
@@ -318,6 +420,13 @@ enum TranscriptBubbleCopyBuilder {
 
     private static func displayName(for playerID: String?, in state: CoreGameStateV1) -> String {
         PlayerPseudonymResolver.displayName(for: playerID, in: state)
+    }
+
+    private static func winnerNames(in state: CoreGameStateV1) -> String {
+        let names = state.gameResult?.winnerPlayers.map {
+            displayName(for: $0, in: state)
+        } ?? state.winnerPlayer.map { [displayName(for: $0, in: state)] } ?? []
+        return englishList(names)
     }
 
     private static func nextPendingDiscarder(in state: CoreGameStateV1) -> String? {

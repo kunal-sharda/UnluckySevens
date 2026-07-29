@@ -77,7 +77,7 @@ enum LobbyScreenModelBuilder {
             helperText = ""
         } else if localHasJoined {
             title = "You're In"
-            subtitle = "Waiting for \(displayName(host, state: state)) to start the game."
+            subtitle = "Waiting for \(displayName(host, state: state)) to start."
             helperText = ""
         } else {
             title = "Join the Table"

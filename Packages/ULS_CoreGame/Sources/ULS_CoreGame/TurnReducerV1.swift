@@ -33,6 +33,10 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         throw CoreGameError.turnStateMissing
     }
 
+    guard state.isActivePlayer(actor) else {
+        throw CoreGameError.actorMismatch
+    }
+
     guard isAuthorizedActorForTurnIntent(intent, actor: actor, currentPlayer: state.currentPlayer) else {
         throw CoreGameError.actorMismatch
     }
@@ -89,7 +93,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
 
     func canTradeRespond(player: String, offer: TradeOfferV1) -> Bool {
         player != state.currentPlayer &&
-            state.roster.contains(player) &&
+            state.isActivePlayer(player) &&
             offer.recipients.contains(player)
     }
 
@@ -176,7 +180,10 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         let rollTotal = roll.0 + roll.1
 
         if rollTotal == 7 {
-            let requirements = requiredDiscards(for: state.resourcesByPlayer)
+            let requirements = requiredDiscards(
+                for: state.resourcesByPlayer,
+                players: state.activePlayers
+            )
             let nextStep: TurnStepV1 = requirements.isEmpty ? .needsRobberMove : .pendingDiscards
             return nextTurnState(
                 from: state,
@@ -200,7 +207,8 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             settlementsByNode: state.settlementsByNode,
             citiesByNode: state.citiesByNode,
             resourcesByPlayer: state.resourcesByPlayer,
-            bankResources: state.bankResources
+            bankResources: state.bankResources,
+            eligiblePlayers: Set(state.activePlayers)
         )
 
         return nextTurnState(
@@ -227,7 +235,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             throw CoreGameError.discardAlreadySubmitted
         }
 
-        guard nextPendingDiscardPlayer(roster: state.roster, turnState: turnState) == player else {
+        guard nextPendingDiscardPlayer(roster: state.activePlayers, turnState: turnState) == player else {
             throw CoreGameError.discardSubmissionOutOfOrder
         }
 
@@ -322,7 +330,8 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             settlementsByNode: state.settlementsByNode,
             citiesByNode: state.citiesByNode,
             resourcesByPlayer: state.resourcesByPlayer,
-            currentPlayer: state.currentPlayer
+            currentPlayer: state.currentPlayer,
+            eligiblePlayers: Set(state.activePlayers)
         )
         let nextStep: TurnStepV1 = victims.isEmpty ? .afterRoll : .needsRobberSteal
 
@@ -518,7 +527,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             give != receive,
             !normalizedRecipients.isEmpty,
             normalizedRecipients.count == recipients.count,
-            normalizedRecipients.allSatisfy({ $0 != state.currentPlayer && state.roster.contains($0) })
+            normalizedRecipients.allSatisfy({ $0 != state.currentPlayer && state.isActivePlayer($0) })
         else {
             throw CoreGameError.tradeOfferInvalid
         }
@@ -784,7 +793,8 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             settlementsByNode: state.settlementsByNode,
             citiesByNode: state.citiesByNode,
             resourcesByPlayer: state.resourcesByPlayer,
-            currentPlayer: state.currentPlayer
+            currentPlayer: state.currentPlayer,
+            eligiblePlayers: Set(state.activePlayers)
         )
         if !victims.isEmpty {
             let selectedVictim = victimPlayer ?? victims[0]
@@ -835,7 +845,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         let current = state.currentPlayer
         var updatedResourcesByPlayer = state.resourcesByPlayer
         var totalCollected = 0
-        for player in state.roster where player != current {
+        for player in state.activePlayers where player != current {
             let hand = updatedResourcesByPlayer[player] ?? .zero
             let amount = hand.count(for: resource)
             if amount > 0 {
@@ -955,6 +965,10 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
                 longestRoadLength: workingState.longestRoadLength,
                 winnerPlayer: workingState.winnerPlayer,
                 winningVictoryPoints: workingState.winningVictoryPoints,
+                gameResult: workingState.gameResult,
+                resignedPlayers: workingState.resignedPlayers,
+                drawVote: workingState.drawVote,
+                hasAttemptedDrawVote: workingState.hasAttemptedDrawVote,
                 auditLog: workingState.auditLog,
                 lastTurnRecap: workingState.lastTurnRecap,
                 activeTradeOffer: workingState.activeTradeOffer,
@@ -1026,13 +1040,21 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             throw CoreGameError.turnStepMismatch
         }
 
-        guard let currentIndex = state.roster.firstIndex(of: state.currentPlayer), !state.roster.isEmpty else {
+        guard let currentIndex = state.roster.firstIndex(of: state.currentPlayer), !state.activePlayers.isEmpty else {
             throw CoreGameError.turnCurrentPlayerNotInRoster
         }
 
-        let nextIndex = state.roster.index(after: currentIndex)
-        let wrappedIndex = nextIndex == state.roster.endIndex ? state.roster.startIndex : nextIndex
-        let nextPlayer = state.roster[wrappedIndex]
+        var nextPlayer: String?
+        for offset in 1...state.roster.count {
+            let candidate = state.roster[(currentIndex + offset) % state.roster.count]
+            if state.isActivePlayer(candidate) {
+                nextPlayer = candidate
+                break
+            }
+        }
+        guard let nextPlayer else {
+            throw CoreGameError.turnCurrentPlayerNotInRoster
+        }
 
         let endingPlayer = state.currentPlayer
         var devCardsByPlayer = state.devCardsByPlayer
@@ -1107,6 +1129,10 @@ private func baseNextTurnState(
         longestRoadLength: state.longestRoadLength,
         winnerPlayer: state.winnerPlayer,
         winningVictoryPoints: state.winningVictoryPoints,
+        gameResult: state.gameResult,
+        resignedPlayers: state.resignedPlayers,
+        drawVote: state.drawVote,
+        hasAttemptedDrawVote: state.hasAttemptedDrawVote,
         auditLog: state.auditLog,
         lastTurnRecap: state.lastTurnRecap,
         activeTradeOffer: activeTradeOffer ?? state.activeTradeOffer,
@@ -1158,6 +1184,10 @@ private func stateByApplyingAwards(_ state: CoreGameStateV1, awards: AwardStateV
         longestRoadLength: awards.longestRoadLength,
         winnerPlayer: state.winnerPlayer,
         winningVictoryPoints: state.winningVictoryPoints,
+        gameResult: state.gameResult,
+        resignedPlayers: state.resignedPlayers,
+        drawVote: state.drawVote,
+        hasAttemptedDrawVote: state.hasAttemptedDrawVote,
         auditLog: state.auditLog,
         lastTurnRecap: state.lastTurnRecap,
         activeTradeOffer: state.activeTradeOffer,
@@ -1215,6 +1245,14 @@ private func stateByApplyingGameOver(
         longestRoadLength: state.longestRoadLength,
         winnerPlayer: winner,
         winningVictoryPoints: max(10, winningPoints),
+        gameResult: GameResultV1(
+            reason: .victory,
+            winnerPlayers: [winner],
+            finalScoresByPlayer: victoryPointsByPlayer(in: state)
+        ),
+        resignedPlayers: state.resignedPlayers,
+        drawVote: nil,
+        hasAttemptedDrawVote: state.hasAttemptedDrawVote,
         auditLog: state.auditLog,
         lastTurnRecap: state.lastTurnRecap,
         activeTradeOffer: nil,
@@ -1272,6 +1310,10 @@ private func stateByAppendingAuditEntry(
         longestRoadLength: next.longestRoadLength,
         winnerPlayer: next.winnerPlayer,
         winningVictoryPoints: next.winningVictoryPoints,
+        gameResult: next.gameResult,
+        resignedPlayers: next.resignedPlayers,
+        drawVote: next.drawVote,
+        hasAttemptedDrawVote: next.hasAttemptedDrawVote,
         auditLog: updatedAuditLog,
         lastTurnRecap: recap,
         activeTradeOffer: next.activeTradeOffer,
@@ -1355,9 +1397,13 @@ private func auditRollTotal(for intent: TurnIntentV1, turnState: TurnStateV1?) -
     return roll.d1 + roll.d2
 }
 
-private func requiredDiscards(for resourcesByPlayer: [String: ResourceHandV1]) -> [String: Int] {
+private func requiredDiscards(
+    for resourcesByPlayer: [String: ResourceHandV1],
+    players: [String]
+) -> [String: Int] {
     var result: [String: Int] = [:]
-    for (player, hand) in resourcesByPlayer {
+    for player in players {
+        let hand = resourcesByPlayer[player] ?? .zero
         if hand.totalCount > 7 {
             result[player] = hand.totalCount / 2
         }
@@ -1370,7 +1416,8 @@ private func eligibleRobberVictims(
     settlementsByNode: [NodeID: String],
     citiesByNode: [NodeID: String],
     resourcesByPlayer: [String: ResourceHandV1],
-    currentPlayer: String
+    currentPlayer: String,
+    eligiblePlayers: Set<String>
 ) -> [String] {
     let topology = StandardBoardTopologyV1.standard()
     guard tileID >= 0, tileID < topology.tiles.count else {
@@ -1381,6 +1428,7 @@ private func eligibleRobberVictims(
     for node in topology.tiles[tileID].nodes {
         if let cityOwner = citiesByNode[node],
            cityOwner != currentPlayer,
+           eligiblePlayers.contains(cityOwner),
            (resourcesByPlayer[cityOwner] ?? .zero).totalCount > 0
         {
             victims.insert(cityOwner)
@@ -1389,6 +1437,7 @@ private func eligibleRobberVictims(
 
         if let settlementOwner = settlementsByNode[node],
            settlementOwner != currentPlayer,
+           eligiblePlayers.contains(settlementOwner),
            (resourcesByPlayer[settlementOwner] ?? .zero).totalCount > 0
         {
             victims.insert(settlementOwner)

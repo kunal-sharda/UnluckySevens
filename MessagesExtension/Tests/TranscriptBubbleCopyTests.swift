@@ -92,6 +92,127 @@ final class TranscriptBubbleCopyTests: XCTestCase {
         XCTAssertTrue(visual.scoreLine.contains("Avery"))
     }
 
+    func testResignationReceiptSaysPlayContinues() throws {
+        let active = makeTurnState(
+            currentPlayer: "A",
+            customNames: ["A": "Avery", "B": "Blake"]
+        )
+        let continued = try apply(
+            intent: .resign(anchoredTo: active),
+            to: active,
+            actor: "A"
+        )
+
+        let copy = TranscriptBubbleCopyBuilder.resignation(
+            resultingState: continued,
+            actor: "A"
+        )
+
+        XCTAssertEqual(copy.caption, "Unlucky Sevens: Avery Resigned")
+        XCTAssertEqual(copy.summary, "Avery left the game. Blake has the turn.")
+        guard case .board = copy.visual else {
+            return XCTFail("Expected the continuing board visual.")
+        }
+        XCTAssertEqual(continued.phase, .turn)
+        XCTAssertEqual(continued.resignedPlayers, ["A"])
+    }
+
+    func testDrawProposalAndRejectionReceiptsKeepPlayActive() throws {
+        let active = makeTurnState(
+            currentPlayer: "A",
+            customNames: ["A": "Avery", "B": "Blake"]
+        )
+        let proposed = try apply(
+            intent: .proposeDraw(anchoredTo: active),
+            to: active,
+            actor: "A"
+        )
+        let proposalCopy = TranscriptBubbleCopyBuilder.drawProposed(
+            resultingState: proposed,
+            actor: "A"
+        )
+
+        XCTAssertEqual(proposalCopy.caption, "Unlucky Sevens: Draw Proposed")
+        XCTAssertEqual(
+            proposalCopy.summary,
+            "Avery proposed a draw. Every active player must agree."
+        )
+
+        let rejected = try apply(
+            intent: .voteDraw(approve: false, anchoredTo: proposed),
+            to: proposed,
+            actor: "B"
+        )
+        let rejectionCopy = TranscriptBubbleCopyBuilder.drawVote(
+            resultingState: rejected,
+            actor: "B",
+            approved: false
+        )
+
+        XCTAssertEqual(rejectionCopy.caption, "Unlucky Sevens: Draw Declined")
+        XCTAssertEqual(rejectionCopy.summary, "Blake declined the draw. Play continues.")
+        XCTAssertEqual(rejected.phase, .turn)
+        XCTAssertNil(rejected.drawVote)
+    }
+
+    func testUnanimousDrawAndHostEndReceiptsAreNeutral() throws {
+        let active = makeTurnState(
+            currentPlayer: "A",
+            customNames: ["A": "Avery", "B": "Blake"]
+        )
+        let proposed = try apply(
+            intent: .proposeDraw(anchoredTo: active),
+            to: active,
+            actor: "A"
+        )
+        let drawn = try apply(
+            intent: .voteDraw(approve: true, anchoredTo: proposed),
+            to: proposed,
+            actor: "B"
+        )
+        let drawCopy = TranscriptBubbleCopyBuilder.drawVote(
+            resultingState: drawn,
+            actor: "B",
+            approved: true
+        )
+
+        XCTAssertEqual(drawCopy.caption, "Unlucky Sevens: Draw Agreed")
+        XCTAssertEqual(drawCopy.summary, "All active players agreed to a draw.")
+
+        let ended = try apply(
+            intent: .endGame(anchoredTo: active),
+            to: active,
+            actor: "A"
+        )
+        let endedCopy = TranscriptBubbleCopyBuilder.hostEnded(
+            resultingState: ended,
+            actor: "A"
+        )
+
+        XCTAssertEqual(endedCopy.caption, "Unlucky Sevens: Game Ended")
+        XCTAssertEqual(
+            endedCopy.summary,
+            "Avery ended the game as host. No winner was declared."
+        )
+        XCTAssertTrue(ended.gameResult?.winnerPlayers.isEmpty == true)
+    }
+
+    func testRecoveryResendUsesUnchangedStateAndRestoredReceipt() {
+        let state = makeTurnState(
+            currentPlayer: "B",
+            customNames: ["A": "Avery"]
+        )
+
+        let copy = TranscriptBubbleCopyBuilder.recoveryResend(
+            state: state,
+            actor: "A"
+        )
+
+        XCTAssertEqual(copy.caption, "Unlucky Sevens: Game Restored")
+        XCTAssertEqual(copy.summary, "Avery resent the latest game state.")
+        XCTAssertEqual(boardVisual(from: copy)?.showsNumberTokens, true)
+    }
+
     func testLiveTradeToAllPlayersUsesSharedReceipt() {
         let state = makeTradeState(recipients: ["B", "C"])
 

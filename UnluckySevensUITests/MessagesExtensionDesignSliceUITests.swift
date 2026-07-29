@@ -90,6 +90,158 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         messages.buttons["uls.tutorial.exit"].firstMatch.tap()
     }
 
+    func testCaptureLobbyTabletopInviteCandidate() throws {
+        openUnluckySevensExtension()
+
+        openUXLabPanel()
+        activateUXLabNestedQuickState(
+            title: "Tabletop Candidate",
+            identifier: "uls.uxLab.cleanShot.lobbyInviteTabletopCandidate"
+        )
+        XCTAssertTrue(waitForInviteSlice(timeout: 12))
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.lobby.inviteDirection.tabletopCandidate"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+        XCTAssertTrue(messages.descendants(matching: .any)["uls.lobby.roster"].firstMatch.exists)
+        XCTAssertTrue(messages.buttons["uls.lobby.gameSettings"].firstMatch.isHittable)
+        let sendInvite = messages.buttons["uls.lobby.action.Send Invite"].firstMatch
+        revealLobbyActionIfNeeded(sendInvite)
+        assertVisibleLobbyAction(sendInvite, title: "Send Invite")
+        attachScreenshot(named: "Lobby Invite - Tabletop Candidate")
+    }
+
+    func testCaptureLobbyArtifactInviteCandidate() throws {
+        openUnluckySevensExtension()
+
+        openUXLabPanel()
+        activateUXLabNestedQuickState(
+            title: "Invitation Artifact",
+            identifier: "uls.uxLab.cleanShot.lobbyInviteArtifactCandidate"
+        )
+        XCTAssertTrue(waitForInviteSlice(timeout: 12))
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.lobby.inviteDirection.artifactCandidate"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+        XCTAssertTrue(messages.descendants(matching: .any)["uls.lobby.roster"].firstMatch.exists)
+        XCTAssertTrue(messages.buttons["uls.lobby.gameSettings"].firstMatch.isHittable)
+        XCTAssertTrue(messages.textFields["uls.lobby.nameField"].firstMatch.exists)
+        let sendInvite = messages.buttons["uls.lobby.action.Send Invite"].firstMatch
+        revealLobbyActionIfNeeded(sendInvite)
+        assertVisibleLobbyAction(sendInvite, title: "Send Invite")
+        attachScreenshot(named: "Lobby Invite - Artifact Candidate")
+    }
+
+    func testCaptureLobbySpatialInviteCandidate() throws {
+        openUnluckySevensExtension()
+
+        openUXLabPanel()
+        activateUXLabNestedQuickState(
+            title: "Spatial Lobby",
+            identifier: "uls.uxLab.cleanShot.lobbyInviteSpatialCandidate"
+        )
+        XCTAssertTrue(waitForInviteSlice(timeout: 12))
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.lobby.inviteDirection.spatialCandidate"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+        XCTAssertTrue(messages.descendants(matching: .any)["uls.lobby.roster"].firstMatch.exists)
+        XCTAssertTrue(messages.buttons["uls.lobby.gameSettings"].firstMatch.isHittable)
+        XCTAssertTrue(messages.textFields["uls.lobby.nameField"].firstMatch.exists)
+        assertVisibleLobbyAction(
+            messages.buttons["uls.lobby.action.Send Invite"].firstMatch,
+            title: "Send Invite"
+        )
+        attachScreenshot(named: "Lobby Invite - Spatial Candidate")
+    }
+
+    func testCaptureLobbyCocktailTableInviteCandidate() throws {
+        openUnluckySevensExtension()
+
+        openUXLabPanel()
+        activateUXLabNestedQuickState(
+            title: "Cocktail Table",
+            identifier: "uls.uxLab.cleanShot.lobbyInviteCocktailTableCandidate"
+        )
+        XCTAssertTrue(waitForInviteSlice(timeout: 12))
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.lobby.inviteDirection.cocktailTableCandidate"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+        XCTAssertTrue(messages.descendants(matching: .any)["uls.lobby.roster"].firstMatch.exists)
+        XCTAssertTrue(messages.buttons["uls.lobby.gameSettings"].firstMatch.isHittable)
+        XCTAssertTrue(messages.textFields["uls.lobby.nameField"].firstMatch.exists)
+        assertVisibleLobbyAction(
+            messages.buttons["uls.lobby.action.Send Invite"].firstMatch,
+            title: "Send Invite"
+        )
+        attachScreenshot(named: "Lobby Invite - Cocktail Table Candidate")
+    }
+
+    func testCaptureProductionLobbyLifecycle() throws {
+        openUnluckySevensExtension()
+
+        XCTAssertTrue(waitForInviteSlice(timeout: 12))
+        let inviteRoster = messages.descendants(matching: .any)["uls.lobby.roster"].firstMatch
+        XCTAssertTrue(inviteRoster.exists)
+        XCTAssertFalse(inviteRoster.staticTexts["1 player at the table"].firstMatch.exists)
+        // XCUI reports the glyph bounds for plain SwiftUI text buttons rather than
+        // their larger interaction frames. The direction test taps both controls
+        // end-to-end; keep this lifecycle check focused on current hittability.
+        XCTAssertTrue(messages.buttons["uls.lobby.tutorial"].firstMatch.isHittable)
+        XCTAssertTrue(messages.buttons["uls.lobby.gameSettings"].firstMatch.isHittable)
+        let productionSendInvite = messages.buttons["uls.lobby.action.Send Invite"].firstMatch
+        revealLobbyActionIfNeeded(productionSendInvite)
+        assertVisibleLobbyAction(productionSendInvite, title: "Send Invite")
+        attachScreenshot(named: "Lobby Lifecycle 01 - Send Invite")
+
+        activateUXLabNestedQuickState(
+            title: "Join",
+            identifier: "uls.uxLab.cleanShot.lobbyJoin"
+        )
+        XCTAssertTrue(messages.buttons["uls.lobby.tutorial"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.staticTexts["Join the Table"].firstMatch.waitForExistence(timeout: 8))
+        let joinRoster = messages.descendants(matching: .any)["uls.lobby.roster"].firstMatch
+        XCTAssertTrue(joinRoster.exists)
+        XCTAssertFalse(joinRoster.staticTexts["1 player at the table"].firstMatch.exists)
+        let joinGame = messages.buttons["uls.lobby.action.Join Game"].firstMatch
+        revealLobbyActionIfNeeded(joinGame)
+        assertVisibleLobbyAction(joinGame, title: "Join Game")
+        attachScreenshot(named: "Lobby Lifecycle 02 - Join")
+
+        restoreUXLabChrome()
+        activateUXLabNestedQuickState(
+            title: "Ready",
+            identifier: "uls.uxLab.cleanShot.lobbyReady"
+        )
+        XCTAssertTrue(messages.buttons["uls.lobby.tutorial"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.staticTexts["Ready to Start"].firstMatch.waitForExistence(timeout: 8))
+        let readyRoster = messages.descendants(matching: .any)["uls.lobby.roster"].firstMatch
+        XCTAssertTrue(readyRoster.exists)
+        XCTAssertFalse(readyRoster.staticTexts["3 players at the table"].firstMatch.exists)
+        let startGame = messages.buttons["uls.lobby.action.Start Game"].firstMatch
+        revealLobbyActionIfNeeded(startGame)
+        assertVisibleLobbyAction(startGame, title: "Start Game")
+        attachScreenshot(named: "Lobby Lifecycle 03 - Ready")
+    }
+
+    func testCaptureProductionLobbyAccessibilityLayout() throws {
+        openUnluckySevensExtension()
+
+        XCTAssertTrue(waitForInviteSlice(timeout: 12))
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.lobby.roster"].firstMatch.exists
+        )
+        XCTAssertTrue(messages.buttons["uls.lobby.tutorial"].firstMatch.isHittable)
+        XCTAssertTrue(messages.buttons["uls.lobby.gameSettings"].firstMatch.isHittable)
+
+        let sendInvite = messages.buttons["uls.lobby.action.Send Invite"].firstMatch
+        revealLobbyActionIfNeeded(sendInvite)
+        assertVisibleLobbyAction(sendInvite, title: "Send Invite")
+        attachScreenshot(named: "Lobby Accessibility - Send Invite")
+    }
+
     func testCaptureSettingsRulesTutorialCheckpoint() throws {
         openUnluckySevensExtension()
         openUXLabPanel()
@@ -745,6 +897,12 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
     func testPlaceTutorialVictoryCheckpoint() throws {
         openUnluckySevensExtension()
+        waitForUXLabChrome()
+        loadEndScreenSlice()
+
+        let newGame = messages.buttons["uls.endScreen.newGame"].firstMatch
+        XCTAssertTrue(newGame.waitForExistence(timeout: 8))
+        newGame.tap()
 
         let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
         XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
@@ -758,6 +916,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             next.tap()
         }
         assertTutorialProgress(title: "Strategy")
+        attachScreenshot(named: "Tutorial - Strategy Player Aid")
     }
 
     func testAdvanceOpenTutorialToTradeCheckpoint() throws {
@@ -1763,6 +1922,281 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Unlucky Sevens - public draw pile purchase")
     }
 
+    func testOpenMessagesExtensionAndCaptureEndScreenCandidate() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        loadEndScreenSlice()
+
+        let endScreen = turnElement(identifier: "uls.endScreen", labels: [])
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        XCTAssertTrue(
+            endScreen.waitForExistence(timeout: 8),
+            "Expected the Physical Props end-screen candidate to render."
+        )
+        XCTAssertTrue(
+            board.waitForExistence(timeout: 4),
+            "Expected the final live board to remain visible."
+        )
+        XCTAssertFalse(
+            messages.buttons["Games"].firstMatch.exists,
+            "Games management belongs on the lobby, not over the final board."
+        )
+        let outcomeHeader = turnElement(
+            identifier: "uls.endScreen.title",
+            labels: []
+        )
+        XCTAssertTrue(outcomeHeader.waitForExistence(timeout: 4))
+        XCTAssertTrue(
+            outcomeHeader.label.contains("You won")
+                && outcomeHeader.label.contains("10 points"),
+            "The terminal header should lead with the local result."
+        )
+        XCTAssertTrue(
+            turnElement(
+                identifier: "uls.endScreen.playedDevelopmentCards",
+                labels: []
+            ).waitForExistence(timeout: 4),
+            "Expected the local player's played development cards to remain visible."
+        )
+        XCTAssertTrue(
+            messages.staticTexts["Final scores"].firstMatch.exists,
+            "Expected the result aid to use a printed final-score ledger."
+        )
+        XCTAssertTrue(
+            outcomeHeader.label.contains("City sealed the win."),
+            "Expected the end screen to explain the decisive winning event."
+        )
+        for playerID in ["host", "alice", "ben"] {
+            XCTAssertTrue(
+                turnElement(
+                    identifier: "uls.endScreen.player.\(playerID)",
+                    labels: []
+                ).waitForExistence(timeout: 4),
+                "Expected every final player score to render."
+            )
+        }
+        XCTAssertLessThan(
+            endScreen.frame.minY,
+            endScreen.frame.maxY,
+            "Expected the result rail to have visible height."
+        )
+        XCTAssertGreaterThan(
+            endScreen.frame.minY,
+            board.frame.midY,
+            "Expected the result rail to stay in the lower table zone."
+        )
+        attachScreenshot(named: "End Screen Candidate - Final Board and Scores")
+    }
+
+    func testRecoveryGamesArchiveAndRestoreJourney() throws {
+        openUnluckySevensExtension()
+        activateUXLabQuickState(
+            title: "Recovery Games",
+            identifier: "uls.uxLab.recoveryGames"
+        )
+
+        let games = firstExistingElement(
+            [
+                messages.buttons["Games"].firstMatch,
+                messages.buttons["uls.lobby.games"].firstMatch,
+                messages.buttons["uls.game.games"].firstMatch,
+                messages.descendants(matching: .button)["uls.lobby.games"].firstMatch,
+            ],
+            timeout: 2
+        )
+        XCTAssertTrue(games.waitForExistence(timeout: 8))
+        games.tap()
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.games.section.active"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.games.section.finished"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+
+        let actionMenus = messages.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Actions for")
+        )
+        XCTAssertGreaterThanOrEqual(actionMenus.count, 2)
+        let finishedActions = messages.buttons.matching(
+            NSPredicate(
+                format: "label BEGINSWITH %@ AND label CONTAINS %@",
+                "Actions for",
+                "won"
+            )
+        ).firstMatch
+        XCTAssertTrue(finishedActions.waitForExistence(timeout: 4))
+        finishedActions.tap()
+        let archive = messages.buttons["Archive"].firstMatch
+        XCTAssertTrue(archive.waitForExistence(timeout: 4))
+        archive.tap()
+        XCTAssertFalse(finishedActions.exists)
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.games.section.active"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+
+        messages.buttons["Back"].firstMatch.tap()
+        activateUXLabQuickState(
+            title: "Recovery Games",
+            identifier: "uls.uxLab.recoveryGames"
+        )
+        games.tap()
+        XCTAssertGreaterThanOrEqual(
+            messages.buttons.matching(
+                NSPredicate(format: "label BEGINSWITH %@", "Actions for")
+            ).count,
+            2,
+            "A later valid recovery fixture should restore a locally archived game."
+        )
+    }
+
+    func testRecoveryResendAndResignationContinuesJourney() throws {
+        openUnluckySevensExtension()
+        activateUXLabQuickState(
+            title: "Recovery Games",
+            identifier: "uls.uxLab.recoveryGames"
+        )
+
+        let games = messages.buttons["Games"].firstMatch
+        XCTAssertTrue(games.waitForExistence(timeout: 8))
+        games.tap()
+
+        let activeActions = messages.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Actions for")
+        ).firstMatch
+        XCTAssertTrue(activeActions.waitForExistence(timeout: 4))
+        activeActions.tap()
+        let resend = messages.buttons["Resend Latest State"].firstMatch
+        XCTAssertTrue(resend.waitForExistence(timeout: 4))
+        resend.tap()
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.games.library"]
+                .firstMatch.waitForExistence(timeout: 4),
+            "Resending must keep the Games library and unchanged game available."
+        )
+
+        XCTAssertTrue(activeActions.waitForExistence(timeout: 4))
+        activeActions.tap()
+        let resign = messages.buttons["Resign"].firstMatch
+        XCTAssertTrue(resign.waitForExistence(timeout: 4))
+        resign.tap()
+
+        let alert = messages.alerts["Resign from this game?"].firstMatch
+        XCTAssertTrue(alert.waitForExistence(timeout: 4))
+        XCTAssertTrue(
+            alert.staticTexts[
+                "You will leave active play. Your pieces stay on the board, and the remaining players continue."
+            ].exists
+        )
+        alert.buttons["Resign"].tap()
+        let activeRow = messages.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "Kunal resigned")
+        ).firstMatch
+        XCTAssertTrue(activeRow.waitForExistence(timeout: 8))
+        XCTAssertTrue(activeRow.label.contains("Kunal resigned"))
+        XCTAssertFalse(
+            turnElement(identifier: "uls.endScreen", labels: []).exists,
+            "Resignation must not end the game for the remaining players."
+        )
+    }
+
+    func testRecoveryGamesLibraryUsesDedicatedSurface() throws {
+        openUnluckySevensExtension()
+        activateUXLabQuickState(
+            title: "Recovery Games",
+            identifier: "uls.uxLab.recoveryGames"
+        )
+
+        let games = messages.buttons["Games"].firstMatch
+        XCTAssertTrue(games.waitForExistence(timeout: 8))
+        games.tap()
+        let library = messages.descendants(matching: .any)["uls.games.library"].firstMatch
+        XCTAssertTrue(library.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.staticTexts["Your Games"].firstMatch.exists)
+        XCTAssertTrue(messages.buttons["Back"].firstMatch.exists)
+        XCTAssertTrue(messages.staticTexts["Active"].firstMatch.exists)
+        XCTAssertTrue(messages.staticTexts["Finished"].firstMatch.exists)
+    }
+
+    func testRecoveryResignConfirmationExplainsContinuedPlay() throws {
+        openUnluckySevensExtension()
+        activateUXLabQuickState(
+            title: "Recovery Games",
+            identifier: "uls.uxLab.recoveryGames"
+        )
+
+        let games = messages.buttons["Games"].firstMatch
+        XCTAssertTrue(games.waitForExistence(timeout: 8))
+        games.tap()
+        let activeActions = messages.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Actions for")
+        ).firstMatch
+        XCTAssertTrue(activeActions.waitForExistence(timeout: 4))
+        activeActions.tap()
+        let resign = messages.buttons["Resign"].firstMatch
+        XCTAssertTrue(resign.waitForExistence(timeout: 4))
+        resign.tap()
+
+        let alert = messages.alerts["Resign from this game?"].firstMatch
+        XCTAssertTrue(alert.waitForExistence(timeout: 4))
+        XCTAssertTrue(alert.buttons["Keep Playing"].exists)
+        XCTAssertTrue(alert.buttons["Resign"].exists)
+        XCTAssertTrue(
+            alert.staticTexts[
+                "You will leave active play. Your pieces stay on the board, and the remaining players continue."
+            ].exists
+        )
+    }
+
+    func testHostEndOffersDrawBeforeUnilateralEnd() throws {
+        openUnluckySevensExtension()
+        openUXLabPanel()
+        activateDirectCleanState(
+            identifier: "uls.uxLab.recoveryGames.direct",
+            label: "Recovery Games"
+        )
+
+        let games = firstExistingElement(
+            [
+                messages.buttons["Games"].firstMatch,
+                messages.buttons["uls.lobby.games"].firstMatch,
+                messages.buttons["uls.game.games"].firstMatch,
+                messages.descendants(matching: .button)["uls.lobby.games"].firstMatch,
+            ],
+            timeout: 2
+        )
+        XCTAssertTrue(games.waitForExistence(timeout: 8))
+        games.tap()
+        let activeActions = messages.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Actions for")
+        ).firstMatch
+        XCTAssertTrue(activeActions.waitForExistence(timeout: 4))
+        activeActions.tap()
+        let endGame = messages.buttons["End Game"].firstMatch
+        XCTAssertTrue(endGame.waitForExistence(timeout: 4))
+        endGame.tap()
+
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.games.hostEndDecision"]
+                .waitForExistence(timeout: 4)
+        )
+        XCTAssertTrue(messages.buttons["Propose Draw"].firstMatch.exists)
+        XCTAssertTrue(messages.buttons["End Game Anyway"].firstMatch.exists)
+        XCTAssertTrue(messages.buttons["Keep Playing"].firstMatch.exists)
+
+        messages.buttons["End Game Anyway"].firstMatch.tap()
+        let endScreen = messages.descendants(matching: .any)["uls.endScreen"].firstMatch
+        XCTAssertTrue(endScreen.waitForExistence(timeout: 8))
+        XCTAssertFalse(
+            messages.staticTexts["0 points"].firstMatch.exists,
+            "A neutral host end must not invent a winning score."
+        )
+        XCTAssertTrue(messages.staticTexts["Game ended"].firstMatch.exists)
+        attachScreenshot(named: "Recovery - Neutral Host End")
+    }
+
     func testOpenMessagesExtensionAndCapturePendingActivePlayerTradeSlice() throws {
         openUnluckySevensExtension()
         activateUXLabQuickState(
@@ -2309,6 +2743,26 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         openExistingConversation()
         openMessagesAppDrawer()
         openUnluckySevensFromDrawer()
+        dismissPersistedUtilitySurfaces()
+    }
+
+    private func dismissPersistedUtilitySurfaces() {
+        let resignAlert = messages.alerts["Resign from this game?"].firstMatch
+        if resignAlert.exists {
+            resignAlert.buttons["Keep Playing"].tap()
+        }
+
+        let hostEndDecision = messages.descendants(matching: .any)[
+            "uls.games.hostEndDecision"
+        ].firstMatch
+        if hostEndDecision.exists {
+            messages.buttons["Keep Playing"].firstMatch.tap()
+        }
+
+        let library = messages.descendants(matching: .any)["uls.games.library"].firstMatch
+        if library.exists {
+            messages.buttons["Back"].firstMatch.tap()
+        }
     }
 
     private func handleFirstRunPrompts() {
@@ -2410,6 +2864,11 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
     }
 
     private func openUXLabPanel() {
+        let existingPanel = messages.descendants(matching: .any)["uls.uxLab.panel"].firstMatch
+        if existingPanel.exists {
+            return
+        }
+
         let toggle = waitForUXLabChrome()
         toggle.tap()
 
@@ -2456,6 +2915,13 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         activateUXLabQuickState(
             title: "Turn",
             identifier: "uls.uxLab.cleanShot.turnAfterRoll"
+        )
+    }
+
+    private func loadEndScreenSlice() {
+        activateUXLabQuickState(
+            title: "End",
+            identifier: "uls.uxLab.cleanShot.gameOver"
         )
     }
 
@@ -2523,7 +2989,16 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         menuItem.tap()
     }
 
-    private func activateUXLabNestedQuickState(title: String, identifier: String) {
+    private func activateUXLabNestedQuickState(
+        title: String,
+        identifier: String
+    ) {
+        let directControl = messages.buttons[identifier].firstMatch
+        if directControl.waitForExistence(timeout: 1) {
+            directControl.tap()
+            return
+        }
+
         let menu = firstExistingElement(
             [
                 messages.buttons["uls.uxLab.quickStates"].firstMatch,
@@ -2718,6 +3193,19 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(element.waitForExistence(timeout: 4), message)
         XCTAssertGreaterThanOrEqual(element.frame.width + floatingPointTolerance, 44, message)
         XCTAssertGreaterThanOrEqual(element.frame.height + floatingPointTolerance, 44, message)
+    }
+
+    private func assertVisibleLobbyAction(_ element: XCUIElement, title: String) {
+        let message = "\(title) must be fully visible and tappable in the Messages host."
+        assertMinimumTarget(element, message: message)
+        XCTAssertTrue(element.isHittable, message)
+        assertElement(element, isContainedIn: messages.frame, message: message)
+    }
+
+    private func revealLobbyActionIfNeeded(_ element: XCUIElement) {
+        for _ in 0..<4 where !element.isHittable {
+            messages.descendants(matching: .any)["uls.lobby.tableSurface"].firstMatch.swipeUp()
+        }
     }
 
     private func assertPersistentTurnGeometry(

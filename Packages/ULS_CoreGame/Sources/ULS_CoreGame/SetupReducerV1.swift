@@ -15,7 +15,7 @@ public func apply(intent: SetupIntentV1, to state: CoreGameStateV1, actor: Strin
 
     let topology = setupTopology
 
-    guard actor == state.currentPlayer else {
+    guard actor == state.currentPlayer, state.isActivePlayer(actor) else {
         throw CoreGameError.actorMismatch
     }
 
@@ -54,7 +54,7 @@ public func apply(intent: SetupIntentV1, to state: CoreGameStateV1, actor: Strin
             edge: edge,
             setupState: setupState,
             player: player,
-            roster: state.roster,
+            roster: state.activePlayers,
             topology: topology
         )
         let economy = grantStartingResourcesIfEligible(
@@ -88,7 +88,7 @@ public func apply(intent: SetupIntentV1, to state: CoreGameStateV1, actor: Strin
             edge: roadEdge,
             setupState: afterSettlement,
             player: player,
-            roster: state.roster,
+            roster: state.activePlayers,
             topology: topology
         )
         let economy = grantStartingResourcesIfEligible(
@@ -325,6 +325,10 @@ private func nextState(
         longestRoadLength: state.longestRoadLength,
         winnerPlayer: state.winnerPlayer,
         winningVictoryPoints: state.winningVictoryPoints,
+        gameResult: state.gameResult,
+        resignedPlayers: state.resignedPlayers,
+        drawVote: state.drawVote,
+        hasAttemptedDrawVote: state.hasAttemptedDrawVote,
         auditLog: state.auditLog,
         lastTurnRecap: state.lastTurnRecap,
         settlementsByNode: settlementsByNode ?? state.settlementsByNode,

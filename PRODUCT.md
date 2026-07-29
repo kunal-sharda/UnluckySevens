@@ -12,7 +12,7 @@ Unlucky Sevens is for 3-4 players who want an async Catan-style game inside an i
 
 ## Product Purpose
 
-The product brings a full standard-Catan loop to Messages while preserving deterministic rules, canonical state, and hidden-information boundaries. Success means players can invite, join, set up, play turns, trade, build, use development cards, and finish a game without leaving the Messages-first flow or needing external coordination.
+The product brings a full standard-Catan loop to Messages while preserving deterministic rules, canonical state, and hidden-information boundaries. Success means players can invite, join, set up, play turns, trade, build, use development cards, recover interrupted games, leave play without stopping everyone else, and finish by victory, unanimous draw, or host end without leaving the Messages-first flow.
 
 ## Brand Personality
 

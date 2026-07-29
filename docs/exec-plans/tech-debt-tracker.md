@@ -85,8 +85,9 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - Area: transcript continuity, Messages host integration
 - Why it matters: if a publish happens from recovered canonical state with neither a selected same-game session nor a cached session, the transport helper still creates a fresh `MSSession`.
 - Current cost or risk: transcript collapse/readability can degrade even though the underlying game state remains valid.
-- Proposed fix shape: persist or derive stronger same-game session continuity so recovery-published `STATE` prefers the existing game chain instead of falling back to a fresh session.
-- When to address: phase 15 unless real-device TestFlight feedback shows transcript clutter becoming materially confusing sooner.
+- Current policy: recovery-published `STATE` prefers the selected same-game session, then an in-memory cached session, and deliberately creates a fresh `Game Restored` bubble when neither survives. Persisted `MSSession` data is not trusted by assumption.
+- Proposed fix shape: run the locked secure-archive/restart experiment on two connected devices and retain persistence only if the restored session replaces/collapses the original game bubble on both devices.
+- When to address: the release-critical TestFlight pass; the 2026-07-26 Pass 1 attempt found all available iPhone/iPad hardware offline.
 - Links: [TranscriptTransportSupport.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/TranscriptTransportSupport.swift)
 
 ### TD-011 — Core build costs have multiple matching definitions
@@ -104,7 +105,7 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - Why it matters: repository audit found two plans with terminal contracts still under `active/`, while the lobby plan retains narration from the pre-Settings/Tutorial learning flow.
 - Resolution: terminal branch-maintenance, discard, Settings/Tutorial, and UI-flow-audit plans moved to `completed/`; the lobby plan now links the completed learning-surface work while retaining only its genuinely pending release invite constraints.
 - Resolved: 2026-07-25.
-- Links: [Discard Screen](completed/discard-screen.md), [Branch Archive and Master Baseline](completed/branch-archive-and-master-baseline.md), [Settings, Rules, and Click-Through Tutorial](completed/settings-rules-tutorial.md), [UI Flow Contract Audit](completed/ui-flow-contract-audit.md), [Lobby Invite Screen](active/lobby-invite-screen.md)
+- Links: [Discard Screen](completed/discard-screen.md), [Branch Archive and Master Baseline](completed/branch-archive-and-master-baseline.md), [Settings, Rules, and Click-Through Tutorial](completed/settings-rules-tutorial.md), [UI Flow Contract Audit](completed/ui-flow-contract-audit.md), [Lobby Invite Screen](completed/lobby-invite-screen.md)
 
 ### TD-013 — Superseded UI types remain in the production source target
 
@@ -124,13 +125,12 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - When to address: start at phase 14 closeout and finish as an early phase 15 slice; do not bulk-delete until remaining release routes are mapped.
 - Links: [GameTabletopLayoutStyle.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/GameTabletopLayoutStyle.swift), [GameShellView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Game/GameShellView.swift), [GameModalHostView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Components/GameModalHostView.swift)
 
-### TD-015 — Local game ledger has no retention or schema lifecycle
+### TD-015 — Resolved: local game ledger retention and schema lifecycle
 
 - Area: transcript recovery, local persistence
-- Why it matters: `TranscriptGameLedgerStore` persists a complete canonical-state payload for every indexed game in `UserDefaults`, but has no record version, retention bound, or corrupt-entry cleanup.
-- Current cost or risk: long-running beta installs can accumulate stale payloads indefinitely, and decode or encode failures currently fail soft without removing the bad entry or preserving an actionable recovery diagnostic.
-- Proposed fix shape: version the stored record, cap retained inactive games using a documented policy, remove or quarantine corrupt entries, expose a useful recovery failure signal, and add migration, pruning, and corruption tests.
-- When to address: phase 15 before broad beta accumulation; pull forward if TestFlight recovery diagnostics show ledger growth or decode failures.
+- Resolution: ledger schema v2 stores canonical state data independently of compact transport, migrates valid legacy records, removes corrupt records and repairs the index, keeps active games until local archive, and retains the eight most recent finished games.
+- Evidence: migration, corruption, deterministic sibling, pruning, active-retention, and archive tests in `TranscriptGameLedgerTests`.
+- Resolved: 2026-07-26.
 - Links: [TranscriptGameLedger.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/TranscriptGameLedger.swift), [Messages host lessons](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/messages-host.md)
 
 ### TD-016 — Board-art owner docs and runtime asset usage disagree

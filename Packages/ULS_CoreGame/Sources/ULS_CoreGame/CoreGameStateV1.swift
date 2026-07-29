@@ -34,6 +34,10 @@ public struct CoreGameStateV1: Codable, Equatable {
     public let longestRoadLength: Int
     public let winnerPlayer: String?
     public let winningVictoryPoints: Int
+    public let gameResult: GameResultV1?
+    public let resignedPlayers: [String]
+    public let drawVote: DrawVoteV1?
+    public let hasAttemptedDrawVote: Bool
     public let auditLog: [AuditEntryV1]
     public let lastTurnRecap: TurnRecapV1?
     public let activeTradeOffer: TradeOfferV1?
@@ -72,6 +76,10 @@ public struct CoreGameStateV1: Codable, Equatable {
         longestRoadLength: Int = 0,
         winnerPlayer: String? = nil,
         winningVictoryPoints: Int = 0,
+        gameResult: GameResultV1? = nil,
+        resignedPlayers: [String] = [],
+        drawVote: DrawVoteV1? = nil,
+        hasAttemptedDrawVote: Bool = false,
         auditLog: [AuditEntryV1] = [],
         lastTurnRecap: TurnRecapV1? = nil,
         activeTradeOffer: TradeOfferV1? = nil,
@@ -114,8 +122,37 @@ public struct CoreGameStateV1: Codable, Equatable {
         self.largestArmySize = max(0, largestArmySize)
         self.longestRoadOwner = Self.normalizedAwardOwner(longestRoadOwner, roster: roster)
         self.longestRoadLength = max(0, longestRoadLength)
-        self.winnerPlayer = Self.normalizedAwardOwner(winnerPlayer, roster: roster)
+        let normalizedWinner = Self.normalizedAwardOwner(winnerPlayer, roster: roster)
+        self.winnerPlayer = normalizedWinner
         self.winningVictoryPoints = max(0, winningVictoryPoints)
+        let finalScores = Self.finalScoresByPlayer(
+            roster: roster,
+            revealedVictoryPointsByPlayer: self.revealedVictoryPointsByPlayer,
+            largestArmyOwner: self.largestArmyOwner,
+            longestRoadOwner: self.longestRoadOwner,
+            settlementsByNode: settlementsByNode,
+            citiesByNode: citiesByNode
+        )
+        if let gameResult {
+            self.gameResult = Self.normalizedGameResult(gameResult, roster: roster)
+        } else if phase == .gameOver, let normalizedWinner {
+            self.gameResult = GameResultV1(
+                reason: .victory,
+                winnerPlayers: [normalizedWinner],
+                finalScoresByPlayer: finalScores
+            )
+        } else {
+            self.gameResult = nil
+        }
+        let rosterSet = Set(roster)
+        let resignedSet = Set(resignedPlayers.filter(rosterSet.contains))
+        self.resignedPlayers = roster.filter(resignedSet.contains)
+        self.drawVote = Self.normalizedDrawVote(
+            drawVote,
+            roster: roster,
+            resignedPlayers: self.resignedPlayers
+        )
+        self.hasAttemptedDrawVote = hasAttemptedDrawVote
         self.auditLog = auditLog
         self.lastTurnRecap = lastTurnRecap
         self.activeTradeOffer = activeTradeOffer
@@ -158,6 +195,10 @@ public struct CoreGameStateV1: Codable, Equatable {
             longestRoadLength: longestRoadLength,
             winnerPlayer: winnerPlayer,
             winningVictoryPoints: winningVictoryPoints,
+            gameResult: gameResult,
+            resignedPlayers: resignedPlayers,
+            drawVote: drawVote,
+            hasAttemptedDrawVote: hasAttemptedDrawVote,
             auditLog: auditLog,
             lastTurnRecap: lastTurnRecap,
             activeTradeOffer: activeTradeOffer,
@@ -209,6 +250,10 @@ public struct CoreGameStateV1: Codable, Equatable {
             "longestRoadLength": longestRoadLength,
             "winnerPlayer": winnerPlayer ?? NSNull(),
             "winningVictoryPoints": winningVictoryPoints,
+            "gameResult": gameResult?.canonicalJSONValue() ?? NSNull(),
+            "resignedPlayers": resignedPlayers,
+            "drawVote": drawVote?.canonicalJSONValue() ?? NSNull(),
+            "hasAttemptedDrawVote": hasAttemptedDrawVote,
             "auditLog": auditLog.map { $0.canonicalJSONValue() },
             "lastTurnRecap": lastTurnRecap?.canonicalJSONValue() ?? NSNull(),
             "activeTradeOffer": activeTradeOffer?.canonicalJSONValue() ?? NSNull(),
@@ -250,11 +295,83 @@ public struct CoreGameStateV1: Codable, Equatable {
         return result
     }
 
+    private static func normalizedGameResult(
+        _ result: GameResultV1,
+        roster: [String]
+    ) -> GameResultV1 {
+        let rosterSet = Set(roster)
+        var seen = Set<String>()
+        let winners = result.winnerPlayers.filter {
+            rosterSet.contains($0) && seen.insert($0).inserted
+        }
+        let endedByPlayer = result.endedByPlayer.flatMap {
+            rosterSet.contains($0) ? $0 : nil
+        }
+        return GameResultV1(
+            reason: result.reason,
+            winnerPlayers: winners,
+            endedByPlayer: endedByPlayer,
+            finalScoresByPlayer: normalizedIntMap(
+                result.finalScoresByPlayer,
+                roster: roster
+            )
+        )
+    }
+
+    private static func normalizedDrawVote(
+        _ vote: DrawVoteV1?,
+        roster: [String],
+        resignedPlayers: [String]
+    ) -> DrawVoteV1? {
+        guard let vote else {
+            return nil
+        }
+        let activePlayers = roster.filter { !resignedPlayers.contains($0) }
+        guard activePlayers.contains(vote.proposedBy) else {
+            return nil
+        }
+        let approvalSet = Set(vote.approvals.filter(activePlayers.contains))
+        return DrawVoteV1(
+            proposedBy: vote.proposedBy,
+            approvals: activePlayers.filter(approvalSet.contains)
+        )
+    }
+
+    private static func finalScoresByPlayer(
+        roster: [String],
+        revealedVictoryPointsByPlayer: [String: Int],
+        largestArmyOwner: String?,
+        longestRoadOwner: String?,
+        settlementsByNode: [NodeID: String],
+        citiesByNode: [NodeID: String]
+    ) -> [String: Int] {
+        Dictionary(uniqueKeysWithValues: roster.map { player in
+            let settlements = settlementsByNode.values.filter { $0 == player }.count
+            let cities = citiesByNode.values.filter { $0 == player }.count
+            let revealed = revealedVictoryPointsByPlayer[player] ?? 0
+            let awardPoints = (largestArmyOwner == player ? 2 : 0)
+                + (longestRoadOwner == player ? 2 : 0)
+            return (player, settlements + (cities * 2) + revealed + awardPoints)
+        })
+    }
+
     private static func normalizedAwardOwner(_ value: String?, roster: [String]) -> String? {
         guard let value else {
             return nil
         }
         return roster.contains(value) ? value : nil
+    }
+
+    public var activePlayers: [String] {
+        roster.filter { !resignedPlayers.contains($0) }
+    }
+
+    public var hostPlayer: String? {
+        roster.first
+    }
+
+    public func isActivePlayer(_ player: String) -> Bool {
+        activePlayers.contains(player)
     }
 
     public static func normalizedPlayerDisplayName(_ value: String?) -> String? {
