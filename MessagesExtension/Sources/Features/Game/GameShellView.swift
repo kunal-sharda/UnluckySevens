@@ -195,14 +195,8 @@ struct GameShellView: View {
                     for: lowerRailWidth,
                     route: activeTradeRoute
                 )
-                let feltToolSurfaceHeight = GameFeltToolSurfaceLayout.height(
-                    for: lowerRailWidth
-                )
-                let resolvedActionSurfaceHeight = usesPhysicalProps
-                    ? physicalLayout.actionSpreadHeight
-                    : feltToolSurfaceHeight
                 let actionSurfaceHeight = max(
-                    resolvedActionSurfaceHeight,
+                    physicalLayout.actionSpreadHeight,
                     minimumActionSurfaceHeight ?? 0
                 )
                 let isTradePanelPresented = projection.tradePanelModel != nil
@@ -740,11 +734,7 @@ struct GameShellView: View {
                                 onConfirm: handleEndTurnConfirmationConfirm
                             )
                             .gameTutorialTarget(.endTurnConfirmation)
-                            .frame(
-                                height: usesPhysicalProps
-                                    ? actionSurfaceHeight
-                                    : feltToolSurfaceHeight
-                            )
+                            .frame(height: actionSurfaceHeight)
                             .frame(maxWidth: lowerRailWidth)
                             .padding(.horizontal, GameTheme.shellPadding)
                             .padding(
@@ -867,11 +857,7 @@ struct GameShellView: View {
                             .frame(
                                 height: usesExpandedPhysicalTradeOverlay
                                     ? shellSize.height + geometry.safeAreaInsets.bottom
-                                    : usesPhysicalProps
-                                    ? physicalTradeSurfaceHeight
-                                    : tabletopLayoutStyle.usesFeltTools
-                                        ? feltToolSurfaceHeight
-                                        : tradePanelHeight,
+                                    : physicalTradeSurfaceHeight,
                                 alignment: .top
                             )
                             .clipped()
@@ -1010,21 +996,7 @@ struct GameShellView: View {
             }
         }
         .onChange(of: resolvedMode) { _, newMode in
-            if !GameBoardCommitCoordinator.handles(mode: newMode) {
-                boardCommitDraft = nil
-            }
-            boardHintText = nil
-            synchronizeBoardSelection(mode: newMode)
-            if !newMode.isDevCardMode {
-                devCardDraft = nil
-            }
-            if newMode != .discard {
-                discardDraft = .zero
-            }
-            if newMode.isForcedBoardMode {
-                shellRoute = .none
-            }
-            synchronizeHandTrayVisibility(for: newMode)
+            handleResolvedModeChange(newMode)
         }
         .onChange(of: shellRoute) { _, newRoute in
             NotificationCenter.default.post(
@@ -1060,6 +1032,24 @@ struct GameShellView: View {
             skipsAnimations: preferences.skipsAnimations,
             reducesMotion: accessibilityReduceMotion
         )
+    }
+
+    private func handleResolvedModeChange(_ newMode: GameMode) {
+        if !GameBoardCommitCoordinator.handles(mode: newMode) {
+            boardCommitDraft = nil
+        }
+        boardHintText = nil
+        synchronizeBoardSelection(mode: newMode)
+        if !newMode.isDevCardMode {
+            devCardDraft = nil
+        }
+        if newMode != .discard {
+            discardDraft = .zero
+        }
+        if newMode.isForcedBoardMode {
+            shellRoute = .none
+        }
+        synchronizeHandTrayVisibility(for: newMode)
     }
 
     private func updatePhysicalBoardCentering(
@@ -1866,7 +1856,6 @@ struct GameShellView: View {
         shellRoute = .none
         isHandOpen = true
         physicalBankCountsRevealed = false
-        clearShellResizeFreeze()
     }
 
     private func normalizedBoardTarget(

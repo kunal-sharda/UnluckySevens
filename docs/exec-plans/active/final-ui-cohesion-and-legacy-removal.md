@@ -72,17 +72,20 @@ Bring every production player-facing Messages surface onto the approved tabletop
 - 2026-08-10: Preserve approved compositions and wording. A new visual principle or competing viable direction requires a user checkpoint; mechanical consistency and wiring corrections do not.
 - 2026-08-10: A legacy candidate may be deleted only after production call-site, DEBUG fixture, test, and current-doc searches establish that it is unreachable or superseded.
 - 2026-08-10: `output/`, `tmp/`, and `.impeccable/` are local evidence/scratch boundaries and remain outside Git.
+- 2026-08-10: After the original screenshot circuit breaker stopped the lane, the user explicitly authorized one fresh cold-restart attempt. This is a new bounded attempt: prove one lobby route first through XcodeBuildMCP, expand only after a valid result, and stop immediately if the restarted host again fails before XCTest produces evidence.
 
 ### Discoveries
 
 - 2026-08-10: The pre-pass worktree contained large local screenshot/video/PDF collections under `output/` and local PDF helpers under `tmp/`; these were excluded from the checkpoint and added to `.gitignore`.
 - 2026-08-10: The shell-level resize freeze path rebuilt the board inside a retired header/tray/shelf composition. It was unreachable during ordinary physical turns but could replace the canonical shell during host resizing; removing that fallback also allowed the obsolete lower-shelf route and component family to be deleted.
 - 2026-08-10: The first locked iPhone journey and two permitted retries all terminated before writing an `Info.plist` into their `.xcresult` bundle, including after simulator reboot and current-app reinstall. The circuit breaker stopped further iPhone routes and the dependent iPad lane.
+- 2026-08-10: The user-authorized cold-restart attempt exposed two residual references to deleted legacy helpers and a compiler type-check bottleneck that incremental products had masked. The helper references were removed, the mode-change closure was extracted, and a clean canonical `build-for-testing` passed. XcodeBuildMCP's rebuild still timed out type-checking the large shell `GeometryReader`, while the documented `test-without-building` lane launched XCTest successfully but the iOS 26.5 Messages host again terminated during app-drawer navigation before finalizing its result bundle. The renewed attempt therefore stopped before the full catalog.
 
 ## Validation and Outcome
 
 - Automated: canonical generation, MessagesExtension build, full non-UI workspace tests, harness audit, typography/deleted-symbol scans, diff check, and doc freshness passed.
 - Simulator: blocked. `/tmp/uls-final-ui-20260810/` contains three incomplete lobby-route result bundles; none is valid evidence.
+- Restarted simulator attempt: clean build-for-testing passed; `/tmp/uls-final-ui-20260810/restarted-lobby-runtime.xcresult` is also incomplete after the Messages host terminated during app-drawer navigation.
 - iPad: not run because the locked iPhone lane exhausted its retry budget first.
 - Judgment: blocked without fresh rendered iPhone/iPad evidence.
 - Documentation: affected owner docs updated and freshness gate passed.
