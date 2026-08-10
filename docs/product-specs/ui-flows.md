@@ -403,7 +403,6 @@ Additional requirements:
 
 | ID | Type | Current mismatch | Required disposition |
 | --- | --- | --- | --- |
-| UI-GAP-001 | Current violation | The approved first-invite Invitation Card is still DEBUG-only. Release routes the empty invite state through the generic lobby table. | Productionize the approved invitation direction or explicitly replace that direction through owner approval. |
 | UI-GAP-003 | Pending proof | Responsive host logic exists and has focused tests, but connected-iPad visual approval remains pending. | Complete both real-iPad entry-path checks before calling the adaptation verified. |
 
 ## Evidence Anchors
