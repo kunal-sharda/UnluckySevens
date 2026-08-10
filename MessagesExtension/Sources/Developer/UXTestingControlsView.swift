@@ -4,12 +4,8 @@ import SwiftUI
 struct UXTestingControlsView: View {
     @ObservedObject var viewModel: LobbyDriverViewModel
     @State private var isExpanded = true
-    @AppStorage(GameTabletopLayoutStyle.uxTestingDefaultsKey)
-    private var tabletopLayoutStyleRawValue = GameTabletopLayoutStyle.physicalProps.rawValue
     @AppStorage(GameBoardOceanStyle.defaultsKey)
     private var oceanStyleRawValue = GameBoardOceanStyle.flat.rawValue
-    @AppStorage(LobbyInviteDirection.defaultsKey)
-    private var lobbyInviteDirectionRawValue = LobbyInviteDirection.setupCard.rawValue
 
     var body: some View {
         if viewModel.uxTestingChromeHiddenForScreenshot {
@@ -44,46 +40,14 @@ struct UXTestingControlsView: View {
             .accessibilityIdentifier("uls.uxLab.recoveryGames")
 
             Menu("Lobby", systemImage: "person.3.fill") {
-                Button("Setup Card", systemImage: "list.number") {
-                    lobbyInviteDirectionRawValue = LobbyInviteDirection.setupCard.rawValue
+                Button("Invitation", systemImage: "table.furniture.fill") {
                     viewModel.activateCleanLobbyInviteEntry()
                 }
-                .accessibilityIdentifier("uls.uxLab.cleanShot.lobbyInviteSetupCard")
-
-                Button("Invitation Card", systemImage: "envelope.fill") {
-                    lobbyInviteDirectionRawValue = LobbyInviteDirection.invitationCard.rawValue
-                    viewModel.activateCleanLobbyInviteEntry()
-                }
-                .accessibilityIdentifier("uls.uxLab.cleanShot.lobbyInviteInvitationCard")
-
-                Button("Tabletop Candidate", systemImage: "table.furniture.fill") {
-                    lobbyInviteDirectionRawValue = LobbyInviteDirection.tabletopCandidate.rawValue
-                    viewModel.activateCleanLobbyInviteEntry()
-                }
-                .accessibilityIdentifier("uls.uxLab.cleanShot.lobbyInviteTabletopCandidate")
-
-                Button("Invitation Artifact", systemImage: "envelope.open.fill") {
-                    lobbyInviteDirectionRawValue = LobbyInviteDirection.artifactCandidate.rawValue
-                    viewModel.activateCleanLobbyInviteEntry()
-                }
-                .accessibilityIdentifier("uls.uxLab.cleanShot.lobbyInviteArtifactCandidate")
-
-                Button("Spatial Lobby", systemImage: "person.3.sequence.fill") {
-                    lobbyInviteDirectionRawValue = LobbyInviteDirection.spatialCandidate.rawValue
-                    viewModel.activateCleanLobbyInviteEntry()
-                }
-                .accessibilityIdentifier("uls.uxLab.cleanShot.lobbyInviteSpatialCandidate")
-
-                Button("Cocktail Table", systemImage: "square.grid.3x3.square") {
-                    lobbyInviteDirectionRawValue = LobbyInviteDirection.cocktailTableCandidate.rawValue
-                    viewModel.activateCleanLobbyInviteEntry()
-                }
-                .accessibilityIdentifier("uls.uxLab.cleanShot.lobbyInviteCocktailTableCandidate")
+                .accessibilityIdentifier("uls.uxLab.cleanShot.lobbyInvite")
 
                 Button("Join", systemImage: "person.badge.plus") {
                     activateCleanFixture(
                         id: UXTestFixtures.lobbyInviteID,
-                        style: .physicalProps,
                         actingAs: UXTestFixtures.alice
                     )
                 }
@@ -92,7 +56,6 @@ struct UXTestingControlsView: View {
                 Button("Ready", systemImage: "checkmark.seal.fill") {
                     activateCleanFixture(
                         id: UXTestFixtures.lobbyReadyID,
-                        style: .physicalProps,
                         actingAs: UXTestFixtures.host
                     )
                 }
@@ -103,7 +66,6 @@ struct UXTestingControlsView: View {
             Button("Discard Now", systemImage: "hand.raised.fill") {
                 activateCleanFixture(
                     id: "pending-discard",
-                    style: .physicalProps,
                     actingAs: UXTestFixtures.host
                 )
             }
@@ -112,7 +74,6 @@ struct UXTestingControlsView: View {
             Button("Robber Move", systemImage: "figure.fall") {
                 activateCleanFixture(
                     id: "robber-move",
-                    style: .physicalProps,
                     actingAs: UXTestFixtures.host
                 )
             }
@@ -121,7 +82,6 @@ struct UXTestingControlsView: View {
             Button("Robber Victim", systemImage: "person.crop.circle.badge.questionmark") {
                 activateCleanFixture(
                     id: UXTestFixtures.robberVictimID,
-                    style: .physicalProps,
                     actingAs: UXTestFixtures.host
                 )
             }
@@ -130,7 +90,6 @@ struct UXTestingControlsView: View {
             Button("Setup", systemImage: "camera.viewfinder") {
                 activateCleanFixture(
                     id: UXTestFixtures.setupPlacementID,
-                    style: .physicalProps
                 )
             }
             .accessibilityIdentifier("uls.uxLab.cleanShot.setupPlacement")
@@ -138,7 +97,6 @@ struct UXTestingControlsView: View {
             Button("Setup Road", systemImage: "point.bottomleft.forward.to.point.topright.scurvepath") {
                 activateCleanFixture(
                     id: UXTestFixtures.setupRoadPlacementID,
-                    style: .physicalProps
                 )
             }
             .accessibilityIdentifier("uls.uxLab.cleanShot.setupRoadPlacement")
@@ -146,7 +104,6 @@ struct UXTestingControlsView: View {
             Button("Setup Handoff", systemImage: "arrow.forward.to.line") {
                 activateCleanFixture(
                     id: UXTestFixtures.setupHandoffID,
-                    style: .physicalProps
                 )
             }
             .accessibilityIdentifier("uls.uxLab.cleanShot.setupHandoff")
@@ -154,7 +111,6 @@ struct UXTestingControlsView: View {
             Button("Pending", systemImage: "arrow.left.arrow.right") {
                 activateCleanFixture(
                     id: UXTestFixtures.tradeOfferID,
-                    style: .physicalProps,
                     actingAs: UXTestFixtures.alice
                 )
             }
@@ -163,13 +119,11 @@ struct UXTestingControlsView: View {
             Button("Start", systemImage: "dice.fill") {
                 activateCleanFixture(
                     id: UXTestFixtures.turnNeedsRollID,
-                    style: .physicalProps
                 )
             }
             .accessibilityIdentifier("uls.uxLab.cleanShot.turnNeedsRoll")
 
             Button("Start Dev", systemImage: "rectangle.stack.fill") {
-                tabletopLayoutStyleRawValue = GameTabletopLayoutStyle.physicalProps.rawValue
                 viewModel.activateCleanUXTestingFixture(
                     id: UXTestFixtures.turnNeedsRollID,
                     initialMode: .playDevCard,
@@ -181,7 +135,6 @@ struct UXTestingControlsView: View {
             Button("Turn", systemImage: "play.rectangle") {
                 activateCleanFixture(
                     id: UXTestFixtures.defaultFixtureID,
-                    style: .physicalProps
                 )
             }
             .accessibilityIdentifier("uls.uxLab.cleanShot.turnAfterRoll")
@@ -189,7 +142,6 @@ struct UXTestingControlsView: View {
             Button("End", systemImage: "trophy.fill") {
                 activateCleanFixture(
                     id: "game-over",
-                    style: .physicalProps
                 )
             }
             .accessibilityIdentifier("uls.uxLab.cleanShot.gameOver")
@@ -199,7 +151,6 @@ struct UXTestingControlsView: View {
             Button("Wait", systemImage: "hourglass") {
                 activateCleanFixture(
                     id: UXTestFixtures.waitingOnAliceID,
-                    style: .physicalProps
                 )
             }
             .accessibilityIdentifier("uls.uxLab.cleanShot.notPrimary.waiting")
@@ -207,7 +158,6 @@ struct UXTestingControlsView: View {
             Button("Offer", systemImage: "arrow.left.arrow.right") {
                 activateCleanFixture(
                     id: UXTestFixtures.tradeOfferID,
-                    style: .physicalProps,
                     actingAs: UXTestFixtures.host
                 )
             }
@@ -216,7 +166,6 @@ struct UXTestingControlsView: View {
             Button("Multi Offer", systemImage: "rectangle.stack.fill") {
                 activateCleanFixture(
                     id: UXTestFixtures.multiTypeTradeOfferID,
-                    style: .physicalProps,
                     actingAs: UXTestFixtures.host
                 )
             }
@@ -225,7 +174,6 @@ struct UXTestingControlsView: View {
             Button("Discard Wait", systemImage: "hand.raised.fill") {
                 activateCleanFixture(
                     id: UXTestFixtures.waitingOnDiscardID,
-                    style: .physicalProps
                 )
             }
             .accessibilityIdentifier("uls.uxLab.cleanShot.notPrimary.discard")
@@ -250,7 +198,6 @@ struct UXTestingControlsView: View {
 
     private var startTurnDevChooserButton: some View {
         Button {
-            tabletopLayoutStyleRawValue = GameTabletopLayoutStyle.physicalProps.rawValue
             viewModel.activateCleanUXTestingCityFixture()
         } label: {
             Image(systemName: "building.2.fill")
@@ -307,22 +254,11 @@ struct UXTestingControlsView: View {
 
             HStack(spacing: 8) {
                 cleanShotChipButton(
-                    title: "Setup card",
-                    systemImage: "list.number",
-                    accessibilityLabel: "Setup card invite direction",
-                    accessibilityIdentifier: "uls.uxLab.cleanShot.lobbyInviteSetupCard"
-                ) {
-                    lobbyInviteDirectionRawValue = LobbyInviteDirection.setupCard.rawValue
-                    viewModel.activateCleanLobbyInviteEntry()
-                }
-
-                cleanShotChipButton(
                     title: "Invitation",
-                    systemImage: "envelope.fill",
-                    accessibilityLabel: "Invitation card invite direction",
-                    accessibilityIdentifier: "uls.uxLab.cleanShot.lobbyInviteInvitationCard"
+                    systemImage: "table.furniture.fill",
+                    accessibilityLabel: "Clean lobby invitation",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.lobbyInvite"
                 ) {
-                    lobbyInviteDirectionRawValue = LobbyInviteDirection.invitationCard.rawValue
                     viewModel.activateCleanLobbyInviteEntry()
                 }
 
@@ -334,53 +270,12 @@ struct UXTestingControlsView: View {
                 ) {
                     activateCleanFixture(
                         id: UXTestFixtures.lobbyInviteID,
-                        style: .physicalProps,
                         actingAs: UXTestFixtures.alice
                     )
                 }
             }
 
             HStack(spacing: 8) {
-                cleanShotChipButton(
-                    title: "Tabletop",
-                    systemImage: "table.furniture.fill",
-                    accessibilityLabel: "Tabletop invitation candidate",
-                    accessibilityIdentifier: "uls.uxLab.cleanShot.lobbyInviteTabletopCandidate"
-                ) {
-                    lobbyInviteDirectionRawValue = LobbyInviteDirection.tabletopCandidate.rawValue
-                    viewModel.activateCleanLobbyInviteEntry()
-                }
-
-                cleanShotChipButton(
-                    title: "Artifact",
-                    systemImage: "envelope.open.fill",
-                    accessibilityLabel: "Invitation artifact candidate",
-                    accessibilityIdentifier: "uls.uxLab.cleanShot.lobbyInviteArtifactCandidate"
-                ) {
-                    lobbyInviteDirectionRawValue = LobbyInviteDirection.artifactCandidate.rawValue
-                    viewModel.activateCleanLobbyInviteEntry()
-                }
-
-                cleanShotChipButton(
-                    title: "Spatial",
-                    systemImage: "person.3.sequence.fill",
-                    accessibilityLabel: "Spatial lobby candidate",
-                    accessibilityIdentifier: "uls.uxLab.cleanShot.lobbyInviteSpatialCandidate"
-                ) {
-                    lobbyInviteDirectionRawValue = LobbyInviteDirection.spatialCandidate.rawValue
-                    viewModel.activateCleanLobbyInviteEntry()
-                }
-
-                cleanShotChipButton(
-                    title: "Cocktail",
-                    systemImage: "square.grid.3x3.square",
-                    accessibilityLabel: "Cocktail table lobby candidate",
-                    accessibilityIdentifier: "uls.uxLab.cleanShot.lobbyInviteCocktailTableCandidate"
-                ) {
-                    lobbyInviteDirectionRawValue = LobbyInviteDirection.cocktailTableCandidate.rawValue
-                    viewModel.activateCleanLobbyInviteEntry()
-                }
-
                 cleanShotChipButton(
                     title: "Props",
                     systemImage: "shippingbox.fill",
@@ -389,7 +284,6 @@ struct UXTestingControlsView: View {
                 ) {
                     activateCleanFixture(
                         id: UXTestFixtures.defaultFixtureID,
-                        style: .physicalProps
                     )
                 }
             }
@@ -539,7 +433,6 @@ struct UXTestingControlsView: View {
                 ) {
                     activateCleanFixture(
                         id: "pending-discard",
-                        style: .physicalProps,
                         actingAs: UXTestFixtures.host
                     )
                 }
@@ -551,7 +444,6 @@ struct UXTestingControlsView: View {
                 ) {
                     activateCleanFixture(
                         id: UXTestFixtures.defaultFixtureID,
-                        style: .physicalProps
                     )
                 }
 
@@ -614,12 +506,10 @@ struct UXTestingControlsView: View {
 
     private func activateCleanFixture(
         id: String,
-        style: GameTabletopLayoutStyle,
         actingAs actorID: String? = nil,
         initialMode: GameMode = .idle,
         initialRoute: GameShellRoute = .none
     ) {
-        tabletopLayoutStyleRawValue = style.rawValue
         viewModel.activateCleanUXTestingFixture(
             id: id,
             actingAs: actorID,

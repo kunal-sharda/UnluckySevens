@@ -10,7 +10,7 @@ struct GamePhysicalDieView: View {
                 .fill(GamePhysicalTurnPalette.primaryText)
 
             ForEach(
-                GameDiePipLayout.positions(for: min(max(value, 1), 6)).enumerated(),
+                Array(GameDiePipLayout.positions(for: min(max(value, 1), 6)).enumerated()),
                 id: \.offset
             ) { _, position in
                 Circle()

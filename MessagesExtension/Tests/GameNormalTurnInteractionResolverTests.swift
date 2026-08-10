@@ -103,7 +103,6 @@ final class GameNormalTurnInteractionResolverTests: XCTestCase {
         XCTAssertEqual(normalize(.trade(.chooser), availability: unavailable), .none)
         XCTAssertEqual(normalize(.devCards, availability: unavailable), .none)
         XCTAssertEqual(normalize(.endTurnConfirmation, availability: unavailable), .none)
-        XCTAssertEqual(normalize(.utility(.bank), availability: unavailable), .utility(.bank))
         XCTAssertEqual(normalize(.gameInfo, availability: unavailable), .gameInfo)
     }
 

@@ -5,12 +5,6 @@ struct LiveGameBoardCanvasView: View {
     let renderModel: GameBoardRenderModel
     let overlayModel: GameBoardOverlayModel
     let interactionMode: GameMode
-    let bankTray: GameBankTrayModel
-    let showsTabletopRack: Bool
-    let showsBankCounts: Bool
-    let isBankOpen: Bool
-    let devDeckCount: Int
-    let isDevDeckEnabled: Bool
     let showsIntegratedFrame: Bool
     let contentVerticalOffset: CGFloat
     let frozenBoardImage: UIImage?
@@ -20,16 +14,10 @@ struct LiveGameBoardCanvasView: View {
     let onResizeFreezeChanged: ((BoardResizeFreezeState) -> Void)?
     let onFreezeRecoveryReloadRequested: ((String) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
-    let onOpenBank: () -> Void
-    let onOpenDevCards: () -> Void
 
     var body: some View {
         GeometryReader { geometry in
-            let rackHeight = showsTabletopRack ? Self.tabletopRackHeight(for: geometry.size) : 0
-            let boardHeight = max(geometry.size.height - rackHeight, 0)
-
-            VStack(spacing: 0) {
-                Group {
+            Group {
                     if let frozenBoardImage {
                         Image(uiImage: frozenBoardImage)
                             .resizable()
@@ -50,25 +38,9 @@ struct LiveGameBoardCanvasView: View {
                 }
                 .offset(y: contentVerticalOffset)
                 .frame(maxWidth: .infinity)
-                .frame(height: boardHeight)
+                .frame(height: geometry.size.height)
                 .background(Color(uiColor: GameBoardPalette.sceneBackground))
                 .clipped()
-
-                if showsTabletopRack {
-                    GameTabletopBankRackView(
-                        model: bankTray,
-                        showsBankCounts: showsBankCounts,
-                        isBankOpen: isBankOpen,
-                        devDeckCount: devDeckCount,
-                        isDevDeckEnabled: isDevDeckEnabled,
-                        onOpenBank: onOpenBank,
-                        onOpenDevCards: onOpenDevCards
-                    )
-                    .frame(height: rackHeight, alignment: .center)
-                    .frame(maxWidth: .infinity)
-                    .background(showsIntegratedFrame ? GameTheme.felt : Color.clear)
-                }
-            }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
                 showsIntegratedFrame
@@ -78,7 +50,4 @@ struct LiveGameBoardCanvasView: View {
         }
     }
 
-    static func tabletopRackHeight(for size: CGSize) -> CGFloat {
-        min(max(size.height * 0.16, 88), 100)
-    }
 }

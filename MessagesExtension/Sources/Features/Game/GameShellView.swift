@@ -14,7 +14,6 @@ struct GameShellView: View {
     private let minimumActionSurfaceHeight: CGFloat?
     private let tutorialTradeTarget: GameTutorialTarget?
     private let tutorialHeaderTitle: String?
-    private static let shellResizeFreezeWatchdogNanoseconds: UInt64 = 1_200_000_000
 
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -28,20 +27,12 @@ struct GameShellView: View {
     @State private var shellRoute: GameShellRoute = .none
     @State private var isHandOpen = true
     @State private var physicalBankCountsRevealed = false
-    @State private var lastUtilityShelf: GameLowerShelf = .bank
     @State private var normalTurnContextSnapshot: GameNormalTurnContextSnapshot
-    @State private var shellResizeFreezeSnapshot: GameShellFreezeSnapshot?
     @State private var physicalBoardCenteringOffset: CGFloat = 0
     @State private var physicalBoardMeasuredFrame: CGRect = .zero
-    @State private var shellResizeFreezeEpoch: Int = 0
-    @State private var shellResizeFreezeTask: Task<Void, Never>?
     @State private var physicalDiceRollResult: GameDiceRollResult?
     @State private var physicalDiceCompletionGate = GameDiceRollCompletionGate()
     @State private var showsPhysicalTradeRecipients = false
-#if DEBUG
-    @AppStorage(GameTabletopLayoutStyle.uxTestingDefaultsKey)
-    private var uxTestingTabletopLayoutStyleRawValue = GameTabletopLayoutStyle.physicalProps.rawValue
-#endif
 
     init(
         viewModel: LobbyDriverViewModel,
@@ -89,22 +80,8 @@ struct GameShellView: View {
             currentMode: currentMode,
             availability: screenModel.modeAvailability
         )
-        let resolvedStyle = resolvedTabletopLayoutStyle(
-            isNormalPostRollTurn: isNormalPostRollTurn,
-            isNormalPreRollTurn: isNormalPreRollTurn,
-            hasNotPrimaryPlayerContext: notPrimaryPlayerContext != nil,
-            isSetupPlacement: isSetup,
-            isForcedDiscard: resolvedMode == .discard
-        )
-        let tabletopLayoutStyle: GameTabletopLayoutStyle = isGameOver
-            ? .physicalProps
-            : resolvedStyle
-        let shelfPresentation = resolvedShelfPresentation(
-            mode: resolvedMode,
-            usesPhysicalProps: tabletopLayoutStyle.usesPhysicalProps
-        )
-        let activeLowerShelf = shelfPresentation.activeShelf
-        let isShelfPresented = activeLowerShelf != nil && !isGameOver
+        let tabletopLayoutStyle = GameTabletopLayoutStyle.physicalProps
+        let isShelfPresented = false
         let activeTradeRoute = shellRoute.tradeOverlayRoute
         let bankTrayModel = viewModel.makeBankTrayModel(
             mode: resolvedMode,
@@ -131,15 +108,10 @@ struct GameShellView: View {
             mode: resolvedMode,
             overlayModel: overlayModel
         )
-        let freezeShelfStyle = freezeShelfStyle(
-            for: shelfPresentation,
-            currentMode: resolvedMode
-        )
-        let selectedDockKind = shellRoute.selectedDockKind ?? shelfPresentation.selectedDockKind
+        let selectedDockKind = shellRoute.selectedDockKind
         let selectedTradeHandCounts = tradeSelectedHandCounts(route: activeTradeRoute)
         let selectedDiscardHandCounts = discardSelectedHandCounts()
         let selectedRecipients = tradeSelectedRecipients(route: activeTradeRoute)
-        let isBankOpen = shellRoute.utilityShelf == .bank
         let isGameInfoOpen = shellRoute == .gameInfo
         let hasPendingTrade = projection.tradePanelModel?.activeOffer != nil
         let usesPhysicalProps = tabletopLayoutStyle.usesPhysicalProps
@@ -157,14 +129,9 @@ struct GameShellView: View {
         let isPhysicalGameOver = usesPhysicalProps
             && isGameOver
             && screenModel.endScreen != nil
-        let isPhysicalGameplayTurn = isNormalPostRollTurn
-            || isPhysicalStartTurn
-            || isPhysicalNotPrimaryPlayer
-            || isPhysicalSetup
-            || isPhysicalDiscard
-            || isPhysicalRobberFlow
-            || isPhysicalGameOver
-        let showsPhysicalPublicRail = isPhysicalGameplayTurn
+        // Every production game phase uses the canonical physical-tabletop shell.
+        let isPhysicalGameplayTurn = true
+        let showsPhysicalPublicRail = true
         let physicalHeaderPrompt: GamePhysicalTurnHeaderPrompt? = if isPhysicalStartTurn {
             nil
         } else if let notPrimaryPlayerContext {
@@ -216,11 +183,7 @@ struct GameShellView: View {
                 let shellLayout = GameShellLayoutMetrics.resolve(
                     availableSize: shellSize,
                     spacing: GameTheme.sectionSpacing,
-                    overlayKind: overlayShelfKind(for: shelfPresentation)
-                )
-                let canPresentUtilityShelf = GameShellLayoutMetrics.supportsUtilityShelf(
-                    availableSize: shellSize,
-                    spacing: GameTheme.sectionSpacing
+                    overlayKind: .none
                 )
                 let lowerRailWidth = min(
                     GameShellLayoutMetrics.lowerRailWidth(
@@ -331,18 +294,6 @@ struct GameShellView: View {
                 let boardBottomOcclusionHeight = isGameInfoOpen
                     ? GameTurnGameInfoView.boardClearanceHeight
                     : CGFloat.zero
-                let overlayShelfLayout = tabletopLayoutStyle.usesFeltTools
-                    ? shellLayout.overlayShelf.fittedToTabletopSurface(
-                        height: actionSurfaceHeight
-                    )
-                    : shellLayout.overlayShelf
-                let shelfContentInset = tabletopLayoutStyle.usesFeltTools
-                    ? 4
-                    : GameTheme.inlineSpacing
-                let shelfBodySize = CGSize(
-                    width: max(lowerRailWidth - (shelfContentInset * 2), 0),
-                    height: max(overlayShelfLayout.contentHeight - (shelfContentInset * 2), 0)
-                )
                 let boardHintBottomInset = resolvedBoardHintBottomInset(
                     isShelfPresented: isShelfPresented,
                     isTradePanelPresented: isTradePanelPresented,
@@ -355,17 +306,16 @@ struct GameShellView: View {
                     ZStack(alignment: .bottom) {
                         VStack(alignment: .leading, spacing: tabletopSectionSpacing) {
                             Group {
-                                if isPhysicalGameplayTurn {
-                                    if let setupPlacementModel, isPhysicalSetup {
+                                if let setupPlacementModel, isPhysicalSetup {
                                         GamePhysicalSetupTopBarView(
                                             model: setupPlacementModel,
                                             onSettingsTap: onSettingsTap,
                                             onGameInfoTap: handleGameInfoToggle
                                         )
-                                    } else if isPhysicalGameOver,
+                                } else if isPhysicalGameOver,
                                               let endScreen = screenModel.endScreen {
                                         GameEndTopTableauView(model: endScreen)
-                                    } else if usesPhysicalProps {
+                                } else {
                                         if let tutorialHeaderTitle {
                                             GamePhysicalTurnPromptView(text: tutorialHeaderTitle)
                                                 .frame(maxWidth: .infinity, minHeight: 44)
@@ -383,31 +333,6 @@ struct GameShellView: View {
                                                 onGameInfoTap: handleGameInfoToggle
                                             )
                                         }
-                                    } else {
-                                        GameTurnTopBarView(
-                                            title: headerModel.statusLine.title,
-                                            subtitle: headerModel.statusLine.subtitle,
-                                            isGameInfoOpen: isGameInfoOpen,
-                                            onSettingsTap: onSettingsTap,
-                                            onGameInfoTap: handleGameInfoToggle
-                                        )
-                                    }
-                                } else {
-                                    GameCommandBarView(
-                                        title: tabletopCommandTitle(
-                                            mode: resolvedMode,
-                                            statusLine: headerModel.statusLine,
-                                            overlayModel: overlayModel
-                                        ),
-                                        progressIndex: tabletopProgressIndex(
-                                            mode: resolvedMode,
-                                            overlayModel: overlayModel
-                                        ),
-                                        progressCount: 4,
-                                        onMenuTap: {
-                                            handleUtilityHandleToggle(canPresentUtilityShelf: canPresentUtilityShelf)
-                                        }
-                                    )
                                 }
                             }
                             .frame(
@@ -432,7 +357,7 @@ struct GameShellView: View {
                                 Group {
                                     if let setupPlacementModel, isPhysicalSetup {
                                         GamePhysicalSetupOrderRailView(model: setupPlacementModel)
-                                    } else if usesPhysicalProps {
+                                    } else {
                                         GamePhysicalPublicRackView(
                                             bank: bankTrayModel,
                                             revealsBankCounts: physicalBankCountsRevealed,
@@ -446,20 +371,6 @@ struct GameShellView: View {
                                         onBuyDevelopmentCard: handlePublicDevDeckPurchase
                                     )
                                     .scaleEffect(physicalLayout.contentScale)
-                                } else {
-                                        GameTabletopBankRackView(
-                                            model: bankTrayModel,
-                                            showsBankCounts: false,
-                                            isBankOpen: isBankOpen,
-                                            devDeckCount: screenModel.devDeckCount,
-                                            isDevDeckEnabled: screenModel.canBuyDevCard,
-                                            onOpenBank: {
-                                                handleUtilityShelfSelection(.bank)
-                                            },
-                                            onOpenDevCards: {
-                                                handlePublicDevDeckPurchase()
-                                            }
-                                        )
                                     }
                                 }
                                 .frame(height: publicRailHeight)
@@ -479,14 +390,6 @@ struct GameShellView: View {
                                 renderModel: screenModel.boardRenderModel,
                                 overlayModel: overlayModel,
                                 interactionMode: resolvedMode,
-                                bankTray: bankTrayModel,
-                                showsTabletopRack: !isPhysicalGameplayTurn,
-                                showsBankCounts: true,
-                                isBankOpen: isBankOpen,
-                                devDeckCount: screenModel.devDeckCount,
-                                isDevDeckEnabled: screenModel.actionDock.primaryItems.contains {
-                                    $0.kind == .devCards && $0.isEnabled
-                                },
                                 selectionText: visibleBoardSelectionText,
                                 hintBottomInset: boardHintBottomInset,
                                 showsCreamFrame: tabletopLayoutStyle.showsCreamBoardFrame,
@@ -499,67 +402,12 @@ struct GameShellView: View {
                                 bottomOcclusionHeight: boardBottomOcclusionHeight,
                                 reloadToken: viewModel.boardReloadToken,
                                 onInteractionChanged: nil,
-                                onResizeFreezeChanged: isPhysicalGameplayTurn ? nil : { freezeState in
-                                    if freezeState.isFrozen {
-                                        clearBoardSelection()
-                                    }
-                                    handleShellResizeFreezeChange(
-                                        freezeState,
-                                        snapshot: freezeState.snapshot.map { boardImage in
-                                            GameShellFreezeSnapshot(
-                                                size: shellSize,
-                                                layout: shellLayout,
-                                                lowerRailWidth: lowerRailWidth,
-                                                shelfBodySize: shelfBodySize,
-                                                isGameOver: isGameOver,
-                                                headerModel: headerModel,
-                                                boardModel: boardModel,
-                                                boardRenderModel: screenModel.boardRenderModel,
-                                                overlayModel: overlayModel,
-                                                selectionText: visibleBoardSelectionText,
-                                                hintBottomInset: boardHintBottomInset,
-                                                boardImage: boardImage,
-                                                actionDock: screenModel.actionDock,
-                                                selectedDockKind: selectedDockKind,
-                                                isHandOpen: isHandOpen,
-                                                tabletopLayoutStyle: tabletopLayoutStyle,
-                                                activeLowerShelf: activeLowerShelf,
-                                                shelfStyle: freezeShelfStyle,
-                                                mode: resolvedMode,
-                                                handTray: screenModel.handTray,
-                                                bankTray: bankTrayModel,
-                                                opponents: screenModel.opponents,
-                                                selectedBuildKind: resolvedMode.buildShelfKind,
-                                                setupInstruction: projection.setupGuidanceText,
-                                                discardPanel: projection.discardPanelModel,
-                                                discardSelectedHandCounts: selectedDiscardHandCounts,
-                                                tradePanelModel: projection.tradePanelModel,
-                                                devCardPanel: devCardPanelModel,
-                                                robberVictimOptions: projection.robberVictimOptions,
-                                                tradeOverlayRoute: activeTradeRoute,
-                                                tradeSelectedHandCounts: selectedTradeHandCounts,
-                                                tradeSelectedRecipients: selectedRecipients,
-                                                pendingTradeBannerText: projection.tradePanelModel?.pendingBannerText
-                                            )
-                                        }
-                                    )
-                                },
+                                onResizeFreezeChanged: nil,
                                 onFreezeRecoveryReloadRequested: { detail in
                                     viewModel.requestBoardReload(detail: detail)
                                 },
                                 onTargetTap: { target in
                                     handleBoardTap(target, mode: resolvedMode)
-                                },
-                                onOpenBank: {
-                                    handleUtilityShelfSelection(.bank)
-                                },
-                                onOpenDevCards: {
-                                    handleActionSelection(
-                                        .devCards,
-                                        currentMode: resolvedMode,
-                                        availability: screenModel.modeAvailability,
-                                        actionDock: screenModel.actionDock
-                                    )
                                 }
                             )
                             .frame(height: boardHostPresentationHeight, alignment: .top)
@@ -644,7 +492,7 @@ struct GameShellView: View {
                                         playerColor: physicalPlayerColor
                                     )
                                     .scaleEffect(physicalLayout.contentScale, anchor: .bottom)
-                                } else if usesPhysicalProps {
+                                } else {
                                     GamePhysicalTurnPropRailView(
                                         actionDock: screenModel.actionDock,
                                         selectedDockKind: selectedDockKind,
@@ -669,25 +517,6 @@ struct GameShellView: View {
                                         onToggleHand: handleHandToggle
                                     )
                                     .scaleEffect(physicalLayout.contentScale, anchor: .bottom)
-                                } else {
-                                    GameBottomTrayView(
-                                        layout: shellLayout.lowerRail,
-                                        handTray: screenModel.handTray,
-                                        actionDock: screenModel.actionDock,
-                                        selectedDockKind: selectedDockKind,
-                                        isHandOpen: isHandOpen,
-                                        hasPendingTrade: hasPendingTrade,
-                                        presentationStyle: tabletopLayoutStyle,
-                                        onSelectDock: { actionKind in
-                                            handleActionSelection(
-                                                actionKind,
-                                                currentMode: resolvedMode,
-                                                availability: screenModel.modeAvailability,
-                                                actionDock: screenModel.actionDock
-                                            )
-                                        },
-                                        onToggleHand: handleHandToggle
-                                    )
                                 }
                             }
                             .frame(
@@ -864,118 +693,6 @@ struct GameShellView: View {
                                 .transition(.opacity)
                                 .zIndex(0.75)
                             }
-                        }
-
-                        if !isGameOver,
-                           tabletopLayoutStyle.usesFeltTools,
-                           !usesPhysicalProps,
-                           isHandOpen {
-                            GameFeltHandOverlayView(
-                                handTray: screenModel.handTray,
-                                ownedDevCards: screenModel.ownedDevCards
-                            )
-                                .frame(
-                                    height: feltToolSurfaceHeight,
-                                    alignment: .bottom
-                                )
-                                .frame(maxWidth: lowerRailWidth)
-                                .padding(.horizontal, GameTheme.shellPadding)
-                                .padding(
-                                    .bottom,
-                                    GameTheme.shellPadding
-                                        + shellLayout.trayHeight
-                                )
-                                .zIndex(0.75)
-                        }
-
-                        if !isGameOver, !usesPhysicalProps, let activeLowerShelf {
-                            GameOverlayShelfView(
-                                layout: overlayShelfLayout,
-                                presentation: shelfPresentation,
-                                currentMode: resolvedMode,
-                                tabletopLayoutStyle: tabletopLayoutStyle,
-                                onSelectUtilityShelf: { shelf in
-                                    handleUtilityShelfSelection(shelf)
-                                },
-                                onClose: {
-                                    handleCloseShelf()
-                                }
-                            ) {
-                                GameLowerShelfContentView(
-                                    activeShelf: activeLowerShelf,
-                                    availableBodySize: shelfBodySize,
-                                    boardCommitDraft: boardCommitDraft,
-                                    handTray: screenModel.handTray,
-                                    bankTray: bankTrayModel,
-                                    opponents: screenModel.opponents,
-                                    actionDock: screenModel.actionDock,
-                                    selectedBuildKind: resolvedMode.buildShelfKind,
-                                    presentationStyle: tabletopLayoutStyle,
-                                    mode: resolvedMode,
-                                    setupInstruction: projection.setupGuidanceText,
-                                    discardPanel: projection.discardPanelModel,
-                                    devCardPanel: devCardPanelModel,
-                                    robberVictimOptions: projection.robberVictimOptions,
-                                    selectedHandCounts: selectedTradeHandCounts,
-                                    onSelectHandResource: nil,
-                                    selectedRecipients: selectedRecipients,
-                                    onSelectRecipient: nil,
-                                    discardSelectedHandCounts: selectedDiscardHandCounts,
-                                    onSelectDiscardResource: { resource in
-                                        addDiscardResource(resource)
-                                    },
-                                    onRemoveDiscardResource: { resource in
-                                        removeDiscardResource(resource)
-                                    },
-                                    onSelectBuild: { buildKind in
-                                        handleBuildShelfSelection(buildKind)
-                                    },
-                                    onSelectBankResource: { resource in
-                                        handleBankResourceSelection(resource, mode: resolvedMode)
-                                    },
-                                    onDiscardAction: {
-                                        guard viewModel.handleDiscardFlowAction(discarded: discardDraft) else { return }
-                                        discardDraft = .zero
-                                        selectedBoardTarget = nil
-                                    },
-                                    onDevCardAction: { action in
-                                        handleDevCardSelection(action)
-                                    },
-                                    onConfirmDevCardDraft: {
-                                        handleConfirmDevCardDraft()
-                                    },
-                                    onResetDevCardDraft: {
-                                        resetDevCardDraft()
-                                    },
-                                    onConfirmBoardCommit: {
-                                        if let boardCommitDraft {
-                                            publishBoardCommitDraft(boardCommitDraft)
-                                        }
-                                    },
-                                    onCancelBoardCommit: {
-                                        handleCancelBoardCommit(
-                                            isNormalPostRollTurn: isNormalPostRollTurn,
-                                            mode: resolvedMode
-                                        )
-                                    },
-                                    onSelectStealVictim: { victimPlayer in
-                                        guard viewModel.publishRobberVictimState(victimPlayer: victimPlayer) else { return }
-                                        currentMode = .idle
-                                        clearBoardSelection()
-                                    }
-                                )
-                            }
-                            .frame(height: overlayShelfLayout.totalHeight, alignment: .top)
-                            .frame(maxWidth: lowerRailWidth)
-                            .padding(.horizontal, GameTheme.shellPadding)
-                            .padding(
-                                .bottom,
-                                GameTheme.shellPadding
-                                    + (tabletopLayoutStyle.usesFeltTools
-                                        ? shellLayout.trayHeight
-                                        : shellLayout.lowerRail.dockHeight)
-                            )
-                            .zIndex(1)
                         }
 
                         if !isGameOver,
@@ -1211,8 +928,6 @@ struct GameShellView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .opacity(shellResizeFreezeSnapshot == nil ? 1 : 0)
-                    .allowsHitTesting(shellResizeFreezeSnapshot == nil)
 
                     if !isGameOver, isPhysicalStartTurn, physicalDiceRollResult == nil,
                        resolvedMode == .idle || resolvedMode == .playDevCard {
@@ -1253,27 +968,8 @@ struct GameShellView: View {
                         .zIndex(5)
                     }
 
-                    if let shellResizeFreezeSnapshot {
-                        GameShellFreezeOverlayView(snapshot: shellResizeFreezeSnapshot)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                            .clipped()
-                            .zIndex(10)
-                    }
-
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .onChange(of: geometry.size) { _, newValue in
-                    enforceVisibleShelfBounds(
-                        observedSize: newValue,
-                        currentMode: resolvedMode
-                    )
-                }
-                .onAppear {
-                    enforceVisibleShelfBounds(
-                        observedSize: shellSize,
-                        currentMode: resolvedMode
-                    )
-                }
                 }
                 .coordinateSpace(.named(Self.displayCoordinateSpaceName))
         }
@@ -1350,7 +1046,6 @@ struct GameShellView: View {
                 object: nil,
                 userInfo: ["height": CGFloat.zero]
             )
-            clearShellResizeFreeze()
         }
         .transaction { transaction in
             if preferences.skipsAnimations {
@@ -1400,58 +1095,6 @@ struct GameShellView: View {
             return true
         case .chooser, .liveOffer, nil:
             return false
-        }
-    }
-
-    private func resolvedTabletopLayoutStyle(
-        isNormalPostRollTurn: Bool,
-        isNormalPreRollTurn: Bool,
-        hasNotPrimaryPlayerContext: Bool,
-        isSetupPlacement: Bool,
-        isForcedDiscard: Bool
-    ) -> GameTabletopLayoutStyle {
-#if DEBUG
-        let testingStyle = GameTabletopLayoutStyle(
-            rawValue: uxTestingTabletopLayoutStyleRawValue
-        )
-        return GameTabletopLayoutStyleResolver.resolve(
-            isNormalPostRollTurn: isNormalPostRollTurn,
-            isNormalPreRollTurn: isNormalPreRollTurn,
-            hasNotPrimaryPlayerContext: hasNotPrimaryPlayerContext,
-            isSetupPlacement: isSetupPlacement,
-            isForcedDiscard: isForcedDiscard,
-            testingStyle: testingStyle
-        )
-#else
-        return GameTabletopLayoutStyleResolver.resolve(
-            isNormalPostRollTurn: isNormalPostRollTurn,
-            isNormalPreRollTurn: isNormalPreRollTurn,
-            hasNotPrimaryPlayerContext: hasNotPrimaryPlayerContext,
-            isSetupPlacement: isSetupPlacement,
-            isForcedDiscard: isForcedDiscard
-        )
-#endif
-    }
-
-    private func resolvedShelfPresentation(
-        mode: GameMode,
-        usesPhysicalProps: Bool
-    ) -> GameShelfPresentation {
-        if usesPhysicalProps, mode == .discard || mode == .robberVictim {
-            return .none
-        }
-        if mode == .discard || mode == .robberVictim {
-            return .forcedFlow
-        }
-        switch shellRoute {
-        case let .utility(shelf):
-            return .utility(shelf)
-        case .build:
-            return .action(.build)
-        case .devCards:
-            return .action(.devCards)
-        case .trade, .endTurnConfirmation, .gameInfo, .none:
-            return .none
         }
     }
 
@@ -1675,22 +1318,6 @@ struct GameShellView: View {
         }
     }
 
-    private func handleUtilityHandleToggle(canPresentUtilityShelf: Bool) {
-        if case .trade = shellRoute {
-            return
-        }
-
-        if case .utility = shellRoute {
-            shellRoute = .none
-        } else {
-            guard canPresentUtilityShelf else {
-                return
-            }
-            switchToUtilityShelf(lastUtilityShelf)
-        }
-        clearBoardSelection()
-    }
-
     private func handleHandToggle() {
         if viewModel.isNormalPostRollActiveTurn {
             if isHandOpen {
@@ -1716,49 +1343,10 @@ struct GameShellView: View {
             return
         }
 
-        if case .utility = shellRoute {
-            shellRoute = .none
-        }
-
         withAnimation(motionPolicy.resolvedAnimation(GameTheme.quickAnimation)) {
             isHandOpen.toggle()
         }
         clearBoardSelection()
-    }
-
-    private func handleUtilityShelfSelection(_ shelf: GameLowerShelf) {
-        if shelf != .hand {
-            lastUtilityShelf = shelf
-            isHandOpen = false
-        }
-        if shellRoute.utilityShelf == shelf {
-            shellRoute = .none
-        } else {
-            switchToUtilityShelf(shelf)
-        }
-        clearBoardSelection()
-    }
-
-    private func handleCloseShelf() {
-        switch shellRoute {
-        case .utility:
-            self.shellRoute = .none
-            clearBoardSelection()
-        case .build:
-            self.currentMode = .idle
-            self.shellRoute = .none
-            clearBoardSelection()
-        case .devCards:
-            dismissDevCardFlow()
-        case .trade:
-            closeTradePanel(resetDraft: true)
-        case .endTurnConfirmation, .gameInfo:
-            self.currentMode = .idle
-            self.shellRoute = .none
-            clearBoardSelection()
-        case .none:
-            break
-        }
     }
 
     private func handleGameInfoToggle() {
@@ -1976,19 +1564,6 @@ struct GameShellView: View {
         }
     }
 
-    private func switchToUtilityShelf(_ shelf: GameLowerShelf) {
-        currentMode = .idle
-        devCardDraft = nil
-
-        if shelf == .hand {
-            isHandOpen = true
-            shellRoute = .none
-            return
-        }
-
-        shellRoute = .utility(shelf)
-    }
-
     private func tradeSelectedHandCounts(route: GameTradeOverlayRoute?) -> [ResourceV1: Int] {
         guard case let .playerDraft(draft)? = route else {
             return [:]
@@ -2182,17 +1757,6 @@ struct GameShellView: View {
         return GameTheme.shellPadding + shelfOffset + GameTradeOverlayLayout.verticalSpacing
     }
 
-    private func overlayShelfKind(for presentation: GameShelfPresentation) -> GameShellLayoutMetrics.OverlayShelfKind {
-        switch presentation {
-        case .utility, .none:
-            return .utility
-        case let .action(shelf):
-            return shelf == .devCards ? .devCards : .build
-        case .forcedFlow:
-            return .forcedFlow
-        }
-    }
-
     private func handleBuildShelfSelection(_ buildKind: GameBuildShelfItem.Kind) {
         shellRoute = .build
         switch buildKind {
@@ -2302,7 +1866,6 @@ struct GameShellView: View {
         shellRoute = .none
         isHandOpen = true
         physicalBankCountsRevealed = false
-        lastUtilityShelf = .bank
         clearShellResizeFreeze()
     }
 
@@ -2533,26 +2096,6 @@ struct GameShellView: View {
         }
     }
 
-    private func enforceVisibleShelfBounds(
-        observedSize: CGSize,
-        currentMode: GameMode
-    ) {
-        guard !GameShellLayoutMetrics.supportsUtilityShelf(
-            availableSize: observedSize,
-            spacing: GameTheme.sectionSpacing
-        ) else {
-            return
-        }
-
-        if case .utility = resolvedShelfPresentation(
-            mode: currentMode,
-            usesPhysicalProps: false
-        ) {
-            self.shellRoute = .none
-            clearBoardSelection()
-        }
-    }
-
     private func publishBoardCommitDraft(_ draft: GameBoardCommitDraft) {
         let didPublish: Bool
         switch draft.mode {
@@ -2596,50 +2139,6 @@ struct GameShellView: View {
         boardHintText = nil
     }
 
-    private func handleShellResizeFreezeChange(
-        _ state: BoardResizeFreezeState,
-        snapshot: GameShellFreezeSnapshot?
-    ) {
-        shellResizeFreezeTask?.cancel()
-
-        guard state.isFrozen, let snapshot else {
-            clearShellResizeFreeze()
-            return
-        }
-
-        shellResizeFreezeEpoch += 1
-        let epoch = shellResizeFreezeEpoch
-        shellResizeFreezeSnapshot = snapshot
-        shellResizeFreezeTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: Self.shellResizeFreezeWatchdogNanoseconds)
-            guard !Task.isCancelled, shellResizeFreezeEpoch == epoch else {
-                return
-            }
-            clearShellResizeFreeze()
-        }
-    }
-
-    private func clearShellResizeFreeze() {
-        shellResizeFreezeTask?.cancel()
-        shellResizeFreezeTask = nil
-        shellResizeFreezeSnapshot = nil
-    }
-
-    private func freezeShelfStyle(
-        for presentation: GameShelfPresentation,
-        currentMode: GameMode
-    ) -> GameShellFreezeShelfStyle {
-        switch presentation {
-        case let .utility(selectedShelf):
-            return .utility(selected: selectedShelf)
-        case let .action(shelf):
-            return .action(shelf: shelf)
-        case .forcedFlow:
-            return .forcedFlow(title: currentMode.title)
-        case .none:
-            return .utility(selected: lastUtilityShelf)
-        }
-    }
 }
 
 private extension GameMode {
@@ -2678,49 +2177,6 @@ private struct GamePhysicalBoardFramePreferenceKey: PreferenceKey {
     }
 }
 
-private enum GameShelfPresentation: Equatable {
-    case none
-    case utility(GameLowerShelf)
-    case action(GameLowerShelf)
-    case forcedFlow
-
-    var activeShelf: GameLowerShelf? {
-        switch self {
-        case let .utility(shelf), let .action(shelf):
-            return shelf
-        case .forcedFlow:
-            return .forcedFlow
-        case .none:
-            return nil
-        }
-    }
-
-    var selectedDockKind: GameActionDockItem.Kind? {
-        switch self {
-        case let .action(shelf):
-            return shelf.actionKind
-        case .none, .utility, .forcedFlow:
-            return nil
-        }
-    }
-
-    var selectedUtilityShelf: GameLowerShelf? {
-        if case let .utility(shelf) = self {
-            return shelf
-        }
-        return nil
-    }
-
-    var isClosable: Bool {
-        switch self {
-        case .utility, .action:
-            return true
-        case .forcedFlow, .none:
-            return false
-        }
-    }
-}
-
 private extension GameMode {
     var prefersCollapsedHandTray: Bool {
         switch self {
@@ -2743,287 +2199,6 @@ private extension GameMode {
              .discard:
             return true
         }
-    }
-}
-
-private struct GameOverlayShelfView<Content: View>: View {
-    let layout: GameShellLayoutMetrics.OverlayShelfMetrics
-    let presentation: GameShelfPresentation
-    let currentMode: GameMode
-    let tabletopLayoutStyle: GameTabletopLayoutStyle
-    let onSelectUtilityShelf: (GameLowerShelf) -> Void
-    let onClose: () -> Void
-    let content: Content
-
-    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
-
-    init(
-        layout: GameShellLayoutMetrics.OverlayShelfMetrics,
-        presentation: GameShelfPresentation,
-        currentMode: GameMode,
-        tabletopLayoutStyle: GameTabletopLayoutStyle,
-        onSelectUtilityShelf: @escaping (GameLowerShelf) -> Void,
-        onClose: @escaping () -> Void,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.layout = layout
-        self.presentation = presentation
-        self.currentMode = currentMode
-        self.tabletopLayoutStyle = tabletopLayoutStyle
-        self.onSelectUtilityShelf = onSelectUtilityShelf
-        self.onClose = onClose
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            header
-                .frame(maxWidth: .infinity, minHeight: layout.headerHeight, maxHeight: layout.headerHeight)
-
-            Divider()
-                .overlay(panelDividerColor)
-
-            contentContainer
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        }
-        .frame(maxWidth: .infinity, minHeight: layout.totalHeight, maxHeight: layout.totalHeight, alignment: .top)
-        .background(panelBackground)
-        .overlay(panelOverlay)
-        .clipShape(panelShape)
-        .contentShape(panelShape)
-        .transition(
-            accessibilityReduceMotion
-                ? .opacity
-                : .move(edge: .bottom).combined(with: .opacity)
-        )
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(
-            tabletopLayoutStyle.usesFeltTools
-                ? "uls.physicalProps.componentSurface"
-                : "uls.overlayShelf"
-        )
-    }
-
-    @ViewBuilder
-    private var contentContainer: some View {
-        if usesScrollContainer {
-            ScrollView(
-                .vertical,
-                showsIndicators: tabletopLayoutStyle.usesFeltTools
-            ) {
-                content
-                    .padding(contentPadding)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .scrollBounceBehavior(.basedOnSize)
-        } else {
-            content
-                .padding(contentPadding)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .clipped()
-        }
-    }
-
-    @ViewBuilder
-    private var header: some View {
-        switch presentation {
-        case let .utility(selectedShelf):
-            if tabletopLayoutStyle.usesFeltTools {
-                HStack(spacing: GameTheme.inlineSpacing) {
-                    Label(selectedShelf.title, systemImage: selectedShelf.systemImage)
-                        .font(GameTheme.metaFont.weight(.semibold))
-                        .foregroundStyle(panelInk)
-
-                    Spacer(minLength: 0)
-
-                    if presentation.isClosable {
-                        closeButton
-                    }
-                }
-                .padding(.horizontal, GameTheme.compactPadding)
-            } else {
-                HStack(spacing: GameTheme.inlineSpacing) {
-                    ForEach([GameLowerShelf.hand, .bank, .players], id: \.rawValue) { shelf in
-                        UtilityHeaderTabButton(
-                            title: shelf.title,
-                            isSelected: selectedShelf == shelf,
-                            usesFeltTools: false
-                        ) {
-                            onSelectUtilityShelf(shelf)
-                        }
-                    }
-
-                    if presentation.isClosable {
-                        closeButton
-                    }
-                }
-                .padding(.horizontal, GameTheme.compactPadding)
-            }
-        case let .action(shelf):
-            HStack(spacing: GameTheme.inlineSpacing) {
-                Label(shelf.title, systemImage: shelf.systemImage)
-                    .font(GameTheme.metaFont.weight(.semibold))
-                    .foregroundStyle(panelInk)
-                    .lineLimit(1)
-
-                Spacer(minLength: 0)
-
-                if presentation.isClosable {
-                    closeButton
-                }
-            }
-            .padding(.horizontal, GameTheme.compactPadding)
-        case .forcedFlow:
-            HStack(spacing: GameTheme.inlineSpacing) {
-                Label(currentMode.title, systemImage: "arrow.triangle.2.circlepath")
-                    .font(GameTheme.metaFont.weight(.semibold))
-                    .foregroundStyle(panelInk)
-                    .lineLimit(1)
-
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, GameTheme.compactPadding)
-        case .none:
-            EmptyView()
-        }
-    }
-
-    private var closeButton: some View {
-        Button(action: onClose) {
-            Image(systemName: "arrow.down")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(tabletopLayoutStyle.usesFeltTools ? GameTheme.surface : GameTheme.mutedInk)
-                .frame(width: 44, height: 44)
-                .background(
-                    tabletopLayoutStyle.usesFeltTools
-                        ? GameTheme.felt
-                        : GameTheme.surface.opacity(0.9)
-                )
-                .overlay(
-                    Circle()
-                        .stroke(
-                            tabletopLayoutStyle.usesFeltTools
-                                ? GameTheme.surface.opacity(0.20)
-                                : GameTheme.outline.opacity(0.12),
-                            lineWidth: 1
-                        )
-                )
-                .clipShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(tabletopLayoutStyle.usesFeltTools ? "Close tools" : "Close shelf")
-    }
-
-    private var panelInk: Color {
-        tabletopLayoutStyle.usesFeltTools ? GameTheme.surface : GameTheme.ink
-    }
-
-    private var panelDividerColor: Color {
-        tabletopLayoutStyle.usesFeltTools
-            ? .clear
-            : GameTheme.outline.opacity(0.10)
-    }
-
-    @ViewBuilder
-    private var panelBackground: some View {
-        if tabletopLayoutStyle.usesFeltTools {
-            Color.clear
-        } else {
-            RoundedRectangle(cornerRadius: GameTheme.largeRadius)
-                .fill(GameTheme.surface.opacity(0.985))
-                .shadow(color: GameTheme.trayShadow.opacity(0.86), radius: 14, x: 0, y: -3)
-        }
-    }
-
-    @ViewBuilder
-    private var panelOverlay: some View {
-        if tabletopLayoutStyle.usesFeltTools {
-            Color.clear
-        } else {
-            RoundedRectangle(cornerRadius: GameTheme.largeRadius)
-                .stroke(GameTheme.outline.opacity(0.14), lineWidth: 1)
-        }
-    }
-
-    private var panelShape: AnyShape {
-        if tabletopLayoutStyle.usesFeltTools {
-            return AnyShape(Rectangle())
-        }
-        return AnyShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius))
-    }
-
-    private var usesScrollContainer: Bool {
-        switch presentation {
-        case .utility:
-            return layout.contentHeight < GameShellLayoutMetrics.minimumUtilityShelfScrollHeight
-        case let .action(shelf):
-            return shelf == .devCards
-        case .forcedFlow:
-            return true
-        case .none:
-            return false
-        }
-    }
-
-    private var contentPadding: CGFloat {
-        if tabletopLayoutStyle.usesFeltTools {
-            return 4
-        }
-
-        switch presentation {
-        case .utility:
-            return GameTheme.inlineSpacing
-        case .action, .forcedFlow, .none:
-            return GameTheme.compactPadding
-        }
-    }
-}
-
-private struct UtilityHeaderTabButton: View {
-    let title: String
-    let isSelected: Bool
-    let usesFeltTools: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(GameTheme.metaFont.weight(.semibold))
-                .foregroundStyle(textColor)
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 7)
-                .background(background)
-                .overlay(
-                    Capsule()
-                        .stroke(borderColor, lineWidth: 1)
-                )
-                .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var background: Color {
-        if usesFeltTools {
-            return isSelected ? GameTheme.accent.opacity(0.60) : GameTheme.felt.opacity(0.84)
-        }
-        return isSelected ? GameTheme.accent.opacity(0.18) : GameTheme.surface.opacity(0.84)
-    }
-
-    private var borderColor: Color {
-        if usesFeltTools {
-            return isSelected ? GameTheme.surface.opacity(0.34) : GameTheme.surface.opacity(0.14)
-        }
-        return isSelected ? GameTheme.accent.opacity(0.40) : GameTheme.outline.opacity(0.12)
-    }
-
-    private var textColor: Color {
-        if usesFeltTools {
-            return isSelected ? GameTheme.surface : GameTheme.surface.opacity(0.72)
-        }
-        return isSelected ? GameTheme.ink : GameTheme.mutedInk
     }
 }
 

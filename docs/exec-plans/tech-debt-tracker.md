@@ -107,23 +107,21 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - Resolved: 2026-07-25.
 - Links: [Discard Screen](completed/discard-screen.md), [Branch Archive and Master Baseline](completed/branch-archive-and-master-baseline.md), [Settings, Rules, and Click-Through Tutorial](completed/settings-rules-tutorial.md), [UI Flow Contract Audit](completed/ui-flow-contract-audit.md), [Lobby Invite Screen](completed/lobby-invite-screen.md)
 
-### TD-013 — Superseded UI types remain in the production source target
+### TD-013 — Resolved: superseded standalone UI types removed
 
 - Area: `MessagesExtension` source hygiene
-- Why it matters: rejected or replaced implementations should leave the shipping source graph once their successor is established, otherwise future searches and refactors cannot distinguish current UI from historical scaffolding.
-- Current cost or risk: `ActionDockView`, `LobbyGameSettingsSheet`, and `GameDevCardChimneyMarkView` have no source references outside their declarations but are still compiled into the extension target through the broad source glob.
-- Proposed fix shape: delete the three unreferenced types, regenerate through the canonical script, build the Messages target, and add a lightweight orphan-type/reference scan to structural-cleanup reviews rather than creating permanent tooling for a three-file deletion.
-- When to address: immediately; this is a small direct cleanup that does not need to wait for phase 15.
-- Links: [ActionDockView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Components/ActionDockView.swift), [LobbyGameSettingsSheet.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyGameSettingsSheet.swift), [GameDevCardChimneyMarkView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Components/GameDevCardChimneyMarkView.swift)
+- Why it mattered: rejected or replaced implementations obscured the shipping source graph because the broad source glob continued compiling declarations with no call sites.
+- Resolution: the final cohesion pass removed `ActionDockView`, `LobbyGameSettingsSheet`, `GameDevCardChimneyMarkView`, and the likewise unreferenced `GameFinalScorePlayerView` after source, test, and harness searches confirmed they had no consumers.
+- Resolved: 2026-08-10.
+- Links: [Final UI cohesion and legacy removal](active/final-ui-cohesion-and-legacy-removal.md)
 
-### TD-014 — Legacy tabletop presentation branches coexist with Physical Props
+### TD-014 — Resolved: legacy tabletop presentation branches removed
 
 - Area: gameplay UI architecture, visual-system migration
-- Why it matters: the extension still carries `framedShelf`, `framelessShelf`, `feltTools`, and `physicalProps` presentation families plus parallel tray, modal, trade, and freeze-overlay implementations.
-- Current cost or risk: every gameplay change must reason about multiple visual systems, legacy branches can survive only because DEBUG comparison controls still exercise them, and release states not yet migrated can silently preserve an older product language.
-- Proposed fix shape: inventory the release routes that still resolve to the old stack, finish or explicitly defer their product migration, keep approved comparison fixtures under DEBUG only, and then remove unreachable legacy bodies and layout modes with focused route and installed-host coverage.
-- When to address: start at phase 14 closeout and finish as an early phase 15 slice; do not bulk-delete until remaining release routes are mapped.
-- Links: [GameTabletopLayoutStyle.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/GameTabletopLayoutStyle.swift), [GameShellView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Game/GameShellView.swift), [GameModalHostView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Components/GameModalHostView.swift)
+- Why it mattered: parallel lower-tray, shelf, alternate-header, embedded board-rack, modal, and shell resize-snapshot implementations allowed stale visual language to reappear during otherwise canonical play.
+- Resolution: production and UX Lab route searches established Physical Props as the sole supported shell. The final cohesion slice removed the obsolete lobby comparisons, game tray/shelf route, alternate headers, embedded rack, duplicate modal/player strip, and shell-level freeze overlay; the live board retains only its board-owned continuity mechanism.
+- Resolved: 2026-08-10.
+- Links: [Final UI cohesion and legacy removal](active/final-ui-cohesion-and-legacy-removal.md), [GameShellView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Game/GameShellView.swift)
 
 ### TD-015 — Resolved: local game ledger retention and schema lifecycle
 

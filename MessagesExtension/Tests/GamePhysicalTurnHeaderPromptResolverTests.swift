@@ -34,7 +34,6 @@ final class GamePhysicalTurnHeaderPromptResolverTests: XCTestCase {
 
     func testPassiveRoutesKeepDice() {
         XCTAssertNil(prompt(route: .none))
-        XCTAssertNil(prompt(route: .utility(.bank)))
         XCTAssertNil(prompt(route: .gameInfo))
         XCTAssertNil(prompt(route: .endTurnConfirmation))
     }

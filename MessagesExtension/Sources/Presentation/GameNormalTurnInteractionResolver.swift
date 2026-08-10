@@ -135,7 +135,6 @@ enum GameNormalTurnInteractionResolver {
         case .endTurnConfirmation where !availability.canEndTurn:
             return .none
         case .none,
-             .utility,
              .build,
              .devCards,
              .trade,

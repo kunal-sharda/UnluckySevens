@@ -28,7 +28,6 @@ struct GameTradeDraft: Equatable {
 
 enum GameShellRoute: Equatable {
     case none
-    case utility(GameLowerShelf)
     case build
     case devCards
     case trade(GameTradeOverlayRoute)
@@ -45,16 +44,9 @@ enum GameShellRoute: Equatable {
             return .trade
         case .endTurnConfirmation:
             return .endTurn
-        case .none, .utility, .gameInfo:
+        case .none, .gameInfo:
             return nil
         }
-    }
-
-    var utilityShelf: GameLowerShelf? {
-        guard case let .utility(shelf) = self else {
-            return nil
-        }
-        return shelf
     }
 
     var tradeOverlayRoute: GameTradeOverlayRoute? {

@@ -6,12 +6,6 @@ struct BoardContainerView: View {
     let renderModel: GameBoardRenderModel?
     let overlayModel: GameBoardOverlayModel
     let interactionMode: GameMode
-    let bankTray: GameBankTrayModel?
-    let showsTabletopRack: Bool
-    let showsBankCounts: Bool
-    let isBankOpen: Bool
-    let devDeckCount: Int
-    let isDevDeckEnabled: Bool
     let selectionText: String?
     let hintBottomInset: CGFloat
     let showsCreamFrame: Bool
@@ -23,8 +17,6 @@ struct BoardContainerView: View {
     let onResizeFreezeChanged: ((BoardResizeFreezeState) -> Void)?
     let onFreezeRecoveryReloadRequested: ((String) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
-    let onOpenBank: () -> Void
-    let onOpenDevCards: () -> Void
 
     private var shouldShowBoardHeader: Bool {
         renderModel != nil || !model.subtitle.isEmpty
@@ -95,17 +87,11 @@ struct BoardContainerView: View {
     @ViewBuilder
     private var boardCanvas: some View {
         ZStack {
-            if let renderModel, let bankTray {
+            if let renderModel {
                 LiveGameBoardCanvasView(
                     renderModel: renderModel,
                     overlayModel: overlayModel,
                     interactionMode: interactionMode,
-                    bankTray: bankTray,
-                    showsTabletopRack: showsTabletopRack,
-                    showsBankCounts: showsBankCounts,
-                    isBankOpen: isBankOpen,
-                    devDeckCount: devDeckCount,
-                    isDevDeckEnabled: isDevDeckEnabled,
                     showsIntegratedFrame: showsCreamFrame,
                     contentVerticalOffset: boardContentVerticalOffset,
                     frozenBoardImage: frozenBoardImage,
@@ -114,9 +100,7 @@ struct BoardContainerView: View {
                     onInteractionChanged: onInteractionChanged,
                     onResizeFreezeChanged: onResizeFreezeChanged,
                     onFreezeRecoveryReloadRequested: onFreezeRecoveryReloadRequested,
-                    onTargetTap: onTargetTap,
-                    onOpenBank: onOpenBank,
-                    onOpenDevCards: onOpenDevCards
+                    onTargetTap: onTargetTap
                 )
             } else {
                 BoardPlaceholderArtView()

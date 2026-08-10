@@ -18,7 +18,7 @@ enum GamePhysicalTurnHeaderPromptResolver {
             return .choosePiece
         case .devCards where mode == .playDevCard:
             return .chooseDevCard
-        case .none, .utility, .build, .devCards, .endTurnConfirmation, .gameInfo:
+        case .none, .build, .devCards, .endTurnConfirmation, .gameInfo:
             break
         }
 

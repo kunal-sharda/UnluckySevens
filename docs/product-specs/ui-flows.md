@@ -40,7 +40,7 @@ These are the most important UI requirements:
 7. **Unavailable actions do not masquerade as available.** They are absent or inert, hitless, and accessibility-hidden without moving stable neighboring controls.
 8. **Messages remains the host.** After publication, the transcript bubble communicates the result; richer inspection and actions live in the expanded extension.
 9. **Accessibility is behavioral.** Interactive targets are at least 44 by 44 points, icon controls have stable labels, important state is not color-only, and authored motion honors Reduce Motion and the local Skip Animations preference.
-10. **Host resizing preserves continuity.** Normal Messages resizing keeps the board live and interactive rather than replacing it with a stale snapshot.
+10. **Host resizing preserves continuity.** Normal Messages resizing keeps the canonical Physical Props shell live and interactive. The board may manage its own rendered continuity, but the shell must never replace the current header, rails, or action surface with a parallel snapshot composition.
 
 ## Lobby and Game Start
 

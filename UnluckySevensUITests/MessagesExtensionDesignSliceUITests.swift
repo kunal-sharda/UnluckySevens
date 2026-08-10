@@ -45,37 +45,21 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Approved Unlucky Sevens Messages drawer icon")
     }
 
-    func testOpenMessagesExtensionAndCaptureLobbyInviteDirections() throws {
+    func testCaptureProductionLobbyEntryAndUtilities() throws {
         openUnluckySevensExtension()
 
         openUXLabPanel()
         activateUXLabNestedQuickState(
-            title: "Setup Card",
-            identifier: "uls.uxLab.cleanShot.lobbyInviteSetupCard"
+            title: "Invitation",
+            identifier: "uls.uxLab.cleanShot.lobbyInvite"
         )
         XCTAssertTrue(waitForInviteSlice(timeout: 12))
-        XCTAssertTrue(
-            messages.descendants(matching: .any)["uls.lobby.inviteDirection.setupCard"]
-                .firstMatch.waitForExistence(timeout: 4)
-        )
-        attachScreenshot(named: "Lobby Invite Direction - Setup Card")
-
-        restoreUXLabChrome()
-        activateUXLabNestedQuickState(
-            title: "Invitation Card",
-            identifier: "uls.uxLab.cleanShot.lobbyInviteInvitationCard"
-        )
-        XCTAssertTrue(waitForInviteSlice(timeout: 12))
-        XCTAssertTrue(
-            messages.descendants(matching: .any)["uls.lobby.inviteDirection.invitationCard"]
-                .firstMatch.waitForExistence(timeout: 4)
-        )
         let games = messages.buttons["uls.lobby.games"].firstMatch
         XCTAssertTrue(games.exists)
         XCTAssertEqual(games.label, "Games")
         XCTAssertTrue(messages.buttons["uls.lobby.gameSettings"].firstMatch.exists)
         XCTAssertFalse(messages.staticTexts["Async turns"].firstMatch.exists)
-        attachScreenshot(named: "Lobby Invite Direction - Invitation Card")
+        attachScreenshot(named: "Production Lobby - Invitation")
 
         messages.buttons["uls.lobby.gameSettings"].firstMatch.tap()
         XCTAssertTrue(messages.descendants(matching: .any)["uls.settings.surface"].firstMatch.waitForExistence(timeout: 4))
@@ -90,101 +74,12 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         messages.buttons["uls.tutorial.exit"].firstMatch.tap()
     }
 
-    func testCaptureLobbyTabletopInviteCandidate() throws {
-        openUnluckySevensExtension()
-
-        openUXLabPanel()
-        activateUXLabNestedQuickState(
-            title: "Tabletop Candidate",
-            identifier: "uls.uxLab.cleanShot.lobbyInviteTabletopCandidate"
-        )
-        XCTAssertTrue(waitForInviteSlice(timeout: 12))
-        XCTAssertTrue(
-            messages.descendants(matching: .any)["uls.lobby.inviteDirection.tabletopCandidate"]
-                .firstMatch.waitForExistence(timeout: 4)
-        )
-        XCTAssertTrue(messages.descendants(matching: .any)["uls.lobby.roster"].firstMatch.exists)
-        XCTAssertTrue(messages.buttons["uls.lobby.gameSettings"].firstMatch.isHittable)
-        let sendInvite = messages.buttons["uls.lobby.action.Send Invite"].firstMatch
-        revealLobbyActionIfNeeded(sendInvite)
-        assertVisibleLobbyAction(sendInvite, title: "Send Invite")
-        attachScreenshot(named: "Lobby Invite - Tabletop Candidate")
-    }
-
-    func testCaptureLobbyArtifactInviteCandidate() throws {
-        openUnluckySevensExtension()
-
-        openUXLabPanel()
-        activateUXLabNestedQuickState(
-            title: "Invitation Artifact",
-            identifier: "uls.uxLab.cleanShot.lobbyInviteArtifactCandidate"
-        )
-        XCTAssertTrue(waitForInviteSlice(timeout: 12))
-        XCTAssertTrue(
-            messages.descendants(matching: .any)["uls.lobby.inviteDirection.artifactCandidate"]
-                .firstMatch.waitForExistence(timeout: 4)
-        )
-        XCTAssertTrue(messages.descendants(matching: .any)["uls.lobby.roster"].firstMatch.exists)
-        XCTAssertTrue(messages.buttons["uls.lobby.gameSettings"].firstMatch.isHittable)
-        XCTAssertTrue(messages.textFields["uls.lobby.nameField"].firstMatch.exists)
-        let sendInvite = messages.buttons["uls.lobby.action.Send Invite"].firstMatch
-        revealLobbyActionIfNeeded(sendInvite)
-        assertVisibleLobbyAction(sendInvite, title: "Send Invite")
-        attachScreenshot(named: "Lobby Invite - Artifact Candidate")
-    }
-
-    func testCaptureLobbySpatialInviteCandidate() throws {
-        openUnluckySevensExtension()
-
-        openUXLabPanel()
-        activateUXLabNestedQuickState(
-            title: "Spatial Lobby",
-            identifier: "uls.uxLab.cleanShot.lobbyInviteSpatialCandidate"
-        )
-        XCTAssertTrue(waitForInviteSlice(timeout: 12))
-        XCTAssertTrue(
-            messages.descendants(matching: .any)["uls.lobby.inviteDirection.spatialCandidate"]
-                .firstMatch.waitForExistence(timeout: 4)
-        )
-        XCTAssertTrue(messages.descendants(matching: .any)["uls.lobby.roster"].firstMatch.exists)
-        XCTAssertTrue(messages.buttons["uls.lobby.gameSettings"].firstMatch.isHittable)
-        XCTAssertTrue(messages.textFields["uls.lobby.nameField"].firstMatch.exists)
-        assertVisibleLobbyAction(
-            messages.buttons["uls.lobby.action.Send Invite"].firstMatch,
-            title: "Send Invite"
-        )
-        attachScreenshot(named: "Lobby Invite - Spatial Candidate")
-    }
-
-    func testCaptureLobbyCocktailTableInviteCandidate() throws {
-        openUnluckySevensExtension()
-
-        openUXLabPanel()
-        activateUXLabNestedQuickState(
-            title: "Cocktail Table",
-            identifier: "uls.uxLab.cleanShot.lobbyInviteCocktailTableCandidate"
-        )
-        XCTAssertTrue(waitForInviteSlice(timeout: 12))
-        XCTAssertTrue(
-            messages.descendants(matching: .any)["uls.lobby.inviteDirection.cocktailTableCandidate"]
-                .firstMatch.waitForExistence(timeout: 4)
-        )
-        XCTAssertTrue(messages.descendants(matching: .any)["uls.lobby.roster"].firstMatch.exists)
-        XCTAssertTrue(messages.buttons["uls.lobby.gameSettings"].firstMatch.isHittable)
-        XCTAssertTrue(messages.textFields["uls.lobby.nameField"].firstMatch.exists)
-        assertVisibleLobbyAction(
-            messages.buttons["uls.lobby.action.Send Invite"].firstMatch,
-            title: "Send Invite"
-        )
-        attachScreenshot(named: "Lobby Invite - Cocktail Table Candidate")
-    }
-
     func testCaptureProductionLobbyLifecycle() throws {
         openUnluckySevensExtension()
         waitForUXLabChrome()
         activateUXLabNestedQuickState(
-            title: "Invitation Card",
-            identifier: "uls.uxLab.cleanShot.lobbyInviteInvitationCard"
+            title: "Invitation",
+            identifier: "uls.uxLab.cleanShot.lobbyInvite"
         )
 
         XCTAssertTrue(waitForInviteSlice(timeout: 12))
@@ -192,7 +87,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(inviteRoster.exists)
         XCTAssertFalse(inviteRoster.staticTexts["1 player at the table"].firstMatch.exists)
         // XCUI reports the glyph bounds for plain SwiftUI text buttons rather than
-        // their larger interaction frames. The direction test taps both controls
+        // their larger interaction frames. The utility test taps both controls
         // end-to-end; keep this lifecycle check focused on current hittability.
         XCTAssertTrue(messages.buttons["uls.lobby.games"].firstMatch.isHittable)
         XCTAssertTrue(messages.buttons["uls.lobby.gameSettings"].firstMatch.isHittable)
@@ -235,8 +130,8 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         openUnluckySevensExtension()
         waitForUXLabChrome()
         activateUXLabNestedQuickState(
-            title: "Invitation Card",
-            identifier: "uls.uxLab.cleanShot.lobbyInviteInvitationCard"
+            title: "Invitation",
+            identifier: "uls.uxLab.cleanShot.lobbyInvite"
         )
 
         XCTAssertTrue(waitForInviteSlice(timeout: 12))
@@ -462,8 +357,8 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         openUnluckySevensExtension()
         openUXLabPanel()
         activateUXLabNestedQuickState(
-            title: "Invitation Card",
-            identifier: "uls.uxLab.cleanShot.lobbyInviteInvitationCard"
+            title: "Invitation",
+            identifier: "uls.uxLab.cleanShot.lobbyInvite"
         )
         XCTAssertTrue(waitForInviteSlice(timeout: 12))
 
@@ -527,8 +422,8 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         }
         openUXLabPanel()
         activateUXLabNestedQuickState(
-            title: "Invitation Card",
-            identifier: "uls.uxLab.cleanShot.lobbyInviteInvitationCard"
+            title: "Invitation",
+            identifier: "uls.uxLab.cleanShot.lobbyInvite"
         )
         XCTAssertTrue(waitForInviteSlice(timeout: 12))
 
@@ -908,8 +803,8 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         openUnluckySevensExtension()
         waitForUXLabChrome()
         activateUXLabNestedQuickState(
-            title: "Invitation Card",
-            identifier: "uls.uxLab.cleanShot.lobbyInviteInvitationCard"
+            title: "Invitation",
+            identifier: "uls.uxLab.cleanShot.lobbyInvite"
         )
 
         openLobbyTutorial()
@@ -1115,8 +1010,8 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
         openUXLabPanel()
         activateUXLabNestedQuickState(
-            title: "Invitation Card",
-            identifier: "uls.uxLab.cleanShot.lobbyInviteInvitationCard"
+            title: "Invitation",
+            identifier: "uls.uxLab.cleanShot.lobbyInvite"
         )
         XCTAssertTrue(waitForInviteSlice(timeout: 8))
 

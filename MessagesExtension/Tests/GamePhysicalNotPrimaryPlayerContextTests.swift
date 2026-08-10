@@ -3,67 +3,6 @@ import XCTest
 import ULS_CoreGame
 
 final class GamePhysicalNotPrimaryPlayerContextTests: XCTestCase {
-    func testEligibleNotPrimaryContextSelectsTheProductionPhysicalLayout() {
-        XCTAssertEqual(
-            GameTabletopLayoutStyleResolver.resolve(
-                isNormalPostRollTurn: false,
-                hasNotPrimaryPlayerContext: true
-            ),
-            .physicalProps
-        )
-        XCTAssertEqual(
-            GameTabletopLayoutStyleResolver.resolve(
-                isNormalPostRollTurn: false,
-                hasNotPrimaryPlayerContext: false
-            ),
-            .physicalProps
-        )
-    }
-
-    func testDebugFixturesCannotOverrideProductionRouting() {
-        XCTAssertEqual(
-            GameTabletopLayoutStyleResolver.resolve(
-                isNormalPostRollTurn: false,
-                hasNotPrimaryPlayerContext: false,
-                testingStyle: .physicalProps
-            ),
-            .physicalProps
-        )
-    }
-
-    func testSetupPlacementSelectsTheProductionPhysicalLayout() {
-        XCTAssertEqual(
-            GameTabletopLayoutStyleResolver.resolve(
-                isNormalPostRollTurn: false,
-                hasNotPrimaryPlayerContext: false,
-                isSetupPlacement: true
-            ),
-            .physicalProps
-        )
-    }
-
-    func testStartOfTurnSelectsTheProductionPhysicalLayout() {
-        XCTAssertEqual(
-            GameTabletopLayoutStyleResolver.resolve(
-                isNormalPostRollTurn: false,
-                isNormalPreRollTurn: true,
-                hasNotPrimaryPlayerContext: false
-            ),
-            .physicalProps
-        )
-    }
-
-    func testForcedDiscardSelectsTheProductionPhysicalLayout() {
-        XCTAssertEqual(
-            GameTabletopLayoutStyleResolver.resolve(
-                isNormalPostRollTurn: false,
-                hasNotPrimaryPlayerContext: false,
-                isForcedDiscard: true
-            ),
-            .physicalProps
-        )
-    }
-
     func testNeedsRollForAnotherPlayerResolvesOrdinaryWaiting() {
         let state = makeState(
             currentPlayer: "alice",
