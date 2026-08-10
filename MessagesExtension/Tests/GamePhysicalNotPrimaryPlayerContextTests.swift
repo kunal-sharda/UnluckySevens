@@ -16,18 +16,18 @@ final class GamePhysicalNotPrimaryPlayerContextTests: XCTestCase {
                 isNormalPostRollTurn: false,
                 hasNotPrimaryPlayerContext: false
             ),
-            .framedShelf
+            .physicalProps
         )
     }
 
-    func testExplicitDebugComparisonStyleStillOverridesProductionRouting() {
+    func testDebugFixturesCannotOverrideProductionRouting() {
         XCTAssertEqual(
             GameTabletopLayoutStyleResolver.resolve(
                 isNormalPostRollTurn: false,
                 hasNotPrimaryPlayerContext: false,
-                testingStyle: .feltTools
+                testingStyle: .physicalProps
             ),
-            .feltTools
+            .physicalProps
         )
     }
 

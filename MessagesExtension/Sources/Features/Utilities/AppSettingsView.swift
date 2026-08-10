@@ -5,6 +5,8 @@ struct AppSettingsView: View {
         case rules
     }
 
+    @State private var path: [Destination] = []
+    @State private var showsStrategy = false
     @Bindable var preferences: AppPreferences
     let summary: GameSettingsSummary
     let onDismiss: () -> Void
@@ -14,15 +16,17 @@ struct AppSettingsView: View {
             Color.black.opacity(0.30)
                 .ignoresSafeArea()
 
-            NavigationStack {
+            NavigationStack(path: $path) {
                 VStack(spacing: 0) {
                     titleBar
 
                     ScrollView(.vertical, showsIndicators: true) {
-                        VStack(alignment: .leading, spacing: 15) {
-                            experienceSection
+                        VStack(alignment: .leading, spacing: 0) {
+                            skipAnimationsRow
+                            divider
                             currentGameSection
-                            helpSection
+                            divider
+                            rulesRow
                         }
                         .padding(16)
                     }
@@ -32,61 +36,69 @@ struct AppSettingsView: View {
                 .navigationDestination(for: Destination.self) { destination in
                     switch destination {
                     case .rules:
-                        GameRulesReferenceView()
+                        GameRulesReferenceView {
+                            showsStrategy = true
+                        }
                     }
                 }
             }
-            .frame(maxWidth: 440, maxHeight: 500)
+            .frame(maxWidth: 420, maxHeight: 440)
             .background(GameTheme.feltRaised)
             .clipShape(RoundedRectangle(cornerRadius: GameTheme.mediumRadius))
-            .shadow(color: .black.opacity(0.30), radius: 8, y: 5)
+            .overlay {
+                RoundedRectangle(cornerRadius: GameTheme.mediumRadius)
+                    .stroke(GameTheme.surface.opacity(0.16), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.28), radius: 10, y: 6)
             .padding(24)
+            .allowsHitTesting(!showsStrategy)
+            .accessibilityHidden(showsStrategy)
+
+            if showsStrategy {
+                GameTutorialStrategyCardView(onDismiss: dismissStrategy)
+                    .zIndex(1)
+            }
         }
         .tint(GameTheme.accent)
         .accessibilityIdentifier("uls.settings.surface")
     }
 
+    private func dismissStrategy() {
+        showsStrategy = false
+    }
+
     private var titleBar: some View {
-        HStack(spacing: 12) {
-            Label("Settings", systemImage: "gearshape.fill")
+        HStack(spacing: GameTheme.inlineSpacing) {
+            Text("Settings")
                 .font(GameTheme.titleFont)
                 .foregroundStyle(GameTheme.surface)
 
             Spacer()
 
             Button("Done", action: onDismiss)
-                .font(GameTheme.chipFont)
-                .foregroundStyle(GameTheme.ink)
-                .padding(.horizontal, 14)
-                .frame(minHeight: 44)
-                .background(GameTheme.accent, in: RoundedRectangle(cornerRadius: 8))
+                .font(GameTheme.bodyFont.bold())
+                .foregroundStyle(GameTheme.accent)
+                .frame(minWidth: 44, minHeight: 44)
         }
         .padding(.horizontal, 16)
-        .frame(minHeight: 56)
+        .frame(minHeight: 52)
         .background(GameTheme.felt)
     }
 
-    private var experienceSection: some View {
-        settingsSection(title: "Experience", systemImage: "sparkles") {
-            Toggle(isOn: $preferences.skipsAnimations) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Skip animations")
-                        .font(GameTheme.headingFont)
-                        .foregroundStyle(GameTheme.surface)
-                    Text("Show game changes immediately. Rules and dice results stay the same.")
-                        .font(GameTheme.metaFont)
-                        .foregroundStyle(GameTheme.surface.opacity(0.84))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .tint(GameTheme.accent)
-            .frame(minHeight: 52)
-            .accessibilityIdentifier("uls.settings.skipAnimations")
+    private var skipAnimationsRow: some View {
+        Toggle(isOn: $preferences.skipsAnimations) {
+            Text("Skip animations")
+                .font(GameTheme.headingFont)
+                .foregroundStyle(GameTheme.surface)
         }
+        .tint(GameTheme.accent)
+        .padding(.vertical, 18)
+        .frame(minHeight: 60)
+        .accessibilityIdentifier("uls.settings.skipAnimations")
     }
 
     private var currentGameSection: some View {
-        settingsSection(title: "Current game", systemImage: "map.fill") {
+        settingsSection(title: "Current game") {
             VStack(spacing: 0) {
                 factRow("Rules", value: summary.rules)
                 divider
@@ -97,37 +109,40 @@ struct AppSettingsView: View {
         }
     }
 
-    private var helpSection: some View {
-        settingsSection(title: "Help", systemImage: "questionmark.circle.fill") {
-            NavigationLink(value: Destination.rules) {
-                HStack(spacing: 12) {
-                    Image(systemName: "book.closed.fill")
-                    Text("Show rules")
+    private var rulesRow: some View {
+        NavigationLink(value: Destination.rules) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Rules")
                         .font(GameTheme.headingFont)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.footnote.weight(.bold))
+                        .foregroundStyle(GameTheme.surface)
+                    Text("Setup, turns, trading, and winning")
+                        .font(GameTheme.metaFont)
+                        .foregroundStyle(GameTheme.surface.opacity(0.72))
                 }
-                .foregroundStyle(GameTheme.ink)
-                .padding(.horizontal, 14)
-                .frame(minHeight: 52)
-                .background(GameTheme.surface, in: RoundedRectangle(cornerRadius: 9))
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(GameTheme.surface.opacity(0.58))
             }
-            .accessibilityIdentifier("uls.settings.showRules")
+            .frame(minHeight: 60)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
         }
+        .accessibilityIdentifier("uls.settings.showRules")
     }
 
     private func settingsSection<Content: View>(
         title: String,
-        systemImage: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Label(title, systemImage: systemImage)
-                .font(GameTheme.chipFont)
-                .foregroundStyle(GameTheme.accent)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(GameTheme.metaFont.bold())
+                .foregroundStyle(GameTheme.surface.opacity(0.68))
             content()
         }
+        .padding(.vertical, 10)
     }
 
     private func factRow(_ label: String, value: String) -> some View {
@@ -136,7 +151,7 @@ struct AppSettingsView: View {
                 .foregroundStyle(GameTheme.surface.opacity(0.84))
             Spacer()
             Text(value)
-                .fontWeight(.semibold)
+                .font(GameTheme.bodyFont.bold())
                 .foregroundStyle(GameTheme.surface)
         }
         .font(GameTheme.bodyFont)

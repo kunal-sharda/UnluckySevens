@@ -1,8 +1,10 @@
 # App Language Audit
 
-Status: owner-approved and implemented, 2026-07-25.
+Status: tutorial wording approved on 2026-08-08 and synchronized into production.
 
 This audit covers player-facing language in the Messages extension and records the implemented verbal contract. [UI Flows](../product-specs/ui-flows.md) remains the behavior contract; [Design](../../DESIGN.md) owns visual language.
+
+For tutorial copy, this document is the human editing worksheet. Runtime truth remains the Swift source until an approved worksheet edit is deliberately synchronized into `GameTutorialStep.swift`, `GameTutorialStrategyCardView.swift`, or `GameTutorialView.swift`. Editing this Markdown file alone does not change the app.
 
 ## Verdict
 
@@ -57,79 +59,177 @@ The app should not sound like:
 | `victim` or `choose who to steal from` (approved) | — | `Victim` is concise and acceptable in player-facing game language |
 | `your cards` / `your hand` (approved) | `current hidden hand` | Privacy is a system constraint, not player-facing prose |
 
-## Tutorial: Current Visible Language
+## Tutorial Copy Worksheet
 
-Normal-size lessons currently show these coach marks:
+This is the consolidated 2026-08-07 proposal for owner review. It does not yet describe production copy. The approval and implementation boundary is tracked in [Tutorial Language Redraft](../exec-plans/active/tutorial-language-redraft.md).
 
-| # | Current title | Current visible coach mark(s) |
-| --- | --- | --- |
-| 1 | Place a Settlement | `Round two reverses the order`; `Tap a marked legal intersection` |
-| 2 | Connect the Road | `Choose a connected marked edge`; `Settlement, then road` |
-| 3 | Roll the Dice | `Roll first to produce resources` |
-| 4 | Read Production | `The rolled number pays adjacent buildings`; `The robber stops this tile` |
-| 5 | Use Your Hand | `These are your spendable cards` |
-| 6 | Choose What to Build | `Compare costs; cities replace settlements` |
-| 7 | Place on a Highlight | `Only highlighted targets are legal` |
-| 8 | Offer a Player Trade | `Tap cards in Give and Get` |
-| 9 | Choose Trade Partners | `Select players, then Send Offer` |
-| 10 | Use the Bank or a Port | `Check the ratio, then confirm` |
-| 11 | Discard After a Seven | `Choose exactly half your hand` |
-| 12 | Move the Robber | `Move it to a highlighted tile` |
-| 13 | Choose a Victim | `Tap Maya’s marked building` |
-| 14 | Play a Development Card | `Bright cards are playable now` |
-| 15 | End and Send the Turn | `Confirm to send the updated game` |
-| 16 | Build a Strong Position | `Trade surpluses; watch both awards` |
-| 17 | Win at Ten Points | `First to 10 · Settlement/VP card 1 · City/award 2` |
+- **Title** names the lesson in the progress label, VoiceOver heading, and large-text guide.
+- **Visible coach mark** is the primary tutorial. It must carry every essential rule or action because most players will never see the accessible guide.
+- **Accessible guidance** adds spoken precision for VoiceOver and the large-text guide. It must not repair missing visible meaning.
+- **Preview description** tells VoiceOver what meaningful visual state appears in the otherwise non-interactive preview.
 
-### Why It Sounds Robotic
+Source mapping:
 
-- Most titles are taxonomy labels rather than a teaching voice: `Read Production`, `Use Your Hand`, `Place on a Highlight`.
-- Several callouts describe the implementation instead of the object: `marked legal intersection`, `highlighted targets are legal`.
-- Semicolon and dot-separated compression reads like generated summary text.
-- The title, guidance, and callout often repeat the same fact in three registers.
-- The accessibility descriptions repeat `The real ...` on every lesson, which sounds synthetic and adds no useful spoken context.
-- Some guidance is grammatically accurate but unnaturally formal: `each adjacent producing tile adds its resource to your hand`.
+- Steps 1–16: `MessagesExtension/Sources/Presentation/GameTutorialStep.swift`
+- Final Strategy card: `MessagesExtension/Sources/Features/Tutorial/GameTutorialStrategyCardView.swift`
+- Navigation introduction and accessibility actions: `MessagesExtension/Sources/Features/Tutorial/GameTutorialView.swift`
+- Shared gameplay headings: `GameSetupPlacementModel.swift` and `GamePhysicalTurnHeaderPrompt.swift`; changing those affects the real game as well as the tutorial.
 
-## Tutorial: Recommended Visible Pass
+### 1. Place Your First Settlement
 
-This is the approved visible-copy direction:
+- **Title:** “Place Your First Settlement”
+- **Accessible guidance:** “Each player places one settlement with a connected road. After everyone places once, the order reverses for the second settlement and road.”
+- **Visible coach marks:**
+  1. “Everyone places a settlement and road twice. Round two goes in reverse order.”
+  2. “First, place a settlement on a glowing corner.”
+- **Preview description:** “Setup board showing the placement order and glowing settlement locations.”
 
-| # | Suggested title | Suggested visible coach mark(s) |
-| --- | --- | --- |
-| 1 | Place Your First Settlement | `You place twice. Round two goes in reverse.`<br>`Start on a glowing corner.` |
-| 2 | Add a Road | `Add a road beside your settlement.`<br>`Your second spot deals starting cards.` |
-| 3 | Roll to Begin | `Roll to see which tiles produce.` |
-| 4 | Follow the Roll | `Matching numbers pay nearby buildings.`<br>`The robber blocks this tile.` |
-| 5 | Check Your Hand | `These are the cards you can spend.` |
-| 6 | Pick a Build | `Each piece shows its cost. Cities replace settlements.` |
-| 7 | Choose a Glowing Spot | `Tap a glowing spot twice to build.` |
-| 8 | Make an Offer | `Pick what you’ll give and what you want.` |
-| 9 | Choose Who Gets It | `Choose the players, then send the offer.` |
-| 10 | Use Your Best Rate | `Your best Bank or Port rate is shown.` |
-| 11 | Discard on Seven | `Choose half your hand, then confirm.` |
-| 12 | Move the Robber | `Move the robber to a glowing tile.` |
-| 13 | Choose a Victim | `Choose a neighboring player.` |
-| 14 | Play a Dev Card | `Bright cards can be played now.` |
-| 15 | Send the Turn | `End Turn sends the new board to the chat.` |
-| 16 | Strategy | Replace the board callout with the three-tip Strategy card below |
-| 17 | Remove | Merge scoring into Strategy instead of adding another tutorial step |
+### 2. Add a Road
 
-The accessible guidance should then add the precise rule that the short callout cannot hold. It should not repeat the same sentence or begin with `The real`.
+- **Title:** “Add a Road”
+- **Accessible guidance:** “Place a road on a glowing edge connected to your settlement. After your second settlement, collect one resource from every neighboring producing tile.”
+- **Visible coach marks:**
+  1. “Next, place a road connected to your settlement.”
+  2. “Your second settlement gives you starting resources from the tiles it touches.”
+- **Preview description:** “Setup board showing glowing road locations beside the new settlement.”
 
-### Strategy Card
+### 3. Roll to Begin
 
-The final lesson should be one centered tabletop card titled `Strategy`, not another board callout. A dark scrim greys the rest of the live board without unmounting it. The card contains three simple rows, not three nested cards:
+- **Title:** “Roll to Begin”
+- **Accessible guidance:** “Every normal turn begins with a roll. If you have a playable Dev Card, you may play it before rolling.”
+- **Visible coach mark:** “Roll to see which numbered tiles produce. You may play a Dev Card first.”
+- **Preview description:** “Start-of-turn table with Roll and a playable Dev Card available.”
 
-1. **Read the dots**
-   More dots under a number mean a stronger spot for that resource. Cover several resources when you can.
-2. **Spend for points**
-   Roads open new settlement spots and can earn Longest Road. Knights build toward Largest Army. Victory Point cards score 1.
-3. **Know the score**
-   Cities and awards (Longest Road and Largest Army) are worth 2 points. Settlements are worth 1 point each.
+### 4. Follow the Roll
 
-The probability tip must visually reference a number token with its dots. The second row explains when Roads and Dev Cards contribute to scoring without pretending that ordinary Roads or action cards score directly. The third row stays an immediately scannable scoring summary.
+- **Title:** “Follow the Roll”
+- **Accessible guidance:** “When the rolled number matches a tile, each neighboring settlement collects one matching resource and each neighboring city collects two. The robber prevents its tile from producing.”
+- **Visible coach marks:**
+  1. “Matching tiles give one resource per settlement and two per city.”
+  2. “The robber stops its tile from producing resources.”
+- **Preview description:** “Post-roll board showing a matching numbered tile, neighboring buildings, and a robber blocking another tile.”
 
-The card uses one cream tabletop surface, three icon-led text rows, and the existing invisible left/right tutorial navigation. It does not introduce close, expand, or nested-card controls. VoiceOver reads the title followed by the three tips in order.
+### 5. Check Your Hand
+
+- **Title:** “Check Your Hand”
+- **Accessible guidance:** “Open your Hand to see the resource cards you can spend and the Dev Cards you own.”
+- **Visible coach mark:** “Open your Hand to see your resources and Dev Cards.”
+- **Preview description:** “Open Hand showing owned resource cards and Dev Cards.”
+
+### 6. Choose What to Build
+
+- **Title:** “Choose What to Build”
+- **Accessible guidance:** “Each road, settlement, and city shows its resource cost. Building a city upgrades one of your settlements.”
+- **Visible coach mark:** “Each piece shows its cost. A city upgrades one of your settlements.”
+- **Preview description:** “Build choices showing roads, settlements, cities, and their resource costs.”
+
+### 7. Choose a Glowing Corner
+
+- **Title:** “Choose a Glowing Corner”
+- **Accessible guidance:** “Available settlement locations glow. Tap one twice to confirm the build. Settlements must be at least two road lengths apart.”
+- **Visible coach mark:** “Tap a glowing corner twice. Settlements must be two road lengths apart.”
+- **Preview description:** “Board showing the glowing corners where a settlement can be built.”
+
+### 8. Make an Offer
+
+- **Title:** “Make an Offer”
+- **Accessible guidance:** “Choose the cards you will offer, then choose the cards you want in return.”
+- **Visible coach mark:** “Choose what you’ll offer and what you want back.”
+- **Preview description:** “Player-trade offer showing Give and Get card selections.”
+
+### 9. Choose Who Gets It
+
+- **Title:** “Choose Who Gets It”
+- **Accessible guidance:** “Choose one or more players and send the offer. Their accept, decline, or counter response returns through Messages.”
+- **Visible coach mark:** “Choose the players, then send your offer.”
+- **Preview description:** “Player-trade offer showing the players available to receive it.”
+
+### 10. Trade with Bank or Port
+
+- **Title:** “Trade with Bank or Port”
+- **Accessible guidance:** “Choose a Bank or Port trade. The list automatically shows the best rate you can use.”
+- **Visible coach mark:** “Your best Bank or Port rate is already shown.”
+- **Preview description:** “Bank or Port trade list showing the best available exchange rate.”
+
+### 11. Discard on Seven
+
+- **Title:** “Discard on Seven”
+- **Accessible guidance:** “When a seven is rolled, players holding more than seven cards discard half their hand, rounded down, before the robber moves.”
+- **Visible coach mark:** “Holding 8+ cards when a seven rolls? Discard half, rounded down.”
+- **Preview description:** “Discard screen showing the required number and the resource cards available to discard.”
+
+### 12. Move the Robber
+
+- **Title:** “Move the Robber”
+- **Accessible guidance:** “After a seven or Knight, move the robber to a different glowing terrain tile. That tile cannot produce while the robber remains there.”
+- **Visible coach mark:** “Move the robber to a different glowing tile. That tile stops producing.”
+- **Preview description:** “Board showing the glowing tiles where the robber can move.”
+
+### 13. Choose a Victim
+
+- **Title:** “Choose a Victim”
+- **Accessible guidance:** “Select a glowing settlement beside the robber to choose that player. You steal one random resource card from them.”
+- **Visible coach mark:** “Choose a neighboring player to steal one random resource from.”
+- **Preview description:** “Board showing the neighboring players available for the robber steal.”
+
+### 14. Play a Dev Card
+
+- **Title:** “Play a Dev Card”
+- **Accessible guidance:** “You may play one non-Victory Point Dev Card per turn. A card bought this turn cannot be played until your next turn.”
+- **Visible coach mark:** “Playable cards glow. Play one per turn. Bought cards wait until next turn.”
+- **Preview description:** “Dev Card chooser showing which owned cards can be played now.”
+
+### 15. Send the Turn
+
+- **Title:** “Send the Turn”
+- **Accessible guidance:** “End Turn confirms your actions and sends the updated game to the next player through Messages.”
+- **Visible coach mark:** “End Turn sends the updated game to the next player in Messages.”
+- **Preview description:** “End Turn confirmation ready to send the updated game.”
+
+### 16. Strategy
+
+- **Title:** “Strategy”
+- **Accessible guidance:** “Numbers with more dots roll more often. Five connected roads can earn Longest Road, and three played Knights can earn Largest Army. Each award is worth 2 points. Settlements are worth 1 point, and cities are worth 2. The first player to 10 points wins.”
+- **Visible coach marks:** none; this lesson uses the Strategy card below.
+- **Preview description:** “Board dimmed behind a Strategy card with production, building, and scoring tips.”
+
+#### Strategy card
+
+- **Eyebrow:** “QUICK TIPS”
+- **Title:** “Strategy”
+- **Tip 1 title:** “Follow the dots”
+- **Tip 1 description:** “More dots mean that number rolls more often. Build nearby to collect more resources.”
+- **Tip 2 title:** “Build toward points”
+- **Tip 2 description:** “Roads reach new settlement spots. Longest Road (5+) and Largest Army (3+) are worth 2 points.”
+- **Tip 3 title:** “Race to 10”
+- **Tip 3 description:** “Settlements are 1, cities are 2, and awards are 2 points each.”
+
+### Tutorial navigation
+
+Visible introduction:
+
+- “Tap left”
+- “Back”
+- “Tap right”
+- “Next”
+- “Tap anywhere to begin”
+
+Accessibility actions and hints:
+
+- “Tutorial navigation”
+- “Tap anywhere to begin. Then tap left to go back or right to continue.”
+- “Exit tutorial”
+- “Previous tutorial step” / “Goes to the previous tutorial step”
+- “Next tutorial step” / “Goes to the next tutorial step”
+- “Finish tutorial” / “Closes the tutorial”
+
+### Editing and implementation workflow
+
+1. Review and revise the complete quoted proposal in this worksheet without changing lesson IDs, ordering, rules, or shared production headings.
+2. Record explicit owner approval in the active Tutorial Language Redraft plan. The Markdown proposal does not change the app.
+3. Synchronize the approved fields into their mapped Swift source files.
+4. Update copy-sensitive tests and accessibility assertions without weakening behavioral coverage.
+5. Run the locked proof set: focused copy/model tests plus the seventeen-state Navigation-and-sixteen-lessons capture on the canonical iPhone 17 simulator.
 
 ## Upper Amber Instruction Review
 
@@ -152,7 +252,7 @@ Amber instructions serve a different voice role from tutorial coaching. They sho
 | `Waiting for Discard` | `Waiting for Other Players` | Use when the local player is passively waiting for required discards |
 | `Choose a Dev Card` | Keep | Matches the compact control vocabulary |
 | `Move the Robber` | Keep | Canonical game term and direct action |
-| `Choose a Player` | Keep | The highlighted board supplies the steal context |
+| `Choose a Player` | `Select a Settlement Beside the Robber` | Names the actual on-board gesture used to choose the victim |
 | `Choose a Resource` | Keep | Direct and unambiguous |
 | `Choose Two Resources` | Keep | Direct and unambiguous |
 | `Choose One More` | Keep | Correctly reflects the in-progress selection |

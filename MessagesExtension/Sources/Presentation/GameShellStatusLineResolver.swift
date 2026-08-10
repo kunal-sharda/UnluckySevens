@@ -19,7 +19,7 @@ enum GameShellStatusLineResolver {
             } else if resultReason == .hostEnded {
                 title = "Game ended"
             } else if didLocalPlayerWin {
-                title = "You won"
+                title = "Victory!"
             } else if let winnerDisplay {
                 title = "\(winnerDisplay) won"
             } else {

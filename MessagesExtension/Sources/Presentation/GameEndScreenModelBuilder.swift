@@ -145,13 +145,22 @@ enum GameEndScreenModelBuilder {
             return nil
         }
 
+        switch decisiveAction {
+        case .playKnight:
+            return "Gaining Largest Army secured the victory."
+        case .buildRoad:
+            return "Gaining Longest Road secured the victory."
+        default:
+            break
+        }
+
         let noun = decisiveNoun(for: decisiveAction)
         if winner == localPlayerID {
-            let localNoun = noun.prefix(1).uppercased() + String(noun.dropFirst())
-            return "\(localNoun) sealed the win."
+            return "Your \(noun) secured the victory."
         }
+
         let winnerName = PlayerPseudonymResolver.displayName(for: winner, in: state)
-        return "\(winnerName)'s \(noun) sealed the win."
+        return "\(winnerName)'s \(noun) secured the victory."
     }
 
     private static func isDecisiveAction(_ action: AuditActionV1) -> Bool {
@@ -170,11 +179,7 @@ enum GameEndScreenModelBuilder {
         case .buildSettlement:
             return "settlement"
         case .revealVictoryPoint:
-            return "victory point"
-        case .playKnight:
-            return "Knight"
-        case .buildRoad:
-            return "road"
+            return "Victory Point"
         default:
             return "final turn"
         }

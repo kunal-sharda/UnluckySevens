@@ -181,6 +181,24 @@ Current repo answer:
 - Board pan/pinch/tap run through `BoardSceneHostView` and a dedicated `SKView`.
 - Camera state lives in the board interaction controller rather than being driven per-frame through SwiftUI gesture state.
 
+### 4a. A SpriteKit surface can overdraw SwiftUI and UIKit sibling backgrounds
+
+What went wrong:
+
+- Game Information labels appeared above the live board, but every SwiftUI fill, mask, z-index change, and sibling UIKit backing remained below the final `SKView` render pass.
+- Opacity experiments looked pixel-identical because the panel color matched the table wherever the board was absent; the only visible failure was the board/panel overlap.
+
+What we learned:
+
+- When a shell surface must hide part of the live board without unmounting or resizing it, the occlusion must be authored in the SpriteKit scene itself.
+- A green frame/assertion journey is not proof of compositor ordering. Compare the rendered overlap pixels or inspect the settled screenshot.
+
+Current repo answer:
+
+- Game Information computes only the portion of the board viewport it overlaps.
+- `GameBoardScene` owns a camera-anchored, top-rounded opaque occlusion node for that overlap; the SwiftUI panel owns the remainder and all controls.
+- `GameBoardSceneTests` locks the occlusion node's viewport geometry and hidden-state behavior.
+
 ### 5. Snapshot-freeze/remount is not a stable default resize strategy
 
 What went wrong:

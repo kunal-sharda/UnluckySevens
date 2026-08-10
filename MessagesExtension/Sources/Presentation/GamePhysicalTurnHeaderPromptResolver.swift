@@ -29,6 +29,10 @@ enum GamePhysicalTurnHeaderPromptResolver {
             return hasBoardCommitDraft ? .tapAgainToPlace : .placeSettlement
         case .buildCity:
             return hasBoardCommitDraft ? .tapAgainToUpgrade : .upgradeCity
+        case .robberMove:
+            return .moveRobber
+        case .robberVictim:
+            return .choosePlayer
         case .devCardKnightMove:
             return .moveRobber
         case .devCardKnightVictim:
@@ -43,8 +47,6 @@ enum GamePhysicalTurnHeaderPromptResolver {
             return .placeSecondRoad
         case .idle,
              .setup,
-             .robberMove,
-             .robberVictim,
              .trade,
              .playDevCard,
              .discard:

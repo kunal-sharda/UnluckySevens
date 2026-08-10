@@ -6,6 +6,7 @@ struct BoardSceneView: View, Equatable {
     let renderModel: GameBoardRenderModel
     let overlayModel: GameBoardOverlayModel
     let interactionMode: GameMode
+    let bottomOcclusionHeight: CGFloat
     let reloadToken: Int
     let onInteractionChanged: ((Bool) -> Void)?
     let onResizeFreezeChanged: ((BoardResizeFreezeState) -> Void)?
@@ -32,6 +33,7 @@ struct BoardSceneView: View, Equatable {
         lhs.renderModel == rhs.renderModel
             && lhs.overlayModel == rhs.overlayModel
             && lhs.interactionMode == rhs.interactionMode
+            && lhs.bottomOcclusionHeight == rhs.bottomOcclusionHeight
             && lhs.reloadToken == rhs.reloadToken
     }
 
@@ -51,12 +53,15 @@ struct BoardSceneView: View, Equatable {
                     boardReferenceSize: referenceSize,
                     interactionController: interactionController,
                     isInteractionEnabled: true,
+                    bottomOcclusionHeight: bottomOcclusionHeight,
                     onInteractionChanged: { active in
                         onInteractionChanged?(active)
                     },
                     onTargetTap: onTargetTap
                 )
-                .id("board-host-\(reloadToken)-\(boardHostReloadGeneration)")
+                .id(
+                    "board-host-\(reloadToken)-\(boardHostReloadGeneration)"
+                )
             }
             .clipped()
             .onAppear {

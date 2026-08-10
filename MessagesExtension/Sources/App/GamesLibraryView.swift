@@ -3,8 +3,37 @@ import SwiftUI
 struct GamesLibraryView: View {
     @ObservedObject var viewModel: LobbyDriverViewModel
     let dismiss: () -> Void
-    @State private var pendingResignation: ActiveGameRecoverySummary?
-    @State private var pendingHostEnd: ActiveGameRecoverySummary?
+    @State private var pendingLifecycleConfirmation: LifecycleConfirmation?
+
+    private enum LifecycleConfirmation {
+        case resignation(ActiveGameRecoverySummary)
+        case hostEnd(ActiveGameRecoverySummary)
+
+        var title: String {
+            switch self {
+            case .resignation:
+                return "Resign from this game?"
+            case .hostEnd:
+                return "End this game?"
+            }
+        }
+
+        var game: ActiveGameRecoverySummary {
+            switch self {
+            case let .resignation(game), let .hostEnd(game):
+                game
+            }
+        }
+
+        var destructiveTitle: String {
+            switch self {
+            case .resignation:
+                "Resign"
+            case .hostEnd:
+                "End Game Anyway"
+            }
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -32,56 +61,87 @@ struct GamesLibraryView: View {
                     }
                 }
             }
-        }
-        .alert(item: $pendingResignation) { game in
-            Alert(
-                title: Text("Resign from this game?"),
-                message: Text(
-                    "You will leave active play. Your pieces stay on the board, and the remaining players continue."
-                ),
-                primaryButton: .destructive(Text("Resign")) {
-                    viewModel.resignRecoveredGame(game.gameId)
-                },
-                secondaryButton: .cancel(Text("Keep Playing"))
-            )
-        }
-        .sheet(item: $pendingHostEnd) { game in
-            HostEndGameDecisionView(
-                game: game,
-                recommendsDraw: viewModel.shouldOfferDrawBeforeHostEnd(game.gameId),
-                canProposeDraw: viewModel.canProposeDraw(for: game.gameId),
-                proposeDraw: {
-                    viewModel.proposeDraw(for: game.gameId)
-                },
-                endGame: {
-                    viewModel.hostEndGame(game.gameId)
-                }
-            )
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
+
+            if let pendingLifecycleConfirmation {
+                GameLifecycleConfirmationView(
+                    title: pendingLifecycleConfirmation.title,
+                    message: confirmationMessage(for: pendingLifecycleConfirmation),
+                    destructiveTitle: pendingLifecycleConfirmation.destructiveTitle,
+                    showsProposeDraw: shouldOfferDraw(for: pendingLifecycleConfirmation),
+                    onKeepPlaying: dismissLifecycleConfirmation,
+                    onProposeDraw: proposeDraw,
+                    onConfirm: confirmLifecycleAction
+                )
+                .zIndex(2)
+            }
         }
         .accessibilityIdentifier("uls.games.library")
     }
 
-    private var header: some View {
-        HStack(spacing: GameTheme.inlineSpacing) {
-            Button("Back", systemImage: "chevron.left", action: dismiss)
-                .font(GameTheme.metaFont.weight(.semibold))
-                .frame(minWidth: 44, minHeight: 44)
+    private func confirmationMessage(for confirmation: LifecycleConfirmation) -> String {
+        switch confirmation {
+        case .resignation:
+            "You will leave active play. Your pieces stay on the board, and the remaining players continue."
+        case .hostEnd:
+            shouldOfferDraw(for: confirmation)
+                ? "A draw gives every active player a say. You can still end the game immediately as host."
+                : "Ending is unilateral. Final scores remain visible, but no winner is declared."
+        }
+    }
 
+    private func shouldOfferDraw(for confirmation: LifecycleConfirmation) -> Bool {
+        guard case let .hostEnd(game) = confirmation else { return false }
+        return viewModel.shouldOfferDrawBeforeHostEnd(game.gameId)
+            && viewModel.canProposeDraw(for: game.gameId)
+    }
+
+    private func dismissLifecycleConfirmation() {
+        pendingLifecycleConfirmation = nil
+    }
+
+    private func proposeDraw() {
+        guard case let .hostEnd(game) = pendingLifecycleConfirmation else { return }
+        viewModel.proposeDraw(for: game.gameId)
+        pendingLifecycleConfirmation = nil
+    }
+
+    private func confirmLifecycleAction() {
+        guard let pendingLifecycleConfirmation else { return }
+
+        switch pendingLifecycleConfirmation {
+        case let .resignation(game):
+            viewModel.resignRecoveredGame(game.gameId)
+        case let .hostEnd(game):
+            viewModel.hostEndGame(game.gameId)
+        }
+
+        self.pendingLifecycleConfirmation = nil
+    }
+
+    private var header: some View {
+        ZStack {
             Text("Your Games")
                 .font(GameTheme.headingFont)
                 .foregroundStyle(GameTheme.surface)
+                .accessibilityAddTraits(.isHeader)
 
-            Spacer()
+            HStack(spacing: GameTheme.inlineSpacing) {
+                Button("Back", systemImage: "chevron.left", action: dismiss)
+                    .font(GameTheme.metaFont.weight(.semibold))
+                    .frame(minWidth: 84, minHeight: 44, alignment: .leading)
 
-            Text("\(viewModel.recoveredGames.count)")
-                .font(GameTheme.metaFont.bold())
-                .monospacedDigit()
-                .foregroundStyle(GameTheme.surface.opacity(0.72))
-                .accessibilityLabel("\(viewModel.recoveredGames.count) saved games")
+                Spacer()
+
+                Text("\(viewModel.recoveredGames.count)")
+                    .font(GameTheme.metaFont.bold())
+                    .monospacedDigit()
+                    .foregroundStyle(GameTheme.surface.opacity(0.72))
+                    .frame(minWidth: 84, minHeight: 44, alignment: .trailing)
+                    .accessibilityLabel("\(viewModel.recoveredGames.count) saved games")
+            }
         }
         .foregroundStyle(GameTheme.surface)
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, GameTheme.shellPadding)
         .padding(.vertical, GameTheme.inlineSpacing)
         .background(GameTheme.feltRaised)
@@ -90,7 +150,7 @@ struct GamesLibraryView: View {
     private var emptyState: some View {
         ContentUnavailableView(
             "No Saved Games",
-            systemImage: "square.stack.3d.up.slash",
+            systemImage: "die.face.5",
             description: Text("Start or open an Unlucky Sevens game in this conversation.")
         )
         .foregroundStyle(GameTheme.surface)
@@ -188,13 +248,13 @@ struct GamesLibraryView: View {
 
                     if viewModel.canResignRecoveredGame(game.gameId) {
                         Button("Resign", systemImage: "figure.walk.departure", role: .destructive) {
-                            pendingResignation = game
+                            pendingLifecycleConfirmation = .resignation(game)
                         }
                     }
 
                     if viewModel.canHostEndGame(game.gameId) {
                         Button("End Game", systemImage: "xmark.octagon", role: .destructive) {
-                            pendingHostEnd = game
+                            pendingLifecycleConfirmation = .hostEnd(game)
                         }
                     }
                 }
@@ -221,56 +281,5 @@ struct GamesLibraryView: View {
             RoundedRectangle(cornerRadius: GameTheme.smallRadius)
                 .stroke(GameTheme.outline.opacity(0.18), lineWidth: 1)
         }
-    }
-}
-
-private struct HostEndGameDecisionView: View {
-    let game: ActiveGameRecoverySummary
-    let recommendsDraw: Bool
-    let canProposeDraw: Bool
-    let proposeDraw: () -> Void
-    let endGame: () -> Void
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: GameTheme.blockSpacing) {
-                Text("End this game?")
-                    .font(GameTheme.headingFont)
-
-                Text(
-                    recommendsDraw
-                        ? "A draw gives every active player a say. You can still end the game immediately as host."
-                        : "Ending is unilateral. Final scores remain visible, but no winner is declared."
-                )
-                .font(GameTheme.bodyFont)
-                .foregroundStyle(GameTheme.mutedInk)
-
-                if recommendsDraw && canProposeDraw {
-                    Button("Propose Draw") {
-                        proposeDraw()
-                        dismiss()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .accessibilityIdentifier("uls.games.proposeDraw")
-                }
-
-                Button("End Game Anyway", role: .destructive) {
-                    endGame()
-                    dismiss()
-                }
-                .buttonStyle(.bordered)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .accessibilityIdentifier("uls.games.endAnyway")
-
-                Button("Keep Playing", role: .cancel) {
-                    dismiss()
-                }
-                .frame(maxWidth: .infinity, minHeight: 44)
-            }
-            .padding(GameTheme.shellPadding)
-        }
-        .accessibilityIdentifier("uls.games.hostEndDecision")
     }
 }

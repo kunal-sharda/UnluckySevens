@@ -45,7 +45,7 @@ final class GameShellStatusLineResolverTests: XCTestCase {
             winnerDisplay: "A",
             didLocalPlayerWin: true
         )
-        XCTAssertEqual(winnerLine.title, "You won")
+        XCTAssertEqual(winnerLine.title, "Victory!")
 
         let loserLine = GameShellStatusLineResolver.resolve(
             actingAs: "B",

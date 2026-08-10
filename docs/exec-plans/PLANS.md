@@ -48,6 +48,8 @@ Use one of these profiles:
 
 The profile chooses the baseline breadth of mechanical validation; it never waives a stated constraint or substitutes a build for observable or judgment evidence. Lock it before implementation. Record a later profile change as a dated decision; lowering a standard or release-critical profile also requires fresh constraint-auditor agreement.
 
+Also lock the exact proof set before implementation. Validation may expand the plan only when it exposes a production defect or a constraint gap sourced to the user request or an authoritative owner doc. Follow the retry budget and stop/report rules in [QA](../quality/qa.md); harness instability does not authorize adjacent tests, new product work, or silent contract growth.
+
 Choose delivery posture independently from the profile:
 
 - `explore`: investigate, compare, or prototype, then stop before production.
@@ -80,6 +82,7 @@ Update the active ExecPlan in the same slice when:
 - a milestone lands
 - a decision or discovery would matter to future work
 - the outcome or remaining work changes
+- validation exposes a legitimate sourced contract gap; record the amendment and update the user before expanding work
 - a phase or major slice lands and `docs/exec-plans/CHANGELOG.md` needs a compact historical note
 
 Also run `make doc-freshness` and the documentation freshness gate in `docs/quality/qa.md`. Update Tier 1 owner docs in the same slice when behavior changes, update Tier 2 active docs when execution/design direction changes, and avoid rewriting Tier 4 historical/reference docs unless a supersession note is needed. Put durable QA lessons in `docs/quality/qa.md` and durable follow-up work in `docs/exec-plans/tech-debt-tracker.md`.

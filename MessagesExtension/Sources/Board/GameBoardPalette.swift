@@ -85,6 +85,7 @@ enum GameBoardOceanStyle: String, CaseIterable {
 
 enum GameBoardPalette {
     static let sceneBackground = GameBoardOceanStyle.current.backgroundColor
+    static let modalFocusVeil = SKColor(red: 0.115, green: 0.122, blue: 0.128, alpha: 0.68)
     static let sceneBackgroundEdge = SKColor(red: 0.06, green: 0.10, blue: 0.08, alpha: 0.24)
     static let boardRim = SKColor(red: 0.91, green: 0.84, blue: 0.68, alpha: 1.0)
     static let boardRimEdge = SKColor(red: 0.35, green: 0.28, blue: 0.19, alpha: 0.58)

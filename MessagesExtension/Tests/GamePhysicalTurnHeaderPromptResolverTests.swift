@@ -18,7 +18,7 @@ final class GamePhysicalTurnHeaderPromptResolverTests: XCTestCase {
             (.waitingForDiscard, "Waiting for Other Players"),
             (.chooseDevCard, "Choose a Dev Card"),
             (.moveRobber, "Move the Robber"),
-            (.choosePlayer, "Choose a Player"),
+            (.choosePlayer, "Select a Settlement Beside the Robber"),
             (.chooseResource, "Choose a Resource"),
             (.chooseTwoResources, "Choose Two Resources"),
             (.chooseOneMore, "Choose One More"),
@@ -69,6 +69,11 @@ final class GamePhysicalTurnHeaderPromptResolverTests: XCTestCase {
             prompt(route: .build, mode: .buildCity, hasBoardCommitDraft: true),
             .tapAgainToUpgrade
         )
+    }
+
+    func testOrdinaryRobberPromptsStayInThePhysicalHeader() {
+        XCTAssertEqual(prompt(route: .none, mode: .robberMove), .moveRobber)
+        XCTAssertEqual(prompt(route: .none, mode: .robberVictim), .choosePlayer)
     }
 
     func testDevCardPromptsFollowThePresentationDraft() {

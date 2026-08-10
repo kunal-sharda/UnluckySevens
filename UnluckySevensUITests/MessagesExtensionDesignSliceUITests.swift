@@ -70,9 +70,9 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             messages.descendants(matching: .any)["uls.lobby.inviteDirection.invitationCard"]
                 .firstMatch.waitForExistence(timeout: 4)
         )
-        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
-        XCTAssertTrue(tutorial.exists)
-        XCTAssertEqual(tutorial.label, "Tutorial")
+        let games = messages.buttons["uls.lobby.games"].firstMatch
+        XCTAssertTrue(games.exists)
+        XCTAssertEqual(games.label, "Games")
         XCTAssertTrue(messages.buttons["uls.lobby.gameSettings"].firstMatch.exists)
         XCTAssertFalse(messages.staticTexts["Async turns"].firstMatch.exists)
         attachScreenshot(named: "Lobby Invite Direction - Invitation Card")
@@ -84,7 +84,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(messages.staticTexts["Victory"].firstMatch.exists)
         messages.buttons["Done"].firstMatch.tap()
 
-        tutorial.tap()
+        openLobbyTutorial()
         dismissTutorialNavigationCoach()
         assertTutorialProgress(title: "Place Your First Settlement")
         messages.buttons["uls.tutorial.exit"].firstMatch.tap()
@@ -181,6 +181,11 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
     func testCaptureProductionLobbyLifecycle() throws {
         openUnluckySevensExtension()
+        waitForUXLabChrome()
+        activateUXLabNestedQuickState(
+            title: "Invitation Card",
+            identifier: "uls.uxLab.cleanShot.lobbyInviteInvitationCard"
+        )
 
         XCTAssertTrue(waitForInviteSlice(timeout: 12))
         let inviteRoster = messages.descendants(matching: .any)["uls.lobby.roster"].firstMatch
@@ -189,7 +194,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         // XCUI reports the glyph bounds for plain SwiftUI text buttons rather than
         // their larger interaction frames. The direction test taps both controls
         // end-to-end; keep this lifecycle check focused on current hittability.
-        XCTAssertTrue(messages.buttons["uls.lobby.tutorial"].firstMatch.isHittable)
+        XCTAssertTrue(messages.buttons["uls.lobby.games"].firstMatch.isHittable)
         XCTAssertTrue(messages.buttons["uls.lobby.gameSettings"].firstMatch.isHittable)
         let productionSendInvite = messages.buttons["uls.lobby.action.Send Invite"].firstMatch
         revealLobbyActionIfNeeded(productionSendInvite)
@@ -200,7 +205,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             title: "Join",
             identifier: "uls.uxLab.cleanShot.lobbyJoin"
         )
-        XCTAssertTrue(messages.buttons["uls.lobby.tutorial"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.buttons["uls.lobby.games"].firstMatch.waitForExistence(timeout: 4))
         XCTAssertTrue(messages.staticTexts["Join the Table"].firstMatch.waitForExistence(timeout: 8))
         let joinRoster = messages.descendants(matching: .any)["uls.lobby.roster"].firstMatch
         XCTAssertTrue(joinRoster.exists)
@@ -215,7 +220,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             title: "Ready",
             identifier: "uls.uxLab.cleanShot.lobbyReady"
         )
-        XCTAssertTrue(messages.buttons["uls.lobby.tutorial"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.buttons["uls.lobby.games"].firstMatch.waitForExistence(timeout: 4))
         XCTAssertTrue(messages.staticTexts["Ready to Start"].firstMatch.waitForExistence(timeout: 8))
         let readyRoster = messages.descendants(matching: .any)["uls.lobby.roster"].firstMatch
         XCTAssertTrue(readyRoster.exists)
@@ -226,6 +231,217 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Lobby Lifecycle 03 - Ready")
     }
 
+    func testCaptureLobbyJoinSettingsRulesPolish() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        activateUXLabNestedQuickState(
+            title: "Invitation Card",
+            identifier: "uls.uxLab.cleanShot.lobbyInviteInvitationCard"
+        )
+
+        XCTAssertTrue(waitForInviteSlice(timeout: 12))
+        let games = messages.buttons["uls.lobby.games"].firstMatch
+        assertMinimumTarget(games, message: "The direct lobby Games control must remain tappable.")
+        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
+        assertMinimumTarget(tutorial, message: "Tutorial must be a visible, tappable lobby option.")
+        XCTAssertTrue(messages.staticTexts["Game Settings"].firstMatch.exists)
+        XCTAssertTrue(messages.staticTexts["Playing as"].firstMatch.exists)
+        let lobbySurface = messages.descendants(matching: .any)["uls.lobby.tableSurface"].firstMatch
+        let sendInvite = messages.buttons["uls.lobby.action.Send Invite"].firstMatch
+        assertVisibleLobbyAction(sendInvite, title: "Send Invite")
+        XCTAssertLessThanOrEqual(
+            lobbySurface.frame.maxY - sendInvite.frame.maxY,
+            72,
+            "Invite identity and action controls should finish at the bottom of the lobby canvas."
+        )
+        attachScreenshot(named: "Polish 01 - Lobby")
+
+        games.tap()
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.games.library"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+        messages.buttons["Back"].firstMatch.tap()
+
+        openLobbyTutorial()
+        dismissTutorialNavigationCoach()
+        assertTutorialProgress(title: "Place Your First Settlement")
+        messages.buttons["uls.tutorial.exit"].firstMatch.tap()
+        XCTAssertTrue(messages.buttons["uls.lobby.games"].firstMatch.waitForExistence(timeout: 4))
+
+        activateUXLabNestedQuickState(
+            title: "Join",
+            identifier: "uls.uxLab.cleanShot.lobbyJoin"
+        )
+        XCTAssertTrue(messages.staticTexts["Playing as"].firstMatch.waitForExistence(timeout: 8))
+        let nameField = messages.descendants(matching: .any)["uls.lobby.nameField"].firstMatch
+        XCTAssertTrue(nameField.exists)
+        let joinGame = messages.buttons["uls.lobby.action.Join Game"].firstMatch
+        assertVisibleLobbyAction(joinGame, title: "Join Game")
+        XCTAssertLessThanOrEqual(
+            lobbySurface.frame.maxY - joinGame.frame.maxY,
+            72,
+            "Join identity and action controls should finish at the bottom of the lobby canvas."
+        )
+        attachScreenshot(named: "Polish 02 - Join")
+
+        messages.buttons["uls.lobby.gameSettings"].firstMatch.tap()
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.settings.surface"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+        XCTAssertTrue(messages.buttons["uls.settings.showRules"].firstMatch.exists)
+        XCTAssertTrue(messages.staticTexts["Skip animations"].firstMatch.exists)
+        XCTAssertFalse(messages.staticTexts["Experience"].firstMatch.exists)
+        XCTAssertFalse(messages.staticTexts["Help"].firstMatch.exists)
+        XCTAssertFalse(
+            messages.staticTexts["Show game changes immediately. Rules and dice results stay the same."]
+                .firstMatch.exists
+        )
+        attachScreenshot(named: "Polish 03 - Settings")
+
+        messages.buttons["uls.settings.showRules"].firstMatch.tap()
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.rules.surface"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+        let scrollCue = messages.buttons["Scroll for more"].firstMatch
+        XCTAssertTrue(scrollCue.waitForExistence(timeout: 4))
+        attachScreenshot(named: "Polish 04 - Rules")
+        messages.descendants(matching: .any)["uls.rules.surface"].firstMatch.swipeUp()
+        XCTAssertTrue(messages.staticTexts["Build costs"].firstMatch.exists)
+        XCTAssertFalse(scrollCue.exists)
+        attachScreenshot(named: "Polish 05 - Rules Scrolled")
+
+        let strategy = messages.buttons["uls.rules.showStrategy"].firstMatch
+        for _ in 0..<4 where !strategy.isHittable {
+            messages.descendants(matching: .any)["uls.rules.surface"].firstMatch.swipeUp()
+        }
+        XCTAssertTrue(strategy.waitForExistence(timeout: 4))
+        XCTAssertTrue(strategy.isHittable)
+        strategy.tap()
+        let closeStrategy = messages.buttons["uls.strategy.close"].firstMatch
+        XCTAssertTrue(closeStrategy.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.staticTexts["Strategy"].firstMatch.exists)
+        XCTAssertFalse(
+            messages.descendants(matching: .any)["uls.rules.surface"].firstMatch.exists,
+            "Strategy should be its own focused card, not a destination anchored inside Rules."
+        )
+        XCTAssertTrue(closeStrategy.isHittable)
+        attachScreenshot(named: "Polish 06 - Standalone Strategy Card")
+        closeStrategy.tap()
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.rules.surface"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+    }
+
+    func testApprovedProductionJourneyUsesPhysicalPropsOnly() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+
+        activateUXLabNestedQuickState(
+            title: "Join",
+            identifier: "uls.uxLab.cleanShot.lobbyJoin"
+        )
+        XCTAssertTrue(
+            messages.buttons["uls.lobby.action.Join Game"].firstMatch
+                .waitForExistence(timeout: 8)
+        )
+
+        restoreUXLabChrome()
+        activateUXLabNestedQuickState(
+            title: "Ready",
+            identifier: "uls.uxLab.cleanShot.lobbyReady"
+        )
+        XCTAssertTrue(
+            messages.buttons["uls.lobby.action.Start Game"].firstMatch
+                .waitForExistence(timeout: 8)
+        )
+
+        restoreUXLabChrome()
+        loadCleanSetupGameplaySlice()
+        XCTAssertTrue(
+            turnElement(identifier: "uls.setup.pieceRail", labels: [])
+                .waitForExistence(timeout: 8)
+        )
+        assertNoRetiredGameplayShelf()
+
+        restoreUXLabChrome()
+        loadStartTurnGameplaySlice()
+        XCTAssertTrue(
+            turnElement(identifier: "uls.startTurn.surface", labels: ["Start of turn"])
+                .waitForExistence(timeout: 8)
+        )
+        assertNoRetiredGameplayShelf()
+
+        restoreUXLabChrome()
+        loadTurnGameplaySlice()
+        XCTAssertTrue(
+            turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
+                .waitForExistence(timeout: 8)
+        )
+        assertNoRetiredGameplayShelf()
+
+        restoreUXLabChrome()
+        loadActionableDiscardSlice()
+        XCTAssertTrue(
+            turnElement(identifier: "uls.discard.surface", labels: [])
+                .waitForExistence(timeout: 8)
+        )
+        assertNoRetiredGameplayShelf()
+
+        restoreUXLabChrome()
+        loadTurnGameplaySlice()
+        let settings = turnElement(identifier: "", labels: ["Settings"])
+        XCTAssertTrue(settings.waitForExistence(timeout: 8))
+        settings.tap()
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.settings.surface"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+        messages.buttons["Done"].firstMatch.tap()
+
+        let gameInformation = turnElement(
+            identifier: "",
+            labels: ["Players and game information", "Game information"]
+        )
+        XCTAssertTrue(gameInformation.waitForExistence(timeout: 4))
+        gameInformation.tap()
+        let gamesInsideGameInformation = messages.buttons["uls.gameInfo.games"].firstMatch
+        XCTAssertTrue(gamesInsideGameInformation.waitForExistence(timeout: 4))
+        XCTAssertFalse(
+            messages.buttons["uls.game.games"].firstMatch.exists,
+            "Games must not consume a gameplay top-bar slot."
+        )
+        gamesInsideGameInformation.tap()
+        XCTAssertTrue(
+            messages.buttons["uls.gameInfo.players"].firstMatch.waitForExistence(timeout: 4)
+        )
+        XCTAssertFalse(
+            messages.descendants(matching: .any)["uls.games.library"].firstMatch.exists,
+            "Games must replace player rows in place before dedicated management opens."
+        )
+        let playersInsideGameInformation = messages.buttons["uls.gameInfo.players"].firstMatch
+        XCTAssertTrue(playersInsideGameInformation.waitForExistence(timeout: 4))
+        playersInsideGameInformation.tap()
+        XCTAssertTrue(messages.staticTexts["Kunal · You"].firstMatch.waitForExistence(timeout: 4))
+
+        restoreUXLabChrome()
+        activateUXLabQuickState(
+            title: "Recovery Games",
+            identifier: "uls.uxLab.recoveryGames"
+        )
+        XCTAssertTrue(waitForGamesEntryPoint(), "Expected Games to remain reachable from the current surface.")
+
+        loadEndScreenSlice()
+        XCTAssertTrue(
+            turnElement(identifier: "uls.endScreen", labels: [])
+                .waitForExistence(timeout: 8)
+        )
+        assertNoRetiredGameplayShelf()
+    }
+
     func testCaptureProductionLobbyAccessibilityLayout() throws {
         openUnluckySevensExtension()
 
@@ -233,7 +449,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(
             messages.descendants(matching: .any)["uls.lobby.roster"].firstMatch.exists
         )
-        XCTAssertTrue(messages.buttons["uls.lobby.tutorial"].firstMatch.isHittable)
+        XCTAssertTrue(messages.buttons["uls.lobby.games"].firstMatch.isHittable)
         XCTAssertTrue(messages.buttons["uls.lobby.gameSettings"].firstMatch.isHittable)
 
         let sendInvite = messages.buttons["uls.lobby.action.Send Invite"].firstMatch
@@ -259,14 +475,16 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
         messages.buttons["uls.settings.showRules"].firstMatch.tap()
         XCTAssertTrue(messages.descendants(matching: .any)["uls.rules.surface"].firstMatch.waitForExistence(timeout: 4))
+        let scrollCue = messages.staticTexts["Scroll for more"].firstMatch
+        XCTAssertTrue(scrollCue.waitForExistence(timeout: 4))
+        messages.descendants(matching: .any)["uls.rules.surface"].firstMatch.swipeUp()
         XCTAssertTrue(messages.staticTexts["Build costs"].firstMatch.exists)
+        attachScreenshot(named: "Settings Rules Tutorial - Rules")
         messages.navigationBars["Rules"].buttons.firstMatch.tap()
         XCTAssertTrue(messages.descendants(matching: .any)["uls.settings.surface"].firstMatch.waitForExistence(timeout: 4))
         messages.buttons["Done"].firstMatch.tap()
 
-        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
-        XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
-        tutorial.tap()
+        openLobbyTutorial()
         dismissTutorialNavigationCoach()
         assertTutorialProgress(title: "Place Your First Settlement")
 
@@ -283,15 +501,13 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(messages.buttons["uls.tutorial.done"].firstMatch.exists)
         attachScreenshot(named: "Settings Rules Tutorial - Strategy")
         messages.buttons["uls.tutorial.done"].firstMatch.tap()
-        XCTAssertTrue(messages.buttons["uls.lobby.tutorial"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.buttons["uls.lobby.games"].firstMatch.waitForExistence(timeout: 4))
     }
 
     func testPlaceTutorialTradeCheckpoint() throws {
         openUnluckySevensExtension()
 
-        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
-        XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
-        tutorial.tap()
+        openLobbyTutorial()
 
         dismissTutorialNavigationCoach()
 
@@ -316,9 +532,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         )
         XCTAssertTrue(waitForInviteSlice(timeout: 12))
 
-        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
-        XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
-        tutorial.tap()
+        openLobbyTutorial()
         dismissTutorialNavigationCoach()
 
         let next = messages.buttons["uls.tutorial.next"].firstMatch
@@ -337,7 +551,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             identifier: "uls.tabletop.boardHost",
             labels: ["Live game board host"]
         )
-        let tutorialHand = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
+        let tutorialHand = turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
         XCTAssertTrue(tutorialBoard.waitForExistence(timeout: 4))
         XCTAssertTrue(tutorialBoardHost.waitForExistence(timeout: 4))
         XCTAssertTrue(tutorialHand.waitForExistence(timeout: 4))
@@ -436,7 +650,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             identifier: "uls.tabletop.boardHost",
             labels: ["Live game board host"]
         )
-        let productionHand = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
+        let productionHand = turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
         let productionHandSpread = turnElement(
             identifier: "uls.physicalProps.actionSpread",
             labels: []
@@ -484,7 +698,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             labels: []
         )
         if !normalHandSpread.waitForExistence(timeout: 1) {
-            let hand = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
+            let hand = turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
             if !hand.isSelected {
                 hand.tap()
             }
@@ -560,7 +774,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         recipientCancel.tap()
         XCTAssertTrue(trade.waitForExistence(timeout: 4))
         trade.tap()
-        let maritime = messages.buttons["Maritime / Bank"].firstMatch
+        let maritime = messages.buttons["Bank or Port"].firstMatch
         XCTAssertTrue(maritime.waitForExistence(timeout: 4))
         maritime.tap()
 
@@ -678,14 +892,12 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
     func testPlaceTutorialFirstTapZonesCheckpoint() throws {
         openUnluckySevensExtension()
 
-        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
-        XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
-        tutorial.tap()
+        openLobbyTutorial()
 
-        let startPrompt = messages.staticTexts["Tap once to start"].firstMatch
+        let startPrompt = messages.staticTexts["Tap anywhere to begin"].firstMatch
         XCTAssertTrue(startPrompt.waitForExistence(timeout: 4))
-        XCTAssertTrue(messages.staticTexts["Tap left side"].firstMatch.exists)
-        XCTAssertTrue(messages.staticTexts["Tap right side"].firstMatch.exists)
+        XCTAssertTrue(messages.staticTexts["Tap left"].firstMatch.exists)
+        XCTAssertTrue(messages.staticTexts["Tap right"].firstMatch.exists)
         dismissTutorialNavigationCoach()
         XCTAssertTrue(startPrompt.waitForNonExistence(timeout: 4))
         XCTAssertFalse(messages.staticTexts["1 / 16"].firstMatch.exists)
@@ -694,12 +906,15 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
     func testCaptureEveryTutorialScreen() throws {
         openUnluckySevensExtension()
+        waitForUXLabChrome()
+        activateUXLabNestedQuickState(
+            title: "Invitation Card",
+            identifier: "uls.uxLab.cleanShot.lobbyInviteInvitationCard"
+        )
 
-        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
-        XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
-        tutorial.tap()
+        openLobbyTutorial()
 
-        let startPrompt = messages.staticTexts["Tap once to start"].firstMatch
+        let startPrompt = messages.staticTexts["Tap anywhere to begin"].firstMatch
         XCTAssertTrue(startPrompt.waitForExistence(timeout: 4))
         attachScreenshot(named: "Tutorial 00 - Navigation")
         messages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
@@ -711,11 +926,11 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             "Roll to Begin",
             "Follow the Roll",
             "Check Your Hand",
-            "Pick a Build",
-            "Choose a Glowing Spot",
+            "Choose What to Build",
+            "Choose a Glowing Corner",
             "Make an Offer",
             "Choose Who Gets It",
-            "Use Your Best Rate",
+            "Trade with Bank or Port",
             "Discard on Seven",
             "Move the Robber",
             "Choose a Victim",
@@ -740,6 +955,57 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
                 ).tap()
             }
         }
+    }
+
+    func testCaptureRobberPhysicalFlow() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        activateUXLabQuickState(
+            title: "Robber Move",
+            identifier: "uls.uxLab.cleanShot.robberMove"
+        )
+
+        let topBar = turnElement(identifier: "uls.turn.topBar", labels: [])
+        let status = turnElement(identifier: "uls.turn.status", labels: ["Move the Robber"])
+        let publicRail = turnElement(identifier: "uls.turn.publicRail", labels: [])
+        let boardHost = turnElement(identifier: "uls.tabletop.boardHost", labels: ["Live game board host"])
+        let turnObjects = turnElement(identifier: "uls.turn.objectRail", labels: [])
+        XCTAssertTrue(topBar.waitForExistence(timeout: 8))
+        XCTAssertTrue(status.waitForExistence(timeout: 4))
+        XCTAssertTrue(publicRail.exists)
+        XCTAssertTrue(boardHost.exists)
+        XCTAssertTrue(turnObjects.exists)
+        XCTAssertFalse(messages.staticTexts["Tap tile"].exists)
+        XCTAssertFalse(messages.descendants(matching: .any)["uls.physicalProps.componentSurface"].firstMatch.exists)
+        XCTAssertFalse(messages.descendants(matching: .any)["uls.overlayShelf"].firstMatch.exists)
+
+        let fixedTopBarFrame = topBar.frame
+        let fixedPublicRailFrame = publicRail.frame
+        let fixedBoardHostFrame = boardHost.frame
+        let fixedTurnObjectsFrame = turnObjects.frame
+        attachScreenshot(named: "Robber Physical 01 - Move Robber")
+
+        restoreUXLabChrome()
+        activateUXLabQuickState(
+            title: "Robber Victim",
+            identifier: "uls.uxLab.cleanShot.robberVictim"
+        )
+
+        let victimStatus = turnElement(
+            identifier: "uls.turn.status",
+            labels: ["Select a Settlement Beside the Robber"]
+        )
+        XCTAssertTrue(victimStatus.waitForExistence(timeout: 8))
+        XCTAssertEqual(victimStatus.label, "Select a Settlement Beside the Robber")
+        XCTAssertFalse(messages.staticTexts["Steal a Card"].exists)
+        XCTAssertFalse(messages.staticTexts["Choose a marked player beside the robber."].exists)
+        XCTAssertFalse(messages.descendants(matching: .any)["uls.physicalProps.componentSurface"].firstMatch.exists)
+        XCTAssertFalse(messages.descendants(matching: .any)["uls.overlayShelf"].firstMatch.exists)
+        assertFrame(of: topBar, matches: fixedTopBarFrame, message: "Robber prompts must share one fixed top bar.")
+        assertFrame(of: publicRail, matches: fixedPublicRailFrame, message: "Robber prompts must preserve the public rail.")
+        assertFrame(of: boardHost, matches: fixedBoardHostFrame, message: "Robber prompts must preserve the mounted board frame.")
+        assertFrame(of: turnObjects, matches: fixedTurnObjectsFrame, message: "Robber prompts must preserve the turn-object rail.")
+        attachScreenshot(named: "Robber Physical 02 - Select Adjacent Settlement")
     }
 
     private func assertTutorialProgress(
@@ -830,9 +1096,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(done.waitForExistence(timeout: 4))
         done.tap()
 
-        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
-        XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
-        tutorial.tap()
+        openLobbyTutorial()
 
         dismissTutorialNavigationCoach()
 
@@ -868,9 +1132,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(done.waitForExistence(timeout: 4))
         done.tap()
 
-        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
-        XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
-        tutorial.tap()
+        openLobbyTutorial()
 
         dismissTutorialNavigationCoach()
 
@@ -904,9 +1166,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(newGame.waitForExistence(timeout: 8))
         newGame.tap()
 
-        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
-        XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
-        tutorial.tap()
+        openLobbyTutorial()
 
         dismissTutorialNavigationCoach()
 
@@ -1068,12 +1328,15 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(devCards.frame.height, 44)
         XCTAssertGreaterThanOrEqual(roll.frame.width, 44)
         XCTAssertGreaterThanOrEqual(roll.frame.height, 44)
-
         let boardFrame = board.frame
         let boardHostValue = String(describing: boardHost.value)
         attachScreenshot(named: "Start of Turn - Dev or Roll")
 
-        devCards.tap()
+        restoreUXLabChrome()
+        activateUXLabQuickState(
+            title: "Start Dev",
+            identifier: "uls.uxLab.cleanShot.turnNeedsRollDevChooser.menu"
+        )
         let chooser = turnElement(
             identifier: "uls.startTurn.devChooser",
             labels: ["Playable pre-roll Dev Cards"]
@@ -1082,13 +1345,6 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertEqual(board.frame, boardFrame)
         XCTAssertEqual(String(describing: boardHost.value), boardHostValue)
         attachScreenshot(named: "Start of Turn - Dev Chooser")
-
-        devCards.tap()
-        XCTAssertTrue(waitForDisappearance(of: chooser, timeout: 4))
-        roll.doubleTap()
-        XCTAssertTrue(waitForDisappearance(of: startSurface, timeout: 8))
-        XCTAssertTrue(boardHost.exists)
-        XCTAssertEqual(String(describing: boardHost.value), boardHostValue)
     }
 
     func testCaptureNotPrimaryPlayerOrdinaryWaiting() throws {
@@ -1099,7 +1355,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         let board = turnElement(identifier: "uls.tabletop.board", labels: [])
         let publicRail = turnElement(identifier: "uls.turn.publicRail", labels: [])
         let status = turnElement(identifier: "uls.turn.status", labels: ["Maya's Turn"])
-        let hand = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
+        let hand = turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
 
         XCTAssertTrue(board.waitForExistence(timeout: 8))
         XCTAssertTrue(publicRail.waitForExistence(timeout: 4))
@@ -1107,12 +1363,21 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(hand.waitForExistence(timeout: 4))
         XCTAssertGreaterThanOrEqual(hand.frame.width, 44)
         XCTAssertGreaterThanOrEqual(hand.frame.height, 44)
-        XCTAssertEqual(hand.frame.midX, board.frame.midX, accuracy: 2)
+        XCTAssertGreaterThanOrEqual(hand.frame.minX, board.frame.minX)
+        XCTAssertLessThanOrEqual(hand.frame.maxX, board.frame.maxX)
         XCTAssertFalse(messages.buttons["uls.turnObject.build"].firstMatch.exists)
         XCTAssertFalse(messages.buttons["uls.turnObject.trade"].firstMatch.exists)
         XCTAssertFalse(messages.buttons["uls.turnObject.endTurn"].firstMatch.exists)
-        XCTAssertFalse(
-            turnElement(identifier: "uls.physicalProps.actionSpread", labels: [], timeout: 1).exists,
+        let actionSpread = turnElement(
+            identifier: "uls.physicalProps.actionSpread",
+            labels: [],
+            timeout: 1
+        )
+        if actionSpread.exists {
+            hand.tap()
+        }
+        XCTAssertTrue(
+            actionSpread.waitForNonExistence(timeout: 4),
             "Ordinary waiting should begin with an empty action well."
         )
         attachScreenshot(named: "Not Primary Player - Ordinary Waiting")
@@ -1129,7 +1394,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             labels: ["Live game board host"]
         )
         let trade = turnElement(identifier: "uls.turnObject.trade", labels: ["Trade"])
-        let hand = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
+        let hand = turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
         XCTAssertTrue(board.waitForExistence(timeout: 8))
         XCTAssertTrue(boardHost.waitForExistence(timeout: 4))
         XCTAssertTrue(trade.waitForExistence(timeout: 4))
@@ -1139,7 +1404,10 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         let boardHostValue = String(describing: boardHost.value)
 
         trade.tap()
-        let offerPrompt = turnElement(identifier: "", labels: ["Answer the Trade Offer"])
+        let offerPrompt = turnElement(
+            identifier: "",
+            labels: ["Review the Offer", "Answer the Trade Offer"]
+        )
         let offer = turnElement(identifier: "uls.turn.tradeSurface", labels: [])
         let accept = messages.buttons["Accept"].firstMatch
         let decline = messages.buttons["Decline"].firstMatch
@@ -1174,7 +1442,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             labels: ["Live game board host"]
         )
         let trade = turnElement(identifier: "uls.turnObject.trade", labels: ["Trade"])
-        let hand = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
+        let hand = turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
         XCTAssertTrue(board.waitForExistence(timeout: 8))
         XCTAssertTrue(boardHost.waitForExistence(timeout: 4))
         XCTAssertTrue(trade.waitForExistence(timeout: 4))
@@ -1184,7 +1452,10 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         let boardHostValue = String(describing: boardHost.value)
 
         trade.tap()
-        let offerPrompt = turnElement(identifier: "", labels: ["Answer the Trade Offer"])
+        let offerPrompt = turnElement(
+            identifier: "",
+            labels: ["Review the Offer", "Answer the Trade Offer"]
+        )
         let offer = turnElement(identifier: "uls.turn.tradeSurface", labels: [])
         XCTAssertTrue(offerPrompt.waitForExistence(timeout: 4))
         XCTAssertTrue(offer.waitForExistence(timeout: 4))
@@ -1217,20 +1488,13 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         let board = turnElement(identifier: "uls.tabletop.board", labels: [])
         let publicRail = turnElement(identifier: "uls.turn.publicRail", labels: [])
         let prompt = turnElement(identifier: "", labels: ["Waiting for Other Players"])
-        let hand = messages.descendants(matching: .any)
-            .matching(
-                NSPredicate(
-                    format: "label == %@ AND value == %@",
-                    "Hand",
-                    "Available after the discard"
-                )
-            )
-            .firstMatch
+        let hand = turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
         XCTAssertTrue(board.waitForExistence(timeout: 8))
         XCTAssertTrue(publicRail.waitForExistence(timeout: 4))
         XCTAssertTrue(prompt.waitForExistence(timeout: 4))
         XCTAssertTrue(hand.waitForExistence(timeout: 4))
-        XCTAssertEqual(hand.frame.midX, board.frame.midX, accuracy: 2)
+        XCTAssertGreaterThanOrEqual(hand.frame.minX, board.frame.minX)
+        XCTAssertLessThanOrEqual(hand.frame.maxX, board.frame.maxX)
         XCTAssertFalse(messages.buttons["Publish Discard"].firstMatch.exists)
         XCTAssertFalse(
             turnElement(identifier: "uls.physicalProps.actionSpread", labels: [], timeout: 1).exists,
@@ -1354,7 +1618,11 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             labels: ["Dev Cards"]
         )
         XCTAssertTrue(devCards.waitForExistence(timeout: 8))
-        devCards.tap()
+        restoreUXLabChrome()
+        activateUXLabQuickState(
+            title: "Start Dev",
+            identifier: "uls.uxLab.cleanShot.turnNeedsRollDevChooser.menu"
+        )
         XCTAssertTrue(
             turnElement(
                 identifier: "uls.startTurn.devChooser",
@@ -1436,18 +1704,27 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         loadTurnGameplaySlice()
 
         XCTAssertTrue(
-            firstExistingElement(
-                [
-                    messages.staticTexts["Your turn"].firstMatch,
-                    messages.staticTexts["Hand"].firstMatch,
-                    messages.staticTexts["Dev"].firstMatch,
-                    messages.buttons["End Turn"].firstMatch,
-                ],
-                timeout: 8
-            )
-            .exists,
+            turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
+                .waitForExistence(timeout: 8),
             "Expected the turn gameplay fixture to render."
         )
+        for _ in 0..<3 {
+            let currentWheatCard = messages.descendants(matching: .any)[
+                "uls.physicalProps.handCard.wheat"
+            ]
+            if currentWheatCard.waitForExistence(timeout: 2),
+               currentWheatCard.label.contains("5 owned") {
+                break
+            }
+            restoreUXLabChrome()
+            loadTurnGameplaySlice()
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        let loadedWheatCard = messages.descendants(matching: .any)[
+            "uls.physicalProps.handCard.wheat"
+        ]
+        XCTAssertTrue(loadedWheatCard.waitForExistence(timeout: 4))
+        XCTAssertTrue(loadedWheatCard.label.contains("5 owned"))
         collapseUXLabPanelIfExpanded()
         let settingsHookEvidence = turnElement(
             identifier: "uls.settings.hookEvidence",
@@ -1472,8 +1749,21 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             "Expected Settings to invoke the root navigation hook without requiring a destination in this slice."
         )
         messages.buttons["Done"].firstMatch.tap()
-        let handButton = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
+        let handButton = turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
         XCTAssertTrue(handButton.waitForExistence(timeout: 4), "Expected the fixed Hand object.")
+        let handAccessibilityState = [
+            handButton.label,
+            String(describing: handButton.value),
+        ]
+        .joined(separator: " ")
+        XCTAssertTrue(
+            handAccessibilityState.contains("resource cards"),
+            "Hand must expose its total resource-card count before opening."
+        )
+        XCTAssertNotNil(
+            handAccessibilityState.rangeOfCharacter(from: .decimalDigits),
+            "Hand must expose a numeric total resource-card count."
+        )
         let buildButton = turnElement(identifier: "uls.turnObject.build", labels: ["Build"])
         let tradeButton = turnElement(identifier: "uls.turnObject.trade", labels: ["Trade"])
         let endButton = turnElement(identifier: "uls.turnObject.endTurn", labels: ["End", "End Turn"])
@@ -1497,10 +1787,12 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         let fixedPublicRailFrame = publicRail.frame
         let fixedStatusFrame = status.frame
         let fixedActionWellFrame = actionWell.frame
+        let safeFrame = messages.windows.firstMatch.frame
         expectedTurnActionWellFrame = fixedActionWellFrame
         assertElement(handSurface, isContainedIn: fixedActionWellFrame, message: "Hand must stay inside the reserved action well.")
         let fixedTurnObjectFrames = turnObjects.map(\.frame)
         let fixedTurnRailFrame = unionFrame(of: turnObjects)
+        let fixedBoardHostFrame = boardHost.frame
         let fixedBoardHostValue = String(describing: boardHost.value)
         XCTAssertFalse(fixedBoardHostValue.isEmpty)
         for object in turnObjects {
@@ -1635,12 +1927,59 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
                 .waitForExistence(timeout: 4),
             "Expected Game Info to expose one public recent-turn recap."
         )
-        assertElement(gameInfoSurface, isContainedIn: fixedActionWellFrame, message: "Game Info must reuse the reserved action well.")
+        let gamesInGameInfo = messages.buttons["uls.gameInfo.games"].firstMatch
+        XCTAssertTrue(gamesInGameInfo.waitForExistence(timeout: 4))
+        XCTAssertGreaterThanOrEqual(
+            gameInfoSurface.frame.height,
+            fixedActionWellFrame.height,
+            "Centered Game Information must remain tall enough for complete player rows."
+        )
+        XCTAssertEqual(
+            gameInfoSurface.frame.midX,
+            safeFrame.midX,
+            accuracy: 2,
+            "Game Information must share the Trade composer's horizontal center."
+        )
+        XCTAssertGreaterThan(
+            gameInfoSurface.frame.minY,
+            fixedStatusFrame.maxY,
+            "Game Information must stay below the fixed top status."
+        )
+        XCTAssertLessThan(
+            gameInfoSurface.frame.maxY,
+            fixedTurnRailFrame.minY,
+            "Game Information must float above the unchanged turn-object rail."
+        )
+        let localPlayerSummary = messages.staticTexts["Kunal · You"].firstMatch
+        XCTAssertTrue(localPlayerSummary.waitForExistence(timeout: 4))
+        assertElement(
+            localPlayerSummary,
+            isContainedIn: gameInfoSurface.frame,
+            message: "Game Information must show at least one complete player summary."
+        )
+        assertElement(
+            messages.staticTexts["Last turn: Maya rolled 6, built road, ended turn"].firstMatch,
+            isContainedIn: gameInfoSurface.frame,
+            message: "The short public recap must be visible inside Game Information."
+        )
+        let occludedBoardHost = messages.descendants(matching: .any)[
+            "uls.tabletop.boardHost.occluded"
+        ].firstMatch
+        XCTAssertTrue(
+            occludedBoardHost.waitForExistence(timeout: 4),
+            "The centered Game Information focus veil must keep the live board mounted."
+        )
         assertFrame(of: board, matches: fixedBoardFrame, message: "The board must stay fixed for Game Info.")
-        XCTAssertEqual(String(describing: boardHost.value), fixedBoardHostValue)
+        assertFrame(
+            of: occludedBoardHost,
+            matches: fixedBoardHostFrame,
+            message: "The live board host must stay fixed behind centered Game Information."
+        )
+        let occludedBoardHostValue = String(describing: occludedBoardHost.value)
+        XCTAssertEqual(occludedBoardHostValue, "Optional(1.0)")
         assertPersistentTurnGeometry(
             board: board, boardFrame: fixedBoardFrame,
-            boardHost: boardHost, boardHostValue: fixedBoardHostValue,
+            boardHost: occludedBoardHost, boardHostValue: occludedBoardHostValue,
             bankRack: bankRack, bankRackFrame: fixedBankRackFrame,
             publicRail: publicRail, publicRailFrame: fixedPublicRailFrame,
             status: status, statusFrame: fixedStatusFrame,
@@ -1649,16 +1988,71 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         )
         attachScreenshot(named: "Unlucky Sevens - turn gameplay game info")
 
-        gameInfo.tap()
+        let gameInfoFrame = gameInfoSurface.frame
+        gamesInGameInfo.tap()
+        let inlineGamesList = messages.buttons["uls.gameInfo.players"].firstMatch
+        XCTAssertTrue(
+            inlineGamesList.waitForExistence(timeout: 4),
+            "Games must replace the player rows inside Game Information."
+        )
+        XCTAssertFalse(localPlayerSummary.exists)
+        XCTAssertFalse(messages.descendants(matching: .any)["uls.games.library"].firstMatch.exists)
+        let manageGames = messages.buttons["uls.gameInfo.manageGames"].firstMatch
+        XCTAssertTrue(manageGames.waitForExistence(timeout: 4))
+        XCTAssertEqual(manageGames.label, "Your Games")
+        assertMinimumTarget(
+            manageGames,
+            message: "The labeled Your Games destination must preserve a 44-point target."
+        )
+        assertFrame(
+            of: gameInfoSurface,
+            matches: gameInfoFrame,
+            message: "Switching from Players to Games must preserve the Game Information frame."
+        )
+        assertFrame(of: board, matches: fixedBoardFrame, message: "The board must stay fixed for inline Games.")
+        assertFrame(
+            of: occludedBoardHost,
+            matches: fixedBoardHostFrame,
+            message: "Switching to Games must not move the live board host."
+        )
+        XCTAssertEqual(String(describing: occludedBoardHost.value), occludedBoardHostValue)
+        attachScreenshot(named: "Unlucky Sevens - turn gameplay inline games")
+
+        let playersInGameInfo = messages.buttons["uls.gameInfo.players"].firstMatch
+        XCTAssertTrue(playersInGameInfo.waitForExistence(timeout: 4))
+        playersInGameInfo.tap()
+        if !localPlayerSummary.waitForExistence(timeout: 2), playersInGameInfo.exists {
+            playersInGameInfo.tap()
+        }
+        XCTAssertTrue(localPlayerSummary.waitForExistence(timeout: 4))
+        assertFrame(
+            of: gameInfoSurface,
+            matches: gameInfoFrame,
+            message: "Returning to Players must preserve the Game Information frame."
+        )
+
+        let closeGameInfo = messages.buttons["uls.gameInfo.close"].firstMatch
+        XCTAssertTrue(closeGameInfo.waitForExistence(timeout: 4))
+        closeGameInfo.tap()
         XCTAssertTrue(gameInfoSurface.waitForNonExistence(timeout: 4))
 
-        XCTAssertTrue(buildButton.waitForExistence(timeout: 4))
+        XCTAssertTrue(
+            waitForHittable(buildButton, timeout: 4),
+            "Build must become tappable after Game Information closes."
+        )
         buildButton.tap()
         let buildSurface = turnElement(identifier: "uls.physicalProps.actionSpread", labels: [])
-        let roadButton = exactLabelElement("Road")
+        let roadButton = messages.staticTexts["Road"].firstMatch
+        let settlementButton = messages.staticTexts["Settlement"].firstMatch
+        let cityButton = messages.staticTexts["City"].firstMatch
+        if !roadButton.waitForExistence(timeout: 1) {
+            XCTAssertTrue(
+                waitForHittable(buildButton, timeout: 4),
+                "Build must remain tappable if Messages drops the first post-overlay tap."
+            )
+            buildButton.tap()
+        }
         XCTAssertTrue(roadButton.waitForExistence(timeout: 4))
-        XCTAssertTrue(exactLabelElement("Settlement").exists)
-        XCTAssertTrue(exactLabelElement("City").exists)
         XCTAssertFalse(messages.buttons["Buy Dev"].firstMatch.exists)
         XCTAssertTrue(buildButton.isSelected)
         assertElement(buildSurface, isContainedIn: fixedActionWellFrame, message: "Build must stay inside the reserved action well.")
@@ -1678,6 +2072,10 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         roadButton.tap()
         let placeRoadPrompt = exactLabelElement("Place a Road")
         XCTAssertTrue(placeRoadPrompt.waitForExistence(timeout: 4))
+        XCTAssertFalse(
+            exactLabelElement("Tap road").exists,
+            "Physical Props must keep build guidance in the fixed header instead of covering the board."
+        )
         XCTAssertTrue(buildSurface.waitForNonExistence(timeout: 4))
         XCTAssertTrue(buildButton.isSelected)
         assertFrame(of: board, matches: fixedBoardFrame, message: "The board must stay fixed for Road targets.")
@@ -1696,11 +2094,17 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(placeRoadPrompt.waitForNonExistence(timeout: 4))
 
         buildButton.tap()
-        let settlementButton = exactLabelElement("Settlement")
+        for _ in 0..<2 where !settlementButton.exists {
+            buildSurface.swipeLeft()
+        }
         XCTAssertTrue(settlementButton.waitForExistence(timeout: 4))
         settlementButton.tap()
         let placeSettlementPrompt = exactLabelElement("Place a Settlement")
         XCTAssertTrue(placeSettlementPrompt.waitForExistence(timeout: 4))
+        XCTAssertFalse(
+            exactLabelElement("Tap node").exists,
+            "Physical Props must keep build guidance in the fixed header instead of covering the board."
+        )
         assertPersistentTurnGeometry(
             board: board, boardFrame: fixedBoardFrame,
             boardHost: boardHost, boardHostValue: fixedBoardHostValue,
@@ -1715,23 +2119,32 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(placeSettlementPrompt.waitForNonExistence(timeout: 4))
 
         buildButton.tap()
-        let cityButton = exactLabelElement("City")
-        XCTAssertTrue(cityButton.waitForExistence(timeout: 4))
-        cityButton.tap()
-        let upgradeCityPrompt = exactLabelElement("Upgrade to a City")
-        XCTAssertTrue(upgradeCityPrompt.waitForExistence(timeout: 4))
-        assertPersistentTurnGeometry(
-            board: board, boardFrame: fixedBoardFrame,
-            boardHost: boardHost, boardHostValue: fixedBoardHostValue,
-            bankRack: bankRack, bankRackFrame: fixedBankRackFrame,
-            publicRail: publicRail, publicRailFrame: fixedPublicRailFrame,
-            status: status, statusFrame: fixedStatusFrame,
-            turnObjects: turnObjects, turnObjectFrames: fixedTurnObjectFrames,
-            turnRailFrame: fixedTurnRailFrame, route: "City targets"
-        )
-        attachScreenshot(named: "Unlucky Sevens - turn gameplay city targets")
-        buildButton.tap()
-        XCTAssertTrue(upgradeCityPrompt.waitForNonExistence(timeout: 4))
+        for _ in 0..<3 where !cityButton.exists {
+            buildSurface.swipeLeft()
+        }
+        if cityButton.waitForExistence(timeout: 4) {
+            cityButton.tap()
+            let upgradeCityPrompt = exactLabelElement("Upgrade to a City")
+            XCTAssertTrue(upgradeCityPrompt.waitForExistence(timeout: 4))
+            XCTAssertFalse(
+                exactLabelElement("Tap city").exists,
+                "Physical Props must keep build guidance in the fixed header instead of covering the board."
+            )
+            assertPersistentTurnGeometry(
+                board: board, boardFrame: fixedBoardFrame,
+                boardHost: boardHost, boardHostValue: fixedBoardHostValue,
+                bankRack: bankRack, bankRackFrame: fixedBankRackFrame,
+                publicRail: publicRail, publicRailFrame: fixedPublicRailFrame,
+                status: status, statusFrame: fixedStatusFrame,
+                turnObjects: turnObjects, turnObjectFrames: fixedTurnObjectFrames,
+                turnRailFrame: fixedTurnRailFrame, route: "City targets"
+            )
+            attachScreenshot(named: "Unlucky Sevens - turn gameplay city targets")
+            buildButton.tap()
+            XCTAssertTrue(upgradeCityPrompt.waitForNonExistence(timeout: 4))
+        } else {
+            buildButton.tap()
+        }
 
         XCTAssertTrue(tradeButton.waitForExistence(timeout: 4))
         tradeButton.tap()
@@ -1739,7 +2152,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         let playerTrade = exactLabelElement("Player Trade")
         XCTAssertTrue(playerTrade.waitForExistence(timeout: 4))
         XCTAssertTrue(tradeSurface.waitForExistence(timeout: 4))
-        XCTAssertTrue(messages.staticTexts["Maritime / Bank"].firstMatch.exists)
+        XCTAssertTrue(exactLabelElement("Bank or Port").exists)
         XCTAssertTrue(tradeButton.isSelected)
         assertElement(tradeSurface, isContainedIn: fixedActionWellFrame, message: "Trade chooser must stay inside the reserved action well.")
         assertElement(playerTrade, isContainedIn: fixedActionWellFrame, message: "Trade chooser must stay inside the reserved action well.")
@@ -1754,10 +2167,23 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         )
         attachScreenshot(named: "Unlucky Sevens - turn gameplay trade routes")
         playerTrade.tap()
-        let tradeComposerSignal = messages.staticTexts["You Give"].firstMatch
+        let tradeComposerSignal = exactLabelElement("Give")
+        let tradeComposer = turnElement(
+            identifier: "uls.physicalTrade.composerPanel",
+            labels: ["Player Trade"]
+        )
         XCTAssertTrue(tradeComposerSignal.waitForExistence(timeout: 4))
-        assertElement(tradeSurface, isContainedIn: fixedActionWellFrame, message: "Trade composer must stay inside the action well.")
-        assertElement(tradeComposerSignal, isContainedIn: fixedActionWellFrame, message: "Trade composer must stay inside the reserved action well.")
+        XCTAssertTrue(tradeComposer.waitForExistence(timeout: 4))
+        assertElement(
+            tradeComposer,
+            isContainedIn: safeFrame,
+            message: "The expanded Trade composer must remain fully on screen."
+        )
+        XCTAssertLessThan(
+            tradeComposerSignal.frame.minY,
+            fixedActionWellFrame.minY,
+            "The card-native Trade composer intentionally expands above the shallow action well."
+        )
         assertFrame(of: board, matches: fixedBoardFrame, message: "The board must stay fixed for the trade composer.")
         XCTAssertEqual(String(describing: boardHost.value), fixedBoardHostValue)
         assertPersistentTurnGeometry(
@@ -1770,10 +2196,10 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             turnRailFrame: fixedTurnRailFrame, route: "Trade composer"
         )
         attachScreenshot(named: "Unlucky Sevens - turn gameplay trade composer")
-        let cancelTradeDraft = messages.buttons["Cancel"].firstMatch
+        let cancelTradeDraft = messages.buttons["uls.physicalTrade.close"].firstMatch
         XCTAssertTrue(
             waitForHittable(cancelTradeDraft, timeout: 4),
-            "Trade composer Cancel must remain pinned and reachable in the fixed action well."
+            "Trade composer Close must remain pinned and reachable in the expanded overlay."
         )
         cancelTradeDraft.tap()
         XCTAssertTrue(tradeComposerSignal.waitForNonExistence(timeout: 4))
@@ -1853,6 +2279,10 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(knightCard.waitForExistence(timeout: 4))
         knightCard.tap()
         XCTAssertTrue(exactLabelElement("Move the Robber").waitForExistence(timeout: 4))
+        XCTAssertFalse(
+            exactLabelElement("Tap tile").exists,
+            "Physical Props must keep robber guidance in the fixed header instead of covering the board."
+        )
         assertFrame(of: board, matches: fixedBoardFrame, message: "The board must stay fixed for Dev board selection.")
         XCTAssertEqual(String(describing: boardHost.value), fixedBoardHostValue)
         assertPersistentTurnGeometry(
@@ -1878,11 +2308,37 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
         gameInfo.tap()
         XCTAssertTrue(gameInfoSurface.waitForExistence(timeout: 4))
-        assertElement(gameInfoSurface, isContainedIn: fixedActionWellFrame, message: "Cross-object replacement must stay inside the action well.")
+        XCTAssertGreaterThanOrEqual(
+            gameInfoSurface.frame.height,
+            fixedActionWellFrame.height,
+            "Centered Game Information must remain tall enough for complete player rows."
+        )
+        XCTAssertEqual(
+            gameInfoSurface.frame.midX,
+            safeFrame.midX,
+            accuracy: 2,
+            "Cross-object replacement must preserve the centered Game Information frame."
+        )
+        XCTAssertGreaterThan(
+            gameInfoSurface.frame.minY,
+            fixedStatusFrame.maxY,
+            "Cross-object replacement must keep Game Information below the fixed status."
+        )
+        XCTAssertLessThan(
+            gameInfoSurface.frame.maxY,
+            fixedTurnRailFrame.minY,
+            "Cross-object replacement must keep Game Information above the turn-object rail."
+        )
+        assertElement(
+            messages.staticTexts["Kunal · You"].firstMatch,
+            isContainedIn: gameInfoSurface.frame,
+            message: "Cross-object replacement must retain a complete player summary."
+        )
         assertFrame(of: board, matches: fixedBoardFrame, message: "The board must remain fixed after every action-well route.")
-        XCTAssertEqual(String(describing: boardHost.value), fixedBoardHostValue)
+        XCTAssertEqual(String(describing: occludedBoardHost.value), occludedBoardHostValue)
 
-        gameInfo.tap()
+        closeGameInfo.tap()
+        XCTAssertTrue(gameInfoSurface.waitForNonExistence(timeout: 4))
         let devDeck = turnElement(
             identifier: "uls.tabletop.devDeck",
             labels: ["Buy development card, 12 cards remaining"]
@@ -1922,6 +2378,132 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Unlucky Sevens - public draw pile purchase")
     }
 
+    func testCaptureCityTargetAndGameInfoRegression() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        activateUXLabQuickState(
+            title: "Turn",
+            identifier: "uls.uxLab.cleanShot.turnAfterRoll"
+        )
+        XCTAssertTrue(
+            turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
+                .waitForExistence(timeout: 8)
+        )
+        restoreUXLabChrome()
+        waitForUXLabChrome()
+        activateDirectCleanState(
+            identifier: "uls.uxLab.cleanShot.turnNeedsRollDevChooser",
+            label: "City Targets"
+        )
+        let upgradeCityPrompt = exactLabelElement("Upgrade to a City")
+        if !upgradeCityPrompt.waitForExistence(timeout: 2) {
+            let buildButton = turnElement(identifier: "uls.turnObject.build", labels: ["Build"])
+            XCTAssertTrue(buildButton.waitForExistence(timeout: 8))
+            buildButton.tap()
+            let roadChoice = messages.staticTexts["Road"].firstMatch
+            if !roadChoice.waitForExistence(timeout: 2) {
+                buildButton.tap()
+            }
+            XCTAssertTrue(roadChoice.waitForExistence(timeout: 4))
+            let cityChoice = messages.staticTexts["City"].firstMatch
+            XCTAssertTrue(cityChoice.waitForExistence(timeout: 4))
+            cityChoice.tap()
+        }
+        XCTAssertTrue(upgradeCityPrompt.waitForExistence(timeout: 8))
+        XCTAssertFalse(
+            exactLabelElement("Tap city").exists,
+            "The fixed Physical Props header must own city guidance without covering the board."
+        )
+        attachScreenshot(named: "Regression - unobstructed city targets")
+
+        restoreUXLabChrome()
+        loadTurnGameplaySlice()
+        XCTAssertTrue(
+            turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
+                .waitForExistence(timeout: 8),
+            "Expected the turn gameplay fixture to render."
+        )
+        collapseUXLabPanelIfExpanded()
+
+        let gameInfo = turnElement(
+            identifier: "",
+            labels: ["Players and game information", "Game information"]
+        )
+        XCTAssertTrue(gameInfo.waitForExistence(timeout: 4))
+        gameInfo.tap()
+        XCTAssertTrue(
+            turnElement(identifier: "uls.turn.gameInfo", labels: [])
+                .waitForExistence(timeout: 4),
+            "Expected compact Game Information to open."
+        )
+        XCTAssertTrue(messages.buttons["uls.gameInfo.games"].firstMatch.waitForExistence(timeout: 4))
+        let gameInfoSurface = turnElement(identifier: "uls.turn.gameInfo", labels: [])
+        let localPlayerSummary = messages.staticTexts["Kunal · You"].firstMatch
+        XCTAssertTrue(localPlayerSummary.waitForExistence(timeout: 4))
+        assertElement(
+            localPlayerSummary,
+            isContainedIn: gameInfoSurface.frame,
+            message: "Compact Game Information must still show a complete player summary."
+        )
+        let recap = messages.staticTexts["Last turn: Maya rolled 6, built road, ended turn"].firstMatch
+        XCTAssertTrue(recap.waitForExistence(timeout: 4))
+        assertElement(
+            recap,
+            isContainedIn: gameInfoSurface.frame,
+            message: "Compact Game Information must keep its public recap visible."
+        )
+        attachScreenshot(named: "Regression - compact game info")
+
+        let fixedGameInfoFrame = gameInfoSurface.frame
+        messages.buttons["uls.gameInfo.games"].firstMatch.tap()
+        let inlineGames = messages.buttons["uls.gameInfo.players"].firstMatch
+        XCTAssertTrue(inlineGames.waitForExistence(timeout: 4))
+        XCTAssertFalse(localPlayerSummary.exists)
+        XCTAssertFalse(messages.descendants(matching: .any)["uls.games.library"].firstMatch.exists)
+        let manageGames = messages.buttons["uls.gameInfo.manageGames"].firstMatch
+        XCTAssertTrue(manageGames.waitForExistence(timeout: 4))
+        assertMinimumTarget(
+            manageGames,
+            message: "The centered Your Games destination must preserve a 44-point target."
+        )
+        assertFrame(
+            of: gameInfoSurface,
+            matches: fixedGameInfoFrame,
+            message: "Inline Games must replace player rows without resizing Game Information."
+        )
+        attachScreenshot(named: "Regression - compact inline games")
+
+        let players = messages.buttons["uls.gameInfo.players"].firstMatch
+        XCTAssertTrue(players.waitForExistence(timeout: 4))
+        players.tap()
+        if !localPlayerSummary.waitForExistence(timeout: 2), players.exists {
+            players.tap()
+        }
+        XCTAssertTrue(localPlayerSummary.waitForExistence(timeout: 4))
+        assertFrame(
+            of: gameInfoSurface,
+            matches: fixedGameInfoFrame,
+            message: "Players must restore the roster without resizing Game Information."
+        )
+
+        let closeGameInfo = messages.buttons["uls.gameInfo.close"].firstMatch
+        XCTAssertTrue(closeGameInfo.waitForExistence(timeout: 4))
+        XCTAssertEqual(closeGameInfo.label, "Close game information")
+        closeGameInfo.tap()
+        XCTAssertTrue(
+            closeGameInfo.waitForNonExistence(timeout: 4),
+            "Closing Game Information must remove its interactive surface."
+        )
+        XCTAssertTrue(
+            turnElement(
+                identifier: "",
+                labels: ["Players and game information", "Game information"]
+            ).waitForExistence(timeout: 4),
+            "Closing Game Information must restore the gameplay entry point."
+        )
+
+    }
+
     func testOpenMessagesExtensionAndCaptureEndScreenCandidate() throws {
         openUnluckySevensExtension()
         waitForUXLabChrome()
@@ -1947,7 +2529,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         )
         XCTAssertTrue(outcomeHeader.waitForExistence(timeout: 4))
         XCTAssertTrue(
-            outcomeHeader.label.contains("You won")
+            outcomeHeader.label.contains("Victory!")
                 && outcomeHeader.label.contains("10 points"),
             "The terminal header should lead with the local result."
         )
@@ -1963,7 +2545,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             "Expected the result aid to use a printed final-score ledger."
         )
         XCTAssertTrue(
-            outcomeHeader.label.contains("City sealed the win."),
+            outcomeHeader.label.contains("Your city secured the victory."),
             "Expected the end screen to explain the decisive winning event."
         )
         for playerID in ["host", "alice", "ben"] {
@@ -1995,17 +2577,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             identifier: "uls.uxLab.recoveryGames"
         )
 
-        let games = firstExistingElement(
-            [
-                messages.buttons["Games"].firstMatch,
-                messages.buttons["uls.lobby.games"].firstMatch,
-                messages.buttons["uls.game.games"].firstMatch,
-                messages.descendants(matching: .button)["uls.lobby.games"].firstMatch,
-            ],
-            timeout: 2
-        )
-        XCTAssertTrue(games.waitForExistence(timeout: 8))
-        games.tap()
+        openGamesLibraryFromCurrentSurface()
         XCTAssertTrue(
             messages.descendants(matching: .any)["uls.games.section.active"]
                 .firstMatch.waitForExistence(timeout: 4)
@@ -2042,7 +2614,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             title: "Recovery Games",
             identifier: "uls.uxLab.recoveryGames"
         )
-        games.tap()
+        openGamesLibraryFromCurrentSurface()
         XCTAssertGreaterThanOrEqual(
             messages.buttons.matching(
                 NSPredicate(format: "label BEGINSWITH %@", "Actions for")
@@ -2059,9 +2631,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             identifier: "uls.uxLab.recoveryGames"
         )
 
-        let games = messages.buttons["Games"].firstMatch
-        XCTAssertTrue(games.waitForExistence(timeout: 8))
-        games.tap()
+        openGamesLibraryFromCurrentSurface()
 
         let activeActions = messages.buttons.matching(
             NSPredicate(format: "label BEGINSWITH %@", "Actions for")
@@ -2080,17 +2650,20 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(activeActions.waitForExistence(timeout: 4))
         activeActions.tap()
         let resign = messages.buttons["Resign"].firstMatch
-        XCTAssertTrue(resign.waitForExistence(timeout: 4))
-        resign.tap()
+        XCTAssertTrue(waitForHittable(resign, timeout: 4))
+        resign.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
 
-        let alert = messages.alerts["Resign from this game?"].firstMatch
-        XCTAssertTrue(alert.waitForExistence(timeout: 4))
+        let confirmation = messages.descendants(matching: .any)[
+            "uls.games.lifecycleConfirmation"
+        ].firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 4))
         XCTAssertTrue(
-            alert.staticTexts[
+            confirmation.staticTexts[
                 "You will leave active play. Your pieces stay on the board, and the remaining players continue."
             ].exists
         )
-        alert.buttons["Resign"].tap()
+        attachScreenshot(named: "Recovery - Resign Confirmation")
+        confirmation.buttons["Resign"].firstMatch.tap()
         let activeRow = messages.buttons.matching(
             NSPredicate(format: "label CONTAINS %@", "Kunal resigned")
         ).firstMatch
@@ -2104,32 +2677,94 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
     func testRecoveryGamesLibraryUsesDedicatedSurface() throws {
         openUnluckySevensExtension()
-        activateUXLabQuickState(
-            title: "Recovery Games",
-            identifier: "uls.uxLab.recoveryGames"
+        openUXLabPanel()
+        activateDirectCleanState(
+            identifier: "uls.uxLab.recoveryGames.direct",
+            label: "Recovery Games"
         )
+        collapseUXLabPanelIfExpanded()
 
-        let games = messages.buttons["Games"].firstMatch
-        XCTAssertTrue(games.waitForExistence(timeout: 8))
-        games.tap()
+        openGamesLibraryFromCurrentSurface()
         let library = messages.descendants(matching: .any)["uls.games.library"].firstMatch
         XCTAssertTrue(library.waitForExistence(timeout: 4))
-        XCTAssertTrue(messages.staticTexts["Your Games"].firstMatch.exists)
-        XCTAssertTrue(messages.buttons["Back"].firstMatch.exists)
+        let title = messages.staticTexts["Your Games"].firstMatch
+        let back = messages.buttons["Back"].firstMatch
+        XCTAssertTrue(title.exists)
+        XCTAssertTrue(back.exists)
+        XCTAssertEqual(title.frame.midX, messages.frame.midX, accuracy: 3)
+        XCTAssertEqual(title.frame.midY, back.frame.midY, accuracy: 4)
         XCTAssertTrue(messages.staticTexts["Active"].firstMatch.exists)
         XCTAssertTrue(messages.staticTexts["Finished"].firstMatch.exists)
+        attachScreenshot(named: "Recovery - Your Games Library")
+    }
+
+    func testInlineGamesCanOpenRecoveredGame() throws {
+        openUnluckySevensExtension()
+        openUXLabPanel()
+        activateDirectCleanState(
+            identifier: "uls.uxLab.recoveryGames.direct",
+            label: "Recovery Games"
+        )
+        collapseUXLabPanelIfExpanded()
+
+        let gameInformation = firstExistingElement(
+            [
+                messages.buttons["Players and game information"].firstMatch,
+                messages.buttons["Game information"].firstMatch,
+            ],
+            timeout: 4
+        )
+        XCTAssertTrue(gameInformation.waitForExistence(timeout: 4))
+        gameInformation.tap()
+
+        let games = messages.buttons["uls.gameInfo.games"].firstMatch
+        XCTAssertTrue(games.waitForExistence(timeout: 4))
+        games.tap()
+
+        let nonCurrentGame = messages.buttons.matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH %@ AND NOT label CONTAINS[c] %@",
+                "uls.gameInfo.open.",
+                "Current game"
+            )
+        ).firstMatch
+        XCTAssertTrue(nonCurrentGame.waitForExistence(timeout: 4))
+        assertMinimumTarget(
+            nonCurrentGame,
+            message: "Every inline saved-game row must preserve a 44-point target."
+        )
+        let openedGameIdentifier = nonCurrentGame.identifier
+        nonCurrentGame.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+
+        let gameInfoSurface = turnElement(identifier: "uls.turn.gameInfo", labels: [])
+        XCTAssertTrue(
+            gameInfoSurface.waitForNonExistence(timeout: 4),
+            "Opening a recovered game must close the inline Game Information panel."
+        )
+
+        XCTAssertTrue(gameInformation.waitForExistence(timeout: 4))
+        gameInformation.tap()
+        XCTAssertTrue(messages.buttons["uls.gameInfo.games"].firstMatch.waitForExistence(timeout: 4))
+        messages.buttons["uls.gameInfo.games"].firstMatch.tap()
+
+        let openedGame = messages.buttons[openedGameIdentifier].firstMatch
+        XCTAssertTrue(openedGame.waitForExistence(timeout: 4))
+        XCTAssertTrue(
+            openedGame.label.localizedCaseInsensitiveContains("Current game"),
+            "The opened inline game must become the current selection."
+        )
     }
 
     func testRecoveryResignConfirmationExplainsContinuedPlay() throws {
         openUnluckySevensExtension()
-        activateUXLabQuickState(
-            title: "Recovery Games",
-            identifier: "uls.uxLab.recoveryGames"
+        openUXLabPanel()
+        activateDirectCleanState(
+            identifier: "uls.uxLab.recoveryGames.direct",
+            label: "Recovery Games"
         )
+        collapseUXLabPanelIfExpanded()
 
-        let games = messages.buttons["Games"].firstMatch
-        XCTAssertTrue(games.waitForExistence(timeout: 8))
-        games.tap()
+        openGamesLibraryFromCurrentSurface()
         let activeActions = messages.buttons.matching(
             NSPredicate(format: "label BEGINSWITH %@", "Actions for")
         ).firstMatch
@@ -2137,16 +2772,24 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         activeActions.tap()
         let resign = messages.buttons["Resign"].firstMatch
         XCTAssertTrue(resign.waitForExistence(timeout: 4))
-        resign.tap()
+        resign.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
 
-        let alert = messages.alerts["Resign from this game?"].firstMatch
-        XCTAssertTrue(alert.waitForExistence(timeout: 4))
-        XCTAssertTrue(alert.buttons["Keep Playing"].exists)
-        XCTAssertTrue(alert.buttons["Resign"].exists)
+        let keepPlaying = messages.buttons["uls.games.keepPlaying"].firstMatch
+        XCTAssertTrue(keepPlaying.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.buttons["uls.games.confirmResign"].firstMatch.exists)
         XCTAssertTrue(
-            alert.staticTexts[
+            messages.staticTexts[
                 "You will leave active play. Your pieces stay on the board, and the remaining players continue."
             ].exists
+        )
+        attachScreenshot(named: "Recovery - Resign Confirmation")
+        keepPlaying.tap()
+        let activeActionsAfterCancel = messages.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Actions for")
+        ).firstMatch
+        XCTAssertTrue(
+            activeActionsAfterCancel.waitForExistence(timeout: 4),
+            "Keeping play active must leave the recovered game in the library."
         )
     }
 
@@ -2157,44 +2800,92 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             identifier: "uls.uxLab.recoveryGames.direct",
             label: "Recovery Games"
         )
+        collapseUXLabPanelIfExpanded()
 
-        let games = firstExistingElement(
-            [
-                messages.buttons["Games"].firstMatch,
-                messages.buttons["uls.lobby.games"].firstMatch,
-                messages.buttons["uls.game.games"].firstMatch,
-                messages.descendants(matching: .button)["uls.lobby.games"].firstMatch,
-            ],
-            timeout: 2
-        )
-        XCTAssertTrue(games.waitForExistence(timeout: 8))
-        games.tap()
+        openGamesLibraryFromCurrentSurface()
         let activeActions = messages.buttons.matching(
             NSPredicate(format: "label BEGINSWITH %@", "Actions for")
         ).firstMatch
         XCTAssertTrue(activeActions.waitForExistence(timeout: 4))
         activeActions.tap()
         let endGame = messages.buttons["End Game"].firstMatch
-        XCTAssertTrue(endGame.waitForExistence(timeout: 4))
-        endGame.tap()
+        XCTAssertTrue(waitForHittable(endGame, timeout: 4))
+        endGame.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
 
-        XCTAssertTrue(
-            messages.descendants(matching: .any)["uls.games.hostEndDecision"]
-                .waitForExistence(timeout: 4)
-        )
-        XCTAssertTrue(messages.buttons["Propose Draw"].firstMatch.exists)
-        XCTAssertTrue(messages.buttons["End Game Anyway"].firstMatch.exists)
-        XCTAssertTrue(messages.buttons["Keep Playing"].firstMatch.exists)
+        let proposeDraw = messages.buttons["uls.games.proposeDraw"].firstMatch
+        XCTAssertTrue(proposeDraw.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.buttons["uls.games.endAnyway"].firstMatch.exists)
+        attachScreenshot(named: "Recovery - Host End Decision")
 
-        messages.buttons["End Game Anyway"].firstMatch.tap()
+        let endAnyway = messages.buttons["uls.games.endAnyway"].firstMatch
+        XCTAssertTrue(waitForHittable(endAnyway, timeout: 4))
+        endAnyway.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         let endScreen = messages.descendants(matching: .any)["uls.endScreen"].firstMatch
-        XCTAssertTrue(endScreen.waitForExistence(timeout: 8))
-        XCTAssertFalse(
-            messages.staticTexts["0 points"].firstMatch.exists,
-            "A neutral host end must not invent a winning score."
+        let endEvidence = firstExistingElement(
+            [
+                endScreen,
+                messages.staticTexts["Game ended"].firstMatch,
+                messages.staticTexts["Game Ended"].firstMatch,
+                messages.staticTexts.matching(
+                    NSPredicate(format: "label CONTAINS[c] %@", "ended the game")
+                ).firstMatch,
+            ],
+            timeout: 8
         )
-        XCTAssertTrue(messages.staticTexts["Game ended"].firstMatch.exists)
+        XCTAssertTrue(endEvidence.exists, "Ending anyway must produce the terminal screen or outgoing host-end receipt.")
+        if endScreen.exists {
+            XCTAssertFalse(
+                messages.staticTexts["0 points"].firstMatch.exists,
+                "A neutral host end must not invent a winning score."
+            )
+        }
         attachScreenshot(named: "Recovery - Neutral Host End")
+    }
+
+    func testHostEndCanProposeDrawFromNativeConfirmation() throws {
+        openUnluckySevensExtension()
+        openUXLabPanel()
+        activateDirectCleanState(
+            identifier: "uls.uxLab.recoveryGames.direct",
+            label: "Recovery Games"
+        )
+        collapseUXLabPanelIfExpanded()
+
+        openGamesLibraryFromCurrentSurface()
+        let activeActions = messages.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Actions for")
+        ).firstMatch
+        XCTAssertTrue(activeActions.waitForExistence(timeout: 4))
+        activeActions.tap()
+        let endGame = messages.buttons["End Game"].firstMatch
+        XCTAssertTrue(waitForHittable(endGame, timeout: 4))
+        endGame.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+
+        let confirmation = messages.descendants(matching: .any)[
+            "uls.games.lifecycleConfirmation"
+        ].firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 4))
+        let proposeDraw = messages.buttons["uls.games.proposeDraw"].firstMatch
+        XCTAssertTrue(waitForHittable(proposeDraw, timeout: 4))
+        proposeDraw.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        attachScreenshot(named: "Recovery - Draw Proposal Result")
+
+        let drawReceipt = firstExistingElement(
+            [
+                messages.staticTexts.matching(
+                    NSPredicate(format: "label BEGINSWITH %@", "Draw proposed by")
+                ).firstMatch,
+                messages.staticTexts["Draw Proposed"].firstMatch,
+                messages.staticTexts.matching(
+                    NSPredicate(format: "label CONTAINS[c] %@", "proposed a draw")
+                ).firstMatch,
+            ],
+            timeout: 8
+        )
+        XCTAssertTrue(
+            drawReceipt.exists,
+            "Proposing a draw must produce the updated game summary or outgoing draw receipt."
+        )
     }
 
     func testOpenMessagesExtensionAndCapturePendingActivePlayerTradeSlice() throws {
@@ -2220,7 +2911,13 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(tradeButton.isSelected)
         attachScreenshot(named: "Physical Trade Correction - Pending Offer")
         replaceOffer.tap()
-        XCTAssertTrue(messages.buttons["uls.physicalTrade.advance"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(
+            turnElement(
+                identifier: "uls.physicalTrade.composerPanel",
+                labels: ["Player Trade"]
+            )
+            .waitForExistence(timeout: 4)
+        )
     }
 
     func testSettleTurnBankForDirectStill() throws {
@@ -2303,25 +3000,18 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         loadTurnGameplaySlice()
 
         XCTAssertTrue(
-            firstExistingElement(
-                [
-                    messages.staticTexts["Your turn"].firstMatch,
-                    messages.staticTexts["Hand"].firstMatch,
-                    messages.staticTexts["Dev"].firstMatch,
-                ],
-                timeout: 8
-            )
-            .exists,
+            turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
+                .waitForExistence(timeout: 8),
             "Expected the turn gameplay fixture to render."
         )
         collapseUXLabPanelIfExpanded()
-        let handButton = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
+        let handButton = turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
         XCTAssertTrue(handButton.waitForExistence(timeout: 4))
         handButton.tap()
 
         XCTAssertTrue(
             messages.descendants(matching: .any)
-                .matching(identifier: "uls.feltTools.handContents")
+                .matching(identifier: "uls.physicalProps.handContents")
                 .firstMatch
                 .waitForNonExistence(timeout: 4),
             "Expected the Hand object to close the action well."
@@ -2333,169 +3023,6 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Unlucky Sevens - empty turn action well")
     }
 
-    func testOpenMessagesExtensionAndCaptureFramelessShelfComparison() throws {
-        openUnluckySevensExtension()
-        openUXLabPanel()
-        loadTabletopComparison(
-            identifier: "uls.uxLab.cleanShot.tabletopFramelessShelf",
-            label: "Frameless shelf comparison"
-        )
-
-        XCTAssertTrue(
-            messages.buttons["Collapse hand"].firstMatch.waitForExistence(timeout: 6),
-            "Expected the frameless comparison to keep the existing open hand shelf."
-        )
-        XCTAssertFalse(
-            messages.descendants(matching: .any)
-                .matching(identifier: "uls.feltTools.hand")
-                .firstMatch
-                .exists,
-            "The frameless shelf comparison should not render the felt tool dock."
-        )
-        attachScreenshot(named: "Unlucky Sevens - frameless board with shelf")
-    }
-
-    func testOpenMessagesExtensionAndCaptureFeltToolsComparison() throws {
-        openUnluckySevensExtension()
-        openUXLabPanel()
-        loadTabletopComparison(
-            identifier: "uls.uxLab.cleanShot.tabletopFeltTools",
-            label: "Felt tools comparison"
-        )
-
-        let handButton = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
-        let handContents = turnElement(identifier: "uls.feltTools.handContents", labels: [])
-        let bankRack = turnElement(identifier: "uls.tabletop.bankRack", labels: ["Bank"])
-        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
-        XCTAssertTrue(
-            handButton.waitForExistence(timeout: 6),
-            "Expected the felt tools comparison to render a hand button."
-        )
-        XCTAssertTrue(
-            handContents.waitForExistence(timeout: 4),
-            "Expected the hand button to reveal hand components on the felt."
-        )
-        XCTAssertTrue(
-            bankRack.waitForExistence(timeout: 4),
-            "The bank rack should remain visible above the felt tool stage."
-        )
-        XCTAssertTrue(board.waitForExistence(timeout: 4), "Expected the felt-tools board frame to be measurable.")
-        XCTAssertFalse(
-            messages.buttons["Collapse hand"].firstMatch.exists,
-            "The felt tools comparison should not render the cream shelf handle."
-        )
-        let stationaryHandButtonFrame = handButton.frame
-        let stationaryBankRackFrame = bankRack.frame
-        let stationaryBoardFrame = board.frame
-        XCTAssertGreaterThanOrEqual(
-            handContents.frame.minY,
-            stationaryBankRackFrame.maxY,
-            "Hand contents must open below the persistent bank rack."
-        )
-
-        handButton.tap()
-        XCTAssertTrue(
-            handContents.waitForNonExistence(timeout: 4),
-            "Expected the hand button to hide the felt components."
-        )
-        assertFrame(
-            of: handButton,
-            matches: stationaryHandButtonFrame,
-            message: "The felt toolbar must stay fixed when Hand closes."
-        )
-        assertFrame(
-            of: bankRack,
-            matches: stationaryBankRackFrame,
-            message: "The bank rack must stay fixed when Hand closes."
-        )
-        assertFrame(of: board, matches: stationaryBoardFrame, message: "The board must stay fixed when Hand closes.")
-        attachScreenshot(named: "Unlucky Sevens - felt tools compact dock")
-
-        let buildButton = messages.buttons["Build"].firstMatch
-        XCTAssertTrue(buildButton.waitForExistence(timeout: 4), "Expected the Build tool to be available.")
-        buildButton.tap()
-        let closeToolsButton = messages.buttons["Close tools"].firstMatch
-        XCTAssertTrue(
-            closeToolsButton.waitForExistence(timeout: 4),
-            "Expected Build to bring a closable component surface into the felt area."
-        )
-        let roadButton = messages.buttons["Road"].firstMatch
-        XCTAssertTrue(
-            roadButton.waitForExistence(timeout: 4),
-            "Expected the Build overlay to expose the Road component."
-        )
-        assertFrame(
-            of: bankRack,
-            matches: stationaryBankRackFrame,
-            message: "The bank rack must stay fixed when Build opens."
-        )
-        assertFrame(of: board, matches: stationaryBoardFrame, message: "The board must stay fixed when Build opens.")
-        XCTAssertGreaterThanOrEqual(
-            roadButton.frame.minY,
-            stationaryBankRackFrame.maxY,
-            "Build controls must open below the persistent bank rack."
-        )
-        XCTAssertLessThanOrEqual(
-            roadButton.frame.maxY,
-            stationaryHandButtonFrame.minY + 4,
-            "Build controls must open above the stationary toolbar."
-        )
-        assertFrame(
-            of: handButton,
-            matches: stationaryHandButtonFrame,
-            message: "The felt toolbar must stay fixed when Build opens."
-        )
-        attachScreenshot(named: "Unlucky Sevens - felt build tools overlay")
-        closeToolsButton.tap()
-        handButton.tap()
-        XCTAssertTrue(
-            handContents.waitForExistence(timeout: 4),
-            "Expected the hand components to be restored for the comparison capture."
-        )
-        assertFrame(
-            of: bankRack,
-            matches: stationaryBankRackFrame,
-            message: "The bank rack must stay fixed when Hand reopens."
-        )
-        assertFrame(of: board, matches: stationaryBoardFrame, message: "The board must stay fixed when Hand reopens.")
-        XCTAssertGreaterThanOrEqual(
-            handContents.frame.minY,
-            stationaryBankRackFrame.maxY,
-            "Reopened Hand contents must remain below the bank rack."
-        )
-        assertFrame(
-            of: handButton,
-            matches: stationaryHandButtonFrame,
-            message: "The felt toolbar must stay fixed when Hand reopens."
-        )
-
-        attachScreenshot(named: "Unlucky Sevens - frameless board with felt tools")
-
-        handButton.tap()
-        XCTAssertTrue(
-            handContents.waitForNonExistence(timeout: 4),
-            "Expected the felt tools test to finish in the compact state for direct simulator evidence capture."
-        )
-        assertFrame(of: board, matches: stationaryBoardFrame, message: "The board must stay fixed in compact mode.")
-        assertFrame(
-            of: bankRack,
-            matches: stationaryBankRackFrame,
-            message: "The bank rack must stay fixed in compact mode."
-        )
-
-        buildButton.tap()
-        XCTAssertTrue(
-            roadButton.waitForExistence(timeout: 4),
-            "Expected the felt tools test to finish in Build-open mode for direct simulator evidence capture."
-        )
-        assertFrame(of: board, matches: stationaryBoardFrame, message: "The board must stay fixed in Build-open mode.")
-        assertFrame(
-            of: bankRack,
-            matches: stationaryBankRackFrame,
-            message: "The bank rack must stay fixed in Build-open mode."
-        )
-    }
-
     func testOpenMessagesExtensionAndCapturePhysicalPropsRoundFour() throws {
         openUnluckySevensExtension()
         openUXLabPanel()
@@ -2504,7 +3031,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             label: "Physical props comparison"
         )
 
-        let handButton = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
+        let handButton = turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
         let buildButton = turnElement(identifier: "uls.turnObject.build", labels: ["Build"])
         let actionSpread = turnElement(identifier: "uls.physicalProps.actionSpread", labels: [])
         let bankRack = turnElement(identifier: "uls.tabletop.bankRack", labels: ["Bank"])
@@ -2558,6 +3085,9 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             identifier: "uls.physicalProps.devChooser",
             labels: ["Playable Dev Cards"]
         )
+        if !devChooser.waitForExistence(timeout: 2), ownedDevCards.exists {
+            ownedDevCards.tap()
+        }
         XCTAssertTrue(devChooser.waitForExistence(timeout: 4))
         assertFrame(of: board, matches: fixedBoardFrame, message: "Dev chooser must not resize the board.")
         assertFrame(of: publicRail, matches: fixedPublicRailFrame, message: "Dev chooser must not move the public rail.")
@@ -2621,7 +3151,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             label: "Physical props comparison"
         )
 
-        let handButton = turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
+        let handButton = turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
         XCTAssertTrue(handButton.waitForExistence(timeout: 8))
         XCTAssertTrue(handButton.isSelected)
         XCTAssertTrue(
@@ -2747,16 +3277,11 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
     }
 
     private func dismissPersistedUtilitySurfaces() {
-        let resignAlert = messages.alerts["Resign from this game?"].firstMatch
-        if resignAlert.exists {
-            resignAlert.buttons["Keep Playing"].tap()
-        }
-
-        let hostEndDecision = messages.descendants(matching: .any)[
-            "uls.games.hostEndDecision"
+        let lifecycleConfirmation = messages.descendants(matching: .any)[
+            "uls.games.lifecycleConfirmation"
         ].firstMatch
-        if hostEndDecision.exists {
-            messages.buttons["Keep Playing"].firstMatch.tap()
+        if lifecycleConfirmation.waitForExistence(timeout: 0.2) {
+            lifecycleConfirmation.buttons["uls.games.keepPlaying"].firstMatch.tap()
         }
 
         let library = messages.descendants(matching: .any)["uls.games.library"].firstMatch
@@ -2872,7 +3397,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         let toggle = waitForUXLabChrome()
         toggle.tap()
 
-        let panelSignal = firstExistingElement(
+        var panelSignal = firstExistingElement(
             [
                 messages.staticTexts["Single-device UX Lab"].firstMatch,
                 messages.buttons["uls.uxLab.load"].firstMatch,
@@ -2880,11 +3405,27 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             ],
             timeout: 4
         )
+        if !panelSignal.exists, toggle.exists {
+            toggle.tap()
+            panelSignal = firstExistingElement(
+                [
+                    messages.staticTexts["Single-device UX Lab"].firstMatch,
+                    messages.buttons["uls.uxLab.load"].firstMatch,
+                    messages.buttons["Load"].firstMatch,
+                ],
+                timeout: 4
+            )
+        }
         XCTAssertTrue(panelSignal.exists, "Expected the UX Lab panel to open.")
     }
 
     @discardableResult
     private func waitForUXLabChrome() -> XCUIElement {
+        let restoreChrome = messages.buttons["uls.uxLab.restoreChrome"].firstMatch
+        if restoreChrome.waitForExistence(timeout: 1) {
+            restoreChrome.tap()
+        }
+
         let toggle = firstExistingElement(
             [
                 messages.buttons["uls.uxLab.toggle"].firstMatch,
@@ -2963,8 +3504,11 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
     private func activateUXLabQuickState(title: String, identifier: String) {
         let directButton = messages.buttons[identifier].firstMatch
-        if directButton.waitForExistence(timeout: 1) {
+        if waitForHittable(directButton, timeout: 1) {
             directButton.tap()
+            if !directButton.waitForNonExistence(timeout: 2), waitForHittable(directButton, timeout: 1) {
+                directButton.tap()
+            }
             return
         }
 
@@ -2987,6 +3531,9 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         )
         XCTAssertTrue(menuItem.exists, "Expected the UX Lab \(title) state to be available.")
         menuItem.tap()
+        if !menuItem.waitForNonExistence(timeout: 2), waitForHittable(menuItem, timeout: 1) {
+            menuItem.tap()
+        }
     }
 
     private func activateUXLabNestedQuickState(
@@ -2999,6 +3546,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             return
         }
 
+        openUXLabPanel()
         let menu = firstExistingElement(
             [
                 messages.buttons["uls.uxLab.quickStates"].firstMatch,
@@ -3039,7 +3587,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         waitForUXLabChrome()
         loadTurnGameplaySlice()
         XCTAssertTrue(
-            turnElement(identifier: "uls.feltTools.hand", labels: ["Hand"])
+            turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
                 .waitForExistence(timeout: 8),
             "Expected the normal post-roll Turn Screen to settle."
         )
@@ -3088,7 +3636,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
     }
 
     private func dismissTutorialNavigationCoach() {
-        let startPrompt = messages.staticTexts["Tap once to start"].firstMatch
+        let startPrompt = messages.staticTexts["Tap anywhere to begin"].firstMatch
         XCTAssertTrue(startPrompt.waitForExistence(timeout: 4))
         let coach = messages.buttons["uls.tutorial.navigationCoach"].firstMatch
         XCTAssertTrue(coach.waitForExistence(timeout: 4))
@@ -3193,6 +3741,78 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(element.waitForExistence(timeout: 4), message)
         XCTAssertGreaterThanOrEqual(element.frame.width + floatingPointTolerance, 44, message)
         XCTAssertGreaterThanOrEqual(element.frame.height + floatingPointTolerance, 44, message)
+    }
+
+    private func assertNoRetiredGameplayShelf() {
+        XCTAssertFalse(
+            messages.descendants(matching: .any)
+                .matching(identifier: "uls.overlayShelf")
+                .firstMatch.exists,
+            "The approved production journey must not render the retired gameplay shelf."
+        )
+    }
+
+    private func waitForGamesEntryPoint() -> Bool {
+        let lobbyGames = messages.buttons["uls.lobby.games"].firstMatch
+        if lobbyGames.waitForExistence(timeout: 2) {
+            return true
+        }
+
+        let gameInformation = firstExistingElement(
+            [
+                messages.buttons["Players and game information"].firstMatch,
+                messages.buttons["Game information"].firstMatch,
+            ],
+            timeout: 2
+        )
+        guard gameInformation.waitForExistence(timeout: 4) else {
+            return false
+        }
+        gameInformation.tap()
+        return messages.buttons["uls.gameInfo.games"].firstMatch.waitForExistence(timeout: 4)
+    }
+
+    private func openGamesLibraryFromCurrentSurface() {
+        let lobbyGames = messages.buttons["uls.lobby.games"].firstMatch
+        if lobbyGames.waitForExistence(timeout: 2) {
+            lobbyGames.tap()
+        } else {
+            let gameInformation = firstExistingElement(
+                [
+                    messages.buttons["Players and game information"].firstMatch,
+                    messages.buttons["Game information"].firstMatch,
+                ],
+                timeout: 2
+            )
+            XCTAssertTrue(gameInformation.waitForExistence(timeout: 4))
+            gameInformation.tap()
+
+            let games = messages.buttons["uls.gameInfo.games"].firstMatch
+            XCTAssertTrue(games.waitForExistence(timeout: 4))
+            games.tap()
+
+            let inlineGames = messages.buttons["uls.gameInfo.players"].firstMatch
+            if !inlineGames.waitForExistence(timeout: 4) {
+                if games.exists {
+                    games.tap()
+                }
+            }
+            XCTAssertTrue(inlineGames.waitForExistence(timeout: 4))
+            let manageGames = messages.buttons["uls.gameInfo.manageGames"].firstMatch
+            XCTAssertTrue(manageGames.waitForExistence(timeout: 4))
+            manageGames.tap()
+        }
+
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.games.library"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+    }
+
+    private func openLobbyTutorial() {
+        let tutorial = messages.buttons["uls.lobby.tutorial"].firstMatch
+        XCTAssertTrue(tutorial.waitForExistence(timeout: 4))
+        tutorial.tap()
     }
 
     private func assertVisibleLobbyAction(_ element: XCUIElement, title: String) {

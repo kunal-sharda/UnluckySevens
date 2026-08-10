@@ -17,6 +17,7 @@ struct BoardContainerView: View {
     let showsCreamFrame: Bool
     let boardContentVerticalOffset: CGFloat
     let frozenBoardImage: UIImage?
+    var bottomOcclusionHeight: CGFloat = 0
     let reloadToken: Int
     let onInteractionChanged: ((Bool) -> Void)?
     let onResizeFreezeChanged: ((BoardResizeFreezeState) -> Void)?
@@ -108,6 +109,7 @@ struct BoardContainerView: View {
                     showsIntegratedFrame: showsCreamFrame,
                     contentVerticalOffset: boardContentVerticalOffset,
                     frozenBoardImage: frozenBoardImage,
+                    bottomOcclusionHeight: bottomOcclusionHeight,
                     reloadToken: reloadToken,
                     onInteractionChanged: onInteractionChanged,
                     onResizeFreezeChanged: onResizeFreezeChanged,

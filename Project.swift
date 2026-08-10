@@ -125,6 +125,7 @@ let project = Project(
                 "MessagesExtension/Tests/**",
                 "MessagesExtension/Sources/Developer/UXTestFixture.swift",
                 "MessagesExtension/Sources/Developer/UXTestingAutoplayResolver.swift",
+                "MessagesExtension/Sources/Features/Tutorial/GameTutorialStateComposer.swift",
                 "MessagesExtension/Sources/Presentation/**",
                 "MessagesExtension/Sources/Board/GameBoardCameraController.swift",
                 "MessagesExtension/Sources/Board/GameBoardLayout.swift",

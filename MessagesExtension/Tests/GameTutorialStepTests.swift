@@ -12,7 +12,7 @@ final class GameTutorialStepTests: XCTestCase {
 
         XCTAssertEqual(final?.id, .strategy)
         XCTAssertEqual(final?.title, "Strategy")
-        XCTAssertTrue(final?.guidance.contains("Roads") == true)
+        XCTAssertTrue(final?.guidance.localizedCaseInsensitiveContains("roads") == true)
         XCTAssertTrue(final?.guidance.contains("Settlements") == true)
         XCTAssertTrue(final?.guidance.contains("cities") == true)
         XCTAssertTrue(final?.callouts.isEmpty == true)

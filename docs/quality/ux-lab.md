@@ -27,6 +27,7 @@ Current fixtures cover:
 - `waiting-on-alice`
 - `pending-discard`
 - `robber-move`
+- `robber-victim`
 - `trade-offer`
 - `game-over`
 - `Recovery Games`, which seeds one validated Active record and one validated Finished record for management journeys
@@ -47,9 +48,13 @@ Treat the XCUITest attachment and a direct simulator still as different evidence
 
 The clean setup gameplay capture path is `MessagesExtensionDesignSliceUITests/testOpenMessagesExtensionAndCaptureCleanSetupGameplaySlice`. It opens Messages through the same reusable navigation helpers, opens UX Lab, taps the `uls.uxLab.cleanShot.setupPlacement` control, waits for the setup board, asserts the UX Lab toggle is hidden, and attaches a screenshot after the debug chrome is hidden.
 
+The start-of-turn comparison path is `MessagesExtensionDesignSliceUITests/testOpenMessagesExtensionAndCaptureStartOfTurnComparison`. It captures the normal `turn-needs-roll` fixture, then uses the `Start Dev` item in the DEBUG quick-state menu to reload the same fixture with the pre-roll Dev Card route open. The direct DEBUG `uls.uxLab.cleanShot.turnNeedsRollDevChooser` control is reserved for a deterministic City-target fixture because the embedded Messages XCTest host can expose nested Build choices with invalid accessibility hit points. `testCaptureCityTargetAndGameInfoRegression` owns that direct City proof.
+
 The normal-turn gameplay capture path is `MessagesExtensionDesignSliceUITests/testOpenMessagesExtensionAndCaptureTurnGameplaySlice`. It opens the same UX Lab path, taps the DEBUG clean-shot `uls.uxLab.cleanShot.turnAfterRoll` control, waits for the `turn-after-roll` board, hides the UX Lab chrome, and exercises Hand, independent Bank reveal, Build, Trade, Hand-nested Dev, End, and Game Information routes. It asserts stable top/public-rail/board geometry and a stable DEBUG board-host identity while attaching route screenshots. Use the default Hand capture when judging board tile art independent of setup/build affordances.
 
 The active-proposer pending-trade capture path is `MessagesExtensionDesignSliceUITests/testOpenMessagesExtensionAndCapturePendingActivePlayerTradeSlice`. Its DEBUG clean-shot control loads `trade-offer` while acting as the proposer, then verifies the anchored `Pending` marker, live recipient responses, and replacement action inside the normal Turn Screen action well.
+
+The ordinary robber capture path is `MessagesExtensionDesignSliceUITests/testCaptureRobberPhysicalFlow`. It loads `robber-move` and `robber-victim` directly, rejects the retired command-bar and forced-flow surfaces, and verifies that the top bar, public rail, mounted board, and turn-object rail keep identical geometry as the prompt advances from `Move the Robber` to `Choose a Player`.
 
 The functional recovery/lifecycle paths are `testRecoveryGamesArchiveAndRestoreJourney`, `testRecoveryResendAndResignationContinuesJourney`, `testRecoveryGamesLibraryUsesDedicatedSurface`, `testRecoveryResignConfirmationExplainsContinuedPlay`, and `testHostEndOffersDrawBeforeUnilateralEnd`. They exercise the dedicated Games destination, local archive followed by later valid fixture restore, unchanged resend, non-terminal resignation, accurate confirmation copy, and the draw-first host-end soft guard. Because UX Lab applies publishes locally, these paths prove UI orchestration but not transcript delivery, session replacement, or cross-device agreement.
 

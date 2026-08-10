@@ -14,6 +14,7 @@ struct LiveGameBoardCanvasView: View {
     let showsIntegratedFrame: Bool
     let contentVerticalOffset: CGFloat
     let frozenBoardImage: UIImage?
+    let bottomOcclusionHeight: CGFloat
     let reloadToken: Int
     let onInteractionChanged: ((Bool) -> Void)?
     let onResizeFreezeChanged: ((BoardResizeFreezeState) -> Void)?
@@ -38,13 +39,13 @@ struct LiveGameBoardCanvasView: View {
                             renderModel: renderModel,
                             overlayModel: overlayModel,
                             interactionMode: interactionMode,
+                            bottomOcclusionHeight: bottomOcclusionHeight,
                             reloadToken: reloadToken,
                             onInteractionChanged: onInteractionChanged,
                             onResizeFreezeChanged: onResizeFreezeChanged,
                             onFreezeRecoveryReloadRequested: onFreezeRecoveryReloadRequested,
                             onTargetTap: onTargetTap
                         )
-                        .equatable()
                     }
                 }
                 .offset(y: contentVerticalOffset)

@@ -2,10 +2,6 @@
 
 This is concise design-facing context. Product behavior remains owned by [the MVP contract](docs/product-specs/mvp-contract.md) and [UI flows](docs/product-specs/ui-flows.md); current visual language lives in [DESIGN.md](DESIGN.md).
 
-## Register
-
-product
-
 ## Users
 
 Unlucky Sevens is for 3-4 players who want an async Catan-style game inside an iMessage thread. Players use it in short sessions from Messages, often returning to a game bubble after time away, so the UI needs to reorient them quickly and keep the next legal action obvious.

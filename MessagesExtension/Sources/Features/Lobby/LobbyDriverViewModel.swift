@@ -48,6 +48,9 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published private(set) var uxTestingIsActive: Bool = false
     @Published private(set) var uxTestingChromeHiddenForScreenshot: Bool = false
     @Published private(set) var uxTestingSettingsHookInvocationCount: Int = 0
+    @Published private(set) var uxTestingInitialGameMode: GameMode = .idle
+    @Published private(set) var uxTestingInitialGameRoute: GameShellRoute = .none
+    @Published private(set) var uxTestingForcesCityTargets: Bool = false
     private var uxTestingAutoplayIsRunning = false
     #endif
 
@@ -105,11 +108,22 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     func activateUXTestingFixture() {
-        activateUXTestingFixture(id: uxTestingSelectedFixtureID, actingAs: uxTestingActorID)
+        activateUXTestingFixture(
+            id: uxTestingSelectedFixtureID,
+            actingAs: uxTestingActorID
+        )
     }
 
-    func activateUXTestingFixture(id: String, actingAs actorID: String? = nil) {
+    func activateUXTestingFixture(
+        id: String,
+        actingAs actorID: String? = nil,
+        initialMode: GameMode = .idle,
+        initialRoute: GameShellRoute = .none
+    ) {
         let fixture = UXTestFixtures.fixture(id: id)
+        uxTestingForcesCityTargets = false
+        uxTestingInitialGameMode = initialMode
+        uxTestingInitialGameRoute = initialRoute
         uxTestingSelectedFixtureID = fixture.id
         uxTestingHumanActorID = resolvedUXTestingActorID(
             requestedActorID: uxTestingHumanActorID,
@@ -127,9 +141,31 @@ final class LobbyDriverViewModel: ObservableObject {
         gameShellResetToken &+= 1
     }
 
-    func activateCleanUXTestingFixture(id: String, actingAs actorID: String? = nil) {
-        activateUXTestingFixture(id: id, actingAs: actorID)
+    func activateCleanUXTestingFixture(
+        id: String,
+        actingAs actorID: String? = nil,
+        initialMode: GameMode = .idle,
+        initialRoute: GameShellRoute = .none
+    ) {
+        activateUXTestingFixture(
+            id: id,
+            actingAs: actorID,
+            initialMode: initialMode,
+            initialRoute: initialRoute
+        )
         uxTestingChromeHiddenForScreenshot = true
+    }
+
+    func activateCleanUXTestingCityFixture() {
+        uxTestingAutoplaysDummyTurns = false
+        activateCleanUXTestingFixture(
+            id: UXTestFixtures.defaultFixtureID,
+            actingAs: UXTestFixtures.host,
+            initialMode: .buildCity,
+            initialRoute: .build
+        )
+        uxTestingForcesCityTargets = true
+        gameShellResetToken &+= 1
     }
 
     func restoreUXTestingChrome() {
@@ -137,14 +173,17 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     func activateCleanLobbyInviteEntry() {
-        uxTestingIsActive = false
+        // Keep DEBUG fixture ownership active while the selected state is
+        // intentionally nil. Otherwise the next Messages selection poll may
+        // restore the last local-ledger game over the requested clean lobby.
+        uxTestingIsActive = true
         clearActiveContext()
         selectionStatus = "UX Lab loaded clean lobby invite entry"
         setLastError(nil)
         uxTestingChromeHiddenForScreenshot = true
     }
 
-    func seedUXTestingRecoveryGames() {
+    func seedUXTestingRecoveryGames(hideChrome: Bool = false) {
         let states = UXTestFixtures.recoveryStates
         guard let activeState = states.first else {
             setLastError("UX Lab recovery fixtures are unavailable.")
@@ -168,7 +207,7 @@ final class LobbyDriverViewModel: ObservableObject {
         uxTestingActorID = UXTestFixtures.host
         uxTestingHumanActorID = UXTestFixtures.host
         uxTestingIsActive = true
-        uxTestingChromeHiddenForScreenshot = false
+        uxTestingChromeHiddenForScreenshot = hideChrome
         setActiveContext(activeState, source: .uxTesting)
         gameLedgerStore.markActiveGame(activeState.gameId)
         refreshRecoveredGames()

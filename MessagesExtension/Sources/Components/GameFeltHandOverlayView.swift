@@ -41,7 +41,7 @@ struct GameFeltHandOverlayView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .clipped()
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("uls.feltTools.handContents")
+        .accessibilityIdentifier("uls.physicalProps.handContents")
         .transition(
             accessibilityReduceMotion
                 ? .opacity

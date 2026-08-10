@@ -223,7 +223,7 @@ final class GameShellLayoutMetricsTests: XCTestCase {
         )
 
         let centeredIsland = boardFrame.minY
-            + (boardFrame.height * 0.494)
+            + (boardFrame.height * GamePhysicalTurnLayout.canonicalIslandCenterYFraction)
             + correction
         XCTAssertEqual(
             centeredIsland,

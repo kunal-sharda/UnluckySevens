@@ -36,7 +36,7 @@ enum GamePhysicalTurnHeaderPrompt: String, CaseIterable, Equatable {
         case .waitingForDiscard: return "Waiting for Other Players"
         case .chooseDevCard: return "Choose a Dev Card"
         case .moveRobber: return "Move the Robber"
-        case .choosePlayer: return "Choose a Player"
+        case .choosePlayer: return "Select a Settlement Beside the Robber"
         case .chooseResource: return "Choose a Resource"
         case .chooseTwoResources: return "Choose Two Resources"
         case .chooseOneMore: return "Choose One More"

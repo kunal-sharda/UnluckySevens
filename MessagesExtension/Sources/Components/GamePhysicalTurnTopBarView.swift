@@ -6,7 +6,6 @@ struct GamePhysicalTurnTopBarView: View {
     var prompt: GamePhysicalTurnHeaderPrompt? = nil
     let isGameInfoOpen: Bool
     let onSettingsTap: () -> Void
-    let onGamesTap: () -> Void
     let onGameInfoTap: () -> Void
 
     init(
@@ -15,7 +14,6 @@ struct GamePhysicalTurnTopBarView: View {
         prompt: GamePhysicalTurnHeaderPrompt? = nil,
         isGameInfoOpen: Bool,
         onSettingsTap: @escaping () -> Void,
-        onGamesTap: @escaping () -> Void,
         onGameInfoTap: @escaping () -> Void
     ) {
         self.title = title
@@ -23,20 +21,11 @@ struct GamePhysicalTurnTopBarView: View {
         self.prompt = prompt
         self.isGameInfoOpen = isGameInfoOpen
         self.onSettingsTap = onSettingsTap
-        self.onGamesTap = onGamesTap
         self.onGameInfoTap = onGameInfoTap
     }
 
     var body: some View {
         HStack(spacing: 8) {
-            iconButton(
-                title: "Games",
-                systemImage: "square.stack.3d.up.fill",
-                isSelected: false,
-                action: onGamesTap
-            )
-            .accessibilityIdentifier("uls.game.games")
-
             iconButton(
                 title: "Settings",
                 systemImage: "gearshape.fill",

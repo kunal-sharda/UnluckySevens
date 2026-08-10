@@ -60,12 +60,12 @@ Additional requirements:
 - If no custom name exists, deterministic per-game aliases are used.
 - Reopening a real lobby bubble shows the normal roster/start surface even when only the host has joined.
 - New games default to the seeded balanced board strategy that avoids adjacent `6` and `8` tokens.
-- Every lobby state exposes Game Settings and Tutorial as separate destinations.
+- Every lobby state exposes explicit Game Settings and Tutorial rows directly. A compact die control opens Games directly without crowding the lobby identity bar.
 - The canonical publication chain is one invite `STATE`, joined/renamed lobby `STATE` updates, then one host-published start `STATE`.
 
 ### Presentation Direction
 
-The first-invite surface is a full-canvas cocktail-table invitation rather than a generic form. A real numberless board sits inside the physical table, four attached stations communicate the roster, and compact identity, read-only game settings, Tutorial, Games, and one primary action complete the surface. Invite, Join, Ready, and waiting states share this composition and keep one obvious next action.
+The first-invite surface is a full-canvas cocktail-table invitation rather than a generic form. A real numberless board sits inside the physical table, four attached stations communicate the roster, and compact identity, explicit Game Settings and Tutorial rows, a direct die control for Games, and one primary action complete the surface. Invite, Join, Ready, and waiting states share this composition and keep one obvious next action. Invite and Join both use `Playing as` as the visible identity label and anchor the identity editor plus primary action near the bottom of the available canvas so the table remains the visual focus.
 
 ## Initial Setup
 
@@ -134,11 +134,11 @@ The normal active-player screen has five stable zones:
 
 Behavioral requirements:
 
-- The top area exposes Settings, current turn/roll state, and Game Information.
+- The top area exposes Settings, current turn/roll state, and Game Information. Games uses a die and replaces the player rows inside that same panel; Players uses the matching people symbol and restores the roster without moving the board. In Games mode, the die-labeled header reads Your Games and opens full lifecycle management without introducing a mode-specific ellipsis or extra row.
 - Bank reveal shows qualitative `H`, `M`, or `L` levels only. Exact public counts remain concealed visually and through accessibility.
 - Public Dev Cards and privately owned Dev Cards remain distinct.
 - The public Dev pile is the sole Buy Dev affordance; Buy Dev does not appear under Build.
-- Hand owns the local resource inventory and owned Dev Cards.
+- The fixed Hand prop shows the local player's total resource-card count before opening. Hand owns the local resource inventory and owned Dev Cards; its open state shows per-resource counts.
 - Build exposes only executable Road, Settlement, and City choices.
 - Trade appears only when a player/maritime route can begin or a live offer can be inspected.
 - End appears only when ending is legal and opens Keep Playing / End Turn confirmation.
@@ -179,7 +179,7 @@ The upper instruction is the short action heading centered between Settings and 
 | Passive wait for required discards | `Waiting for Other Players` |
 | Dev Card chooser | `Choose a Dev Card` |
 | Knight robber destination | `Move the Robber` |
-| Knight victim selection | `Choose a Player` |
+| Knight victim selection | `Select a Settlement Beside the Robber` |
 | Monopoly resource selection | `Choose a Resource` |
 | Year of Plenty before a selection | `Choose Two Resources` |
 | Year of Plenty after one selection | `Choose One More` |
@@ -193,11 +193,11 @@ The current UI does not use the upper amber instruction in these states:
 - normal idle play, which shows current turn/dice status;
 - start of turn, which uses the focused Roll / Dev Card choice layer;
 - setup, which uses its setup-specific placement header;
-- active seven discard and robber resolution, which use blocking or in-board guidance; passive players waiting for required discards use the upper amber instruction;
+- active seven discard, which uses its blocking hand-card composer; passive players waiting for required discards use the upper amber instruction;
 - ordinary waiting, which uses player/turn status;
 - Settings, Game Information, Bank reveal, and End confirmation.
 
-This records current behavior, not yet an approved universal boundary. In particular, the owner must decide whether forced seven actions should also claim the upper amber instruction.
+This records current behavior, not yet an approved universal boundary. Ordinary robber movement and victim choice use the upper amber instruction; the active discard composer remains the forced-seven exception.
 
 ## Forced Seven, Discard, and Robber
 
@@ -214,7 +214,8 @@ This records current behavior, not yet an approved universal boundary. In partic
 
 - Forced actions look blocking, not like optional tray actions.
 - Discard uses the real hand-card language, shows progress toward the exact required count, permits correction, and enables Confirm only at the required total.
-- Robber and Dev Card board choices use compact in-board guidance rather than a large floating HUD.
+- Robber movement and victim choice form one continuous Physical Props board interaction. The fixed upper prompt advances from `Move the Robber` to `Select a Settlement Beside the Robber`; the mounted board, public rail, and turn-object rail do not move, and no generic forced-flow card covers the table.
+- Legal robber tiles and eligible victim settlements glow on the board. The player chooses whom to steal from by selecting that player's adjacent glowing settlement beside the robber; the selection continues through the existing Core-backed action path rather than a second presentation-owned rules path.
 - The active discarder sees `Discard Cards` and `Choose exactly [N] cards`. Passive players see `Waiting for Other Players` without a subtitle or another player’s action controls.
 
 ## Trade
@@ -271,7 +272,10 @@ Player Trade requirements:
 ### Settings and Rules
 
 - Settings opens as a centered tabletop overlay over the exact lobby or game surface that invoked it.
-- It contains only Skip Animations, read-only Standard/Balanced/10-point facts, and Show Rules.
+- The overlay is one compact felt utility panel: grouping comes from spacing and dividers rather than nested light cards.
+- Rules uses text-only section headings, keeps visible scroll indicators, and shows an initial text-only `Scroll for more` cue so below-fold sections are unmistakable.
+- After the final rule, Rules offers a Strategy row that opens the existing three-tip Strategy card as its own focused overlay. Closing Strategy returns to the same place in Rules.
+- Settings contains a direct Skip animations toggle without a redundant category heading, read-only Standard/Balanced/10-point facts, and a Rules destination immediately after those facts without a separate Help heading.
 - Rules remains inside the same utility context.
 - Tutorial is a separate lobby destination, not a Settings row.
 - Skip Animations is device-local and never enters canonical state, hashes, or transport.
@@ -366,7 +370,7 @@ Additional requirements:
 ### Recovery
 
 - The app tracks the latest locally recoverable state per game.
-- A dedicated Games destination is available from the fresh invitation/loading card and the current-game top bar; it never overlays or blocks an in-progress board.
+- A dedicated Games destination is available from the fresh invitation/loading card. Inside current-game Game Information, the die-labeled Games action swaps the player rows for a compact saved-game switcher in the same centered panel; it never takes a separate gameplay top-bar slot. The centered Your Games header is a 44-point lifecycle destination, and the dedicated lifecycle screen keeps its title centered independently of Back and the saved-game count.
 - Games separates Active and Finished records and identifies them by player names, phase/result, and update time.
 - The local list may include games retained from other Unlucky Sevens conversations. Publish actions enable only when the saved roster is compatible with the currently open Messages conversation; Messages does not expose a durable identifier that can distinguish two chats with the same participant set.
 - Joined players can Open, Resend Latest State, Archive locally, Resign, propose or vote on a draw, and—if they are the original host—End an Active game. Finished games remain openable, resendable, and locally archivable.
@@ -379,10 +383,11 @@ Additional requirements:
 ### Resignation and terminal states
 
 - Ordinary victory ends at 10 or more canonical VP and rejects later gameplay actions.
-- Any active joined player can resign during setup or turn after destructive confirmation, provided at least one active player remains.
+- A local victory leads with `Victory!` and the concise winning score (`10 points` in the standard fixture). The decisive summary says the city, settlement, or Victory Point `secured the victory`; award-winning actions use `Gaining Longest Road` or `Gaining Largest Army` with canonical casing.
+- Any active joined player can resign during setup or turn after a centered tabletop confirmation with explicit `Keep Playing` and destructive `Resign` actions, provided at least one active player remains.
 - Resignation is non-terminal. The player stays in roster/history; their pieces remain inert blockers, their hand returns to the bank, development cards retire, and all active rules skip them. Existing players continue from the next legal setup slot or turn.
 - Any active player can propose a draw. The proposer automatically approves; every remaining active player must approve. Rejection clears the proposal and play continues, with no timeout.
-- The original inviter remains host even after resigning and can end unilaterally. If no draw has been attempted, the host decision leads with `Propose Draw` while retaining `End Game Anyway`.
+- The original inviter remains host even after resigning and can end unilaterally. A centered tabletop confirmation leads with `Propose Draw` when no draw has been attempted while retaining destructive `End Game Anyway` and an explicit `Keep Playing` action.
 - Agreed draw and host end are neutral terminal results: no winner is declared, while final scores, recap, and board remain inspectable. Victory continues to present the winner.
 - `New Game` returns to the fresh invitation entry without sending, rematching, or archiving the completed game.
 

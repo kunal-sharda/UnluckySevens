@@ -30,12 +30,28 @@ struct MessagesRootView: View {
                     onGamesTap: showGames
                 )
             case .game:
+                #if DEBUG
+                GameShellView(
+                    viewModel: viewModel,
+                    onSettingsTap: showGameplaySettings,
+                    onGamesTap: showGames,
+                    preferences: appPreferences,
+                    initialMode: viewModel.uxTestingForcesCityTargets
+                        ? .buildCity
+                        : viewModel.uxTestingInitialGameMode,
+                    initialRoute: viewModel.uxTestingForcesCityTargets
+                        ? .build
+                        : viewModel.uxTestingInitialGameRoute
+                )
+                .id("\(viewModel.gameShellResetToken)-\(viewModel.uxTestingForcesCityTargets)")
+                #else
                 GameShellView(
                     viewModel: viewModel,
                     onSettingsTap: showGameplaySettings,
                     onGamesTap: showGames,
                     preferences: appPreferences
                 )
+                #endif
             }
         }
         .allowsHitTesting(utilityRoute == nil)

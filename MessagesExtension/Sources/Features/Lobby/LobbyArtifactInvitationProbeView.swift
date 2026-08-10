@@ -161,7 +161,7 @@ struct LobbyArtifactInvitationProbeView: View {
                 .accessibilityHidden(true)
 
             Text("Playing as")
-                .font(GameTheme.metaFont)
+                .font(GameTheme.metaFont.bold())
                 .foregroundStyle(LobbyInvitePalette.mutedPaper.opacity(0.76))
 
             TextField(

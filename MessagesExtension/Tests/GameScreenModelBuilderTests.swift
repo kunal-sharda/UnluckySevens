@@ -102,6 +102,7 @@ final class GameScreenModelBuilderTests: XCTestCase {
                 GameHandChip(resource: .ore, count: 4),
             ]
         )
+        XCTAssertEqual(model.handTray.totalCount, 11)
     }
 
     func testBuildKeepsObserverReadOnlyAndSecrecySafe() {
@@ -438,7 +439,7 @@ final class GameScreenModelBuilderTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(model.header.statusLine.title, "You won")
+        XCTAssertEqual(model.header.statusLine.title, "Victory!")
         XCTAssertTrue(model.header.statusLine.subtitle.contains("Final score:"))
         XCTAssertTrue(
             model.header.statusLine.subtitle.contains(
@@ -447,7 +448,7 @@ final class GameScreenModelBuilderTests: XCTestCase {
         )
         XCTAssertTrue(model.header.metaText.contains("Last turn:"))
         let endScreen = try XCTUnwrap(model.endScreen)
-        XCTAssertEqual(endScreen.winnerTitle, "You won")
+        XCTAssertEqual(endScreen.winnerTitle, "Victory!")
         XCTAssertEqual(endScreen.winningScoreText, "10 points")
         XCTAssertEqual(endScreen.players.map(\.id), ["B", "A", "C"])
         XCTAssertEqual(endScreen.players.map(\.victoryPoints), [10, 1, 1])
@@ -478,11 +479,51 @@ final class GameScreenModelBuilderTests: XCTestCase {
         )
         XCTAssertEqual(
             endScreen.recapText,
-            "City sealed the win."
+            "Your city secured the victory."
         )
         XCTAssertTrue(model.actionDock.primaryItems.allSatisfy { !$0.isEnabled })
         XCTAssertTrue(model.actionDock.utilityItems.isEmpty)
         XCTAssertTrue(model.actionDock.buildShelfItems.isEmpty)
+    }
+
+    func testBuildExplainsAwardWinningActionsWithCanonicalNames() throws {
+        let cases: [(AuditActionV1, String, String?, String?)] = [
+            (.buildRoad, "Gaining Longest Road secured the victory.", nil, "B"),
+            (.playKnight, "Gaining Largest Army secured the victory.", "B", nil),
+        ]
+
+        for (action, expected, largestArmyOwner, longestRoadOwner) in cases {
+            let state = makeState(
+                currentPlayer: "B",
+                resourcesByPlayer: ["A": .zero, "B": .zero, "C": .zero],
+                largestArmyOwner: largestArmyOwner,
+                longestRoadOwner: longestRoadOwner,
+                turnState: nil,
+                phase: .gameOver,
+                winnerPlayer: "B",
+                winningVictoryPoints: 10,
+                lastTurnRecap: TurnRecapV1(
+                    actor: "B",
+                    startRev: 6,
+                    endRev: 7,
+                    rollTotal: 8,
+                    actions: [action]
+                )
+            )
+
+            let model = GameScreenModelBuilder.build(
+                context: GameScreenContext(
+                    selectedState: state,
+                    actingAs: "B",
+                    contextBanner: "banner",
+                    contextMeta: "meta",
+                    actionAvailability: .none,
+                    modeAvailability: .none
+                )
+            )
+
+            XCTAssertEqual(try XCTUnwrap(model.endScreen).recapText, expected)
+        }
     }
 
     func testBuildNeutralHostEndHasNoWinningScore() throws {

@@ -1,21 +1,18 @@
 enum GameTabletopLayoutStyle: String, CaseIterable {
-    case framedShelf
-    case framelessShelf
-    case feltTools
     case physicalProps
 
     static let uxTestingDefaultsKey = "uls.uxLab.tabletopLayoutStyle"
 
     var showsCreamBoardFrame: Bool {
-        self == .framedShelf
+        false
     }
 
     var usesFeltTools: Bool {
-        self == .feltTools || self == .physicalProps
+        true
     }
 
     var usesPhysicalProps: Bool {
-        self == .physicalProps
+        true
     }
 }
 
@@ -28,16 +25,6 @@ enum GameTabletopLayoutStyleResolver {
         isForcedDiscard: Bool = false,
         testingStyle: GameTabletopLayoutStyle? = nil
     ) -> GameTabletopLayoutStyle {
-        if let testingStyle, testingStyle != .framedShelf {
-            return testingStyle
-        }
-
-        return isNormalPostRollTurn
-            || isNormalPreRollTurn
-            || hasNotPrimaryPlayerContext
-            || isSetupPlacement
-            || isForcedDiscard
-            ? .physicalProps
-            : .framedShelf
+        .physicalProps
     }
 }

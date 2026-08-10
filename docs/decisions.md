@@ -3,7 +3,7 @@
 This file records **locked product + architecture decisions** for the MVP.  
 If a change is desired, update this file **first**, then update code/tests.
 
-**Last updated:** 2026-07-29
+**Last updated:** 2026-08-02
 
 ---
 
@@ -129,3 +129,16 @@ Current transition rule:
 - Default UI shows **last turn recap only** (short).
 - Collapsible view shows **one round** of history.
 - Full audit log exists for dispute resolution but is hidden behind deliberate action (“Dispute mode”).
+
+---
+
+## 11) Approved lobby and utility-screen composition
+
+- The Lobby, Join, Settings, and Rules compositions approved on 2026-08-02 are locked. Changing their visual structure requires explicit user direction and an update to this decision.
+- Lobby opens Games directly from one compact die affordance. Explicit Game Settings and Tutorial rows sit below the table with matching text hierarchy and chevrons. Invite and Join both show a full-contrast `Playing as` identity treatment and keep the identity/action group near the bottom of the available canvas.
+- Settings presents Skip animations directly, then current-game facts, then the Rules destination without separate Experience or Help headings or explanatory animation copy.
+- Rules uses text-only content headings and a text-only initial scroll cue; functional navigation controls remain permitted. A final Strategy row opens the existing three-tip Strategy card as its own focused overlay, and closing it returns to Rules.
+- Players/Game Information uses people and die symbols for its two in-place modes, with no mode-specific ellipsis in the header. It uses a centered Trade-style translucent felt panel and focus veil while the mounted board, water frame, and turn-object rail remain fixed behind it. The inline Your Games title is centered and opens lifecycle management through a 44-point target; the dedicated Games screen centers its title independently of Back and count utilities. Resignation and host-end choices use the same centered felt panel, gold keyline, and focus veil as Players and Trade, with explicit safe and destructive actions.
+- The shared system-type contract and existing board-number rendering remain unchanged.
+- Local victory leads with `Victory!` and the concise winning score (`10 points` in the standard fixture). Decisive summaries use `secured the victory`; Road and Knight award wins are named as `Gaining Longest Road` and `Gaining Largest Army` with canonical casing.
+- Robber victim guidance explicitly tells the player to select an adjacent settlement beside the robber; this visible instruction does not change Core-owned victim eligibility.

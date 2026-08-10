@@ -80,6 +80,10 @@ Route specialists when triggered:
 
 Each reviewer must identify the constraints inspected, evidence actually opened or commands actually run, blocking findings, and final verdict. After a correction, re-run every review whose evidence changed.
 
+Reviewers audit the frozen contract and its authoritative sources. They may identify a production defect, missing evidence for an existing row, or a genuine sourced contract gap. They must not invent a new acceptance condition or require adjacent proof merely because it would be useful. A genuine gap is recorded as a dated contract amendment and communicated to the user before it expands implementation or validation.
+
+Failed exploratory or diagnostic bundles are not final evidence. Final evidence must be a clean bundle scoped to contracted checks, or clean independent per-check results when the tool cannot bundle them. Do not reject a clean contracted result because an unrelated exploratory check failed elsewhere, and do not cite an overall failed exploratory bundle as completion proof.
+
 ## Human Calibration
 
 Escalate when existing owner docs cannot distinguish viable directions, reviewer and implementer disagree about a judgment constraint, or the work establishes a new product/design principle. After the decision, promote it into the narrowest durable owner: a design principle, component, fixture, test, lint, or reviewer rule.

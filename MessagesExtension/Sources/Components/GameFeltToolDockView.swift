@@ -39,7 +39,7 @@ struct GameFeltToolDockView: View {
                         accessibilityHint: isHandOpen ? "Closes your hand" : "Shows your hand",
                         action: onToggleHand
                     )
-                    .accessibilityIdentifier("uls.feltTools.hand")
+                    .accessibilityIdentifier("uls.physicalProps.hand")
                 } else if let item = slot.actionItem {
                     actionObject(item)
                 } else {

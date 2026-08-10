@@ -42,7 +42,23 @@ Use `make release-gate PLAN=<release-critical-plan>` for release or handoff clai
 
 Run these validation commands serially. Do not run `swift test` or `xcodebuild` in parallel on this repo; the Messages/simulator lane is prone to lock contention and misleading failures when multiple test or build processes overlap.
 
+## Validation Circuit Breaker
+
+Lock the exact commands, journeys, screenshots, and reviewers in the active verification contract before implementation. Validation proves that contract; it does not silently broaden it.
+
+- A failed check may trigger implementation work only when it demonstrates a production defect or a constraint gap traceable to the user request or an authoritative owner doc.
+- A newly discovered legitimate constraint requires a dated plan amendment with its source, acceptance boundary, and proof method. Update the user before beginning the expanded work.
+- Treat simulator launch failures, stale accessibility references, nondeterministic taps, result-bundle corruption, and other non-product failures as harness instability unless reproduced as a product defect.
+- For the same failing command or journey, allow the initial attempt plus at most two focused reruns. A rerun after a code or test fix counts toward that budget. When the budget is exhausted, stop, record the last evidence, and report the work as implemented but not verified or blocked as appropriate.
+- Do not add adjacent journeys, new assertions, or reviewer-requested proof after implementation unless they close a predeclared constraint or a formally amended contract gap.
+- Keep exploratory and failed diagnostic bundles out of final proof. Produce one clean final bundle containing only the contracted tests, or cite independent clean per-test results when bundling is not supported.
+- Run the completion gate once after contracted evidence is green. Retry it only after a relevant source/evidence correction or a documented transient infrastructure cause; unrelated failures are reported rather than chased inside the current slice.
+
+For player-facing visual work, show the user the representative inspected results as soon as the contracted observable proof is green. Administrative review and completion checks may continue afterward, but they must not delay the result update or start another visual iteration without authorization.
+
 `make practical-gate` defaults its simulator unit-test lane to `platform=iOS Simulator,name=iPhone 17,OS=latest`. Override `TEST_SIMULATOR_DESTINATION` when that device family is unavailable; keep the destination explicit so Xcode does not silently request an uninstalled newest runtime for an older simulator model. This lane skips `UnluckySevensUITests` because Messages UI tests require an explicit standalone-app install and controlled app-drawer state; run those through the XCUITest/UX Lab lanes below and attach their verdicts to the completion contract.
+
+After rebuilding `MessagesExtension` or the standalone Messages app, explicitly install the freshly built `UnluckySevensApp.app` with `xcrun simctl install` before any `test-without-building` screenshot run. That test action refreshes the test runner but does not guarantee that Messages replaces an already installed host app; compare the built and installed `MessagesExtension` executable hashes when a capture contradicts the current source.
 
 ## Canonical Generation and Tooling Boundaries
 
@@ -51,6 +67,8 @@ For agent validation, `bash ./scripts/gen.sh` is the only canonical project-gene
 Do not use direct `tuist generate` as a validation substitute. A raw generated workspace can look plausible while missing the repo-specific patch that keeps `UnluckySevensApp` resource-only for standalone Messages packaging.
 
 Do not open Xcode for agent validation or screenshot review. Use command-line builds, simulator commands, XCUITest harnesses, and DEBUG-only UX Lab controls.
+
+`python3 scripts/check-harness.py` recursively checks every production interface Swift source under `App/Sources` and `MessagesExtension/Sources` for the SF Pro family contract. The geometry-bound board number token in `GameBoardScene.swift` is the sole serif exception; stable numeric widths may use `monospacedDigit()` without changing type family.
 
 ## Documentation Freshness Gate
 

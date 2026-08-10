@@ -2,6 +2,9 @@
 **/*.xcworkspace
 DerivedData/
 docs/design/workbench/
+.impeccable/
+output/
+tmp/
 __pycache__/
 *.pyc
 Derived/

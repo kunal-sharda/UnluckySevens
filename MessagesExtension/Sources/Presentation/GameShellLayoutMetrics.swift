@@ -63,7 +63,7 @@ struct GamePhysicalTurnLayout: Equatable {
 
     // The authored port ring sits just above the SpriteKit host's geometric
     // midpoint. This renderer-owned ratio remains stable as the host scales.
-    private static let canonicalIslandCenterYFraction: CGFloat = 0.494
+    static let canonicalIslandCenterYFraction: CGFloat = 0.56
 
     let publicRailHeight: CGFloat
     let actionSpreadHeight: CGFloat

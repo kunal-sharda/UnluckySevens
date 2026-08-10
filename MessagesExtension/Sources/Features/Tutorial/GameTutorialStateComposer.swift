@@ -3,6 +3,12 @@ import ULS_CoreGame
 /// Deterministic, local-only states used to render the shipping tutorial.
 /// These states are never attached to a Messages conversation or a publishing callback.
 enum GameTutorialStateComposer {
+    private struct PiecePosition {
+        let settlements: [NodeID: String]
+        let cities: [NodeID: String]
+        let roads: [EdgeID: String]
+    }
+
     static let localPlayer = "tutorial-you"
     private static let maya = "tutorial-maya"
     private static let theo = "tutorial-theo"
@@ -81,6 +87,97 @@ enum GameTutorialStateComposer {
         return state
     }()
 
+    private static let completedSetupState: CoreGameStateV1 = {
+        var state = setupSettlementState
+
+        while state.phase == .setup {
+            let actor = state.currentPlayer
+            guard let step = state.setupState?.step else {
+                preconditionFailure("Tutorial setup lost its placement step.")
+            }
+
+            switch step {
+            case .placeSettlement:
+                let nodes = state.legalSetupSettlementNodes(for: actor)
+                guard !nodes.isEmpty,
+                      let next = try? apply(
+                          intent: .placeSetupSettlement(node: nodes[nodes.count / 2]),
+                          to: state,
+                          actor: actor
+                      )
+                else {
+                    preconditionFailure("Tutorial requires a legal completed setup.")
+                }
+                state = next
+
+            case .placeRoad:
+                guard let edge = state.legalSetupRoadEdges(for: actor).first,
+                      let next = try? apply(
+                          intent: .placeSetupRoad(edge: edge),
+                          to: state,
+                          actor: actor
+                      )
+                else {
+                    preconditionFailure("Tutorial requires a legal completed setup.")
+                }
+                state = next
+
+            case .done:
+                preconditionFailure("Tutorial setup remained active after its final placement.")
+            }
+        }
+
+        return state
+    }()
+
+    /// Builds the shared mid-game tutorial position from the completed legal setup,
+    /// then uses normal turn reducers for the extra road and city shown in lessons.
+    private static let defaultPositionState: CoreGameStateV1 = {
+        let state = completedSetupState
+
+        let buildReady = makeState(
+            rev: state.rev,
+            settlements: state.settlementsByNode,
+            cities: [:],
+            roads: state.roadsByEdge,
+            turnState: TurnStateV1(
+                step: .afterRoll,
+                lastRoll: DiceRollV1(d1: 3, d2: 5)
+            )
+        )
+
+        for edge in buildReady.legalBuildRoadEdges(for: localPlayer) {
+            guard let withRoad = try? apply(
+                intent: .buildRoad(edgeID: edge),
+                to: buildReady,
+                actor: localPlayer
+            ),
+            !withRoad.legalBuildSettlementNodes(for: localPlayer).isEmpty,
+            let cityNode = withRoad.legalBuildCityNodes(for: localPlayer).first,
+            let withCity = try? apply(
+                intent: .buildCity(nodeID: cityNode),
+                to: withRoad,
+                actor: localPlayer
+            )
+            else { continue }
+
+            return withCity
+        }
+
+        preconditionFailure("Tutorial requires legal road, settlement, and city choices.")
+    }()
+
+    private static let defaultPosition = PiecePosition(
+        settlements: defaultPositionState.settlementsByNode,
+        cities: defaultPositionState.citiesByNode,
+        roads: defaultPositionState.roadsByEdge
+    )
+
+#if DEBUG
+    static var completedSetupStateForTesting: CoreGameStateV1 { completedSetupState }
+    static var defaultPositionStateForTesting: CoreGameStateV1 { defaultPositionState }
+#endif
+
     private static let robberMoveState = makeState(
         rev: 12,
         turnState: TurnStateV1(
@@ -96,11 +193,11 @@ enum GameTutorialStateComposer {
                 to: robberMoveState,
                 actor: localPlayer
             ) else { continue }
-            if moved.turnState?.step == .needsRobberSteal {
+            if Set(moved.turnState?.eligibleStealVictims ?? []) == Set([maya, theo]) {
                 return moved
             }
         }
-        preconditionFailure("Tutorial requires a robber destination beside an opponent.")
+        preconditionFailure("Tutorial requires a robber destination beside both opponents.")
     }()
 
     private static func turnState(
@@ -121,9 +218,9 @@ enum GameTutorialStateComposer {
         devCards: [String: DevCardInventoryV1] = defaultDevCards,
         newDevCards: [String: DevCardInventoryV1] = defaultNewDevCards,
         revealedVictoryPoints: [String: Int] = [:],
-        settlements: [NodeID: String] = defaultSettlements,
-        cities: [NodeID: String] = defaultCities,
-        roads: [EdgeID: String] = defaultRoads,
+        settlements: [NodeID: String] = defaultPosition.settlements,
+        cities: [NodeID: String] = defaultPosition.cities,
+        roads: [EdgeID: String] = defaultPosition.roads,
         setupState: SetupStateV1? = nil,
         turnState: TurnStateV1?
     ) -> CoreGameStateV1 {
@@ -152,8 +249,8 @@ enum GameTutorialStateComposer {
             knightsPlayedByPlayer: [localPlayer: 3, maya: 1],
             largestArmyOwner: localPlayer,
             largestArmySize: 3,
-            longestRoadOwner: maya,
-            longestRoadLength: 5,
+            longestRoadOwner: nil,
+            longestRoadLength: 0,
             winnerPlayer: nil,
             winningVictoryPoints: 0,
             lastTurnRecap: nil,
@@ -190,7 +287,4 @@ enum GameTutorialStateComposer {
         localPlayer: DevCardInventoryV1(victoryPoint: 1),
     ]
 
-    private static let defaultSettlements = [4: localPlayer, 18: maya, 31: theo]
-    private static let defaultCities = [8: localPlayer, 25: maya]
-    private static let defaultRoads = [2: localPlayer, 3: localPlayer, 4: localPlayer, 17: maya, 18: maya, 29: theo]
 }

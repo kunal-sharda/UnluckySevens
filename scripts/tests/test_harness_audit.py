@@ -85,6 +85,55 @@ class HarnessAuditTests(unittest.TestCase):
         check_harness.check_imports(errors)
         self.assertEqual(errors, [])
 
+    def test_retired_gameplay_layout_route_is_reported(self) -> None:
+        self.write(
+            "MessagesExtension/Sources/Presentation/GameTabletopLayoutStyle.swift",
+            "let style = GameTabletopLayoutStyle.framedShelf\n",
+        )
+        errors: list[str] = []
+        check_harness.check_retired_gameplay_routes(errors)
+        self.assertTrue(any("retired gameplay layout route" in item for item in errors))
+
+    def test_physical_props_gameplay_layout_passes(self) -> None:
+        self.write(
+            "MessagesExtension/Sources/Presentation/GameTabletopLayoutStyle.swift",
+            "let style = GameTabletopLayoutStyle.physicalProps\n",
+        )
+        errors: list[str] = []
+        check_harness.check_retired_gameplay_routes(errors)
+        self.assertEqual(errors, [])
+
+    def test_non_sf_pro_interface_typography_is_reported(self) -> None:
+        self.write(
+            "MessagesExtension/Sources/Features/BadTypography.swift",
+            'Text("Bad").font(.system(.body, design: .rounded))\n',
+        )
+        errors: list[str] = []
+        check_harness.check_interface_typography(errors)
+        self.assertTrue(any("non-SF-Pro interface typography" in item for item in errors))
+
+    def test_board_number_serif_is_the_only_typography_exception(self) -> None:
+        self.write(
+            "MessagesExtension/Sources/Board/GameBoardScene.swift",
+            "let descriptor = systemFont.fontDescriptor.withDesign(.serif)\n",
+        )
+        self.write(
+            "MessagesExtension/Sources/Features/GoodTypography.swift",
+            'Text("Count").font(.body).monospacedDigit()\n',
+        )
+        errors: list[str] = []
+        check_harness.check_interface_typography(errors)
+        self.assertEqual(errors, [])
+
+    def test_additional_serif_usage_is_reported(self) -> None:
+        self.write(
+            "MessagesExtension/Sources/Features/BadTypography.swift",
+            "let descriptor = systemFont.fontDescriptor.withDesign(.serif)\n",
+        )
+        errors: list[str] = []
+        check_harness.check_interface_typography(errors)
+        self.assertTrue(any("non-SF-Pro interface typography" in item for item in errors))
+
     def test_core_target_dependency_is_reported(self) -> None:
         self.make_manifests()
         self.write(

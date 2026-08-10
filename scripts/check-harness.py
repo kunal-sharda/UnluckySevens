@@ -19,6 +19,20 @@ REFERENCE_MAX_FILE_BYTES = 1_048_576
 REFERENCE_MAX_TOTAL_BYTES = 10_485_760
 LINK = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 BINARY_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf", ".mov", ".mp4", ".xcresult", ".trace"}
+RETIRED_GAMEPLAY_LAYOUT_PATTERN = re.compile(r"\.(?:framedShelf|framelessShelf|feltTools)\b")
+FORBIDDEN_INTERFACE_FONT_PATTERNS = (
+    re.compile(r"\bFont\.custom\s*\("),
+    re.compile(r"\bUIFont\s*\(\s*name\s*:"),
+    re.compile(r"\.withDesign\s*\(\s*\.(?:serif|rounded|monospaced)\s*\)"),
+    re.compile(r"\bdesign\s*:\s*\.(?:serif|rounded|monospaced)\b"),
+    re.compile(r"\.monospaced\s*\(\s*\)"),
+    re.compile(r"\bUIFont\.monospacedSystemFont\s*\("),
+)
+BOARD_NUMBER_FONT_EXCEPTION = Path("MessagesExtension/Sources/Board/GameBoardScene.swift")
+INTERFACE_SOURCE_ROOTS = (
+    Path("App/Sources"),
+    Path("MessagesExtension/Sources"),
+)
 
 
 def error(errors: list[str], message: str) -> None:
@@ -136,6 +150,47 @@ def check_imports(errors: list[str]) -> None:
         for product in ("ULS_CoreGame", "ULS_Transport"):
             if f'.package(product: "{product}")' not in project_text:
                 error(errors, f"MessagesExtension project wiring must consume {product}")
+
+
+def check_retired_gameplay_routes(errors: list[str]) -> None:
+    source_root = ROOT / "MessagesExtension" / "Sources"
+    if not source_root.is_dir():
+        return
+    for swift_file in source_root.rglob("*.swift"):
+        text = swift_file.read_text(encoding="utf-8", errors="replace")
+        if RETIRED_GAMEPLAY_LAYOUT_PATTERN.search(text):
+            error(
+                errors,
+                f"retired gameplay layout route in production source: {swift_file.relative_to(ROOT)}",
+            )
+
+
+def check_interface_typography(errors: list[str]) -> None:
+    for source_root_path in INTERFACE_SOURCE_ROOTS:
+        source_root = ROOT / source_root_path
+        if not source_root.is_dir():
+            continue
+        for swift_file in source_root.rglob("*.swift"):
+            relative = swift_file.relative_to(ROOT)
+            for line_number, line in enumerate(
+                swift_file.read_text(encoding="utf-8", errors="replace").splitlines(),
+                start=1,
+            ):
+                for pattern in FORBIDDEN_INTERFACE_FONT_PATTERNS:
+                    match = pattern.search(line)
+                    if not match:
+                        continue
+                    is_board_number_exception = (
+                        relative == BOARD_NUMBER_FONT_EXCEPTION
+                        and ".fontDescriptor.withDesign(.serif)" in line
+                    )
+                    if is_board_number_exception:
+                        continue
+                    error(
+                        errors,
+                        f"non-SF-Pro interface typography at {relative}:{line_number}",
+                    )
+                    break
 
 
 def check_links(errors: list[str]) -> None:
@@ -298,6 +353,8 @@ def main() -> int:
     notices: list[str] = []
     check_contracts(errors, notices)
     check_imports(errors)
+    check_retired_gameplay_routes(errors)
+    check_interface_typography(errors)
     check_links(errors)
     check_references(errors, notices)
     if errors:
@@ -311,7 +368,8 @@ def main() -> int:
             print(f"- {item}")
     print(
         "Harness audit passed: active-plan schema/profiles, current-doc links and status boundaries, "
-        "selected mechanical architecture checks, workbench ownership, and design-reference admission/budgets passed. "
+        "selected mechanical architecture and gameplay-routing checks, workbench ownership, and "
+        "design-reference admission/budgets passed. "
         "Selected-plan completion and semantic ownership remain separate hard gates."
     )
     return 0

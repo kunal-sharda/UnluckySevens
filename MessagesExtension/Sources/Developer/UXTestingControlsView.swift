@@ -5,7 +5,7 @@ struct UXTestingControlsView: View {
     @ObservedObject var viewModel: LobbyDriverViewModel
     @State private var isExpanded = true
     @AppStorage(GameTabletopLayoutStyle.uxTestingDefaultsKey)
-    private var tabletopLayoutStyleRawValue = GameTabletopLayoutStyle.framedShelf.rawValue
+    private var tabletopLayoutStyleRawValue = GameTabletopLayoutStyle.physicalProps.rawValue
     @AppStorage(GameBoardOceanStyle.defaultsKey)
     private var oceanStyleRawValue = GameBoardOceanStyle.flat.rawValue
     @AppStorage(LobbyInviteDirection.defaultsKey)
@@ -23,6 +23,7 @@ struct UXTestingControlsView: View {
         VStack(alignment: .trailing, spacing: 8) {
             HStack(spacing: 8) {
                 quickStateMenu
+                startTurnDevChooserButton
                 toggleButton
             }
 
@@ -82,7 +83,7 @@ struct UXTestingControlsView: View {
                 Button("Join", systemImage: "person.badge.plus") {
                     activateCleanFixture(
                         id: UXTestFixtures.lobbyInviteID,
-                        style: .framedShelf,
+                        style: .physicalProps,
                         actingAs: UXTestFixtures.alice
                     )
                 }
@@ -91,7 +92,7 @@ struct UXTestingControlsView: View {
                 Button("Ready", systemImage: "checkmark.seal.fill") {
                     activateCleanFixture(
                         id: UXTestFixtures.lobbyReadyID,
-                        style: .framedShelf,
+                        style: .physicalProps,
                         actingAs: UXTestFixtures.host
                     )
                 }
@@ -107,6 +108,24 @@ struct UXTestingControlsView: View {
                 )
             }
             .accessibilityIdentifier("uls.uxLab.cleanShot.pendingDiscard")
+
+            Button("Robber Move", systemImage: "figure.fall") {
+                activateCleanFixture(
+                    id: "robber-move",
+                    style: .physicalProps,
+                    actingAs: UXTestFixtures.host
+                )
+            }
+            .accessibilityIdentifier("uls.uxLab.cleanShot.robberMove")
+
+            Button("Robber Victim", systemImage: "person.crop.circle.badge.questionmark") {
+                activateCleanFixture(
+                    id: UXTestFixtures.robberVictimID,
+                    style: .physicalProps,
+                    actingAs: UXTestFixtures.host
+                )
+            }
+            .accessibilityIdentifier("uls.uxLab.cleanShot.robberVictim")
 
             Button("Setup", systemImage: "camera.viewfinder") {
                 activateCleanFixture(
@@ -132,6 +151,15 @@ struct UXTestingControlsView: View {
             }
             .accessibilityIdentifier("uls.uxLab.cleanShot.setupHandoff")
 
+            Button("Pending", systemImage: "arrow.left.arrow.right") {
+                activateCleanFixture(
+                    id: UXTestFixtures.tradeOfferID,
+                    style: .physicalProps,
+                    actingAs: UXTestFixtures.alice
+                )
+            }
+            .accessibilityIdentifier("uls.uxLab.cleanShot.pendingTrade")
+
             Button("Start", systemImage: "dice.fill") {
                 activateCleanFixture(
                     id: UXTestFixtures.turnNeedsRollID,
@@ -139,6 +167,16 @@ struct UXTestingControlsView: View {
                 )
             }
             .accessibilityIdentifier("uls.uxLab.cleanShot.turnNeedsRoll")
+
+            Button("Start Dev", systemImage: "rectangle.stack.fill") {
+                tabletopLayoutStyleRawValue = GameTabletopLayoutStyle.physicalProps.rawValue
+                viewModel.activateCleanUXTestingFixture(
+                    id: UXTestFixtures.turnNeedsRollID,
+                    initialMode: .playDevCard,
+                    initialRoute: .devCards
+                )
+            }
+            .accessibilityIdentifier("uls.uxLab.cleanShot.turnNeedsRollDevChooser.menu")
 
             Button("Turn", systemImage: "play.rectangle") {
                 activateCleanFixture(
@@ -155,15 +193,6 @@ struct UXTestingControlsView: View {
                 )
             }
             .accessibilityIdentifier("uls.uxLab.cleanShot.gameOver")
-
-            Button("Pending", systemImage: "arrow.left.arrow.right") {
-                activateCleanFixture(
-                    id: UXTestFixtures.tradeOfferID,
-                    style: .physicalProps,
-                    actingAs: UXTestFixtures.alice
-                )
-            }
-            .accessibilityIdentifier("uls.uxLab.cleanShot.pendingTrade")
 
             Divider()
 
@@ -217,6 +246,19 @@ struct UXTestingControlsView: View {
                 )
         }
         .accessibilityIdentifier("uls.uxLab.quickStates")
+    }
+
+    private var startTurnDevChooserButton: some View {
+        Button {
+            tabletopLayoutStyleRawValue = GameTabletopLayoutStyle.physicalProps.rawValue
+            viewModel.activateCleanUXTestingCityFixture()
+        } label: {
+            Image(systemName: "building.2.fill")
+                .frame(width: 36, height: 36)
+        }
+        .buttonStyle(.bordered)
+        .accessibilityLabel("City Targets")
+        .accessibilityIdentifier("uls.uxLab.cleanShot.turnNeedsRollDevChooser")
     }
 
     private var toggleButton: some View {
@@ -292,7 +334,7 @@ struct UXTestingControlsView: View {
                 ) {
                     activateCleanFixture(
                         id: UXTestFixtures.lobbyInviteID,
-                        style: .framedShelf,
+                        style: .physicalProps,
                         actingAs: UXTestFixtures.alice
                     )
                 }
@@ -337,30 +379,6 @@ struct UXTestingControlsView: View {
                 ) {
                     lobbyInviteDirectionRawValue = LobbyInviteDirection.cocktailTableCandidate.rawValue
                     viewModel.activateCleanLobbyInviteEntry()
-                }
-
-                cleanShotChipButton(
-                    title: "No rim",
-                    systemImage: "square.dashed",
-                    accessibilityLabel: "Frameless shelf comparison",
-                    accessibilityIdentifier: "uls.uxLab.cleanShot.tabletopFramelessShelf"
-                ) {
-                    activateCleanFixture(
-                        id: UXTestFixtures.defaultFixtureID,
-                        style: .framelessShelf
-                    )
-                }
-
-                cleanShotChipButton(
-                    title: "Felt tools",
-                    systemImage: "hammer.fill",
-                    accessibilityLabel: "Felt tools comparison",
-                    accessibilityIdentifier: "uls.uxLab.cleanShot.tabletopFeltTools"
-                ) {
-                    activateCleanFixture(
-                        id: UXTestFixtures.defaultFixtureID,
-                        style: .feltTools
-                    )
                 }
 
                 cleanShotChipButton(
@@ -511,7 +529,7 @@ struct UXTestingControlsView: View {
                     accessibilityLabel: "Recovery Games",
                     accessibilityIdentifier: "uls.uxLab.recoveryGames.direct"
                 ) {
-                    viewModel.seedUXTestingRecoveryGames()
+                    viewModel.seedUXTestingRecoveryGames(hideChrome: true)
                 }
 
                 cleanShotButton(
@@ -533,7 +551,7 @@ struct UXTestingControlsView: View {
                 ) {
                     activateCleanFixture(
                         id: UXTestFixtures.defaultFixtureID,
-                        style: .framedShelf
+                        style: .physicalProps
                     )
                 }
 
@@ -597,10 +615,17 @@ struct UXTestingControlsView: View {
     private func activateCleanFixture(
         id: String,
         style: GameTabletopLayoutStyle,
-        actingAs actorID: String? = nil
+        actingAs actorID: String? = nil,
+        initialMode: GameMode = .idle,
+        initialRoute: GameShellRoute = .none
     ) {
         tabletopLayoutStyleRawValue = style.rawValue
-        viewModel.activateCleanUXTestingFixture(id: id, actingAs: actorID)
+        viewModel.activateCleanUXTestingFixture(
+            id: id,
+            actingAs: actorID,
+            initialMode: initialMode,
+            initialRoute: initialRoute
+        )
     }
 
 }

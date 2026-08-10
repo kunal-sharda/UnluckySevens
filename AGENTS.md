@@ -13,6 +13,7 @@ For non-trivial work, do these before finalizing:
 5. Use `make completion-gate PLAN=<path>` for profile-aware final validation. Reserve `make release-gate PLAN=<path>` and `make practical-gate` for release-critical work.
 6. End with a doc-freshness note that says which owner docs changed, which were intentionally unaffected, and what validation was or was not run.
 7. For qualifying work, keep a verification contract in the active ExecPlan and run `make completion-gate PLAN=<path>` before using the word complete.
+8. Lock the exact proof set before implementation and obey the validation circuit breaker in [docs/quality/qa.md](docs/quality/qa.md). Validation may expand scope only for a demonstrated production defect or a sourced contract gap; harness instability must stop and be reported after the retry budget.
 
 ## Source Of Truth
 
@@ -43,6 +44,7 @@ Use this order when reasoning about the repo:
 - Before any `xcodebuild -workspace UnluckySevens.xcworkspace ...` validation, run `bash ./scripts/gen.sh` in the same slice unless the current command sequence already did so.
 - Prefer the reusable Messages simulator and screenshot harnesses documented in [docs/quality/qa.md](docs/quality/qa.md). Manual simulator driving is a fallback for gaps; promote repeated manual steps into XCUITest helpers or DEBUG-only UX Lab controls.
 - Treat old generated workspace state as disposable. If a build result conflicts with the source tree or scripts, regenerate through `bash ./scripts/gen.sh` before diagnosing product code.
+- Do not silently turn failed exploratory validation into new product scope. Keep exploratory artifacts separate from final evidence, amend the active plan before adding a legitimate new constraint, and update the user before validation-driven scope expansion.
 
 ## Planning
 

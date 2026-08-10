@@ -4,6 +4,7 @@ struct GamePhysicalTurnPropRailView: View {
     let actionDock: GameActionDockModel
     let selectedDockKind: GameActionDockItem.Kind?
     let isHandOpen: Bool
+    let handCount: Int
     let hasPendingTrade: Bool
     let playerColor: Color
     let centersAvailableProps: Bool
@@ -53,8 +54,8 @@ struct GamePhysicalTurnPropRailView: View {
         if slot.kind == .hand, !isHandInteractive {
             propLabel(for: slot, isSelected: false)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(title(for: slot.kind))
-                .accessibilityValue("Available after the discard")
+                .accessibilityLabel(accessibilityLabel(for: slot.kind))
+                .accessibilityValue("Available after the required action")
                 .accessibilityRespondsToUserInteraction(false)
                 .allowsHitTesting(false)
         } else {
@@ -69,12 +70,8 @@ struct GamePhysicalTurnPropRailView: View {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier(accessibilityIdentifier(for: slot))
-            .accessibilityLabel(title(for: slot.kind))
-            .accessibilityValue(
-                slot.kind == .trade && hasPendingTrade
-                    ? "Pending offer"
-                    : ""
-            )
+            .accessibilityLabel(accessibilityLabel(for: slot.kind))
+            .accessibilityValue(accessibilityValue(for: slot.kind))
             .accessibilityHint(isSelected ? "Closes \(title(for: slot.kind))" : "Opens \(title(for: slot.kind))")
             .accessibilityAddTraits(isSelected ? .isSelected : [])
         }
@@ -134,6 +131,25 @@ struct GamePhysicalTurnPropRailView: View {
                 )
                 .rotationEffect(.degrees(14))
                 .offset(x: 11, y: 2)
+
+                Text("\(handCount)")
+                    .font(.caption2.weight(.bold))
+                    .monospacedDigit()
+                    .foregroundStyle(GamePhysicalTurnPalette.cardCountInk)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .padding(.horizontal, 3)
+                    .frame(minWidth: 16, minHeight: 16)
+                    .background {
+                        Capsule()
+                            .fill(GameTheme.surface)
+                            .overlay {
+                                Capsule()
+                                    .stroke(GameTheme.outline.opacity(0.78), lineWidth: 0.8)
+                            }
+                    }
+                    .offset(x: 14, y: -8)
+                    .accessibilityHidden(true)
             }
             .frame(width: 44, height: GamePhysicalTurnLayout.propVisualHeight, alignment: .bottom)
             .scaleEffect(0.96, anchor: .bottom)
@@ -244,10 +260,29 @@ struct GamePhysicalTurnPropRailView: View {
         }
     }
 
+    private func accessibilityValue(
+        for kind: GameTurnObjectRailSlot.Kind
+    ) -> String {
+        switch kind {
+        case .trade where hasPendingTrade:
+            return "Pending offer"
+        case .hand, .build, .trade, .devCards, .endTurn:
+            return ""
+        }
+    }
+
+    private func accessibilityLabel(
+        for kind: GameTurnObjectRailSlot.Kind
+    ) -> String {
+        kind == .hand
+            ? "Hand, \(handCount) resource cards"
+            : title(for: kind)
+    }
+
     private func accessibilityIdentifier(for slot: GameTurnObjectRailSlot) -> String {
         switch slot.kind {
         case .hand:
-            return "uls.feltTools.hand"
+            return "uls.physicalProps.hand"
         case .build:
             return "uls.turnObject.build"
         case .trade:

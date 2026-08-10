@@ -1,5 +1,6 @@
 import CoreGraphics
 import SpriteKit
+import SwiftUI
 import UIKit
 import ULS_CoreGame
 
@@ -35,7 +36,11 @@ final class GameBoardScene: SKScene {
     private let roadContentNode = SKNode()
     private let structureContentNode = SKNode()
     private let cameraNode = SKCameraNode()
+    private let modalFocusVeilNode = SKShapeNode()
+    private let bottomOcclusionNode = SKShapeNode()
     private var currentCameraState = GameBoardCameraState()
+    private var bottomOcclusionHeight: CGFloat = 0
+    private var bottomOcclusionViewportSize: CGSize = .zero
     private var boardWorldSize: CGSize
     private var cachedBackdropKey: BackdropLayerKey?
     private var cachedTileKey: TileLayerKey?
@@ -219,6 +224,54 @@ final class GameBoardScene: SKScene {
         backgroundColor = oceanStyle.backgroundColor
         backdropContentNode.removeAllChildren()
         backdropContentNode.addChild(makeBoardBackdrop(size: referenceSize, oceanStyle: oceanStyle))
+    }
+
+    func updateBottomOcclusion(height: CGFloat, viewportSize: CGSize) {
+        bottomOcclusionHeight = height
+        bottomOcclusionViewportSize = viewportSize
+        layoutBottomOcclusion()
+    }
+
+    private func layoutBottomOcclusion() {
+        let viewportSize = bottomOcclusionViewportSize
+        let resolvedHeight = min(max(bottomOcclusionHeight, 0), viewportSize.height)
+        let isPresented = resolvedHeight > 0 && viewportSize != .zero
+        modalFocusVeilNode.isHidden = !isPresented
+        bottomOcclusionNode.isHidden = !isPresented
+        guard !bottomOcclusionNode.isHidden else { return }
+
+        // Extend the rounded rectangle beneath the viewport so only its top
+        // corners are visible where the Game Information panel enters the board.
+        let overscan: CGFloat = 12
+        let zoom = max(currentCameraState.zoom, 0.001)
+        let visibleWidth = viewportSize.width / zoom
+        let visibleHeight = viewportSize.height / zoom
+        let scaledOverscan = overscan / zoom
+        let shapeHeight = (resolvedHeight + overscan) / zoom
+        modalFocusVeilNode.path = CGPath(
+            rect: CGRect(
+                x: cameraNode.position.x - (visibleWidth * 0.5),
+                y: cameraNode.position.y - (visibleHeight * 0.5),
+                width: visibleWidth,
+                height: visibleHeight
+            ),
+            transform: nil
+        )
+        modalFocusVeilNode.fillColor = GameBoardPalette.modalFocusVeil
+        modalFocusVeilNode.strokeColor = .clear
+        bottomOcclusionNode.path = CGPath(
+            roundedRect: CGRect(
+                x: cameraNode.position.x - (visibleWidth * 0.5),
+                y: cameraNode.position.y - (visibleHeight * 0.5) - scaledOverscan,
+                width: visibleWidth,
+                height: shapeHeight
+            ),
+            cornerWidth: 12 / zoom,
+            cornerHeight: 12 / zoom,
+            transform: nil
+        )
+        bottomOcclusionNode.fillColor = UIColor(GameTheme.feltRaised)
+        bottomOcclusionNode.strokeColor = .clear
     }
 
     private func makeBoardBackdrop(size: CGSize, oceanStyle: GameBoardOceanStyle) -> SKNode {
@@ -917,6 +970,10 @@ final class GameBoardScene: SKScene {
         camera = cameraNode
         baseContentNode.zPosition = 0
         overlayContentNode.zPosition = 90
+        modalFocusVeilNode.name = "gameInfo.focusVeil"
+        modalFocusVeilNode.zPosition = 999
+        bottomOcclusionNode.name = "gameInfo.bottomOcclusion"
+        bottomOcclusionNode.zPosition = 1_000
 
         if contentRootNode.parent == nil {
             addChild(contentRootNode)
@@ -957,6 +1014,14 @@ final class GameBoardScene: SKScene {
         if cameraNode.parent == nil {
             addChild(cameraNode)
         }
+
+        if modalFocusVeilNode.parent == nil {
+            addChild(modalFocusVeilNode)
+        }
+
+        if bottomOcclusionNode.parent == nil {
+            addChild(bottomOcclusionNode)
+        }
     }
 
     private func applyCameraState() {
@@ -971,6 +1036,7 @@ final class GameBoardScene: SKScene {
         )
         cameraNode.xScale = 1 / zoom
         cameraNode.yScale = 1 / zoom
+        layoutBottomOcclusion()
     }
 
     private struct BackdropLayerKey: Equatable {

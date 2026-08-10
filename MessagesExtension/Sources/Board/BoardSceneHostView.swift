@@ -2,6 +2,72 @@ import SpriteKit
 import SwiftUI
 import UIKit
 
+extension Notification.Name {
+    static let gameBoardPanelOcclusionChanged = Notification.Name(
+        "com.unluckysevens.gameBoardPanelOcclusionChanged"
+    )
+}
+
+@MainActor
+enum GameBoardPanelOcclusionController {
+    private final class WeakBoardView {
+        weak var value: SKView?
+
+        init(_ value: SKView) {
+            self.value = value
+        }
+    }
+
+    private static var activeViews: [WeakBoardView] = []
+    private static let overlayTag = 7_072_024
+    private static var height: CGFloat = 0
+
+    static func attach(to view: SKView) {
+        activeViews.removeAll { $0.value == nil }
+        if !activeViews.contains(where: { $0.value === view }) {
+            activeViews.append(WeakBoardView(view))
+        }
+        apply(to: view)
+    }
+
+    static func setHeight(_ newHeight: CGFloat) {
+        height = max(newHeight, 0)
+        activeViews.removeAll { $0.value == nil }
+        for boardView in activeViews {
+            guard let view = boardView.value else { continue }
+            apply(to: view)
+        }
+    }
+
+    private static func apply(to view: SKView) {
+        view.isUserInteractionEnabled = height <= 0
+        let overlay: UIView
+        if let existing = view.viewWithTag(overlayTag) {
+            overlay = existing
+        } else {
+            let created = UIView(frame: .zero)
+            created.tag = overlayTag
+            created.isUserInteractionEnabled = false
+            created.backgroundColor = UIColor(GameTheme.feltRaised)
+            created.layer.cornerRadius = 12
+            created.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+            created.layer.masksToBounds = true
+            view.addSubview(created)
+            overlay = created
+        }
+
+        let resolvedHeight = min(height, view.bounds.height)
+        overlay.isHidden = resolvedHeight <= 0
+        overlay.frame = CGRect(
+            x: 0,
+            y: view.bounds.height - resolvedHeight,
+            width: view.bounds.width,
+            height: resolvedHeight
+        )
+        view.bringSubviewToFront(overlay)
+    }
+}
+
 struct BoardSceneHostView: UIViewRepresentable {
     let scene: GameBoardScene
     let renderModel: GameBoardRenderModel
@@ -12,6 +78,7 @@ struct BoardSceneHostView: UIViewRepresentable {
     let boardReferenceSize: CGSize
     let interactionController: BoardSceneInteractionController
     let isInteractionEnabled: Bool
+    let bottomOcclusionHeight: CGFloat
     let onInteractionChanged: ((Bool) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
@@ -23,11 +90,14 @@ struct BoardSceneHostView: UIViewRepresentable {
         let view = SKView(frame: .zero)
 #if DEBUG
         view.isAccessibilityElement = true
-        view.accessibilityIdentifier = "uls.tabletop.boardHost"
+        view.accessibilityIdentifier = bottomOcclusionHeight > 0
+            ? "uls.tabletop.boardHost.occluded"
+            : "uls.tabletop.boardHost"
         view.accessibilityLabel = "Live game board host"
-        view.accessibilityValue = UUID().uuidString
+        view.accessibilityValue = String(describing: bottomOcclusionHeight)
 #endif
         configure(view)
+        GameBoardPanelOcclusionController.attach(to: view)
         context.coordinator.attachGestures(to: view)
         context.coordinator.update(
             scene: scene,
@@ -42,15 +112,31 @@ struct BoardSceneHostView: UIViewRepresentable {
             onInteractionChanged: onInteractionChanged,
             onTargetTap: onTargetTap
         )
+        context.coordinator.layoutPanelOcclusion(in: view)
         view.presentScene(scene)
+        scene.updateBottomOcclusion(
+            height: bottomOcclusionHeight,
+            viewportSize: viewportSize
+        )
         return view
     }
 
     func updateUIView(_ uiView: SKView, context: Context) {
         configure(uiView)
+        GameBoardPanelOcclusionController.attach(to: uiView)
+#if DEBUG
+        uiView.accessibilityIdentifier = bottomOcclusionHeight > 0
+            ? "uls.tabletop.boardHost.occluded"
+            : "uls.tabletop.boardHost"
+        uiView.accessibilityValue = String(describing: bottomOcclusionHeight)
+#endif
         if uiView.scene !== scene {
             uiView.presentScene(scene)
         }
+        scene.updateBottomOcclusion(
+            height: bottomOcclusionHeight,
+            viewportSize: viewportSize
+        )
 
         context.coordinator.update(
             scene: scene,
@@ -65,7 +151,7 @@ struct BoardSceneHostView: UIViewRepresentable {
             onInteractionChanged: onInteractionChanged,
             onTargetTap: onTargetTap
         )
-        uiView.isUserInteractionEnabled = isInteractionEnabled
+        context.coordinator.layoutPanelOcclusion(in: uiView)
     }
 
     private func configure(_ view: SKView) {
@@ -97,6 +183,36 @@ struct BoardSceneHostView: UIViewRepresentable {
         private var panGestureRecognizer: UIPanGestureRecognizer?
         private var pinchGestureRecognizer: UIPinchGestureRecognizer?
         private var tapGestureRecognizer: UITapGestureRecognizer?
+        private var panelOcclusionHeight: CGFloat = 0
+        private let panelOcclusionView: UIView = {
+            let view = UIView(frame: .zero)
+            view.isUserInteractionEnabled = false
+            view.backgroundColor = UIColor(GameTheme.feltRaised)
+            view.layer.cornerRadius = 12
+            view.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+            view.layer.masksToBounds = true
+            view.isHidden = true
+#if DEBUG
+            view.isAccessibilityElement = true
+            view.accessibilityIdentifier = "uls.tabletop.gameInfoOcclusion"
+            view.accessibilityLabel = "Game Information board cover"
+#endif
+            return view
+        }()
+
+        override init() {
+            super.init()
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(handlePanelOcclusionChanged(_:)),
+                name: .gameBoardPanelOcclusionChanged,
+                object: nil
+            )
+        }
+
+        deinit {
+            NotificationCenter.default.removeObserver(self)
+        }
 
         func attachGestures(to view: SKView) {
             guard self.view !== view else {
@@ -104,6 +220,11 @@ struct BoardSceneHostView: UIViewRepresentable {
             }
 
             self.view = view
+            if panelOcclusionView.superview !== view {
+                panelOcclusionView.removeFromSuperview()
+                view.addSubview(panelOcclusionView)
+            }
+            layoutPanelOcclusion(in: view)
 
             let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
             pan.delegate = self
@@ -124,6 +245,38 @@ struct BoardSceneHostView: UIViewRepresentable {
             panGestureRecognizer = pan
             pinchGestureRecognizer = pinch
             tapGestureRecognizer = tap
+        }
+
+        func layoutPanelOcclusion(in view: SKView) {
+            let resolvedHeight = min(max(panelOcclusionHeight, 0), view.bounds.height)
+            panelOcclusionView.isHidden = resolvedHeight <= 0
+            panelOcclusionView.frame = CGRect(
+                x: 0,
+                y: view.bounds.height - resolvedHeight,
+                width: view.bounds.width,
+                height: resolvedHeight
+            )
+            view.bringSubviewToFront(panelOcclusionView)
+#if DEBUG
+            view.isAccessibilityElement = resolvedHeight <= 0
+            view.accessibilityElements = resolvedHeight > 0 ? [panelOcclusionView] : nil
+#endif
+        }
+
+        @objc
+        private func handlePanelOcclusionChanged(_ notification: Notification) {
+            let rawHeight = notification.userInfo?["height"]
+            let height: CGFloat
+            if let number = rawHeight as? NSNumber {
+                height = CGFloat(truncating: number)
+            } else if let value = rawHeight as? CGFloat {
+                height = value
+            } else {
+                height = 0
+            }
+            panelOcclusionHeight = height
+            guard let view else { return }
+            layoutPanelOcclusion(in: view)
         }
 
         func update(

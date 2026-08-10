@@ -60,6 +60,27 @@ final class GameBoardSceneTests: XCTestCase {
         XCTAssertEqual(GameBoardScene.numberTokenPipCount(for: 7), 0)
     }
 
+    @MainActor
+    func testGameInfoOcclusionIsAuthoredInsideSpriteKitViewport() throws {
+        let viewport = CGSize(width: 320, height: 240)
+        let scene = GameBoardScene(size: viewport)
+
+        scene.updateBottomOcclusion(height: 72, viewportSize: viewport)
+
+        let occlusion = try XCTUnwrap(
+            descendants(of: scene).first(where: { $0.name == "gameInfo.bottomOcclusion" })
+                as? SKShapeNode
+        )
+        XCTAssertFalse(occlusion.isHidden)
+        XCTAssertEqual(occlusion.zPosition, 1_000)
+        XCTAssertEqual(occlusion.frame.minX, 0, accuracy: 0.01)
+        XCTAssertEqual(occlusion.frame.maxX, 320, accuracy: 0.01)
+        XCTAssertEqual(occlusion.frame.maxY, 72, accuracy: 0.01)
+
+        scene.updateBottomOcclusion(height: 0, viewportSize: viewport)
+        XCTAssertTrue(occlusion.isHidden)
+    }
+
     func testNumberTokenNumeralsCenterTheirRenderedGlyphBounds() {
         let renderModel = makeRenderModel()
         let scene = GameBoardScene(size: CGSize(width: 320, height: 240))

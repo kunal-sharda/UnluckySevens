@@ -170,7 +170,7 @@ struct GamePhysicalTurnActionSpreadView: View {
     }
 
     private var buildSpread: some View {
-        HStack(alignment: .center, spacing: 10) {
+        HStack(alignment: .center, spacing: 6) {
             ForEach(buildItems) { item in
                 Button {
                     onSelectBuild(item.kind)
@@ -195,11 +195,12 @@ struct GamePhysicalTurnActionSpreadView: View {
                         costRow(item.cost)
                             .frame(height: 16)
                     }
-                    .frame(width: 104)
+                    .frame(width: 76)
                     .frame(minHeight: 74)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("uls.physicalProps.build.\(item.kind.rawValue)")
                 .accessibilityLabel(buildAccessibilityLabel(item))
                 .accessibilityHint("Shows placement targets for \(item.title)")
                 .gameTutorialTarget(tutorialTarget(for: item.kind))

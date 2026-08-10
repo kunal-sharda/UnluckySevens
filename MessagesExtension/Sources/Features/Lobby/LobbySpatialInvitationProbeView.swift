@@ -142,7 +142,7 @@ struct LobbySpatialInvitationProbeView: View {
     private var playingAs: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text("Playing as")
-                .font(GameTheme.metaFont)
+                .font(GameTheme.metaFont.bold())
                 .foregroundStyle(LobbyInvitePalette.mutedPaper.opacity(0.72))
 
             HStack(spacing: GameTheme.inlineSpacing) {

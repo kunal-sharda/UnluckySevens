@@ -5,7 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKSPACE_PATH="$ROOT_DIR/UnluckySevens.xcworkspace"
 DERIVED_DATA_PATH="$ROOT_DIR/DerivedData/DevicePipeline"
 LOCAL_SIGNING_XCCONFIG="$ROOT_DIR/Config/LocalSigning.xcconfig"
-SCHEME="UnluckySevensApp"
+SCHEME="UnluckySevens"
+APP_PRODUCT_NAME="UnluckySevensApp"
 CONFIGURATION="Debug"
 RUN_CLEAN=0
 RUN_GEN=1
@@ -226,7 +227,7 @@ fi
 
 "${BUILD_CMD[@]}"
 
-APP_PATH="$DERIVED_DATA_PATH/Build/Products/${CONFIGURATION}-iphoneos/${SCHEME}.app"
+APP_PATH="$DERIVED_DATA_PATH/Build/Products/${CONFIGURATION}-iphoneos/${APP_PRODUCT_NAME}.app"
 
 if [[ ! -d "$APP_PATH" ]]; then
   echo "error: built app not found at $APP_PATH" >&2

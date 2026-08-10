@@ -40,7 +40,7 @@ struct GameShellView: View {
     @State private var showsPhysicalTradeRecipients = false
 #if DEBUG
     @AppStorage(GameTabletopLayoutStyle.uxTestingDefaultsKey)
-    private var uxTestingTabletopLayoutStyleRawValue = GameTabletopLayoutStyle.framedShelf.rawValue
+    private var uxTestingTabletopLayoutStyleRawValue = GameTabletopLayoutStyle.physicalProps.rawValue
 #endif
 
     init(
@@ -143,10 +143,15 @@ struct GameShellView: View {
         let isGameInfoOpen = shellRoute == .gameInfo
         let hasPendingTrade = projection.tradePanelModel?.activeOffer != nil
         let usesPhysicalProps = tabletopLayoutStyle.usesPhysicalProps
+        let visibleBoardSelectionText = usesPhysicalProps && resolvedMode.usesPhysicalHeaderTargetPrompt
+            ? nil
+            : selectionText
         let isPhysicalSetup = usesPhysicalProps && isSetup
         let isPhysicalStartTurn = usesPhysicalProps && isNormalPreRollTurn
         let isPhysicalNotPrimaryPlayer = usesPhysicalProps && notPrimaryPlayerContext != nil
         let isPhysicalDiscard = usesPhysicalProps && resolvedMode == .discard
+        let isPhysicalRobberFlow = usesPhysicalProps
+            && (resolvedMode == .robberMove || resolvedMode == .robberVictim)
         let isActionablePhysicalDiscard = isPhysicalDiscard
             && projection.discardPanelModel?.action != nil
         let isPhysicalGameOver = usesPhysicalProps
@@ -157,6 +162,7 @@ struct GameShellView: View {
             || isPhysicalNotPrimaryPlayer
             || isPhysicalSetup
             || isPhysicalDiscard
+            || isPhysicalRobberFlow
             || isPhysicalGameOver
         let showsPhysicalPublicRail = isPhysicalGameplayTurn
         let physicalHeaderPrompt: GamePhysicalTurnHeaderPrompt? = if isPhysicalStartTurn {
@@ -322,6 +328,9 @@ struct GameShellView: View {
                         0
                     )
                     : boardCanvasPresentationHeight
+                let boardBottomOcclusionHeight = isGameInfoOpen
+                    ? GameTurnGameInfoView.boardClearanceHeight
+                    : CGFloat.zero
                 let overlayShelfLayout = tabletopLayoutStyle.usesFeltTools
                     ? shellLayout.overlayShelf.fittedToTabletopSurface(
                         height: actionSurfaceHeight
@@ -351,7 +360,6 @@ struct GameShellView: View {
                                         GamePhysicalSetupTopBarView(
                                             model: setupPlacementModel,
                                             onSettingsTap: onSettingsTap,
-                                            onGamesTap: onGamesTap,
                                             onGameInfoTap: handleGameInfoToggle
                                         )
                                     } else if isPhysicalGameOver,
@@ -372,7 +380,6 @@ struct GameShellView: View {
                                                 prompt: physicalHeaderPrompt,
                                                 isGameInfoOpen: isGameInfoOpen,
                                                 onSettingsTap: onSettingsTap,
-                                                onGamesTap: onGamesTap,
                                                 onGameInfoTap: handleGameInfoToggle
                                             )
                                         }
@@ -382,7 +389,6 @@ struct GameShellView: View {
                                             subtitle: headerModel.statusLine.subtitle,
                                             isGameInfoOpen: isGameInfoOpen,
                                             onSettingsTap: onSettingsTap,
-                                            onGamesTap: onGamesTap,
                                             onGameInfoTap: handleGameInfoToggle
                                         )
                                     }
@@ -481,7 +487,7 @@ struct GameShellView: View {
                                 isDevDeckEnabled: screenModel.actionDock.primaryItems.contains {
                                     $0.kind == .devCards && $0.isEnabled
                                 },
-                                selectionText: selectionText,
+                                selectionText: visibleBoardSelectionText,
                                 hintBottomInset: boardHintBottomInset,
                                 showsCreamFrame: tabletopLayoutStyle.showsCreamBoardFrame,
                                 boardContentVerticalOffset: usesPhysicalProps
@@ -490,6 +496,7 @@ struct GameShellView: View {
                                         : physicalBoardCenteringOffset)
                                     : 0,
                                 frozenBoardImage: nil,
+                                bottomOcclusionHeight: boardBottomOcclusionHeight,
                                 reloadToken: viewModel.boardReloadToken,
                                 onInteractionChanged: nil,
                                 onResizeFreezeChanged: isPhysicalGameplayTurn ? nil : { freezeState in
@@ -509,7 +516,7 @@ struct GameShellView: View {
                                                 boardModel: boardModel,
                                                 boardRenderModel: screenModel.boardRenderModel,
                                                 overlayModel: overlayModel,
-                                                selectionText: selectionText,
+                                                selectionText: visibleBoardSelectionText,
                                                 hintBottomInset: boardHintBottomInset,
                                                 boardImage: boardImage,
                                                 actionDock: screenModel.actionDock,
@@ -556,6 +563,7 @@ struct GameShellView: View {
                                 }
                             )
                             .frame(height: boardHostPresentationHeight, alignment: .top)
+                            .allowsHitTesting(!isGameInfoOpen)
                             .gameTutorialTarget(.board)
                             .accessibilityHidden(isPhysicalStartTurn)
                             .clipped()
@@ -641,10 +649,14 @@ struct GameShellView: View {
                                         actionDock: screenModel.actionDock,
                                         selectedDockKind: selectedDockKind,
                                         isHandOpen: isHandOpen,
+                                        handCount: screenModel.handTray.totalCount,
                                         hasPendingTrade: hasPendingTrade,
                                         playerColor: physicalPlayerColor,
-                                        centersAvailableProps: isPhysicalNotPrimaryPlayer || isPhysicalDiscard,
+                                        centersAvailableProps: isPhysicalNotPrimaryPlayer
+                                            || isPhysicalDiscard
+                                            || isPhysicalRobberFlow,
                                         isHandInteractive: !isPhysicalDiscard
+                                            && !isPhysicalRobberFlow
                                             && notPrimaryPlayerContext?.isWaitingForDiscard != true,
                                         onSelectDock: { actionKind in
                                             handleActionSelection(
@@ -969,24 +981,38 @@ struct GameShellView: View {
                         if !isGameOver,
                            isPhysicalGameplayTurn,
                            shellRoute == .gameInfo {
-                            GameTurnGameInfoView(
-                                model: screenModel.gameInfo,
-                                onClose: handleGameInfoToggle
-                            )
-                            .gameTutorialTarget(.gameInfo)
+                            ZStack {
+                                GamePhysicalTurnPalette.focusVeil
+                                    .opacity(0.8)
+                                    .accessibilityHidden(true)
+
+                                GameTurnGameInfoView(
+                                    model: screenModel.gameInfo,
+                                    games: viewModel.recoveredGames,
+                                    onOpenGame: { gameId in
+                                        viewModel.resumeRecoveredGame(gameId)
+                                        shellRoute = .none
+                                    },
+                                    onManageGamesTap: onGamesTap,
+                                    onClose: handleGameInfoToggle
+                                )
+                                .gameTutorialTarget(.gameInfo)
+                                .frame(
+                                    height: GameTurnGameInfoView.preferredHeight(
+                                        for: screenModel.gameInfo
+                                    ),
+                                    alignment: .top
+                                )
+                                .frame(maxWidth: 346)
+                                .padding(.horizontal, 20)
+                            }
                             .frame(
-                                height: usesPhysicalProps
-                                    ? actionSurfaceHeight
-                                    : feltToolSurfaceHeight
+                                width: shellSize.width,
+                                height: shellSize.height + geometry.safeAreaInsets.bottom
                             )
-                            .frame(maxWidth: lowerRailWidth)
-                            .padding(.horizontal, GameTheme.shellPadding)
-                            .padding(
-                                .bottom,
-                                GameTheme.shellPadding
-                                    + (usesPhysicalProps ? bottomTrayHeight : shellLayout.trayHeight)
-                            )
-                            .zIndex(1)
+                            .padding(.bottom, -geometry.safeAreaInsets.bottom)
+                            .ignoresSafeArea(edges: .bottom)
+                            .zIndex(3)
                         }
 
                         if !isGameOver,
@@ -1248,8 +1274,8 @@ struct GameShellView: View {
                         currentMode: resolvedMode
                     )
                 }
-            }
-            .coordinateSpace(.named(Self.displayCoordinateSpaceName))
+                }
+                .coordinateSpace(.named(Self.displayCoordinateSpaceName))
         }
         .onAppear {
             synchronizeMode(with: screenModel.modeAvailability)
@@ -1304,10 +1330,26 @@ struct GameShellView: View {
             }
             synchronizeHandTrayVisibility(for: newMode)
         }
+        .onChange(of: shellRoute) { _, newRoute in
+            NotificationCenter.default.post(
+                name: .gameBoardPanelOcclusionChanged,
+                object: nil,
+                userInfo: [
+                    "height": newRoute == .gameInfo
+                        ? GameTurnGameInfoView.boardClearanceHeight
+                        : CGFloat.zero
+                ]
+            )
+        }
         .onChange(of: screenModel.boardRenderModel) { _, _ in
             synchronizeBoardSelection(mode: resolvedMode)
         }
         .onDisappear {
+            NotificationCenter.default.post(
+                name: .gameBoardPanelOcclusionChanged,
+                object: nil,
+                userInfo: ["height": CGFloat.zero]
+            )
             clearShellResizeFreeze()
         }
         .transaction { transaction in
@@ -1333,8 +1375,12 @@ struct GameShellView: View {
     ) {
         guard usesPhysicalProps, boardFrame.height > 0 else { return }
         physicalBoardMeasuredFrame = boardFrame
+        let unshiftedBoardFrame = boardFrame.offsetBy(
+            dx: 0,
+            dy: -physicalBoardCenteringOffset
+        )
         let correction = layout.boardCenteringCorrection(
-            boardGlobalFrame: boardFrame,
+            boardGlobalFrame: unshiftedBoardFrame,
             displayGlobalFrame: displayFrame
         )
         let resolvedOffset = min(max(correction, -48), 48)
@@ -1391,7 +1437,7 @@ struct GameShellView: View {
         mode: GameMode,
         usesPhysicalProps: Bool
     ) -> GameShelfPresentation {
-        if mode == .discard, usesPhysicalProps {
+        if usesPhysicalProps, mode == .discard || mode == .robberVictim {
             return .none
         }
         if mode == .discard || mode == .robberVictim {
@@ -1717,6 +1763,12 @@ struct GameShellView: View {
 
     private func handleGameInfoToggle() {
         if shellRoute == .gameInfo {
+            GameBoardPanelOcclusionController.setHeight(0)
+            NotificationCenter.default.post(
+                name: .gameBoardPanelOcclusionChanged,
+                object: nil,
+                userInfo: ["height": CGFloat.zero]
+            )
             shellRoute = .none
         } else {
             if case .trade = shellRoute {
@@ -1725,6 +1777,14 @@ struct GameShellView: View {
             currentMode = .idle
             devCardDraft = nil
             isHandOpen = false
+            GameBoardPanelOcclusionController.setHeight(
+                GameTurnGameInfoView.boardClearanceHeight
+            )
+            NotificationCenter.default.post(
+                name: .gameBoardPanelOcclusionChanged,
+                object: nil,
+                userInfo: ["height": GameTurnGameInfoView.boardClearanceHeight]
+            )
             shellRoute = .gameInfo
         }
         clearBoardSelection()
@@ -2582,6 +2642,31 @@ struct GameShellView: View {
     }
 }
 
+private extension GameMode {
+    var usesPhysicalHeaderTargetPrompt: Bool {
+        switch self {
+        case .buildRoad,
+             .buildSettlement,
+             .buildCity,
+             .robberMove,
+             .robberVictim,
+             .devCardKnightMove,
+             .devCardKnightVictim,
+             .devCardRoadBuildingFirst,
+             .devCardRoadBuildingSecond:
+            return true
+        case .idle,
+             .setup,
+             .trade,
+             .playDevCard,
+             .devCardMonopoly,
+             .devCardYearOfPlenty,
+             .discard:
+            return false
+        }
+    }
+}
+
 private struct GamePhysicalBoardFramePreferenceKey: PreferenceKey {
     static let defaultValue: CGRect = .zero
 
@@ -2714,7 +2799,7 @@ private struct GameOverlayShelfView<Content: View>: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(
             tabletopLayoutStyle.usesFeltTools
-                ? "uls.feltTools.componentSurface"
+                ? "uls.physicalProps.componentSurface"
                 : "uls.overlayShelf"
         )
     }

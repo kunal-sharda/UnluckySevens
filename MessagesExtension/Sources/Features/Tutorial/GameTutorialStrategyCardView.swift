@@ -1,16 +1,35 @@
 import SwiftUI
 
 struct GameTutorialStrategyCardView: View {
+    var showsBackdrop = true
+    var onDismiss: (() -> Void)? = nil
+
     var body: some View {
         ZStack {
-            Color.black.opacity(0.58)
-                .ignoresSafeArea()
+            if showsBackdrop {
+                Color.black.opacity(0.58)
+                    .ignoresSafeArea()
+            }
 
             VStack(alignment: .leading, spacing: 13) {
-                Text("PLAYER AID")
-                    .font(.caption2.weight(.bold))
-                    .tracking(1.2)
-                    .foregroundStyle(GameTheme.mutedInk)
+                HStack(spacing: GameTheme.inlineSpacing) {
+                    Text("QUICK TIPS")
+                        .font(.caption2.weight(.bold))
+                        .tracking(1.2)
+                        .foregroundStyle(GameTheme.mutedInk)
+
+                    Spacer()
+
+                    if let onDismiss {
+                        Button("Close Strategy", systemImage: "xmark", action: onDismiss)
+                            .labelStyle(.iconOnly)
+                            .font(.body.bold())
+                            .foregroundStyle(GameTheme.mutedInk)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
+                            .accessibilityIdentifier("uls.strategy.close")
+                    }
+                }
 
                 Text("Strategy")
                     .font(GameTheme.titleFont)
@@ -22,20 +41,20 @@ struct GameTutorialStrategyCardView: View {
                     .frame(height: 1)
 
                 tip(
-                    title: "Read the dots",
-                    description: "More dots mean more rolls and more resources.",
+                    title: "Follow the dots",
+                    description: "More dots mean that number rolls more often. Build nearby to collect more resources.",
                     icon: probabilityToken
                 )
 
                 tip(
-                    title: "Spend for points",
-                    description: "Roads open settlement spots. Roads and knights can earn 2-point awards.",
+                    title: "Build toward points",
+                    description: "Roads reach new settlement spots. Longest Road (5+) and Largest Army (3+) are worth 2 points.",
                     icon: Image(systemName: "arrow.triangle.branch")
                 )
 
                 tip(
-                    title: "Know the score",
-                    description: "Settlement 1 · City 2 · Award 2. First to 10 wins.",
+                    title: "Race to 10",
+                    description: "Settlements are 1, cities are 2, and awards are 2 points each.",
                     icon: Image(systemName: "star.fill")
                 )
             }
@@ -49,7 +68,8 @@ struct GameTutorialStrategyCardView: View {
             }
             .padding(.horizontal, 22)
         }
-        .allowsHitTesting(false)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .allowsHitTesting(onDismiss != nil)
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("uls.tutorial.strategyCard")

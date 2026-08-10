@@ -162,7 +162,7 @@ struct GameTutorialView: View {
 
                 HStack(spacing: 0) {
                     navigationCoachHalf(
-                        title: "Tap left side",
+                        title: "Tap left",
                         subtitle: "Back",
                         systemImage: "arrow.left"
                     )
@@ -172,14 +172,14 @@ struct GameTutorialView: View {
                         .frame(width: 1, height: 210)
 
                     navigationCoachHalf(
-                        title: "Tap right side",
+                        title: "Tap right",
                         subtitle: "Next",
                         systemImage: "arrow.right"
                     )
                 }
                 .padding(.horizontal, 18)
 
-                Text("Tap once to start")
+                Text("Tap anywhere to begin")
                     .font(GameTheme.metaFont)
                     .foregroundStyle(GameTheme.surface.opacity(0.82))
                     .offset(y: 104)
@@ -191,7 +191,7 @@ struct GameTutorialView: View {
         .contentShape(Rectangle())
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .accessibilityLabel("Tutorial navigation")
-        .accessibilityHint("Tap once to begin. Then tap the left side for back or the right side for next.")
+        .accessibilityHint("Tap anywhere to begin. Then tap left to go back or right to continue.")
         .accessibilityIdentifier("uls.tutorial.navigationCoach")
     }
 

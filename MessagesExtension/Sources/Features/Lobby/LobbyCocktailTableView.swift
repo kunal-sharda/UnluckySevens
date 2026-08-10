@@ -37,11 +37,9 @@ struct LobbyCocktailTableView: View {
                                     : min(320, max(280, proxy.size.height * 0.40))
                             )
 
-                        rulesSummary
+                        lobbyOptions
 
-                        Color.clear
-                            .frame(height: 12)
-                            .accessibilityHidden(true)
+                        Spacer(minLength: 24)
 
                         if model.showsInviteEntryHero, model.nameEditor != nil {
                             compactEntryName
@@ -73,7 +71,7 @@ struct LobbyCocktailTableView: View {
                     .frame(minHeight: max(0, proxy.size.height - 36), alignment: .top)
                     .padding(.horizontal, 20)
                     .padding(.top, GameTheme.inlineSpacing)
-                    .padding(.bottom, 28)
+                    .padding(.bottom, 12)
                 }
             }
         }
@@ -86,7 +84,7 @@ struct LobbyCocktailTableView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 brandIdentity
-                utilityActions
+                gamesAction
             }
         }
     }
@@ -95,7 +93,7 @@ struct LobbyCocktailTableView: View {
         HStack {
             brandIdentity
             Spacer(minLength: GameTheme.inlineSpacing)
-            utilityActions
+            gamesAction
         }
     }
 
@@ -120,38 +118,24 @@ struct LobbyCocktailTableView: View {
         .layoutPriority(1)
     }
 
-    private var utilityActions: some View {
-        HStack(spacing: GameTheme.inlineSpacing) {
-            HStack(spacing: 7) {
-                if let games {
-                    Button("Games", systemImage: "square.stack.3d.up.fill", action: games)
-                        .font(GameTheme.metaFont.bold())
-                        .foregroundStyle(LobbyInvitePalette.mutedPaper)
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
-                        .buttonStyle(.plain)
-                        .accessibilityHint("Opens saved active and finished games")
-                        .accessibilityIdentifier("uls.lobby.games")
-                }
-            }
-
-            Button(action: tutorial) {
-                Label("Tutorial", systemImage: "book.closed.fill")
-                    .font(GameTheme.metaFont.bold())
-                    .foregroundStyle(LobbyInvitePalette.mutedPaper)
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .fixedSize(horizontal: true, vertical: false)
-            .accessibilityHint("Opens a short game tutorial")
-            .accessibilityIdentifier("uls.lobby.tutorial")
+    @ViewBuilder
+    private var gamesAction: some View {
+        if let games {
+            Button("Games", systemImage: "die.face.5.fill", action: games)
+                .labelStyle(.iconOnly)
+                .font(GameTheme.bodyFont.bold())
+                .foregroundStyle(LobbyInvitePalette.mutedPaper)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens saved active and finished games")
+                .accessibilityIdentifier("uls.lobby.games")
         }
     }
 
     private var inviteTitle: some View {
         VStack(spacing: 9) {
-            Text(model.showsInviteEntryHero ? "Invite to Table" : model.title)
+            Text(model.showsInviteEntryHero ? "Invite Friends to Table" : model.title)
                 .font(GameTheme.displayFont)
                 .foregroundStyle(LobbyInvitePalette.mutedPaper)
                 .multilineTextAlignment(.center)
@@ -165,28 +149,47 @@ struct LobbyCocktailTableView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private var rulesSummary: some View {
+    private var lobbyOptions: some View {
+        VStack(spacing: 0) {
+            gameSettingsAction
+
+            Rectangle()
+                .fill(LobbyInvitePalette.mutedPaper.opacity(0.20))
+                .frame(height: 1)
+                .accessibilityHidden(true)
+
+            tutorialAction
+        }
+        .frame(maxWidth: 340)
+    }
+
+    private var gameSettingsAction: some View {
         Button(action: settings) {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: GameTheme.inlineSpacing) {
-                    Text(settingsSummary.rules)
-                    Text("·").foregroundStyle(GameTheme.accent)
-                    Text(settingsSummary.board)
-                    Text("·").foregroundStyle(GameTheme.accent)
-                    Text(settingsSummary.victory)
+                    Text("Game Settings")
+                        .font(GameTheme.metaFont.bold())
+
+                    Spacer(minLength: GameTheme.inlineSpacing)
+
+                    settingsSummaryText
                     rulesChevron
                 }
 
-                VStack(spacing: 3) {
-                    Text("\(settingsSummary.rules) · \(settingsSummary.board)")
-                    HStack(spacing: 4) {
-                        Text(settingsSummary.victory)
-                        rulesChevron
+                HStack(spacing: GameTheme.inlineSpacing) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Game Settings")
+                            .font(GameTheme.metaFont.bold())
+                        settingsSummaryText
                     }
+
+                    Spacer(minLength: GameTheme.inlineSpacing)
+
+                    rulesChevron
                 }
             }
-            .font(GameTheme.metaFont.bold())
             .foregroundStyle(LobbyInvitePalette.mutedPaper)
+            .frame(maxWidth: .infinity)
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
@@ -194,8 +197,34 @@ struct LobbyCocktailTableView: View {
         .accessibilityLabel(
             "Game Settings, \(settingsSummary.rules) rules, \(settingsSummary.board) board, \(settingsSummary.victory)"
         )
-        .accessibilityHint("Shows the rules selected for this game")
+        .accessibilityHint("Opens game settings")
         .accessibilityIdentifier("uls.lobby.gameSettings")
+    }
+
+    private var tutorialAction: some View {
+        Button(action: tutorial) {
+            HStack(spacing: GameTheme.inlineSpacing) {
+                Text("Tutorial")
+                Spacer(minLength: GameTheme.inlineSpacing)
+                rulesChevron
+            }
+                .font(GameTheme.metaFont.bold())
+                .foregroundStyle(LobbyInvitePalette.mutedPaper)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens a short game tutorial")
+        .accessibilityIdentifier("uls.lobby.tutorial")
+    }
+
+    private var settingsSummaryText: some View {
+        Text("\(settingsSummary.rules) · \(settingsSummary.board) · \(settingsSummary.victory)")
+            .font(GameTheme.metaFont)
+            .foregroundStyle(LobbyInvitePalette.mutedPaper.opacity(0.78))
+            .lineLimit(1)
+            .minimumScaleFactor(0.84)
     }
 
     private var rulesChevron: some View {
@@ -220,8 +249,8 @@ struct LobbyCocktailTableView: View {
     private var compactEntryName: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Playing as")
-                .font(GameTheme.metaFont)
-                .foregroundStyle(LobbyInvitePalette.mutedPaper.opacity(0.72))
+                .font(GameTheme.metaFont.bold())
+                .foregroundStyle(LobbyInvitePalette.mutedPaper)
 
             TextField(
                 "Display Name",
@@ -399,6 +428,7 @@ private struct CocktailTableTop: View {
                 renderModel: renderModel,
                 overlayModel: .empty,
                 interactionMode: .idle,
+                bottomOcclusionHeight: 0,
                 reloadToken: 0,
                 onInteractionChanged: nil,
                 onResizeFreezeChanged: nil,
