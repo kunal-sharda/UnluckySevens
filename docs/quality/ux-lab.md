@@ -36,6 +36,8 @@ While UX Lab is active, the view model uses local fixture state and local actor 
 
 The `UnluckySevensUITests` XCUITest harness can drive the simulator through Messages, open the Unlucky Sevens app drawer item, and attach screenshots of the canonical Invitation slice plus the UX Lab panel to the `.xcresult` bundle. Retired lobby-direction comparisons are no longer UX Lab routes. The harness is a design-review capture aid, not a replacement for the real-device Messages lane. It expects Messages to have at least one existing simulator conversation and falls back to the first visible conversation if the seeded `+1 (888) 555-1212` thread is unavailable.
 
+The checked-in catalog entrypoint is `scripts/run-ui-screenshot-catalog.sh`. Its iPhone inventory is exhaustive and its iPad inventory is representative. Both inventories are plain-text manifests beside the runner so route additions and removals are code-reviewed instead of reconstructed from shell history.
+
 Default visual iteration lane:
 
 - Use the normal iOS Simulator window for live visual review and interaction.

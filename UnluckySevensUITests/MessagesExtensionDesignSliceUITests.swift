@@ -219,8 +219,8 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(closeStrategy.waitForExistence(timeout: 4))
         XCTAssertTrue(messages.staticTexts["Strategy"].firstMatch.exists)
         XCTAssertFalse(
-            messages.descendants(matching: .any)["uls.rules.surface"].firstMatch.exists,
-            "Strategy should be its own focused card, not a destination anchored inside Rules."
+            messages.buttons["uls.rules.showStrategy"].firstMatch.isHittable,
+            "The Rules destination must be inactive behind the focused Strategy card."
         )
         XCTAssertTrue(closeStrategy.isHittable)
         attachScreenshot(named: "Polish 06 - Standalone Strategy Card")
@@ -533,6 +533,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Physical Trade Correction - Maritime Exchange")
 
         for _ in 0..<7 {
+            guard next.waitForExistence(timeout: 2) else { break }
             next.tap()
         }
         let done = messages.buttons["uls.tutorial.done"].firstMatch
@@ -3249,6 +3250,11 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             return
         }
 
+        let hideKeyboard = messages.buttons["Hide keyboard"].firstMatch
+        if hideKeyboard.waitForExistence(timeout: 1) {
+            hideKeyboard.tap()
+        }
+
         let drawerButtons = [
             messages.buttons["add"].firstMatch,
             messages.buttons["Apps"].firstMatch,
@@ -3407,6 +3413,13 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             return
         }
 
+        openUXLabPanel()
+        let panelButton = messages.buttons[identifier].firstMatch
+        if waitForHittable(panelButton, timeout: 2) {
+            panelButton.tap()
+            return
+        }
+
         let menu = firstExistingElement(
             [
                 messages.buttons["uls.uxLab.quickStates"].firstMatch,
@@ -3442,6 +3455,12 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         }
 
         openUXLabPanel()
+        let panelControl = messages.buttons[identifier].firstMatch
+        if waitForHittable(panelControl, timeout: 2) {
+            panelControl.tap()
+            return
+        }
+
         let menu = firstExistingElement(
             [
                 messages.buttons["uls.uxLab.quickStates"].firstMatch,

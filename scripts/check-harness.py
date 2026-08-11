@@ -20,6 +20,9 @@ REFERENCE_MAX_TOTAL_BYTES = 10_485_760
 LINK = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 BINARY_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf", ".mov", ".mp4", ".xcresult", ".trace"}
 RETIRED_GAMEPLAY_LAYOUT_PATTERN = re.compile(r"\.(?:framedShelf|framelessShelf|feltTools)\b")
+RETIRED_GAMEPLAY_SYMBOL_PATTERN = re.compile(
+    r"\b(?:GameTabletopLayoutStyle|HandTrayView|BankTrayView|GameTurnObjectButton|usesPhysicalProps)\b"
+)
 FORBIDDEN_INTERFACE_FONT_PATTERNS = (
     re.compile(r"\bFont\.custom\s*\("),
     re.compile(r"\bUIFont\s*\(\s*name\s*:"),
@@ -158,10 +161,13 @@ def check_retired_gameplay_routes(errors: list[str]) -> None:
         return
     for swift_file in source_root.rglob("*.swift"):
         text = swift_file.read_text(encoding="utf-8", errors="replace")
-        if RETIRED_GAMEPLAY_LAYOUT_PATTERN.search(text):
+        if (
+            RETIRED_GAMEPLAY_LAYOUT_PATTERN.search(text)
+            or RETIRED_GAMEPLAY_SYMBOL_PATTERN.search(text)
+        ):
             error(
                 errors,
-                f"retired gameplay layout route in production source: {swift_file.relative_to(ROOT)}",
+                f"retired gameplay layout or symbol in production source: {swift_file.relative_to(ROOT)}",
             )
 
 

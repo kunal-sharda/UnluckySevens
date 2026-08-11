@@ -56,7 +56,6 @@ struct GamePhysicalIncomingTradeView: View {
 
             GameTradeResponderActionRow(
                 actions: actions,
-                usesPhysicalProps: true,
                 onAccept: onAccept,
                 onDecline: onDecline,
                 onCounter: onCounter

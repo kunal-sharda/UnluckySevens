@@ -92,12 +92,21 @@ class HarnessAuditTests(unittest.TestCase):
         )
         errors: list[str] = []
         check_harness.check_retired_gameplay_routes(errors)
-        self.assertTrue(any("retired gameplay layout route" in item for item in errors))
+        self.assertTrue(any("retired gameplay layout or symbol" in item for item in errors))
 
-    def test_physical_props_gameplay_layout_passes(self) -> None:
+    def test_retired_gameplay_symbol_is_reported(self) -> None:
         self.write(
-            "MessagesExtension/Sources/Presentation/GameTabletopLayoutStyle.swift",
-            "let style = GameTabletopLayoutStyle.physicalProps\n",
+            "MessagesExtension/Sources/Features/Legacy.swift",
+            "let usesPhysicalProps = true\n",
+        )
+        errors: list[str] = []
+        check_harness.check_retired_gameplay_routes(errors)
+        self.assertTrue(any("retired gameplay layout or symbol" in item for item in errors))
+
+    def test_canonical_gameplay_source_passes(self) -> None:
+        self.write(
+            "MessagesExtension/Sources/Features/Canonical.swift",
+            "let route = GameShellRoute.none\n",
         )
         errors: list[str] = []
         check_harness.check_retired_gameplay_routes(errors)

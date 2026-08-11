@@ -60,6 +60,8 @@ For player-facing visual work, show the user the representative inspected result
 
 After rebuilding `MessagesExtension` or the standalone Messages app, explicitly install the freshly built `UnluckySevensApp.app` with `xcrun simctl install` before any `test-without-building` screenshot run. That test action refreshes the test runner but does not guarantee that Messages replaces an already installed host app; compare the built and installed `MessagesExtension` executable hashes when a capture contradicts the current source.
 
+For the repeatable full UI catalog, run `bash ./scripts/run-ui-screenshot-catalog.sh iphone`, then `bash ./scripts/run-ui-screenshot-catalog.sh ipad`. The runner canonically regenerates, builds the app and UI-test runner into one pinned DerivedData root, installs that exact app, restarts Messages so the host discovers the extension, verifies the built and installed extension hashes, and runs each catalog route in its own XCTest process. Its timestamped local evidence directory contains the run manifest, per-route result bundles, exported attachments, and direct simulator stills. A failed route stops the lane; follow the retry budget and circuit breaker below rather than silently continuing.
+
 ## Canonical Generation and Tooling Boundaries
 
 For agent validation, `bash ./scripts/gen.sh` is the only canonical project-generation entrypoint. It always runs Tuist with no-open settings and applies the generated-project patching required for the standalone Messages package.
