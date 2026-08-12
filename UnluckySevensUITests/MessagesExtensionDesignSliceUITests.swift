@@ -846,9 +846,9 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             attachScreenshot(named: String(format: "Tutorial %02d - %@", index + 1, title))
 
             if index < titles.count - 1 {
-                messages.coordinate(
-                    withNormalizedOffset: CGVector(dx: 0.82, dy: 0.50)
-                ).tap()
+                let next = messages.buttons["uls.tutorial.next"].firstMatch
+                XCTAssertTrue(next.waitForExistence(timeout: 4))
+                next.tap()
             }
         }
     }
@@ -3250,11 +3250,39 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             return
         }
 
-        let hideKeyboard = messages.buttons["Hide keyboard"].firstMatch
-        if hideKeyboard.waitForExistence(timeout: 1) {
-            hideKeyboard.tap()
+        focusMessageComposer()
+        tapMessagesDrawerButton()
+        if waitForFullMessagesAppDrawer(timeout: 3) {
+            return
         }
 
+        // On iPad, Messages can preserve a photo-only `+` state. Returning
+        // focus to the text bubble before a second `+` tap opens the complete
+        // apps list instead. Re-query every control after the panel transition.
+        focusMessageComposer()
+        tapMessagesDrawerButton()
+        XCTAssertTrue(
+            waitForFullMessagesAppDrawer(timeout: 4),
+            "Expected the complete Messages apps drawer to open."
+        )
+    }
+
+    private func focusMessageComposer() {
+        let messageField = firstExistingElement(
+            [
+                messages.textFields["messageBodyField"].firstMatch,
+                messages.textFields["Message"].firstMatch,
+                messages.textViews["messageBodyField"].firstMatch,
+                messages.textViews["Message"].firstMatch,
+            ],
+            timeout: 2
+        )
+        if messageField.exists {
+            messageField.tap()
+        }
+    }
+
+    private func tapMessagesDrawerButton() {
         let drawerButtons = [
             messages.buttons["add"].firstMatch,
             messages.buttons["Apps"].firstMatch,
@@ -3270,12 +3298,45 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         messages.coordinate(withNormalizedOffset: CGVector(dx: 0.07, dy: 0.94)).tap()
     }
 
+    private func waitForFullMessagesAppDrawer(timeout: TimeInterval) -> Bool {
+        if messages.staticTexts["Unlucky Sevens"].firstMatch.waitForExistence(timeout: timeout) {
+            return true
+        }
+
+        let knownFullDrawerEntries = [
+            "Stickers",
+            "Apple Cash",
+            "Audio",
+            "#images",
+            "Digital Touch",
+            "Memoji",
+        ]
+        return knownFullDrawerEntries.contains { label in
+            messages.staticTexts[label].firstMatch.exists
+                || messages.buttons[label].firstMatch.exists
+        }
+    }
+
     private func openUnluckySevensFromDrawer() {
         if waitForInviteSlice(timeout: 2) {
             return
         }
 
-        let appRow = messages.staticTexts["Unlucky Sevens"].firstMatch
+        let appRow = firstExistingElement(
+            [
+                messages.staticTexts["Unlucky Sevens"].firstMatch,
+                messages.buttons["Unlucky Sevens"].firstMatch,
+                messages.descendants(matching: .any)["Unlucky Sevens"].firstMatch,
+            ],
+            timeout: 2
+        )
+        let appsDrawer = messages.collectionViews
+            .containing(.staticText, identifier: "Stickers")
+            .firstMatch
+        XCTAssertTrue(
+            appsDrawer.waitForExistence(timeout: 2),
+            "Expected the complete Messages apps drawer collection."
+        )
 
         for _ in 0..<8 {
             if appRow.exists {
@@ -3283,7 +3344,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
                 return
             }
 
-            messages.swipeUp()
+            appsDrawer.swipeUp()
         }
 
         XCTFail("Could not find Unlucky Sevens in the Messages app drawer.")
