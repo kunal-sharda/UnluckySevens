@@ -843,6 +843,21 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
                 "Expected visible tutorial progress for step \(index + 1)."
             )
             XCTAssertEqual(progress.label, expectedTitle)
+            let callouts = messages.descendants(matching: .any)
+                .matching(identifier: "uls.tutorial.callout")
+            let expectedMinimumCalloutCount = index == titles.count - 1 ? 0 : 1
+            XCTAssertGreaterThanOrEqual(
+                callouts.count,
+                expectedMinimumCalloutCount,
+                "Expected the tutorial model's callout treatment for step \(index + 1)."
+            )
+            for calloutIndex in 0..<callouts.count {
+                XCTAssertLessThanOrEqual(
+                    callouts.element(boundBy: calloutIndex).frame.height,
+                    88,
+                    "Tutorial callouts must stay compact in a narrow Messages host."
+                )
+            }
             attachScreenshot(named: String(format: "Tutorial %02d - %@", index + 1, title))
 
             if index < titles.count - 1 {
@@ -851,6 +866,78 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
                 next.tap()
             }
         }
+    }
+
+    func testCaptureNarrowShortTutorialCorrectionCheckpoint() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        activateUXLabNestedQuickState(
+            title: "Invitation",
+            identifier: "uls.uxLab.cleanShot.lobbyInvite"
+        )
+        openLobbyTutorial()
+        dismissTutorialNavigationCoach()
+
+        assertTutorialProgress(title: "Place Your First Settlement")
+        XCTAssertTrue(
+            messages.staticTexts[
+                "Everyone places a settlement and road twice. Round two goes in reverse order."
+            ].firstMatch.waitForExistence(timeout: 4)
+        )
+        let setupBoard = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let setupPieceRail = turnElement(identifier: "uls.setup.pieceRail", labels: [])
+        XCTAssertTrue(setupBoard.waitForExistence(timeout: 4))
+        XCTAssertTrue(setupPieceRail.waitForExistence(timeout: 4))
+        XCTAssertLessThanOrEqual(
+            setupBoard.frame.maxY,
+            setupPieceRail.frame.minY,
+            "The setup ocean frame must end above the fixed piece rail."
+        )
+        attachScreenshot(named: "Tutorial Correction 01 - Setup")
+
+        let next = messages.buttons["uls.tutorial.next"].firstMatch
+        for _ in 0..<5 {
+            XCTAssertTrue(next.waitForExistence(timeout: 4))
+            next.tap()
+        }
+        assertTutorialProgress(title: "Choose What to Build")
+        XCTAssertTrue(
+            messages.staticTexts[
+                "Each piece shows its cost. A city upgrades one of your settlements."
+            ].firstMatch.waitForExistence(timeout: 4)
+        )
+        let buildBoard = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let turnObjectRail = turnElement(identifier: "uls.turn.objectRail", labels: [])
+        XCTAssertTrue(buildBoard.waitForExistence(timeout: 4))
+        XCTAssertTrue(turnObjectRail.waitForExistence(timeout: 4))
+        XCTAssertLessThanOrEqual(
+            buildBoard.frame.maxY,
+            turnObjectRail.frame.minY,
+            "The turn ocean frame must end above the fixed turn-object rail."
+        )
+        attachScreenshot(named: "Tutorial Correction 02 - Build")
+
+        for _ in 0..<2 {
+            XCTAssertTrue(next.waitForExistence(timeout: 4))
+            next.tap()
+        }
+        assertTutorialProgress(title: "Trade")
+        XCTAssertTrue(
+            messages.staticTexts[
+                "Choose what you’ll offer and what you want back."
+            ].firstMatch.waitForExistence(timeout: 4)
+        )
+        let tradeCallout = messages.descendants(matching: .any)
+            .matching(identifier: "uls.tutorial.callout")
+            .firstMatch
+        let giveHeading = messages.staticTexts["Give"].firstMatch
+        XCTAssertTrue(tradeCallout.waitForExistence(timeout: 4))
+        XCTAssertTrue(giveHeading.waitForExistence(timeout: 4))
+        XCTAssertFalse(
+            tradeCallout.frame.intersects(giveHeading.frame),
+            "Trade tutorial guidance must not cover the Give heading."
+        )
+        attachScreenshot(named: "Tutorial Correction 03 - Trade")
     }
 
     func testCaptureRobberPhysicalFlow() throws {

@@ -113,7 +113,6 @@ struct GameTutorialPreviewView: View {
             Text(callout.text)
                 .font(GameTheme.chipFont)
                 .foregroundStyle(GameTheme.ink)
-                .lineLimit(4)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 9)

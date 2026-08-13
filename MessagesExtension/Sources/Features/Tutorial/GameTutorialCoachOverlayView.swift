@@ -9,10 +9,14 @@ struct GameTutorialCoachOverlayView: View {
         var id: Int { callout.id }
     }
 
-    private let standardBubbleSize = CGSize(width: 174, height: 68)
-    private let tradeBubbleSize = CGSize(width: 154, height: 46)
+    private let standardBubbleWidth: CGFloat = 178
+    private let compactBubbleWidth: CGFloat = 204
+    private let tradeBubbleWidth: CGFloat = 196
+    private let minimumBubbleHeight: CGFloat = 52
+    private let maximumCompactBubbleHeight: CGFloat = 84
     private let edgeInset: CGFloat = 10
     private let topExclusionHeight: CGFloat = 72
+    private let shortHostBottomExclusionHeight: CGFloat = 78
 
     let callouts: [GameTutorialCallout]
     let anchors: [GameTutorialTarget: Anchor<CGRect>]
@@ -29,13 +33,14 @@ struct GameTutorialCoachOverlayView: View {
                             to: leaderEndpoint(
                                 from: resolved.targetPoint,
                                 bubbleCenter: resolved.bubbleCenter,
-                                callout: resolved.callout
+                                callout: resolved.callout,
+                                availableSize: proxy.size
                             )
                         )
                         targetPin(number: resolved.callout.number)
                             .position(resolved.targetPoint)
                     }
-                    calloutBubble(resolved.callout)
+                    calloutBubble(resolved.callout, availableSize: proxy.size)
                         .position(resolved.bubbleCenter)
                 }
             }
@@ -61,12 +66,12 @@ struct GameTutorialCoachOverlayView: View {
         ]
         var resolved: [ResolvedCallout] = []
 
-        for callout in callouts {
+        for (calloutIndex, callout) in callouts.enumerated() {
             guard let anchor = anchors[callout.target] else { continue }
             let targetFrame = proxy[anchor]
             let targetPoint = point(in: targetFrame, at: callout.targetPoint)
             let placements = orderedPlacements(preferred: callout.placement)
-            let candidates = placements.map {
+            let baseCandidates = placements.map {
                 bubbleCenter(
                     placement: $0,
                     targetFrame: targetFrame,
@@ -75,25 +80,54 @@ struct GameTutorialCoachOverlayView: View {
                     callout: callout
                 )
             }
+            let verticalStep = bubbleSize(for: callout, availableSize: proxy.size).height + 12
+            let candidates = baseCandidates.flatMap { center in
+                [
+                    center,
+                    clampedCenter(
+                        CGPoint(x: center.x, y: center.y - verticalStep),
+                        availableSize: proxy.size,
+                        callout: callout
+                    ),
+                    clampedCenter(
+                        CGPoint(x: center.x, y: center.y + verticalStep),
+                        availableSize: proxy.size,
+                        callout: callout
+                    ),
+                ]
+            }
 
-            let selected = candidates.enumerated().min { lhs, rhs in
+            let scoredSelection = candidates.enumerated().min { lhs, rhs in
                 placementScore(
                     center: lhs.element,
                     preferenceIndex: lhs.offset,
                     targetFrame: targetFrame,
                     occupied: occupied,
-                    callout: callout
+                    callout: callout,
+                    availableSize: proxy.size
                 ) < placementScore(
                     center: rhs.element,
                     preferenceIndex: rhs.offset,
                     targetFrame: targetFrame,
                     occupied: occupied,
-                    callout: callout
+                    callout: callout,
+                    availableSize: proxy.size
                 )
             }?.element ?? candidates[0]
+            let selected = shortHostStackedCenter(
+                calloutIndex: calloutIndex,
+                calloutCount: callouts.count,
+                callout: callout,
+                targetPoint: targetPoint,
+                availableSize: proxy.size
+            ) ?? scoredSelection
 
             occupied.append(
-                bubbleRect(centeredAt: selected, callout: callout)
+                bubbleRect(
+                    centeredAt: selected,
+                    callout: callout,
+                    availableSize: proxy.size
+                )
                     .insetBy(dx: -6, dy: -6)
             )
             resolved.append(
@@ -115,6 +149,27 @@ struct GameTutorialCoachOverlayView: View {
         return [preferred] + all.filter { $0 != preferred }
     }
 
+    private func shortHostStackedCenter(
+        calloutIndex: Int,
+        calloutCount: Int,
+        callout: GameTutorialCallout,
+        targetPoint: CGPoint,
+        availableSize: CGSize
+    ) -> CGPoint? {
+        guard availableSize.height < 760, calloutCount > 1, calloutIndex > 0 else {
+            return nil
+        }
+        let halfHeight = bubbleSize(for: callout, availableSize: availableSize).height / 2
+        return clampedCenter(
+            CGPoint(
+                x: targetPoint.x,
+                y: availableSize.height - shortHostBottomExclusionHeight - halfHeight
+            ),
+            availableSize: availableSize,
+            callout: callout
+        )
+    }
+
     private func bubbleCenter(
         placement: GameTutorialCallout.Placement,
         targetFrame: CGRect,
@@ -122,7 +177,7 @@ struct GameTutorialCoachOverlayView: View {
         availableSize: CGSize,
         callout: GameTutorialCallout
     ) -> CGPoint {
-        let size = bubbleSize(for: callout)
+        let size = bubbleSize(for: callout, availableSize: availableSize)
         let halfWidth = min(size.width, availableSize.width - 28) / 2
         let halfHeight = size.height / 2
         let gap = isTradeCallout(callout) ? 10.0 : 18.0
@@ -139,6 +194,17 @@ struct GameTutorialCoachOverlayView: View {
             proposed = CGPoint(x: targetFrame.maxX + halfWidth + gap, y: targetPoint.y)
         }
 
+        return clampedCenter(proposed, availableSize: availableSize, callout: callout)
+    }
+
+    private func clampedCenter(
+        _ proposed: CGPoint,
+        availableSize: CGSize,
+        callout: GameTutorialCallout
+    ) -> CGPoint {
+        let size = bubbleSize(for: callout, availableSize: availableSize)
+        let halfWidth = min(size.width, availableSize.width - 28) / 2
+        let halfHeight = size.height / 2
         return CGPoint(
             x: min(
                 max(proposed.x, halfWidth + edgeInset),
@@ -156,14 +222,21 @@ struct GameTutorialCoachOverlayView: View {
         preferenceIndex: Int,
         targetFrame: CGRect,
         occupied: [CGRect],
-        callout: GameTutorialCallout
+        callout: GameTutorialCallout,
+        availableSize: CGSize
     ) -> CGFloat {
-        let rect = bubbleRect(centeredAt: center, callout: callout)
+        let rect = bubbleRect(
+            centeredAt: center,
+            callout: callout,
+            availableSize: availableSize
+        )
         let occupiedOverlap = occupied.reduce(CGFloat.zero) {
             $0 + overlapArea(rect, $1)
         }
         let targetOverlap = overlapArea(rect, targetFrame.insetBy(dx: -6, dy: -6))
-        return ((occupiedOverlap + targetOverlap) * 1_000) + CGFloat(preferenceIndex * 10)
+        return (occupiedOverlap * 10_000)
+            + (targetOverlap * 1_000)
+            + CGFloat(preferenceIndex * 10)
     }
 
     private func overlapArea(_ lhs: CGRect, _ rhs: CGRect) -> CGFloat {
@@ -174,9 +247,10 @@ struct GameTutorialCoachOverlayView: View {
 
     private func bubbleRect(
         centeredAt center: CGPoint,
-        callout: GameTutorialCallout
+        callout: GameTutorialCallout,
+        availableSize: CGSize
     ) -> CGRect {
-        let size = bubbleSize(for: callout)
+        let size = bubbleSize(for: callout, availableSize: availableSize)
         return CGRect(
             x: center.x - (size.width / 2),
             y: center.y - (size.height / 2),
@@ -188,9 +262,14 @@ struct GameTutorialCoachOverlayView: View {
     private func leaderEndpoint(
         from start: CGPoint,
         bubbleCenter: CGPoint,
-        callout: GameTutorialCallout
+        callout: GameTutorialCallout,
+        availableSize: CGSize
     ) -> CGPoint {
-        let rect = bubbleRect(centeredAt: bubbleCenter, callout: callout)
+        let rect = bubbleRect(
+            centeredAt: bubbleCenter,
+            callout: callout,
+            availableSize: availableSize
+        )
             .insetBy(dx: 5, dy: 5)
         let deltaX = start.x - bubbleCenter.x
         let deltaY = start.y - bubbleCenter.y
@@ -233,54 +312,66 @@ struct GameTutorialCoachOverlayView: View {
     }
 
     @ViewBuilder
-    private func calloutBubble(_ callout: GameTutorialCallout) -> some View {
-        let size = bubbleSize(for: callout)
-        if isTradeCallout(callout) {
-            Text(callout.text)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .frame(width: size.width - 20, height: size.height - 12)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .background(
-                    GameTheme.felt.opacity(0.98),
-                    in: RoundedRectangle(cornerRadius: 9)
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 9)
-                        .stroke(
-                            GamePhysicalTurnPalette.selectedKeyline,
-                            lineWidth: 1.5
-                        )
-                }
-                .shadow(color: .black.opacity(0.24), radius: 3, y: 1)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(callout.text)
-        } else {
-            Text(callout.text)
-                .font(GameTheme.chipFont)
-                .foregroundStyle(GameTheme.ink)
-                .multilineTextAlignment(.leading)
-                .lineLimit(3)
-                .frame(width: size.width - 24, alignment: .leading)
-                .frame(height: size.height - 14, alignment: .leading)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(GameTheme.surface, in: RoundedRectangle(cornerRadius: 10))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(GameTheme.accent, lineWidth: 2)
-                }
-                .shadow(color: .black.opacity(0.22), radius: 5, y: 2)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(callout.text)
-        }
+    private func calloutBubble(
+        _ callout: GameTutorialCallout,
+        availableSize: CGSize
+    ) -> some View {
+        let size = bubbleSize(for: callout, availableSize: availableSize)
+        let usesCompactHost = availableSize.width < 560
+        Text(callout.text)
+            .font(usesCompactHost ? .caption.weight(.semibold) : GameTheme.chipFont)
+            .foregroundStyle(GameTheme.ink)
+            .multilineTextAlignment(.leading)
+            .lineLimit(4)
+            .minimumScaleFactor(0.82)
+            .frame(width: size.width - 24, alignment: .leading)
+            .frame(height: size.height - 14, alignment: .leading)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(GameTheme.surface, in: RoundedRectangle(cornerRadius: 10))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(GameTheme.accent, lineWidth: 2)
+            }
+            .shadow(color: .black.opacity(0.22), radius: 5, y: 2)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(callout.text)
+            .accessibilityIdentifier("uls.tutorial.callout")
     }
 
-    private func bubbleSize(for callout: GameTutorialCallout) -> CGSize {
-        isTradeCallout(callout) ? tradeBubbleSize : standardBubbleSize
+    private func bubbleSize(
+        for callout: GameTutorialCallout,
+        availableSize: CGSize
+    ) -> CGSize {
+        let usesTradeLayout = isTradeCallout(callout)
+        let usesCompactHost = availableSize.width < 560
+        let width = usesTradeLayout
+            ? tradeBubbleWidth
+            : (usesCompactHost ? compactBubbleWidth : standardBubbleWidth)
+        let estimatedLineCount = wrappedLineCount(
+            for: callout.text,
+            charactersPerLine: usesCompactHost ? 28 : 20
+        )
+        let lineHeight = usesCompactHost ? 16.0 : 18.0
+        let estimatedTextHeight = CGFloat(estimatedLineCount) * lineHeight
+        let estimatedHeight = max(minimumBubbleHeight, estimatedTextHeight + 20)
+        return CGSize(
+            width: min(width, availableSize.width - 40),
+            height: usesCompactHost
+                ? min(maximumCompactBubbleHeight, estimatedHeight)
+                : estimatedHeight
+        )
+    }
+
+    private func wrappedLineCount(for text: String, charactersPerLine: Int) -> Int {
+        text.split(separator: " ").reduce(into: [0]) { lines, word in
+            let requiredCount = word.count + (lines[lines.count - 1] == 0 ? 0 : 1)
+            if lines[lines.count - 1] + requiredCount > charactersPerLine {
+                lines.append(word.count)
+            } else {
+                lines[lines.count - 1] += requiredCount
+            }
+        }.count
     }
 
     private func isTradeCallout(_ callout: GameTutorialCallout) -> Bool {
