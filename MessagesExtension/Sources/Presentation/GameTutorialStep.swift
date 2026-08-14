@@ -156,7 +156,7 @@ struct GameTutorialStep: Identifiable, Equatable {
       callouts: [
         .init(
           number: 1, target: .board, targetPoint: UnitPoint(x: 0.28, y: 0.39), placement: .trailing,
-          text: "Tap a glowing corner twice. Settlements must be two road lengths apart."
+          text: "Settlements must be at least two road lengths apart."
         )
       ]
     ),
@@ -200,7 +200,7 @@ struct GameTutorialStep: Identifiable, Equatable {
           number: 1,
           target: .maritimeOptions,
           placement: .above,
-          text: "Your best Bank or Port rate is already shown."
+          text: "You can swipe through to see which ports and trades are available."
         )
       ]
     ),
@@ -214,7 +214,7 @@ struct GameTutorialStep: Identifiable, Equatable {
       callouts: [
         .init(
           number: 1, target: .discardSurface, placement: .above,
-          text: "Holding 8+ cards when a seven rolls? Discard half, rounded down.")
+          text: "Holding 8+ cards when a seven rolls? You’ll have to discard half, rounded down.")
       ]
     ),
     .init(
@@ -237,7 +237,7 @@ struct GameTutorialStep: Identifiable, Equatable {
       previewAccessibilityLabel: "Board showing the neighboring players available for the robber steal.",
       callouts: [
         .init(
-          number: 1, target: .board, targetPoint: UnitPoint(x: 0.68, y: 0.41), placement: .leading,
+          number: 1, target: .board, targetPoint: UnitPoint(x: 0.42, y: 0.55), placement: .leading,
           text: "Choose a neighboring player to steal one random resource from.")
       ]
     ),

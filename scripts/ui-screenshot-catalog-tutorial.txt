@@ -1,0 +1,2 @@
+# Focused tutorial copy, callout, pointer, and control-affordance proof.
+testCaptureEveryTutorialScreen

@@ -12,6 +12,7 @@ struct GameTutorialCoachOverlayView: View {
     private let standardBubbleWidth: CGFloat = 178
     private let compactBubbleWidth: CGFloat = 204
     private let tradeBubbleWidth: CGFloat = 196
+    private let maritimeBubbleWidth: CGFloat = 252
     private let minimumBubbleHeight: CGFloat = 52
     private let maximumCompactBubbleHeight: CGFloat = 84
     private let edgeInset: CGFloat = 10
@@ -114,11 +115,9 @@ struct GameTutorialCoachOverlayView: View {
                     availableSize: proxy.size
                 )
             }?.element ?? candidates[0]
-            let selected = shortHostStackedCenter(
+            let selected = compactBoardPairCenter(
                 calloutIndex: calloutIndex,
-                calloutCount: callouts.count,
                 callout: callout,
-                targetPoint: targetPoint,
                 availableSize: proxy.size
             ) ?? scoredSelection
 
@@ -149,20 +148,29 @@ struct GameTutorialCoachOverlayView: View {
         return [preferred] + all.filter { $0 != preferred }
     }
 
-    private func shortHostStackedCenter(
+    private func compactBoardPairCenter(
         calloutIndex: Int,
-        calloutCount: Int,
         callout: GameTutorialCallout,
-        targetPoint: CGPoint,
         availableSize: CGSize
     ) -> CGPoint? {
-        guard availableSize.height < 760, calloutCount > 1, calloutIndex > 0 else {
+        guard usesCompactBoardPairLayout(availableSize: availableSize) else {
             return nil
         }
-        let halfHeight = bubbleSize(for: callout, availableSize: availableSize).height / 2
+
+        let size = bubbleSize(for: callout, availableSize: availableSize)
+        let halfWidth = size.width / 2
+        let halfHeight = size.height / 2
+        let orderedCallouts = callouts.sorted { lhs, rhs in
+            lhs.targetPoint.x < rhs.targetPoint.x
+        }
+        let slotIndex = orderedCallouts.firstIndex { $0.id == callout.id } ?? calloutIndex
+        let x = slotIndex == 0
+            ? edgeInset + halfWidth
+            : availableSize.width - edgeInset - halfWidth
+
         return clampedCenter(
             CGPoint(
-                x: targetPoint.x,
+                x: x,
                 y: availableSize.height - shortHostBottomExclusionHeight - halfHeight
             ),
             availableSize: availableSize,
@@ -345,12 +353,24 @@ struct GameTutorialCoachOverlayView: View {
     ) -> CGSize {
         let usesTradeLayout = isTradeCallout(callout)
         let usesCompactHost = availableSize.width < 560
-        let width = usesTradeLayout
-            ? tradeBubbleWidth
-            : (usesCompactHost ? compactBubbleWidth : standardBubbleWidth)
+        let width: CGFloat
+        if usesCompactBoardPairLayout(availableSize: availableSize) {
+            width = min(
+                compactBubbleWidth,
+                (availableSize.width - (edgeInset * 3)) / 2
+            )
+        } else if callout.target == .maritimeOptions {
+            width = maritimeBubbleWidth
+        } else {
+            width = usesTradeLayout
+                ? tradeBubbleWidth
+                : (usesCompactHost ? compactBubbleWidth : standardBubbleWidth)
+        }
         let estimatedLineCount = wrappedLineCount(
             for: callout.text,
-            charactersPerLine: usesCompactHost ? 28 : 20
+            charactersPerLine: callout.target == .maritimeOptions
+                ? 38
+                : (usesCompactHost ? 28 : 20)
         )
         let lineHeight = usesCompactHost ? 16.0 : 18.0
         let estimatedTextHeight = CGFloat(estimatedLineCount) * lineHeight
@@ -381,5 +401,12 @@ struct GameTutorialCoachOverlayView: View {
         default:
             return false
         }
+    }
+
+    private func usesCompactBoardPairLayout(availableSize: CGSize) -> Bool {
+        availableSize.width < 560
+            && availableSize.height < 760
+            && callouts.count == 2
+            && callouts.allSatisfy { $0.target == .board }
     }
 }

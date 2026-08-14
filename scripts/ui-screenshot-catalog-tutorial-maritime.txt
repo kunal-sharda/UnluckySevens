@@ -1,0 +1,2 @@
+# Second-round confirmation for the maritime tutorial header band.
+testCapturePhysicalTradeCorrectionTutorialCheckpoint

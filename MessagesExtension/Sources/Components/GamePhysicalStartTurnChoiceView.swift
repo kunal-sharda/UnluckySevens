@@ -59,18 +59,27 @@ struct GamePhysicalStartTurnChoiceView: View {
                             .frame(height: isDevChooserOpen ? 62 : 92)
 
                         GameTabletopNameTileView(
-                            title: "Roll",
-                            width: 54,
-                            isSelected: false
+                            title: "Roll Dice",
+                            width: 76,
+                            isSelected: true
                         )
                     }
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .frame(minWidth: 122, minHeight: isDevChooserOpen ? 92 : 132)
+                .background {
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(GameTheme.accent.opacity(0.14))
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(GameTheme.accent, lineWidth: 2)
+                }
+                .shadow(color: .black.opacity(0.20), radius: 4, y: 2)
                 .accessibilityIdentifier("uls.startTurn.roll")
                 .accessibilityLabel("Roll dice")
-                .accessibilityValue("Ready")
+                .accessibilityValue("Ready to roll")
                 .accessibilityHint("Opens the full-screen dice bowl and rolls the dice")
                 .gameTutorialTarget(.rollButton)
             }

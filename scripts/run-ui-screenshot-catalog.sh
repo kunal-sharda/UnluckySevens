@@ -22,6 +22,12 @@ case "$PROFILE" in
     ;;
 esac
 
+CATALOG="${UI_SCREENSHOT_CATALOG:-$CATALOG}"
+if [[ ! -f "$CATALOG" ]]; then
+  echo "Screenshot catalog not found: $CATALOG" >&2
+  exit 66
+fi
+
 if [[ -n "${UI_SCREENSHOT_DEVICE_ID:-}" ]]; then
   DEVICE_ID="$UI_SCREENSHOT_DEVICE_ID"
 else
@@ -41,8 +47,6 @@ mkdir -p "$DERIVED_DATA_PATH" "$RESULT_ROOT/results" "$RESULT_ROOT/attachments" 
 
 cd "$ROOT_DIR"
 bash ./scripts/gen.sh
-xcrun simctl boot "$DEVICE_ID" >/dev/null 2>&1 || true
-xcrun simctl bootstatus "$DEVICE_ID" -b
 
 xcodebuild \
   -workspace UnluckySevens.xcworkspace \
@@ -59,6 +63,10 @@ if [[ ! -d "$APP_PATH" || -z "$XCTESTRUN_PATH" ]]; then
   exit 66
 fi
 
+xcrun simctl shutdown all >/dev/null 2>&1 || true
+xcrun simctl boot "$DEVICE_ID"
+xcrun simctl bootstatus "$DEVICE_ID" -b
+xcrun simctl uninstall "$DEVICE_ID" com.unluckysevens.app >/dev/null 2>&1 || true
 xcrun simctl install "$DEVICE_ID" "$APP_PATH"
 xcrun simctl terminate "$DEVICE_ID" com.apple.MobileSMS >/dev/null 2>&1 || true
 xcrun simctl launch "$DEVICE_ID" com.apple.MobileSMS >/dev/null
@@ -80,9 +88,11 @@ fi
   printf 'device_id=%s\n' "$DEVICE_ID"
   printf 'derived_data=%s\n' "$DERIVED_DATA_PATH"
   printf 'xctestrun=%s\n' "$XCTESTRUN_PATH"
+  printf 'catalog=%s\n' "$CATALOG"
   printf 'built_extension_sha256=%s\n' "$BUILT_HASH"
   printf 'installed_extension_sha256=%s\n' "$INSTALLED_HASH"
   printf 'started_at_utc=%s\n' "$RUN_STAMP"
+  printf 'simulator_reset=shutdown-all,boot-target,uninstall-app,install-fresh,restart-messages\n'
 } > "$RESULT_ROOT/run-manifest.txt"
 
 START_AT="${UI_SCREENSHOT_START_AT:-}"

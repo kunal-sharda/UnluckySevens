@@ -127,7 +127,7 @@ Source mapping:
 
 - **Title:** “Choose a Glowing Corner”
 - **Accessible guidance:** “Available settlement locations glow. Tap one twice to confirm the build. Settlements must be at least two road lengths apart.”
-- **Visible coach mark:** “Tap a glowing corner twice. Settlements must be two road lengths apart.”
+- **Visible coach mark:** “Settlements must be at least two road lengths apart.”
 - **Preview description:** “Board showing the glowing corners where a settlement can be built.”
 
 ### 8. Make an Offer
@@ -148,14 +148,14 @@ Source mapping:
 
 - **Title:** “Trade with Bank or Port”
 - **Accessible guidance:** “Choose a Bank or Port trade. The list automatically shows the best rate you can use.”
-- **Visible coach mark:** “Your best Bank or Port rate is already shown.”
+- **Visible coach mark:** “You can swipe through to see which ports and trades are available.”
 - **Preview description:** “Bank or Port trade list showing the best available exchange rate.”
 
 ### 11. Discard on Seven
 
 - **Title:** “Discard on Seven”
 - **Accessible guidance:** “When a seven is rolled, players holding more than seven cards discard half their hand, rounded down, before the robber moves.”
-- **Visible coach mark:** “Holding 8+ cards when a seven rolls? Discard half, rounded down.”
+- **Visible coach mark:** “Holding 8+ cards when a seven rolls? You’ll have to discard half, rounded down.”
 - **Preview description:** “Discard screen showing the required number and the resource cards available to discard.”
 
 ### 12. Move the Robber
