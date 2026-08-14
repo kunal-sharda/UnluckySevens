@@ -1,6 +1,7 @@
 import CoreGraphics
 
 enum MessagesHostLayoutProfile: Equatable {
+    case narrowShort
     case narrow
     case standard
     case wideShort
@@ -8,7 +9,7 @@ enum MessagesHostLayoutProfile: Equatable {
 
     static func resolve(availableSize: CGSize) -> Self {
         if availableSize.width < 560 {
-            return .narrow
+            return availableSize.height < 760 ? .narrowShort : .narrow
         }
         if availableSize.width < 700 {
             return .standard
@@ -21,7 +22,7 @@ enum MessagesHostLayoutProfile: Equatable {
 
     var physicalContentScale: CGFloat {
         switch self {
-        case .narrow:
+        case .narrowShort, .narrow:
             1
         case .standard:
             1.08
@@ -34,7 +35,7 @@ enum MessagesHostLayoutProfile: Equatable {
 
     var physicalZoneScale: CGFloat {
         switch self {
-        case .narrow:
+        case .narrowShort, .narrow:
             1
         case .standard:
             1.06
@@ -43,6 +44,33 @@ enum MessagesHostLayoutProfile: Equatable {
         case .wide:
             1.12
         }
+    }
+}
+
+struct GameBoardViewportLayout: Equatable {
+    static let canonicalSize = CGSize(width: 430, height: 520)
+
+    let size: CGSize
+    let uniformScale: CGFloat
+
+    static func fit(availableSize: CGSize) -> Self {
+        let availableWidth = max(availableSize.width, 0)
+        let availableHeight = max(availableSize.height, 0)
+        guard availableWidth > 0, availableHeight > 0 else {
+            return Self(size: .zero, uniformScale: 0)
+        }
+
+        let scale = min(
+            availableWidth / canonicalSize.width,
+            availableHeight / canonicalSize.height
+        )
+        return Self(
+            size: CGSize(
+                width: canonicalSize.width * scale,
+                height: canonicalSize.height * scale
+            ),
+            uniformScale: scale
+        )
     }
 }
 
@@ -78,7 +106,10 @@ struct GamePhysicalTurnLayout: Equatable {
     let contentScale: CGFloat
     let hostProfile: MessagesHostLayoutProfile
 
-    static func resolve(availableSize: CGSize) -> Self {
+    static func resolve(
+        availableSize: CGSize,
+        additionalBottomClearance: CGFloat = 0
+    ) -> Self {
         let height = max(availableSize.height, 0)
         let profile = MessagesHostLayoutProfile.resolve(availableSize: availableSize)
         let zoneScale = profile.physicalZoneScale
@@ -95,7 +126,7 @@ struct GamePhysicalTurnLayout: Equatable {
             ),
             boardFrameVerticalInset: 4,
             boardFrameVerticalOffset: 4,
-            bottomRailPadding: 0,
+            bottomRailPadding: max(additionalBottomClearance, 0),
             topBarHeight: Self.topBarHeight * zoneScale,
             contentScale: profile.physicalContentScale,
             hostProfile: profile

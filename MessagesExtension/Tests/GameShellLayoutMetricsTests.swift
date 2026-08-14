@@ -2,6 +2,44 @@ import XCTest
 @testable import MessagesExtension
 
 final class GameShellLayoutMetricsTests: XCTestCase {
+    func testBoardViewportFitsCanonicalAspectByWidth() {
+        let layout = GameBoardViewportLayout.fit(
+            availableSize: CGSize(width: 430, height: 700)
+        )
+
+        XCTAssertEqual(layout.uniformScale, 1, accuracy: 0.001)
+        XCTAssertEqual(layout.size, GameBoardViewportLayout.canonicalSize)
+        XCTAssertEqual(
+            layout.size.width / layout.size.height,
+            GameBoardViewportLayout.canonicalSize.width
+                / GameBoardViewportLayout.canonicalSize.height,
+            accuracy: 0.001
+        )
+    }
+
+    func testBoardViewportFitsCanonicalAspectByHeight() {
+        let layout = GameBoardViewportLayout.fit(
+            availableSize: CGSize(width: 430, height: 416)
+        )
+
+        XCTAssertEqual(layout.uniformScale, 0.8, accuracy: 0.001)
+        XCTAssertEqual(layout.size.width, 344, accuracy: 0.001)
+        XCTAssertEqual(layout.size.height, 416, accuracy: 0.001)
+        XCTAssertEqual(
+            layout.size.width / layout.size.height,
+            GameBoardViewportLayout.canonicalSize.width
+                / GameBoardViewportLayout.canonicalSize.height,
+            accuracy: 0.001
+        )
+    }
+
+    func testBoardViewportRejectsEmptyRegions() {
+        XCTAssertEqual(
+            GameBoardViewportLayout.fit(availableSize: .zero),
+            GameBoardViewportLayout(size: .zero, uniformScale: 0)
+        )
+    }
+
     func testPhoneLayoutUsesBoundedMetrics() {
         let metrics = GameShellLayoutMetrics.resolve(
             availableSize: CGSize(width: 390, height: 1000),
@@ -126,7 +164,7 @@ final class GameShellLayoutMetricsTests: XCTestCase {
         )
 
         XCTAssertEqual(GamePhysicalTurnLayout.topBarHeight, 40)
-        XCTAssertEqual(compact.hostProfile, .narrow)
+        XCTAssertEqual(compact.hostProfile, .narrowShort)
         XCTAssertEqual(tall.hostProfile, .narrow)
         XCTAssertEqual(compact.contentScale, 1, accuracy: 0.001)
         XCTAssertEqual(compact.publicRailHeight, 52, accuracy: 0.001)
@@ -137,6 +175,7 @@ final class GameShellLayoutMetricsTests: XCTestCase {
         XCTAssertEqual(compact.boardFrameHorizontalMaskInset, 9.375, accuracy: 0.001)
         XCTAssertEqual(compact.boardFrameVerticalInset, 4, accuracy: 0.001)
         XCTAssertEqual(compact.boardFrameVerticalOffset, 4, accuracy: 0.001)
+        XCTAssertEqual(compact.bottomRailPadding, 0, accuracy: 0.001)
 
         XCTAssertEqual(tall.publicRailHeight, 56, accuracy: 0.001)
         XCTAssertEqual(tall.actionSpreadHeight, 76, accuracy: 0.001)
@@ -144,6 +183,7 @@ final class GameShellLayoutMetricsTests: XCTestCase {
         XCTAssertEqual(tall.interZoneSpacing, 14, accuracy: 0.001)
         XCTAssertEqual(tall.boardHorizontalOverflow, 10.75, accuracy: 0.001)
         XCTAssertEqual(tall.boardFrameHorizontalMaskInset, 10.75, accuracy: 0.001)
+        XCTAssertEqual(tall.bottomRailPadding, 0, accuracy: 0.001)
         XCTAssertEqual(GamePhysicalTurnLayout.publicObjectGap, 28, accuracy: 0.001)
         XCTAssertEqual(GamePhysicalTurnLayout.publicLabelGap, 8, accuracy: 0.001)
         XCTAssertEqual(GamePhysicalTurnLayout.publicBankCardGap, 2, accuracy: 0.001)
@@ -153,12 +193,34 @@ final class GameShellLayoutMetricsTests: XCTestCase {
         )
     }
 
+    func testPhysicalPropsLayoutReservesOnlyRequestedBottomClearance() {
+        let zeroInsetHost = GamePhysicalTurnLayout.resolve(
+            availableSize: CGSize(width: 402, height: 707),
+            additionalBottomClearance: 12
+        )
+        let phoneSafeAreaHost = GamePhysicalTurnLayout.resolve(
+            availableSize: CGSize(width: 402, height: 707),
+            additionalBottomClearance: 0
+        )
+
+        XCTAssertEqual(zeroInsetHost.bottomRailPadding, 12)
+        XCTAssertEqual(phoneSafeAreaHost.bottomRailPadding, 0)
+        XCTAssertEqual(zeroInsetHost.propRailHeight, 56, accuracy: 0.001)
+        XCTAssertEqual(phoneSafeAreaHost.propRailHeight, 56, accuracy: 0.001)
+    }
+
     func testHostProfilesResolveFromContainerRatherThanDeviceIdentity() {
         XCTAssertEqual(
             MessagesHostLayoutProfile.resolve(
                 availableSize: CGSize(width: 320, height: 568)
             ),
-            .narrow
+            .narrowShort
+        )
+        XCTAssertEqual(
+            MessagesHostLayoutProfile.resolve(
+                availableSize: CGSize(width: 402, height: 707)
+            ),
+            .narrowShort
         )
         XCTAssertEqual(
             MessagesHostLayoutProfile.resolve(

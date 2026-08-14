@@ -94,7 +94,9 @@ struct BoardSceneHostView: UIViewRepresentable {
             ? "uls.tabletop.boardHost.occluded"
             : "uls.tabletop.boardHost"
         view.accessibilityLabel = "Live game board host"
-        view.accessibilityValue = String(describing: bottomOcclusionHeight)
+        view.accessibilityValue = boardHostDiagnosticValue(
+            mountIdentity: context.coordinator.mountIdentity
+        )
 #endif
         configure(view)
         GameBoardPanelOcclusionController.attach(to: view)
@@ -128,7 +130,9 @@ struct BoardSceneHostView: UIViewRepresentable {
         uiView.accessibilityIdentifier = bottomOcclusionHeight > 0
             ? "uls.tabletop.boardHost.occluded"
             : "uls.tabletop.boardHost"
-        uiView.accessibilityValue = String(describing: bottomOcclusionHeight)
+        uiView.accessibilityValue = boardHostDiagnosticValue(
+            mountIdentity: context.coordinator.mountIdentity
+        )
 #endif
         if uiView.scene !== scene {
             uiView.presentScene(scene)
@@ -166,8 +170,13 @@ struct BoardSceneHostView: UIViewRepresentable {
         view.showsDrawCount = false
     }
 
+    private func boardHostDiagnosticValue(mountIdentity: String) -> String {
+        "mount=\(mountIdentity);occlusion=\(bottomOcclusionHeight)"
+    }
+
     @MainActor
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        let mountIdentity = UUID().uuidString
         private weak var view: SKView?
         private var scene: GameBoardScene?
         private var renderModel: GameBoardRenderModel?

@@ -4,6 +4,7 @@ import UIKit
 
 final class MessagesViewController: MSMessagesAppViewController {
     private let viewModel = LobbyDriverViewModel()
+    private let hostLayoutStore = MessagesHostLayoutStore()
     private let hostResizeShield = MessagesHostResizeShield()
     private var selectionPollingToken: Int = 0
     private let selectionPollingInterval: TimeInterval = 1.5
@@ -18,12 +19,16 @@ final class MessagesViewController: MSMessagesAppViewController {
         #if DEBUG
         let rootView = MessagesRootView(
             viewModel: viewModel,
+            hostLayoutStore: hostLayoutStore,
             onSettingsTap: { [weak viewModel] in
                 viewModel?.recordUXTestingSettingsHookInvocation()
             }
         )
         #else
-        let rootView = MessagesRootView(viewModel: viewModel)
+        let rootView = MessagesRootView(
+            viewModel: viewModel,
+            hostLayoutStore: hostLayoutStore
+        )
         #endif
         let hostingController = UIHostingController(rootView: rootView)
 
@@ -54,6 +59,7 @@ final class MessagesViewController: MSMessagesAppViewController {
             to: view,
             topExclusionHeight: resizeGrabberExclusionHeight
         )
+        hostLayoutStore.observe(currentHostMeasurement())
     }
 
     override func willBecomeActive(with conversation: MSConversation) {
@@ -109,6 +115,30 @@ final class MessagesViewController: MSMessagesAppViewController {
     override func willResignActive(with conversation: MSConversation) {
         super.willResignActive(with: conversation)
         cancelSelectionPolling()
+    }
+
+    override func willTransition(to presentationStyle: MSMessagesAppPresentationStyle) {
+        super.willTransition(to: presentationStyle)
+        hostLayoutStore.beginTransition()
+    }
+
+    override func didTransition(to presentationStyle: MSMessagesAppPresentationStyle) {
+        super.didTransition(to: presentationStyle)
+        hostLayoutStore.completeTransition(
+            with: currentHostMeasurement(presentationStyle: presentationStyle)
+        )
+    }
+
+    override func viewWillTransition(
+        to size: CGSize,
+        with coordinator: UIViewControllerTransitionCoordinator
+    ) {
+        hostLayoutStore.beginTransition()
+        super.viewWillTransition(to: size, with: coordinator)
+        coordinator.animate(alongsideTransition: nil) { [weak self] _ in
+            guard let self else { return }
+            self.hostLayoutStore.completeTransition(with: self.currentHostMeasurement())
+        }
     }
 
     private func startSelectionPolling(conversation: MSConversation) {
@@ -179,5 +209,38 @@ final class MessagesViewController: MSMessagesAppViewController {
 
     private var resizeGrabberExclusionHeight: CGFloat {
         max(36, view.safeAreaInsets.top + 12)
+    }
+
+    private func currentHostMeasurement(
+        presentationStyle resolvedPresentationStyle: MSMessagesAppPresentationStyle? = nil
+    ) -> MessagesHostLayoutStore.Measurement {
+        let insets = view.safeAreaInsets
+        return MessagesHostLayoutStore.Measurement(
+            boundsSize: view.bounds.size,
+            safeAreaInsets: MessagesHostInsets(
+                top: insets.top,
+                leading: insets.left,
+                bottom: insets.bottom,
+                trailing: insets.right
+            ),
+            presentationStyle: hostPresentationStyle(
+                resolvedPresentationStyle ?? presentationStyle
+            )
+        )
+    }
+
+    private func hostPresentationStyle(
+        _ style: MSMessagesAppPresentationStyle
+    ) -> MessagesHostPresentationStyle {
+        switch style {
+        case .compact:
+            return .compact
+        case .expanded:
+            return .expanded
+        case .transcript:
+            return .transcript
+        @unknown default:
+            return .unknown
+        }
     }
 }

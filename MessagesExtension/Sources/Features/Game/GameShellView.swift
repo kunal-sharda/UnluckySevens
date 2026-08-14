@@ -17,6 +17,7 @@ struct GameShellView: View {
 
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.messagesHostAdditionalBottomClearance) private var hostBottomClearance
     @State private var shellProjection: GameShellProjection
     @State private var currentMode: GameMode = .idle
     @State private var selectedBoardTarget: GameBoardTarget?
@@ -165,7 +166,8 @@ struct GameShellView: View {
                     height: shellSize.height + geometry.safeAreaInsets.bottom
                 )
                 let physicalLayout = GamePhysicalTurnLayout.resolve(
-                    availableSize: shellSize
+                    availableSize: shellSize,
+                    additionalBottomClearance: hostBottomClearance
                 )
                 let tabletopSectionSpacing = physicalLayout.interZoneSpacing
                 let shellLayout = GameShellLayoutMetrics.resolve(
@@ -199,7 +201,8 @@ struct GameShellView: View {
                 let bottomTrayHeight = isPhysicalGameOver
                     ? endScreenHeight
                     : physicalLayout.propRailHeight
-                let physicalDiscardSurfaceHeight = actionSurfaceHeight + bottomTrayHeight
+                let reservedTrayHeight = bottomTrayHeight + physicalLayout.bottomRailPadding
+                let physicalDiscardSurfaceHeight = actionSurfaceHeight + reservedTrayHeight
                 let physicalTradeSurfaceHeight = notPrimaryPlayerContext == .incomingTrade
                     ? max(actionSurfaceHeight, GamePhysicalIncomingTradeView.minimumHeight)
                     : actionSurfaceHeight
@@ -210,13 +213,10 @@ struct GameShellView: View {
                     + physicalLayout.topBarHeight
                     + tabletopSectionSpacing
                 let physicalTradeBottomPadding = GameTheme.shellPadding
-                    + bottomTrayHeight
+                    + reservedTrayHeight
                     + (notPrimaryPlayerContext == .incomingTrade ? 6 : 0)
                 // The 44-point handle extends six points beyond the legacy
                 // 38-point visual width; reserve that clearance above the tray.
-                let reservedTrayHeight = isPhysicalGameOver
-                    ? bottomTrayHeight
-                    : physicalLayout.propRailHeight
                 let baseBoardPresentationHeight = visibleBoardHeight(
                     layout: shellLayout,
                     bottomTrayHeight: reservedTrayHeight
@@ -256,6 +256,17 @@ struct GameShellView: View {
                         - (physicalLayout.boardFrameVerticalInset * 2),
                     0
                 )
+                let boardViewportLayout = GameBoardViewportLayout.fit(
+                    availableSize: CGSize(
+                        width: max(
+                            shellSize.width
+                                - (GameTheme.shellPadding * 2)
+                                + (physicalLayout.boardHorizontalOverflow * 2),
+                            0
+                        ),
+                        height: boardHostPresentationHeight
+                    )
+                )
                 let boardBottomOcclusionHeight = isGameInfoOpen
                     ? GameTurnGameInfoView.boardClearanceHeight
                     : CGFloat.zero
@@ -268,6 +279,19 @@ struct GameShellView: View {
                 )
 
                 ZStack(alignment: .topLeading) {
+                    #if DEBUG
+                    Color.clear
+                        .frame(width: shellSize.width, height: shellSize.height)
+                        .contentShape(Rectangle())
+                        .allowsHitTesting(false)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityIdentifier("uls.tabletop.shell")
+                        .accessibilityLabel("Tabletop shell")
+                        .accessibilityValue(
+                            "size=\(shellSize.width)x\(shellSize.height);bottomClearance=\(physicalLayout.bottomRailPadding)"
+                        )
+                    #endif
+
                     ZStack(alignment: .bottom) {
                         VStack(alignment: .leading, spacing: tabletopSectionSpacing) {
                             Group {
@@ -369,11 +393,14 @@ struct GameShellView: View {
                                     handleBoardTap(target, mode: resolvedMode)
                                 }
                             )
-                            .frame(height: boardHostPresentationHeight, alignment: .top)
+                            .frame(
+                                width: boardViewportLayout.size.width,
+                                height: boardViewportLayout.size.height
+                            )
                             .allowsHitTesting(!isGameInfoOpen)
                             .gameTutorialTarget(.board)
                             .accessibilityHidden(isPhysicalStartTurn)
-                            .clipped()
+                            .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius + 8))
                             .background {
                                 GeometryReader { boardGeometry in
                                     Color.clear.preference(
@@ -397,14 +424,12 @@ struct GameShellView: View {
                                     0
                                 )
                             )
-                            .frame(height: boardCanvasPresentationHeight, alignment: .top)
-                            .mask {
-                                RoundedRectangle(cornerRadius: GameTheme.largeRadius + 8)
-                                    .padding(
-                                        .horizontal,
-                                        physicalLayout.boardFrameHorizontalMaskInset
-                                    )
-                            }
+                            .frame(
+                                maxWidth: .infinity,
+                                maxHeight: boardCanvasPresentationHeight,
+                                alignment: .center
+                            )
+                            .frame(height: boardCanvasPresentationHeight, alignment: .center)
                             .padding(
                                 .horizontal,
                                 -physicalLayout.boardHorizontalOverflow
@@ -487,6 +512,10 @@ struct GameShellView: View {
                                 .frame(height: bottomTrayHeight)
                                 .frame(maxWidth: lowerRailWidth)
                                 .padding(.horizontal, GameTheme.shellPadding)
+                                .padding(
+                                    .bottom,
+                                    physicalLayout.bottomRailPadding + GameTheme.inlineSpacing
+                                )
                                 .offset(y: GameTheme.inlineSpacing)
                                 .zIndex(1)
                         }
@@ -502,7 +531,7 @@ struct GameShellView: View {
                                 .padding(.horizontal, GameTheme.shellPadding)
                                 .padding(
                                     .bottom,
-                                    GameTheme.shellPadding + bottomTrayHeight
+                                    GameTheme.shellPadding + reservedTrayHeight
                                 )
                                 .accessibilityElement(children: .ignore)
                                 .accessibilityIdentifier("uls.turn.actionWell")
@@ -563,7 +592,7 @@ struct GameShellView: View {
                                 .frame(height: actionSurfaceHeight)
                                 .frame(maxWidth: lowerRailWidth)
                                 .padding(.horizontal, GameTheme.shellPadding)
-                                .padding(.bottom, GameTheme.shellPadding + bottomTrayHeight)
+                                .padding(.bottom, GameTheme.shellPadding + reservedTrayHeight)
                                 .transition(.opacity)
                                 .zIndex(0.75)
                             } else if shellRoute == .build, resolvedMode == .idle {
@@ -583,7 +612,7 @@ struct GameShellView: View {
                                 .frame(height: actionSurfaceHeight)
                                 .frame(maxWidth: lowerRailWidth)
                                 .padding(.horizontal, GameTheme.shellPadding)
-                                .padding(.bottom, GameTheme.shellPadding + bottomTrayHeight)
+                                .padding(.bottom, GameTheme.shellPadding + reservedTrayHeight)
                                 .transition(.opacity)
                                 .zIndex(0.75)
                             } else if shellRoute == .devCards, resolvedMode == .playDevCard {
@@ -603,7 +632,7 @@ struct GameShellView: View {
                                 .frame(height: actionSurfaceHeight)
                                 .frame(maxWidth: lowerRailWidth)
                                 .padding(.horizontal, GameTheme.shellPadding)
-                                .padding(.bottom, GameTheme.shellPadding + bottomTrayHeight)
+                                .padding(.bottom, GameTheme.shellPadding + reservedTrayHeight)
                                 .transition(.opacity)
                                 .zIndex(0.75)
                             } else if shellRoute == .devCards,
@@ -622,7 +651,7 @@ struct GameShellView: View {
                                 .frame(height: actionSurfaceHeight)
                                 .frame(maxWidth: lowerRailWidth)
                                 .padding(.horizontal, GameTheme.shellPadding)
-                                .padding(.bottom, GameTheme.shellPadding + bottomTrayHeight)
+                                .padding(.bottom, GameTheme.shellPadding + reservedTrayHeight)
                                 .transition(.opacity)
                                 .zIndex(0.75)
                             }
@@ -679,7 +708,7 @@ struct GameShellView: View {
                             .padding(
                                 .bottom,
                                 GameTheme.shellPadding
-                                    + bottomTrayHeight
+                                    + reservedTrayHeight
                             )
                             .zIndex(1)
                         }
@@ -838,7 +867,7 @@ struct GameShellView: View {
                             .frame(height: actionSurfaceHeight)
                             .frame(maxWidth: lowerRailWidth)
                             .padding(.horizontal, GameTheme.shellPadding)
-                            .padding(.bottom, GameTheme.shellPadding + bottomTrayHeight)
+                            .padding(.bottom, GameTheme.shellPadding + reservedTrayHeight)
                             .zIndex(3.5)
                         }
                     }

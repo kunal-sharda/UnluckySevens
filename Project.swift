@@ -123,6 +123,7 @@ let project = Project(
             infoPlist: .default,
             sources: [
                 "MessagesExtension/Tests/**",
+                "MessagesExtension/Sources/App/MessagesHostLayoutStore.swift",
                 "MessagesExtension/Sources/Developer/UXTestFixture.swift",
                 "MessagesExtension/Sources/Developer/UXTestingAutoplayResolver.swift",
                 "MessagesExtension/Sources/Features/Tutorial/GameTutorialStateComposer.swift",
