@@ -3,6 +3,7 @@ import Foundation
 
 struct MessagesHostLayoutSnapshot: Equatable {
     static let minimumVisualEdgeClearance: CGFloat = 12
+    static let layoutRoundingAllowance: CGFloat = 1
 
     let boundsSize: CGSize
     let safeAreaInsets: MessagesHostInsets
@@ -18,7 +19,12 @@ struct MessagesHostLayoutSnapshot: Equatable {
     }
 
     var additionalBottomClearance: CGFloat {
-        max(Self.minimumVisualEdgeClearance - safeAreaInsets.bottom, 0)
+        max(
+            Self.minimumVisualEdgeClearance
+                + Self.layoutRoundingAllowance
+                - safeAreaInsets.bottom,
+            0
+        )
     }
 
     var diagnosticValue: String {

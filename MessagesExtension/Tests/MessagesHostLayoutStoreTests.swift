@@ -79,8 +79,8 @@ final class MessagesHostLayoutStoreTests: XCTestCase {
         let partialInset = snapshot(bottomInset: 5)
         let phoneInset = snapshot(bottomInset: 34)
 
-        XCTAssertEqual(zeroInset.additionalBottomClearance, 12)
-        XCTAssertEqual(partialInset.additionalBottomClearance, 7)
+        XCTAssertEqual(zeroInset.additionalBottomClearance, 13)
+        XCTAssertEqual(partialInset.additionalBottomClearance, 8)
         XCTAssertEqual(phoneInset.additionalBottomClearance, 0)
     }
 

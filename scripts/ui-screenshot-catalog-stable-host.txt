@@ -1,0 +1,5 @@
+# Stable full-host checkpoint routes. Run with the mandatory isolated cold lifecycle.
+testCaptureNarrowShortResponsiveCheckpoint
+testOpenMessagesExtensionAndCaptureCleanSetupGameplaySlice
+testCaptureActionableDiscardComposer
+testCapturePhysicalTradeCorrectionTutorialCheckpoint

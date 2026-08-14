@@ -62,6 +62,8 @@ Before any canonical Messages screenshot lane, shut down every simulator, boot o
 
 For the repeatable full UI catalog, run `bash ./scripts/run-ui-screenshot-catalog.sh iphone`, then `bash ./scripts/run-ui-screenshot-catalog.sh ipad`. The runner canonically regenerates, builds the app and UI-test runner into one pinned DerivedData root, installs that exact app, restarts Messages so the host discovers the extension, verifies the built and installed extension hashes, and runs each catalog route in its own XCTest process. Its timestamped local evidence directory contains the run manifest, per-route result bundles, exported attachments, and direct simulator stills. A failed route stops the lane; follow the retry budget and circuit breaker below rather than silently continuing.
 
+Stable-host layout checkpoints use `scripts/ui-screenshot-catalog-stable-host.txt` with the same cold lifecycle. `testCaptureNarrowShortResponsiveCheckpoint` attaches the live host diagnostic string; the runner copies it into `run-manifest.txt`. Evidence is invalid if that manifest lacks actual bounds, safe-area insets, usable size, profile, presentation style, settled revision, or matching built/installed hashes. Use the shared tabletop layout assertion for containment, ordering, canonical board aspect/centering, 12-point total bottom clearance, minimum targets, overlay clearance, stable revision, and mounted-board identity.
+
 For a bounded tutorial-only correction, preserve that same cold lifecycle while selecting the focused catalog:
 
 ```bash

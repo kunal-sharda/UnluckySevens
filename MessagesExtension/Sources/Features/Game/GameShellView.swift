@@ -452,8 +452,19 @@ struct GameShellView: View {
                                 transaction.animation = nil
                             }
                         }
+                        .frame(
+                            width: max(
+                                shellSize.width - (GameTheme.shellPadding * 2),
+                                0
+                            ),
+                            alignment: .topLeading
+                        )
                         .padding(GameTheme.shellPadding)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .frame(
+                            width: shellSize.width,
+                            height: shellSize.height,
+                            alignment: .topLeading
+                        )
                         .contentShape(Rectangle())
 
                         if !isGameOver, !isPhysicalStartTurn, !isActionablePhysicalDiscard {

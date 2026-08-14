@@ -25,6 +25,24 @@ struct MessagesRootView: View {
                 .ignoresSafeArea()
 
             if let hostLayout = hostLayoutStore.snapshot {
+                #if DEBUG
+                Color.clear
+                    .frame(
+                        width: hostLayout.usableSize.width,
+                        height: hostLayout.usableSize.height
+                    )
+                    .contentShape(Rectangle())
+                    .allowsHitTesting(false)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityIdentifier("uls.host.usableCanvas")
+                    .accessibilityLabel("Messages host usable canvas")
+                    .accessibilityValue(hostLayout.diagnosticValue)
+                    .offset(
+                        x: hostLayout.safeAreaInsets.leading,
+                        y: hostLayout.safeAreaInsets.top
+                    )
+                #endif
+
                 ZStack {
                     switch viewModel.rootRoute {
                     case .lobby:
@@ -123,23 +141,6 @@ struct MessagesRootView: View {
                     y: hostLayout.safeAreaInsets.top
                 )
 
-                #if DEBUG
-                Color.clear
-                    .frame(
-                        width: hostLayout.usableSize.width,
-                        height: hostLayout.usableSize.height
-                    )
-                    .contentShape(Rectangle())
-                    .allowsHitTesting(false)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityIdentifier("uls.host.usableCanvas")
-                    .accessibilityLabel("Messages host usable canvas")
-                    .accessibilityValue(hostLayout.diagnosticValue)
-                    .offset(
-                        x: hostLayout.safeAreaInsets.leading,
-                        y: hostLayout.safeAreaInsets.top
-                    )
-                #endif
             }
         }
         .ignoresSafeArea()

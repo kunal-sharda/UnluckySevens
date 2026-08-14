@@ -78,10 +78,17 @@ Anything about iMessage lifecycle or presentation belongs in `MessagesExtension`
 Examples:
 
 - `MSMessagesAppViewController` wiring
+- controller-owned `MessagesHostLayoutStore` capture and settling of the actual host bounds, safe area, presentation style, and responsive profile
 - transcript selection and session handling
 - screen state and mode switching
 - SwiftUI and SpriteKit presentation
 - recovery and transcript selection behavior
+
+The controller is the sole authority for host geometry. SwiftUI consumes one settled
+`MessagesHostLayoutSnapshot`; product routes cannot publish layout revisions. UIKit
+transition callbacks suppress intermediate geometry and commit once after a genuine
+Messages presentation or window-size transition settles. SpriteKit keeps its mounted
+`SKView` and receives only the resulting viewport adjustment.
 
 ## Protocol Model
 

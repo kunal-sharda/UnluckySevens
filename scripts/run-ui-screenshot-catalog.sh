@@ -121,6 +121,17 @@ while IFS= read -r TEST_NAME; do
   xcrun xcresulttool export attachments \
     --path "$RESULT_PATH" \
     --output-path "$ATTACHMENT_PATH"
+  HOST_DIAGNOSTIC_FILE="$(
+    jq -r \
+      '.[].attachments[]? | select(.suggestedHumanReadableName | contains("Host Layout Diagnostics")) | .exportedFileName' \
+      "$ATTACHMENT_PATH/manifest.json" |
+      head -n 1
+  )"
+  if [[ -n "$HOST_DIAGNOSTIC_FILE" && -f "$ATTACHMENT_PATH/$HOST_DIAGNOSTIC_FILE" ]]; then
+    HOST_DIAGNOSTIC_VALUE="$(tr '\n' ' ' < "$ATTACHMENT_PATH/$HOST_DIAGNOSTIC_FILE")"
+    printf 'host_layout.%s=%s\n' "$TEST_NAME" "$HOST_DIAGNOSTIC_VALUE" \
+      >> "$RESULT_ROOT/run-manifest.txt"
+  fi
   xcrun simctl io "$DEVICE_ID" screenshot "$RESULT_ROOT/stills/$TEST_NAME.png"
   printf 'passed=%s\n' "$TEST_NAME" | tee -a "$RESULT_ROOT/run-manifest.txt"
 done < "$CATALOG"

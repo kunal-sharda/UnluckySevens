@@ -858,6 +858,14 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
                     "Tutorial callouts must stay compact in a narrow Messages host."
                 )
             }
+            if title == "Follow the Roll", callouts.count == 2 {
+                XCTAssertFalse(
+                    callouts.element(boundBy: 0).frame.intersects(
+                        callouts.element(boundBy: 1).frame
+                    ),
+                    "Follow the Roll callouts must not overlap."
+                )
+            }
             attachScreenshot(named: String(format: "Tutorial %02d - %@", index + 1, title))
 
             if index < titles.count - 1 {
@@ -1209,7 +1217,31 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             timeout: 4
         )
         XCTAssertTrue(button.waitForExistence(timeout: 4))
-        button.tap()
+        tapCurrentFrame(of: button)
+        if !button.waitForNonExistence(timeout: 2) {
+            let currentButton = firstExistingElement(
+                [
+                    messages.buttons[identifier].firstMatch,
+                    messages.buttons[label].firstMatch,
+                    messages.descendants(matching: .any)[identifier].firstMatch,
+                    messages.descendants(matching: .any)[label].firstMatch,
+                ],
+                timeout: 2
+            )
+            XCTAssertTrue(currentButton.waitForExistence(timeout: 2))
+            tapCurrentFrame(of: currentButton)
+            XCTAssertTrue(
+                currentButton.waitForNonExistence(timeout: 4),
+                "The direct UX Lab state control must disappear after activating \(label)."
+            )
+        }
+    }
+
+    private func tapCurrentFrame(of element: XCUIElement) {
+        let frame = element.frame
+        messages.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: frame.midX, dy: frame.midY))
+            .tap()
     }
 
     func testOpenMessagesExtensionAndCaptureCleanSetupGameplaySlice() throws {
@@ -1240,6 +1272,14 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             "Expected settlement and road setup steps to render."
         )
         XCTAssertEqual(pieceRail.value as? String, "1 settlement and 1 road")
+        let setupBoard = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let settlement = turnElement(identifier: "uls.setup.piece.settlement", labels: [])
+        let road = turnElement(identifier: "uls.setup.piece.road", labels: [])
+        _ = assertTabletopLayoutContract(
+            board: setupBoard,
+            bottomRegion: pieceRail,
+            interactiveElements: [settlement, road]
+        )
         XCTAssertFalse(
             messages.buttons["uls.uxLab.toggle"].firstMatch.exists,
             "Expected UX Lab chrome to be hidden for the clean gameplay screenshot."
@@ -1505,6 +1545,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Normal Turn - Board Reference")
 
         restoreUXLabChrome()
+        openUXLabPanel()
         activateDirectCleanState(
             identifier: "uls.uxLab.cleanShot.pendingDiscard.direct",
             label: "Clean actionable discard"
@@ -1579,6 +1620,11 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertEqual(progress.value as? String, "5 of 5 selected")
         XCTAssertTrue(submit.isEnabled)
         XCTAssertEqual(board.frame, boardFrame)
+        _ = assertTabletopLayoutContract(
+            board: board,
+            bottomRegion: surface,
+            interactiveElements: [wood, brick, wheat, submit]
+        )
         attachScreenshot(named: "Discard - Ready to Submit")
     }
 
@@ -1679,6 +1725,125 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         }
         Thread.sleep(forTimeInterval: 0.45)
         attachDiceRollFrame(index: 15)
+    }
+
+    func testCaptureNarrowShortResponsiveCheckpoint() throws {
+        openUnluckySevensExtension()
+        waitForUXLabChrome()
+        loadTurnGameplaySlice()
+        collapseUXLabPanelIfExpanded()
+
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let boardHost = turnElement(identifier: "uls.tabletop.boardHost", labels: [])
+        let hand = turnElement(identifier: "uls.physicalProps.hand", labels: ["Hand"])
+        let build = turnElement(identifier: "uls.turnObject.build", labels: ["Build"])
+        let trade = turnElement(identifier: "uls.turnObject.trade", labels: ["Trade"])
+        let end = turnElement(identifier: "uls.turnObject.endTurn", labels: ["End", "End Turn"])
+        let turnObjects = [hand, build, trade, end]
+        XCTAssertTrue(board.waitForExistence(timeout: 8))
+        XCTAssertTrue(boardHost.waitForExistence(timeout: 4))
+        XCTAssertEqual(
+            boardHost.frame.width / boardHost.frame.height,
+            430.0 / 520.0,
+            accuracy: 0.01,
+            "The live board host must preserve the canonical ocean aspect ratio."
+        )
+        for object in turnObjects {
+            XCTAssertTrue(object.waitForExistence(timeout: 4))
+            XCTAssertGreaterThanOrEqual(object.frame.width, 44)
+            XCTAssertGreaterThanOrEqual(object.frame.height, 44)
+        }
+        let initialHostDiagnostic = assertTabletopLayoutContract(
+            board: board,
+            bottomRegion: turnElement(identifier: "uls.turn.objectRail", labels: []),
+            interactiveElements: turnObjects
+        )
+        let hostDiagnosticAttachment = XCTAttachment(string: initialHostDiagnostic)
+        hostDiagnosticAttachment.name = "Host Layout Diagnostics"
+        hostDiagnosticAttachment.lifetime = .keepAlways
+        add(hostDiagnosticAttachment)
+        let initialBoardMount = boardMountIdentity(of: boardHost)
+        let fixedBoardFrame = board.frame
+        let fixedTurnObjectFrames = turnObjects.map(\.frame)
+        attachScreenshot(named: "Responsive 01 - Normal Turn")
+
+        let gameInfo = turnElement(
+            identifier: "",
+            labels: ["Players and game information", "Game information"]
+        )
+        XCTAssertTrue(gameInfo.waitForExistence(timeout: 4))
+        gameInfo.tap()
+        let gameInfoSurface = turnElement(identifier: "uls.turn.gameInfo", labels: [])
+        XCTAssertTrue(gameInfoSurface.waitForExistence(timeout: 4))
+        XCTAssertEqual(gameInfoSurface.frame.midX, fixedBoardFrame.midX, accuracy: 2)
+        assertFrame(of: board, matches: fixedBoardFrame, message: "Players must not resize the board.")
+        for (object, expectedFrame) in zip(turnObjects, fixedTurnObjectFrames) {
+            assertFrame(of: object, matches: expectedFrame, message: "Players must not move the fixed turn rail.")
+        }
+        XCTAssertEqual(
+            currentHostDiagnosticValue(),
+            initialHostDiagnostic,
+            "Players must not republish the settled Messages host layout."
+        )
+        attachScreenshot(named: "Responsive 02 - Players")
+
+        let closeGameInfo = messages.buttons["uls.gameInfo.close"].firstMatch
+        XCTAssertTrue(closeGameInfo.waitForExistence(timeout: 4))
+        closeGameInfo.tap()
+        XCTAssertTrue(gameInfoSurface.waitForNonExistence(timeout: 4))
+
+        let currentTrade = turnElement(
+            identifier: "uls.turnObject.trade",
+            labels: ["Trade"]
+        )
+        XCTAssertTrue(currentTrade.waitForExistence(timeout: 4))
+        let currentTradeFrame = currentTrade.frame
+        messages.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: currentTradeFrame.midX, dy: currentTradeFrame.midY))
+            .tap()
+        let tradeSurface = turnElement(identifier: "uls.turn.tradeSurface", labels: [])
+        XCTAssertTrue(
+            tradeSurface.waitForExistence(timeout: 4),
+            "Trade must finish its route transition before the harness selects a trade kind."
+        )
+        let playerTrade = exactLabelElement("Player Trade")
+        XCTAssertTrue(playerTrade.waitForExistence(timeout: 4))
+        playerTrade.tap()
+        let tradeComposer = turnElement(
+            identifier: "uls.physicalTrade.composerPanel",
+            labels: ["Player Trade"]
+        )
+        XCTAssertTrue(tradeComposer.waitForExistence(timeout: 4))
+        assertElement(
+            tradeComposer,
+            isContainedIn: messages.windows.firstMatch.frame,
+            message: "Trade composer must remain fully visible in the Messages host."
+        )
+        assertFrame(of: board, matches: fixedBoardFrame, message: "Trade must not resize the board.")
+        for (object, expectedFrame) in zip(turnObjects, fixedTurnObjectFrames) {
+            assertFrame(of: object, matches: expectedFrame, message: "Trade must not move the fixed turn rail.")
+        }
+        XCTAssertEqual(
+            currentHostDiagnosticValue(),
+            initialHostDiagnostic,
+            "Trade must not republish the settled Messages host layout."
+        )
+        let currentBoardHost = turnElement(
+            identifier: "uls.tabletop.boardHost",
+            labels: ["Live game board host"]
+        )
+        XCTAssertEqual(
+            boardMountIdentity(of: currentBoardHost),
+            initialBoardMount,
+            "Trade must preserve the mounted SpriteKit host."
+        )
+        _ = assertTabletopLayoutContract(
+            board: board,
+            bottomRegion: turnElement(identifier: "uls.turn.objectRail", labels: []),
+            interactiveElements: turnObjects,
+            protectedOverlays: [tradeComposer]
+        )
+        attachScreenshot(named: "Responsive 03 - Trade Composer")
     }
 
     func testOpenMessagesExtensionAndCaptureTurnGameplaySlice() throws {
@@ -1919,9 +2084,9 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         )
         XCTAssertEqual(
             gameInfoSurface.frame.midX,
-            safeFrame.midX,
+            fixedBoardFrame.midX,
             accuracy: 2,
-            "Game Information must share the Trade composer's horizontal center."
+            "Game Information must share the mounted board's host-local horizontal center."
         )
         XCTAssertGreaterThan(
             gameInfoSurface.frame.minY,
@@ -2298,9 +2463,9 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         )
         XCTAssertEqual(
             gameInfoSurface.frame.midX,
-            safeFrame.midX,
+            fixedBoardFrame.midX,
             accuracy: 2,
-            "Cross-object replacement must preserve the centered Game Information frame."
+            "Cross-object replacement must preserve the host-local centered Game Information frame."
         )
         XCTAssertGreaterThan(
             gameInfoSurface.frame.minY,
@@ -3803,6 +3968,119 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(element.waitForExistence(timeout: 4), message)
         XCTAssertGreaterThanOrEqual(element.frame.width + floatingPointTolerance, 44, message)
         XCTAssertGreaterThanOrEqual(element.frame.height + floatingPointTolerance, 44, message)
+    }
+
+    @discardableResult
+    private func assertTabletopLayoutContract(
+        board: XCUIElement,
+        bottomRegion: XCUIElement,
+        interactiveElements: [XCUIElement],
+        protectedOverlays: [XCUIElement] = []
+    ) -> String {
+        let hostCanvas = messages.descendants(matching: .any)["uls.host.usableCanvas"].firstMatch
+        let tabletopShell = messages.descendants(matching: .any)["uls.tabletop.shell"].firstMatch
+        XCTAssertTrue(hostCanvas.waitForExistence(timeout: 4))
+        XCTAssertTrue(tabletopShell.waitForExistence(timeout: 4))
+        XCTAssertTrue(board.waitForExistence(timeout: 4))
+        XCTAssertTrue(bottomRegion.waitForExistence(timeout: 4))
+        let boardHost = turnElement(
+            identifier: "uls.tabletop.boardHost",
+            labels: ["Live game board host"]
+        )
+        XCTAssertTrue(boardHost.waitForExistence(timeout: 4))
+
+        let hostFrame = hostCanvas.frame
+        let shellFrame = tabletopShell.frame
+        assertElement(
+            tabletopShell,
+            isContainedIn: hostFrame,
+            message: "The tabletop shell must remain inside the Messages usable canvas."
+        )
+        assertElement(
+            boardHost,
+            isContainedIn: shellFrame,
+            message: "The mounted canonical board viewport must remain inside the tabletop shell."
+        )
+        XCTAssertEqual(
+            boardHost.frame.width / boardHost.frame.height,
+            430.0 / 520.0,
+            accuracy: 0.01,
+            "The mounted board and ocean must preserve their canonical aspect ratio."
+        )
+        XCTAssertEqual(
+            boardHost.frame.midX,
+            shellFrame.midX,
+            accuracy: 2,
+            "The mounted canonical board viewport must remain horizontally centered."
+        )
+        XCTAssertLessThanOrEqual(
+            boardHost.frame.maxY,
+            bottomRegion.frame.minY + 1.5,
+            "The mounted board viewport must finish above the fixed lower region."
+        )
+
+        let diagnostic = currentHostDiagnosticValue()
+        let totalBottomClearance = safeBottomInset(from: diagnostic)
+            + (hostFrame.maxY - bottomRegion.frame.maxY)
+        XCTAssertGreaterThanOrEqual(
+            totalBottomClearance + 0.5,
+            12,
+            "The lower region must retain at least 12 points of total host-edge clearance."
+        )
+
+        for interactiveElement in interactiveElements {
+            assertMinimumTarget(
+                interactiveElement,
+                message: "Every fixed tabletop control must remain at least 44 points."
+            )
+            assertElement(
+                interactiveElement,
+                isContainedIn: shellFrame,
+                message: "Every fixed tabletop control must remain inside the shell."
+            )
+        }
+        for overlay in protectedOverlays {
+            XCTAssertTrue(overlay.waitForExistence(timeout: 4))
+            assertElement(
+                overlay,
+                isContainedIn: shellFrame,
+                message: "Temporary tabletop overlays must remain inside the stable shell."
+            )
+        }
+        return diagnostic
+    }
+
+    private func currentHostDiagnosticValue() -> String {
+        let hostCanvas = messages.descendants(matching: .any)["uls.host.usableCanvas"].firstMatch
+        XCTAssertTrue(hostCanvas.waitForExistence(timeout: 4))
+        return hostCanvas.value as? String ?? String(describing: hostCanvas.value)
+    }
+
+    private func safeBottomInset(from diagnostic: String) -> CGFloat {
+        guard let safeComponent = diagnostic.split(separator: ";").first(where: {
+            $0.hasPrefix("safe=")
+        }) else {
+            XCTFail("Host diagnostics must include safe-area insets: \(diagnostic)")
+            return 0
+        }
+        let values = safeComponent.dropFirst("safe=".count).split(separator: ",")
+        guard values.count == 4, let bottom = Double(values[2]) else {
+            XCTFail("Host safe-area diagnostics are malformed: \(diagnostic)")
+            return 0
+        }
+        return CGFloat(bottom)
+    }
+
+    private func boardMountIdentity(of boardHost: XCUIElement) -> String {
+        XCTAssertTrue(boardHost.waitForExistence(timeout: 4))
+        let diagnostic = boardHost.value as? String ?? String(describing: boardHost.value)
+        guard let mount = diagnostic.split(separator: ";").first(where: {
+            $0.hasPrefix("mount=")
+        }) else {
+            XCTFail("Board diagnostics must expose the mounted SKView identity: \(diagnostic)")
+            return ""
+        }
+        return String(mount.dropFirst("mount=".count))
     }
 
     private func assertNoRetiredGameplayShelf() {

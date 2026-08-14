@@ -393,10 +393,13 @@ Additional requirements:
 
 ### Host Adaptation
 
-- Layout derives from live container width and height, never a hard-coded device model.
-- The board remains live during normal host drag and updates its viewport/camera in place.
+- Layout derives from the controller-owned, settled host bounds and safe-area insets, never a hard-coded device model or `UIScreen`.
+- The complete Messages-assigned canvas is used after the host settles. Intermediate compact/expanded, rotation, Split View, and Stage Manager measurements do not recompose the product.
+- Players, Games, Hand, Build, Trade, Dev Cards, forced actions, confirmations, and tutorial guidance are state-static layers: opening them cannot change the host revision, mounted board, or fixed rails.
+- The board remains live during a genuine host transition and updates its canonical-aspect viewport/camera in place after the settled snapshot commits.
 - Only the narrow top grabber region may hand dragging back to Messages; board and shelf gestures remain local elsewhere.
 - Wide but vertically short hosts use the compact lower-surface layout instead of clipping phone or iPad assumptions.
+- The lower visual region retains at least 12 points of total host-edge clearance after counting the system bottom safe area; only the missing clearance is added.
 - Real-device iPad proof remains required before responsive adaptation is considered fully verified.
 
 ## Known Contract Gaps

@@ -223,6 +223,7 @@ What we learned:
 
 - If the rules already allow a non-current actor while `currentPlayer` stays unchanged, that player should publish canonical `STATE` directly instead of waiting for the turn owner to absorb a responder envelope later.
 - The publish path must preserve the **responding player's** actor semantics for validation and audit. If the shell blindly re-validates `acceptTrade` / `declineTrade` / `counterTrade` / `submitDiscard` as if the current player were the action actor, the transition is wrong even if the state math itself is legal.
+- Messages XCUITest journeys must not pre-toggle a source control when the destination action already owns that cleanup. After dismissing an overlay, wait for nonexistence, reacquire the destination by its stable identifier, and use its current frame for the tap when Messages returns a stale accessibility hit target. Reacquire again after the tap and assert the destination surface identifier rather than reading selection state from the pre-transition element. This avoids animation races, stale-target taps such as Hand reopening instead of Trade, and stale-element assertions after SwiftUI replaces the route.
 - When a responder action is authored from an older selected bubble, the shell should resolve against the newest known canonical state for that game before drafting or validating the action.
 - Ordered forced discard is the cheapest Messages-only way to avoid sibling-state races. If only the next pending discarder may act, multi-player seven flow no longer depends on cross-device merge of simultaneous discard states.
 - Same-device cached last-published state is an acceptable temporary recovery bridge for the current-player device when the extension reopens without an active state already in memory, but it must be keyed per game rather than as one global record.
@@ -360,23 +361,28 @@ Current repo answer:
 - Joined players can reopen or resend the unchanged latest state. Local archive removes only the device record, so a later valid bubble can recreate it.
 - Recovery publish reuses a selected same-game or cached in-memory `MSSession`; after host restart, absence of a proven restorable session deliberately creates a fresh recovery bubble.
 
-### 9. Messages layout classes are not enough; iPad host height is a separate constraint
+### 9. Messages layout classes are not enough; host height is a separate constraint
 
 What went wrong:
 
-- iPad Messages hosts can be wide but vertically short.
+- iPad Messages can supply both wide-short and phone-width-short extension canvases.
 - Percentage-only lower-area sizing and generic overlay heights made `Hand`, `Bank`, and `Players` clip, over-expand, or become hard to tap.
 
 What we learned:
 
 - Width class is not enough.
-- Utility shelves, build/dev shelves, and trade panels need content-class sizing, and wide-but-short iPad hosts need a compact vertical fallback.
+- Utility shelves, build/dev shelves, and trade panels need content-class sizing. Wide-short hosts need compact vertical metrics; narrow-short hosts need an overlay composition that preserves board scale.
 
 Current repo answer:
 
 - Lower rail and overlay shelf use bounded sizing rather than pure percentages.
 - Utility shelves stay compact and content-only.
 - Wide-but-short iPad hosts fall back to compact vertical metrics instead of oversized pad minima.
+- The board and ocean resolve from live width and height as one canonical-aspect viewport. One uniform scale fits that viewport inside its region; temporary surfaces may overlay it, but they must not refit it, stretch either axis, or shift the island independently.
+- UI centering assertions compare against extension-local anchors such as the mounted board, never the outer Messages window.
+- `MessagesViewController` owns the live measurement. It publishes the first nonzero bounds immediately, suppresses intermediate values between Messages/UIKit transition callbacks, and commits one settled snapshot at completion. Size-only changes debounce for 180 ms; measurements within one point are ignored.
+- SwiftUI frames every product route inside the settled usable canvas. Internal navigation never republishes it. DEBUG evidence exposes the bounds, insets, usable size, profile, style, revision, local shell frame, and true `SKView` mount identity.
+- Bottom placement reserves the missing amount toward the 12-point visual minimum plus one point of compositor-rounding allowance. A bottom safe area larger than that receives no added padding, so the established iPhone composition remains unchanged.
 
 ### 10. Overlapping shell modes create dead-end UI state quickly
 
