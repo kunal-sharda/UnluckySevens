@@ -4,12 +4,16 @@ import ProjectDescription
 let localSigningXcconfigPath = "Config/LocalSigning.xcconfig"
 let appIconSettings: SettingsDictionary = [
     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+    "CURRENT_PROJECT_VERSION": "1",
+    "MARKETING_VERSION": "1.0",
     // A standalone Messages container has no executable entry point for
     // Xcode's debug-dylib trampoline.
     "ENABLE_DEBUG_DYLIB": "NO",
 ]
 let messagesExtensionIconSettings: SettingsDictionary = [
     "ASSETCATALOG_COMPILER_APPICON_NAME": "iMessage App Icon",
+    "CURRENT_PROJECT_VERSION": "1",
+    "MARKETING_VERSION": "1.0",
 ]
 let messagesExtensionSettings: Settings = {
     let absolutePath = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
@@ -77,6 +81,7 @@ let project = Project(
                 with: [
                     "CFBundleDisplayName": .string("Unlucky Sevens"),
                     "CFBundleIconName": .string("AppIcon"),
+                    "ITSAppUsesNonExemptEncryption": .boolean(false),
                     "UILaunchScreen": .dictionary([:]),
                 ]
             ),

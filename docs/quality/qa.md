@@ -38,6 +38,8 @@ make completion-gate PLAN=docs/exec-plans/active/<plan>.md
 
 Use `make release-gate PLAN=<release-critical-plan>` for release or handoff claims. GitHub Actions runs the doc-freshness gate against the PR base, Swift package tests, and the `make build` MessagesExtension lane in `.github/workflows/ci.yml`. The full local practical gate remains `make practical-gate`.
 
+Before freezing a TestFlight candidate, build the explicit Release configuration for `generic/platform=iOS` and inspect the packaged app and extension rather than inferring distribution readiness from Debug. Record the marketing version/build, bundle IDs, minimum OS, SDK/Xcode, team, signing disposition, and exact commit. The packaged product must contain every required `PrivacyInfo.xcprivacy` entry, an accurate `ITSAppUsesNonExemptEncryption` value, and no DEBUG UX Lab identifiers. Privacy-policy metadata and an easily accessible in-app policy link remain release blockers even when the binary builds successfully.
+
 `ULS_CoreGameEvals` is the deterministic engine eval harness. `ULS_CoreGameTests` remains the normal core test suite.
 
 Run these validation commands serially. Do not run `swift test` or `xcodebuild` in parallel on this repo; the Messages/simulator lane is prone to lock contention and misleading failures when multiple test or build processes overlap.

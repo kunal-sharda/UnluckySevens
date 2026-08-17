@@ -52,7 +52,7 @@ Ship the first externally installable Unlucky Sevens beta to a small invited gro
 <!-- verification-contract:start -->
 | ID | Class | Source | Acceptance | Verification | Evidence | Status | Rationale |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| TFR-001 | mechanical | user request and UI dependency | The final UI plan has every constraint and required review at pass, its completion gate passes, and no dead compiled legacy renderer/component remains | inspect dependency contract and commit; deleted-symbol source guard; dependency completion gate | command:pending | pending | Release work starts from the approved legacy-free UI candidate |
+| TFR-001 | mechanical | user request and UI dependency | The final UI plan has every constraint and required review at pass, its completion gate passes, and no dead compiled legacy renderer/component remains | inspect dependency contract and commit; deleted-symbol source guard; dependency completion gate | commit:`27334681ca1c61ebabaea3fda4b24277b3221e7f`; report:`docs/exec-plans/completed/final-ui-cohesion-and-legacy-removal.md` | pass | The completed dependency has UCR-001–009 and all required reviews at pass, its standard gate passed, and the harness deleted-symbol guard is green |
 | TFR-002 | mechanical | AGENTS.md and QA | The frozen candidate is reproducible from one commit and records bundle ID, version, unique build number, Xcode/SDK, minimum OS, signing team, configuration, and archive identity without tracked secrets | repository/status audit; Release build settings capture; archive metadata inspection | report:pending | pending | Candidate identity must be exact before device proof or upload |
 | TFR-003 | mechanical | QA release-critical profile | Core tests/evals, Transport tests, generic device build, Messages simulator build, workspace tests, harness audit, diff hygiene, and doc freshness pass through the release gate | `make release-gate PLAN=docs/exec-plans/active/first-friends-testflight-release.md` | command:pending | pending | Required exhaustive mechanical gate |
 | TFR-004 | observable | device runbook real-device lane | The signed Release candidate installs on iPhone and iPad, appears in the Messages drawer, renders the approved shell without DEBUG surfaces, preserves accessibility/secrecy, and survives compact/expanded host resizing | two-device shell, lifecycle, gameplay-cohesion, accessibility, and secrecy checks with inspected evidence | report:pending | pending | Simulator proof does not establish real Messages-host behavior |
@@ -80,7 +80,7 @@ Ship the first externally installable Unlucky Sevens beta to a small invited gro
 
 ### Progress
 
-- [ ] Final UI dependency passed and candidate commit frozen.
+- [ ] Final UI dependency passed; release-preparation evidence required privacy/export and explicit version packaging corrections, so a superseding candidate commit must be frozen after those checks pass.
 - [ ] App Store Connect, privacy, export, signing, and build identity ready.
 - [ ] Signed Release hardware and multiplayer matrices passed.
 - [ ] Release gate and archive validation passed.
@@ -93,17 +93,33 @@ Ship the first externally installable Unlucky Sevens beta to a small invited gro
 - 2026-08-10: The plan is release-critical and checkpointed. Local implementation and proof may proceed, but upload, beta-review submission, group mutation, and invitations stop for explicit user approval.
 - 2026-08-10: The first processed TestFlight build establishes the compatibility floor; dev-era transcripts remain disposable.
 - 2026-08-10: Real devices are authoritative for Messages behavior. Simulator catalogs remain required UI regression evidence but cannot substitute for the hardware multiplayer matrix.
+- 2026-08-17: The approved UI baseline is commit `27334681ca1c61ebabaea3fda4b24277b3221e7f`. Release-preparation evidence then required explicit version/build settings plus privacy/export packaging; freeze the superseding product commit after those corrections pass. Intended identity remains app `com.unluckysevens.app`, extension `com.unluckysevens.app.messagesextension`, version `1.0`, build `1`, iOS 17.0 minimum, Release/automatic signing with team `8B83G5AZ22`, Xcode 26.6 (17F113), and iPhoneOS 26.5 SDK. Build-number uniqueness and final archive identity remain pending live App Store Connect/archive inspection.
 
 ### Discoveries
 
 - 2026-08-10: Apple’s current external-testing flow requires an internal group before an external group and TestFlight App Review for the first external build; live App Store Connect requirements must be rechecked at execution time.
+- 2026-08-17: Apple’s current documentation still requires an app record before upload, processing before the build appears, beta description/review information for external testing, an internal group before the first external group, first-build TestFlight App Review, and a privacy-policy URL for all apps. Missing-compliance builds require export-compliance answers before review.
+- 2026-08-17: The Mac currently reports no connected iPhone or iPad, so TFR-004–008 cannot begin. The required hardware matrix remains one iPhone plus one iPad on separate Apple Accounts; simulator proof cannot substitute.
+- 2026-08-17: App Store Connect redirected the available browser to an unauthenticated login, and no connected Chrome browser is available. Live app-record, agreements, build-number uniqueness, metadata, privacy, and group readiness remain pending user sign-in.
+- 2026-08-17: Local signing is configured for automatic signing and one valid Apple Development identity is installed. No Apple Distribution identity is currently visible; Xcode may provision one during archive, but archive/validation remains downstream of the hardware and approval gates.
+- 2026-08-17: The signed Release device build succeeds with automatic development provisioning. Its compiled extension contains no UX Lab/debug strings. The packaged extension now includes `PrivacyInfo.xcprivacy` declaring no tracking or collected data and the app-only `UserDefaults` reason `CA92.1`; the containing app declares `ITSAppUsesNonExemptEncryption=false`. A rebuilt product proves both files are present and valid. Distribution signing remains unproved until archive validation.
+
+### Draft TestFlight Metadata
+
+- Beta description: “Unlucky Sevens is an iMessage-first tabletop strategy game for friends. Invite players in a Messages conversation, build a shared island economy, trade resources, and race to 10 points.”
+- What to Test: “Play from invite through victory. Please focus on joining and reopening games, setup placement, rolling and building, player and Bank/Port trades, development cards, robber/discard flows, resign/end-game recovery, and the Games list. Report any state mismatch between players, missing Messages bubble, clipped screen, or action that cannot continue.”
+- Review notes: “This is an iMessage-only app. It has no ordinary standalone home-screen experience. In Messages, open a conversation, tap `+`, choose Unlucky Sevens from the apps drawer, and open the extension. Send an invitation into the conversation, then use another participant/device to open the invitation, join, and continue. The game stores recovery state locally and publishes canonical game state through Messages.”
+- App privacy draft: “Data Not Collected” by the developer. No accounts, analytics, ads, tracking, developer server, or third-party SDKs. Display names/preferences and recoverable games are stored locally; players deliberately send game state through Apple Messages. Final answers remain subject to the live App Store Connect questionnaire.
+- Export compliance draft: no non-exempt encryption; the app implements no cryptography and relies only on Apple operating-system/Messages transport. `ITSAppUsesNonExemptEncryption=false` is packaged.
+- Proposed internal group: `Internal Smoke`. Proposed external group: `First Friends`.
+- Pending owner inputs: public privacy-policy contact email, feedback email, beta-review contact details/phone, privacy-policy URL publication approval, and exact tester list.
 
 ## Validation and Outcome
 
-- Automated: Not run; plan created before implementation.
-- Simulator/UI: Owned by the blocking final UI plan; no release candidate frozen yet.
-- Real devices: Not run.
-- Archive/App Store Connect: Not started and not authorized before the approval gate.
+- Automated: UI dependency contract and standard completion gate pass; release-critical gate waits for the hardware matrix and remaining contract rows.
+- Simulator/UI: Current single-device and paired representative simulator evidence is green at UI baseline `2733468`; release-only packaging corrections do not alter product UI.
+- Real devices: Blocked because no iPhone or iPad is currently connected to the Mac.
+- Archive/App Store Connect: Candidate identity is partially frozen; live App Store Connect inspection is blocked on sign-in and archive/validation remains downstream of device proof.
 - Distribution: Not started.
 
 The release is planned but not yet verified or distributed.
