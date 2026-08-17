@@ -114,6 +114,63 @@ final class GameBoardCameraControllerTests: XCTestCase {
         )
     }
 
+    func testProjectedLegalTargetLocationRoundTripsThroughProductionHitTesting() throws {
+        let model = makeRenderModel()
+        let referenceSize = CGSize(width: 320, height: 240)
+        let viewportSize = CGSize(width: 320, height: 180)
+        let state = GameBoardCameraState(zoom: 1.35, offset: CGSize(width: 18, height: -12))
+        let cases: [(target: GameBoardTarget, mode: GameMode, overlay: GameBoardOverlayModel)] = [
+            (
+                .node(0),
+                .buildSettlement,
+                GameBoardOverlayModel(
+                    legalTileIDs: [], legalNodeIDs: [0], legalEdgeIDs: [],
+                    anchorNodeID: nil, selectedTarget: nil
+                )
+            ),
+            (
+                .edge(3),
+                .buildRoad,
+                GameBoardOverlayModel(
+                    legalTileIDs: [], legalNodeIDs: [], legalEdgeIDs: [3],
+                    anchorNodeID: nil, selectedTarget: nil
+                )
+            ),
+            (
+                .tile(0),
+                .robberMove,
+                GameBoardOverlayModel(
+                    legalTileIDs: [0], legalNodeIDs: [], legalEdgeIDs: [],
+                    anchorNodeID: nil, selectedTarget: nil
+                )
+            ),
+        ]
+
+        for item in cases {
+            let location = try XCTUnwrap(
+                GameBoardCameraController.projectedLocation(
+                    for: item.target,
+                    state: state,
+                    renderModel: model,
+                    viewportSize: viewportSize,
+                    boardReferenceSize: referenceSize
+                )
+            )
+            XCTAssertEqual(
+                GameBoardCameraController.hitTarget(
+                    at: location,
+                    state: state,
+                    renderModel: model,
+                    overlayModel: item.overlay,
+                    interactionMode: item.mode,
+                    viewportSize: viewportSize,
+                    boardReferenceSize: referenceSize
+                ),
+                item.target
+            )
+        }
+    }
+
     func testSetupRoadModePrefersIncidentEdgeNearSettlementEndpoint() {
         let model = makeRenderModel()
         let viewportSize = CGSize(width: 320, height: 240)

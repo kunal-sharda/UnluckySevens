@@ -22,6 +22,7 @@ Three or four people return to a Catan table inside an iMessage thread in short,
 - `monospacedDigit()` is allowed for changing counts, dice totals, and aligned numeric data because it preserves SF Pro while stabilizing numeral width. A monospaced typeface is not allowed for ordinary text.
 - Other SpriteKit labels, rendered transcript text, SwiftUI controls, and DEBUG UX Lab chrome follow the SF Pro family contract. Authored lettering inside resource illustrations is artwork rather than interface typography.
 - Prefer semantic Dynamic Type styles. Fixed sizes are reserved for geometry-bound micro labels and board tokens and must remain legible at their supported host sizes.
+- The fixed cocktail-table lobby and its decorative seat props retain the approved `.large` composition at accessibility categories so the Messages host does not reflow the board into overlapping controls. Player-facing names and targets remain accessible; document-like tutorial guidance responds by substituting the complete ordered guide at accessibility sizes.
 
 ## Component Vocabulary
 

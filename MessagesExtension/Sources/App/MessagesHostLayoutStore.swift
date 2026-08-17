@@ -8,6 +8,26 @@ final class MessagesHostLayoutStore: ObservableObject {
         let boundsSize: CGSize
         let safeAreaInsets: MessagesHostInsets
         let presentationStyle: MessagesHostPresentationStyle
+
+        var isValid: Bool {
+            let values = [
+                boundsSize.width,
+                boundsSize.height,
+                safeAreaInsets.top,
+                safeAreaInsets.leading,
+                safeAreaInsets.bottom,
+                safeAreaInsets.trailing,
+            ]
+            return values.allSatisfy(\.isFinite)
+                && boundsSize.width > 0
+                && boundsSize.height > 0
+                && safeAreaInsets.top >= 0
+                && safeAreaInsets.leading >= 0
+                && safeAreaInsets.bottom >= 0
+                && safeAreaInsets.trailing >= 0
+                && safeAreaInsets.leading + safeAreaInsets.trailing < boundsSize.width
+                && safeAreaInsets.top + safeAreaInsets.bottom < boundsSize.height
+        }
     }
 
     @Published private(set) var snapshot: MessagesHostLayoutSnapshot?
@@ -26,7 +46,7 @@ final class MessagesHostLayoutStore: ObservableObject {
         _ measurement: Measurement,
         settleDelayNanoseconds: UInt64 = 180_000_000
     ) {
-        guard measurement.boundsSize.width > 0, measurement.boundsSize.height > 0 else {
+        guard measurement.isValid else {
             return
         }
         pendingMeasurement = measurement
@@ -48,13 +68,14 @@ final class MessagesHostLayoutStore: ObservableObject {
     }
 
     func completeTransition(with measurement: Measurement) {
-        guard measurement.boundsSize.width > 0, measurement.boundsSize.height > 0 else {
-            return
-        }
-        pendingMeasurement = measurement
         isTransitioning = false
         settleTask?.cancel()
         settleTask = nil
+        guard measurement.isValid else {
+            pendingMeasurement = nil
+            return
+        }
+        pendingMeasurement = measurement
         commitPendingMeasurement()
     }
 

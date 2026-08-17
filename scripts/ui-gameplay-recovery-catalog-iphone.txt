@@ -1,0 +1,5 @@
+# Single-iPhone relaunch and saved-game recovery evidence.
+testGameplayRecoveryMessagesRelaunchRestoresSavedGames
+testRecoveryGamesArchiveAndRestoreJourney
+testRecoveryResendAndResignationContinuesJourney
+testInlineGamesCanOpenRecoveredGame

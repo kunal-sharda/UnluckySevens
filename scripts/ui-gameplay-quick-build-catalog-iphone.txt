@@ -1,0 +1,5 @@
+# Focused setup and construction coverage.
+testGameplayActionSetupSettlementAndRoadCommitCanonicalState
+testGameplayActionBuildRoadCommitsCanonicalState
+testGameplayActionBuildSettlementCommitsCanonicalState
+testGameplayActionBuildCityCommitsCanonicalState

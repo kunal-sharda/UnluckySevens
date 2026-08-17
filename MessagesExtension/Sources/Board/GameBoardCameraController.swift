@@ -133,6 +133,40 @@ enum GameBoardCameraController {
         }?.target
     }
 
+#if DEBUG
+    static func projectedLocation(
+        for target: GameBoardTarget,
+        state: GameBoardCameraState,
+        renderModel: GameBoardRenderModel,
+        viewportSize: CGSize,
+        boardReferenceSize: CGSize
+    ) -> CGPoint? {
+        let layout = GameBoardLayout(size: boardReferenceSize, geometry: renderModel.geometry)
+        let boardPoint: CGPoint
+        switch target {
+        case let .node(nodeID):
+            guard renderModel.geometry.nodePositions.indices.contains(nodeID) else { return nil }
+            boardPoint = layout.nodePoint(for: nodeID)
+        case let .edge(edgeID):
+            guard renderModel.topology.edges.indices.contains(edgeID) else { return nil }
+            boardPoint = layout.edgeMidpoint(for: edgeID, topology: renderModel.topology)
+        case let .tile(tileID):
+            guard renderModel.tiles.indices.contains(tileID) else { return nil }
+            boardPoint = layout.tileCenter(for: tileID)
+        }
+
+        let viewportCenter = CGPoint(x: viewportSize.width * 0.5, y: viewportSize.height * 0.5)
+        return CGPoint(
+            x: viewportCenter.x
+                + ((boardPoint.x - layout.boardCenter.x) * state.zoom)
+                + state.offset.width,
+            y: viewportCenter.y
+                + ((boardPoint.y - layout.boardCenter.y) * state.zoom)
+                + state.offset.height
+        )
+    }
+#endif
+
     private static func inverseTransformedPoint(
         _ point: CGPoint,
         state: GameBoardCameraState,

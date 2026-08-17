@@ -171,8 +171,69 @@ struct BoardSceneHostView: UIViewRepresentable {
     }
 
     private func boardHostDiagnosticValue(mountIdentity: String) -> String {
-        "mount=\(mountIdentity);occlusion=\(bottomOcclusionHeight)"
+        var fields = [
+            "mount=\(mountIdentity)",
+            "occlusion=\(bottomOcclusionHeight)",
+        ]
+#if DEBUG
+        fields.append(contentsOf: debugTargetManifestEntries())
+#endif
+        return fields.joined(separator: ";")
     }
+
+#if DEBUG
+    private func debugTargetManifestEntries() -> [String] {
+        guard viewportSize.width > 0, viewportSize.height > 0 else {
+            return []
+        }
+
+        return [
+            firstVisibleTargetEntry(kind: "node", targets: overlayModel.legalNodeIDs.map(GameBoardTarget.node)),
+            firstVisibleTargetEntry(kind: "edge", targets: overlayModel.legalEdgeIDs.map(GameBoardTarget.edge)),
+            firstVisibleTargetEntry(kind: "tile", targets: overlayModel.legalTileIDs.map(GameBoardTarget.tile)),
+        ].compactMap { $0 }
+    }
+
+    private func firstVisibleTargetEntry(
+        kind: String,
+        targets: [GameBoardTarget]
+    ) -> String? {
+        for target in targets {
+            guard let location = GameBoardCameraController.projectedLocation(
+                for: target,
+                state: interactionController.cameraState,
+                renderModel: renderModel,
+                viewportSize: viewportSize,
+                boardReferenceSize: boardReferenceSize
+            ) else {
+                continue
+            }
+
+            let normalizedX = location.x / viewportSize.width
+            let normalizedY = location.y / viewportSize.height
+            guard normalizedX.isFinite,
+                  normalizedY.isFinite,
+                  (0...1).contains(normalizedX),
+                  (0...1).contains(normalizedY) else {
+                continue
+            }
+
+            let identifier: Int
+            switch target {
+            case let .node(id), let .edge(id), let .tile(id):
+                identifier = id
+            }
+
+            return "target.\(kind)=\(identifier),\(formatCoordinate(normalizedX)),\(formatCoordinate(normalizedY))"
+        }
+
+        return nil
+    }
+
+    private func formatCoordinate(_ value: CGFloat) -> String {
+        String(format: "%.6f", locale: Locale(identifier: "en_US_POSIX"), Double(value))
+    }
+#endif
 
     @MainActor
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {

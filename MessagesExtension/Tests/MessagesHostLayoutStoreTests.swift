@@ -111,6 +111,52 @@ final class MessagesHostLayoutStoreTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(store.snapshot).revision, 1)
     }
 
+    func testInvalidNegativeSafeAreaMeasurementIsIgnoredUntilValidGeometryArrives() throws {
+        let store = MessagesHostLayoutStore()
+
+        store.observe(
+            measurement(
+                size: CGSize(width: 402, height: 802),
+                insets: MessagesHostInsets(top: -130, leading: 0, bottom: 184, trailing: 0)
+            )
+        )
+        XCTAssertNil(store.snapshot)
+
+        store.observe(
+            measurement(
+                size: CGSize(width: 402, height: 802),
+                insets: MessagesHostInsets(top: 20, leading: 0, bottom: 34, trailing: 0)
+            )
+        )
+        let settled = try XCTUnwrap(store.snapshot)
+        XCTAssertEqual(settled.safeAreaInsets.top, 20)
+        XCTAssertEqual(settled.usableSize.height, 748)
+        XCTAssertEqual(settled.revision, 1)
+    }
+
+    func testInvalidTransitionCompletionKeepsLastSnapshotAndAllowsNextObservation() async throws {
+        let store = MessagesHostLayoutStore()
+        store.observe(measurement(size: CGSize(width: 402, height: 748)))
+        let initial = try XCTUnwrap(store.snapshot)
+
+        store.beginTransition()
+        store.completeTransition(
+            with: measurement(
+                size: CGSize(width: 402, height: 802),
+                insets: MessagesHostInsets(top: -130, leading: 0, bottom: 184, trailing: 0)
+            )
+        )
+        XCTAssertEqual(store.snapshot, initial)
+
+        store.observe(
+            measurement(size: CGSize(width: 402, height: 802)),
+            settleDelayNanoseconds: 2_000_000
+        )
+        try await Task.sleep(nanoseconds: 10_000_000)
+        XCTAssertEqual(store.snapshot?.boundsSize, CGSize(width: 402, height: 802))
+        XCTAssertEqual(store.snapshot?.revision, 2)
+    }
+
     private func measurement(
         size: CGSize,
         insets: MessagesHostInsets = .zero,

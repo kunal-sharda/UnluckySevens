@@ -41,6 +41,13 @@ struct GameTutorialCoachOverlayView: View {
                         targetPin(number: resolved.callout.number)
                             .position(resolved.targetPoint)
                     }
+                }
+
+                // Keep every leader behind every card. A later callout's leader may
+                // legitimately cross an earlier card while connecting to a nearby
+                // board target; painting cards as one final layer preserves the
+                // connection without drawing through instructional copy.
+                ForEach(resolvedCallouts) { resolved in
                     calloutBubble(resolved.callout, availableSize: proxy.size)
                         .position(resolved.bubbleCenter)
                 }

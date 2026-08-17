@@ -15,11 +15,13 @@ struct GameTurnEndConfirmationView: View {
                     Text("Keep Playing")
                 }
                 .buttonStyle(GameTabletopActionButtonStyle(emphasis: .secondary))
+                .accessibilityIdentifier("uls.turn.endConfirmation.cancel")
 
                 Button(role: .destructive, action: onConfirm) {
                     Text("End Turn")
                 }
                 .buttonStyle(GameTabletopActionButtonStyle(emphasis: .primary))
+                .accessibilityIdentifier("uls.turn.endConfirmation.confirm")
             }
         }
         .padding(.horizontal, 18)

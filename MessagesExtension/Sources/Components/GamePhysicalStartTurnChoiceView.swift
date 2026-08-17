@@ -68,15 +68,6 @@ struct GamePhysicalStartTurnChoiceView: View {
                 }
                 .buttonStyle(.plain)
                 .frame(minWidth: 122, minHeight: isDevChooserOpen ? 92 : 132)
-                .background {
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(GameTheme.accent.opacity(0.14))
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(GameTheme.accent, lineWidth: 2)
-                }
-                .shadow(color: .black.opacity(0.20), radius: 4, y: 2)
                 .accessibilityIdentifier("uls.startTurn.roll")
                 .accessibilityLabel("Roll dice")
                 .accessibilityValue("Ready to roll")

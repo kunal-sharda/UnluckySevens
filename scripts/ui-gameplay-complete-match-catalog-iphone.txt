@@ -1,0 +1,3 @@
+# Production-control bookends for the deterministic complete-match proof.
+testGameplayActionSetupSettlementAndRoadCommitCanonicalState
+testGameplayActionVictoryPointReachesGameOverSurface

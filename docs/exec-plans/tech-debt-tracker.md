@@ -113,7 +113,7 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - Why it mattered: rejected or replaced implementations obscured the shipping source graph because the broad source glob continued compiling declarations with no call sites.
 - Resolution: the final cohesion pass removed `ActionDockView`, `LobbyGameSettingsSheet`, `GameDevCardChimneyMarkView`, and the likewise unreferenced `GameFinalScorePlayerView` after source, test, and harness searches confirmed they had no consumers.
 - Resolved: 2026-08-10.
-- Links: [Final UI cohesion and legacy removal](active/final-ui-cohesion-and-legacy-removal.md)
+- Links: [Final UI cohesion and legacy removal](completed/final-ui-cohesion-and-legacy-removal.md)
 
 ### TD-014 — Resolved: legacy tabletop presentation branches removed
 
@@ -121,7 +121,7 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - Why it mattered: parallel lower-tray, shelf, alternate-header, embedded board-rack, modal, and shell resize-snapshot implementations allowed stale visual language to reappear during otherwise canonical play.
 - Resolution: production and UX Lab route searches established Physical Props as the sole supported shell. The final cohesion slice removed the obsolete lobby comparisons, game tray/shelf route, alternate headers, embedded rack, duplicate modal/player strip, and shell-level freeze overlay; the live board retains only its board-owned continuity mechanism.
 - Resolved: 2026-08-10.
-- Links: [Final UI cohesion and legacy removal](active/final-ui-cohesion-and-legacy-removal.md), [GameShellView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Game/GameShellView.swift)
+- Links: [Final UI cohesion and legacy removal](completed/final-ui-cohesion-and-legacy-removal.md), [GameShellView.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Game/GameShellView.swift)
 
 ### TD-015 — Resolved: local game ledger retention and schema lifecycle
 

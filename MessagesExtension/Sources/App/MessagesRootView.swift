@@ -21,9 +21,6 @@ struct MessagesRootView: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            GameTheme.appBackground
-                .ignoresSafeArea()
-
             if let hostLayout = hostLayoutStore.snapshot {
                 #if DEBUG
                 Color.clear
@@ -126,6 +123,24 @@ struct MessagesRootView: View {
                         .accessibilityLabel("Settings hook invocations")
                         .accessibilityValue("\(viewModel.uxTestingSettingsHookInvocationCount)")
                 }
+                .overlay(alignment: .topLeading) {
+                    Color.clear
+                        .frame(width: 1, height: 1)
+                        .allowsHitTesting(false)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityIdentifier("uls.gameplay.actionEvidence")
+                        .accessibilityLabel("Gameplay action evidence")
+                        .accessibilityValue(viewModel.uxTestingGameplayEvidence)
+                }
+                .overlay(alignment: .topLeading) {
+                    Color.clear
+                        .frame(width: 1, height: 1)
+                        .allowsHitTesting(false)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityIdentifier("uls.utility.routeEvidence")
+                        .accessibilityLabel("Utility route evidence")
+                        .accessibilityValue(utilityRoute?.rawValue ?? "none")
+                }
                 #endif
                 .environment(
                     \.messagesHostAdditionalBottomClearance,
@@ -143,7 +158,10 @@ struct MessagesRootView: View {
 
             }
         }
-        .ignoresSafeArea()
+        .background {
+            GameTheme.appBackground
+                .ignoresSafeArea()
+        }
     }
 
     private func showSettings() {

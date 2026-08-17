@@ -76,6 +76,15 @@ final class GameTutorialStateComposerTests: XCTestCase {
         )
     }
 
+    func testTutorialMaritimePreviewUsesAnEngineDerivedLegalQuote() {
+        let state = GameTutorialStateComposer.state(for: .bankTrade)
+        let quote = state.maritimeTradeQuotes(for: GameTutorialStateComposer.localPlayer).first
+
+        XCTAssertEqual(quote?.give, ResourceHandV1(wood: 3))
+        XCTAssertEqual(quote?.receive, ResourceHandV1(brick: 1))
+        XCTAssertEqual(quote?.ratio, 3)
+    }
+
     private func assertLegalPieceGeometry(
         _ state: CoreGameStateV1,
         step: GameTutorialStep.ID,

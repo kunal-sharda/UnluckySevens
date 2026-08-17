@@ -189,7 +189,7 @@ struct GameTutorialView: View {
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
-        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        .dynamicTypeSize(.large)
         .accessibilityLabel("Tutorial navigation")
         .accessibilityHint("Tap anywhere to begin. Then tap left to go back or right to continue.")
         .accessibilityIdentifier("uls.tutorial.navigationCoach")

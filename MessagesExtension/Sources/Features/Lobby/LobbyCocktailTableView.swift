@@ -455,8 +455,8 @@ private enum CocktailSeatOrientation {
 }
 
 private struct CocktailPlayerStation: View {
-    @ScaledMetric(relativeTo: .caption) private var horizontalHeight: CGFloat = 28
-    @ScaledMetric(relativeTo: .caption) private var verticalWidth: CGFloat = 48
+    private let horizontalHeight: CGFloat = 28
+    private let verticalWidth: CGFloat = 48
     let title: String
     let isHost: Bool
     let isOptional: Bool

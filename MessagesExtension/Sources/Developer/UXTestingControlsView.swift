@@ -20,6 +20,7 @@ struct UXTestingControlsView: View {
             HStack(spacing: 8) {
                 quickStateMenu
                 startTurnDevChooserButton
+                hideChromeButton
                 toggleButton
             }
 
@@ -122,6 +123,13 @@ struct UXTestingControlsView: View {
                 )
             }
             .accessibilityIdentifier("uls.uxLab.cleanShot.turnNeedsRoll")
+
+            Button("End Action", systemImage: "flag.fill") {
+                activateCleanFixture(
+                    id: UXTestFixtures.endTurnActionID,
+                )
+            }
+            .accessibilityIdentifier("uls.uxLab.cleanShot.endTurnAction")
 
             Button("Start Dev", systemImage: "rectangle.stack.fill") {
                 viewModel.activateCleanUXTestingFixture(
@@ -248,9 +256,59 @@ struct UXTestingControlsView: View {
         .accessibilityIdentifier("uls.uxLab.restoreChrome")
     }
 
+    private var hideChromeButton: some View {
+        cleanShotButton(
+            systemImage: "eye.slash",
+            accessibilityLabel: "Hide UX Lab",
+            accessibilityIdentifier: "uls.uxLab.hideChrome"
+        ) {
+            viewModel.hideUXTestingChrome()
+        }
+    }
+
     private var controlsPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
+
+            HStack(spacing: 8) {
+                cleanShotChipButton(
+                    title: "Setup Action",
+                    systemImage: "camera.viewfinder",
+                    accessibilityLabel: "Clean setup action",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.setupAction.direct"
+                ) {
+                    activateCleanFixture(
+                        id: UXTestFixtures.setupPlacementID,
+                        actingAs: UXTestFixtures.host
+                    )
+                }
+
+                cleanShotChipButton(
+                    title: "Robber Action",
+                    systemImage: "figure.fall",
+                    accessibilityLabel: "Clean robber action",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.robberAction.direct"
+                ) {
+                    activateCleanFixture(
+                        id: UXTestFixtures.robberMoveActionID,
+                        actingAs: UXTestFixtures.host
+                    )
+                }
+            }
+
+            HStack(spacing: 8) {
+                cleanShotChipButton(
+                    title: "Victim Action",
+                    systemImage: "person.crop.circle.badge.questionmark",
+                    accessibilityLabel: "Clean robber victim action",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.robberVictimAction.direct"
+                ) {
+                    activateCleanFixture(
+                        id: UXTestFixtures.robberVictimActionID,
+                        actingAs: UXTestFixtures.host
+                    )
+                }
+            }
 
             HStack(spacing: 8) {
                 cleanShotChipButton(
@@ -445,6 +503,35 @@ struct UXTestingControlsView: View {
                     activateCleanFixture(
                         id: UXTestFixtures.defaultFixtureID,
                     )
+                }
+
+                cleanShotButton(
+                    systemImage: "flag.fill",
+                    accessibilityLabel: "Clean end turn action",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.endTurnAction.direct"
+                ) {
+                    activateCleanFixture(
+                        id: UXTestFixtures.endTurnActionID,
+                    )
+                }
+
+                cleanShotButton(
+                    systemImage: "trophy.fill",
+                    accessibilityLabel: "Clean victory action",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.victoryAction.direct"
+                ) {
+                    activateCleanFixture(
+                        id: UXTestFixtures.victoryActionID,
+                        actingAs: UXTestFixtures.host
+                    )
+                }
+
+                cleanShotButton(
+                    systemImage: "medal.fill",
+                    accessibilityLabel: "Clean end screen",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.gameOver.direct"
+                ) {
+                    activateCleanFixture(id: "game-over")
                 }
 
             }

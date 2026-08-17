@@ -195,5 +195,90 @@ final class UXTestingFixturesTests: XCTestCase {
         XCTAssertFalse(state.yearOfPlentyBankOptions(for: UXTestFixtures.host).isEmpty)
         XCTAssertFalse(state.legalRoadBuildingFirstEdges(for: UXTestFixtures.host).isEmpty)
     }
+
+    func testEveryBoardFixtureUsesLegalConnectedPieceGeometry() {
+        for fixture in UXTestFixtures.all where fixture.state.board != nil {
+            assertLegalPieceGeometry(fixture.state, fixtureID: fixture.id)
+        }
+        for (index, state) in UXTestFixtures.recoveryStates.enumerated() where state.board != nil {
+            assertLegalPieceGeometry(state, fixtureID: "recovery-\(index)")
+        }
+    }
+
+    private func assertLegalPieceGeometry(
+        _ state: CoreGameStateV1,
+        fixtureID: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let topology = StandardBoardTopologyV1.standard()
+        let settlementNodes = Set(state.settlementsByNode.keys)
+        let cityNodes = Set(state.citiesByNode.keys)
+        let occupiedNodes = settlementNodes.union(cityNodes)
+
+        XCTAssertTrue(
+            settlementNodes.isDisjoint(with: cityNodes),
+            "\(fixtureID) overlaps a city and settlement.",
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            occupiedNodes.allSatisfy { $0 >= 0 && $0 < topology.nodesCount },
+            "\(fixtureID) has an invalid building node.",
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            state.roadsByEdge.keys.allSatisfy { topology.edges.indices.contains($0) },
+            "\(fixtureID) has an invalid road edge.",
+            file: file,
+            line: line
+        )
+
+        for nodeID in occupiedNodes {
+            XCTAssertTrue(
+                Set(topology.nodes(adjacentTo: nodeID)).isDisjoint(with: occupiedNodes),
+                "\(fixtureID) violates settlement distance at node \(nodeID).",
+                file: file,
+                line: line
+            )
+        }
+
+        for playerID in state.roster {
+            let buildingNodes = Set(
+                state.settlementsByNode.filter { $0.value == playerID }.map(\.key)
+            ).union(
+                state.citiesByNode.filter { $0.value == playerID }.map(\.key)
+            )
+            let ownedRoads = Set(
+                state.roadsByEdge.filter { $0.value == playerID }.map(\.key)
+            )
+            var reachedRoads = Set<EdgeID>()
+            var reachedNodes = buildingNodes
+            var madeProgress = true
+
+            while madeProgress {
+                madeProgress = false
+                for edgeID in ownedRoads.subtracting(reachedRoads) {
+                    let edge = topology.edges[edgeID]
+                    guard reachedNodes.contains(edge.a) || reachedNodes.contains(edge.b) else {
+                        continue
+                    }
+                    reachedRoads.insert(edgeID)
+                    reachedNodes.insert(edge.a)
+                    reachedNodes.insert(edge.b)
+                    madeProgress = true
+                }
+            }
+
+            XCTAssertEqual(
+                reachedRoads,
+                ownedRoads,
+                "\(fixtureID) gives \(playerID) a road component disconnected from their buildings.",
+                file: file,
+                line: line
+            )
+        }
+    }
 }
 #endif

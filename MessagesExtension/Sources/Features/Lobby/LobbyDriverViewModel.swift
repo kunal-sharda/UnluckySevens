@@ -51,7 +51,9 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published private(set) var uxTestingInitialGameMode: GameMode = .idle
     @Published private(set) var uxTestingInitialGameRoute: GameShellRoute = .none
     @Published private(set) var uxTestingForcesCityTargets: Bool = false
+    @Published private(set) var uxTestingLastRawError: String = "-"
     private var uxTestingAutoplayIsRunning = false
+    private static let uxTestingChromeHiddenKey = "uls.debug.uxTestingChromeHidden"
     #endif
 
     init(
@@ -61,6 +63,11 @@ final class LobbyDriverViewModel: ObservableObject {
     ) {
         self.userDefaults = userDefaults
         self.tutorialActorID = tutorialActorID
+        #if DEBUG
+        uxTestingChromeHiddenForScreenshot = userDefaults.bool(
+            forKey: Self.uxTestingChromeHiddenKey
+        )
+        #endif
         lobbyDisplayNamePreferenceStore = LobbyDisplayNamePreferenceStore(userDefaults: userDefaults)
         gameLedgerStore = TranscriptGameLedgerStore(userDefaults: userDefaults)
         if let rawValue = userDefaults.string(forKey: boardStrategyKey),
@@ -84,6 +91,33 @@ final class LobbyDriverViewModel: ObservableObject {
     #if DEBUG
     var uxTestingFixtures: [UXTestFixture] {
         UXTestFixtures.all
+    }
+
+    var uxTestingGameplayEvidence: String {
+        [
+            "game=\(gameId)",
+            "rev=\(rev)",
+            "phase=\(phase)",
+            "winner=\(selectedState?.winnerPlayer ?? "-")",
+            "winningVP=\(selectedState?.winningVictoryPoints ?? 0)",
+            "step=\(gameplayShellProjection.turnStep)",
+            "current=\(currentPlayer)",
+            "hash=\(stateHash)",
+            "hand=\(visibleHands)",
+            "dev=\(visibleDevCards)",
+            "pieces=\(remainingPieces)",
+            "discard=\(gameplayShellProjection.pendingDiscardRequirements)",
+            "submitted=\(gameplayShellProjection.submittedDiscardsStatus)",
+            "robber=\(gameplayShellProjection.boardRobberTile)",
+            "victims=\(gameplayShellProjection.eligibleStealVictims)",
+            "setup=\(gameplayShellProjection.setupPlacement)",
+            "trade=\(gameplayShellProjection.activeTradeOffer)",
+            "responses=\(gameplayShellProjection.tradeResponses)",
+            "status=\(selectionStatus)",
+            "error=\(lastError)",
+            "rawError=\(uxTestingLastRawError)",
+        ]
+        .joined(separator: ";")
     }
 
     var uxTestingSelectedFixture: UXTestFixture {
@@ -153,7 +187,7 @@ final class LobbyDriverViewModel: ObservableObject {
             initialMode: initialMode,
             initialRoute: initialRoute
         )
-        uxTestingChromeHiddenForScreenshot = true
+        setUXTestingChromeHidden(true)
     }
 
     func activateCleanUXTestingCityFixture() {
@@ -169,7 +203,16 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     func restoreUXTestingChrome() {
-        uxTestingChromeHiddenForScreenshot = false
+        setUXTestingChromeHidden(false)
+    }
+
+    func hideUXTestingChrome() {
+        setUXTestingChromeHidden(true)
+    }
+
+    private func setUXTestingChromeHidden(_ isHidden: Bool) {
+        uxTestingChromeHiddenForScreenshot = isHidden
+        userDefaults.set(isHidden, forKey: Self.uxTestingChromeHiddenKey)
     }
 
     func activateCleanLobbyInviteEntry() {
@@ -180,7 +223,7 @@ final class LobbyDriverViewModel: ObservableObject {
         clearActiveContext()
         selectionStatus = "UX Lab loaded clean lobby invite entry"
         setLastError(nil)
-        uxTestingChromeHiddenForScreenshot = true
+        setUXTestingChromeHidden(true)
     }
 
     func seedUXTestingRecoveryGames(hideChrome: Bool = false) {
@@ -207,7 +250,7 @@ final class LobbyDriverViewModel: ObservableObject {
         uxTestingActorID = UXTestFixtures.host
         uxTestingHumanActorID = UXTestFixtures.host
         uxTestingIsActive = true
-        uxTestingChromeHiddenForScreenshot = hideChrome
+        setUXTestingChromeHidden(hideChrome)
         setActiveContext(activeState, source: .uxTesting)
         gameLedgerStore.markActiveGame(activeState.gameId)
         refreshRecoveredGames()
@@ -254,7 +297,7 @@ final class LobbyDriverViewModel: ObservableObject {
 
     func exitUXTesting() {
         uxTestingIsActive = false
-        uxTestingChromeHiddenForScreenshot = false
+        setUXTestingChromeHidden(false)
         clearActiveContext()
         selectionStatus = "UX Lab exited"
         setLastError(nil)
@@ -2237,6 +2280,18 @@ final class LobbyDriverViewModel: ObservableObject {
         for gameId: String? = nil
     ) -> ActionAuthoringStateResolution {
         let resolvedGameId = gameId ?? selectedState?.gameId
+        #if DEBUG
+        if uxTestingIsActive {
+            let fixtureState = selectedState.flatMap { state in
+                resolvedGameId == nil || state.gameId == resolvedGameId ? state : nil
+            }
+            return ActionAuthoringStateResolution(
+                state: fixtureState,
+                source: fixtureState == nil ? nil : .selectedState,
+                prefersRecoveredState: false
+            )
+        }
+        #endif
         return ActionAuthoringStateResolver.resolve(
             gameId: resolvedGameId,
             selectedState: selectedState,
@@ -2890,6 +2945,9 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func setLastError(_ message: String?) {
+        #if DEBUG
+        uxTestingLastRawError = message ?? "-"
+        #endif
         guard let message else {
             lastError = "-"
             return

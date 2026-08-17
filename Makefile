@@ -1,8 +1,9 @@
-.PHONY: gen clean doc-freshness build practical-gate completion-contract plan-profile completion-gate completion-profile-lightweight completion-profile-standard completion-profile-release-critical release-contract release-gate harness-audit harness-check-tests
+.PHONY: gen clean doc-freshness build test-quick test-full test-features practical-gate completion-contract plan-profile completion-gate completion-profile-lightweight completion-profile-standard completion-profile-release-critical release-contract release-gate harness-audit harness-check-tests
 
 DOC_FRESHNESS_BASE ?= HEAD
 DOC_FRESHNESS_FLAGS ?=
 TEST_SIMULATOR_DESTINATION ?= platform=iOS Simulator,name=iPhone 17,OS=latest
+FEATURE ?= smoke
 
 gen:
 	./scripts/gen.sh
@@ -15,6 +16,15 @@ doc-freshness:
 
 build: doc-freshness gen
 	xcodebuild -workspace UnluckySevens.xcworkspace -scheme MessagesExtension -destination 'generic/platform=iOS Simulator' build
+
+test-quick:
+	bash ./scripts/run-ui-test-lane.sh quick "$(FEATURE)"
+
+test-full:
+	bash ./scripts/run-ui-test-lane.sh full
+
+test-features:
+	bash ./scripts/run-ui-test-lane.sh list
 
 practical-gate: doc-freshness gen
 	swift test --package-path Packages/ULS_CoreGame --skip ULS_CoreGameEvals

@@ -61,10 +61,15 @@ If device signing is not configured in Xcode, fill in your local team ID in the 
 
 ```bash
 make build                                  # doc freshness -> generation -> MessagesExtension build
+make test-features                          # list bounded single-iPhone feature slices
+make test-quick FEATURE=trade               # focused cold-lifecycle UI proof
+make test-full                              # complete single-iPhone gameplay + visual lane
 make completion-gate PLAN=<active-plan.md> # selected plan's profile-aware completion gate
 make release-gate PLAN=<release-plan.md>   # release-critical exhaustive gate
 make practical-gate                        # exhaustive validation primitive
 ```
+
+`make test-quick` defaults to `FEATURE=smoke`. The full UI target is comprehensive for one iPhone simulator but intentionally does not replace iPad, physical-device, multiplayer, signing, archive, or TestFlight validation.
 
 Equivalent expanded gate:
 

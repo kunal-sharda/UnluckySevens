@@ -46,6 +46,26 @@ final class TurnBuildRulesV1Tests: XCTestCase {
         XCTAssertEqual(state, snapshot)
     }
 
+    func testBuildRoadWithInsufficientResourcesRejectsWithoutMutation() throws {
+        let settlementNode = topology.tiles[0].nodes[0]
+        let initialRoad = topology.edges(incidentTo: settlementNode)[0]
+        let newRoad = topology.edges(incidentTo: settlementNode)[1]
+        let state = makeState(
+            resourcesByPlayer: [
+                "A": ResourceHandV1(wood: 1),
+                "B": .zero,
+            ],
+            settlementsByNode: [settlementNode: "A"],
+            roadsByEdge: [initialRoad: "A"]
+        )
+        let snapshot = state
+
+        XCTAssertThrowsError(try apply(intent: .buildRoad(edgeID: newRoad), to: state, actor: "A")) { error in
+            XCTAssertEqual(error as? CoreGameError, .buildInsufficientResources)
+        }
+        XCTAssertEqual(state, snapshot)
+    }
+
     func testBuildCityDeductsCostAndUpgradesSettlement() throws {
         let settlementNode = topology.tiles[0].nodes[0]
         let state = makeState(

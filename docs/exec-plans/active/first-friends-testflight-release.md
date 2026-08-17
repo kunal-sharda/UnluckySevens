@@ -12,7 +12,7 @@ Ship the first externally installable Unlucky Sevens beta to a small invited gro
 
 ## Context and Boundaries
 
-- This plan depends on [Final UI Cohesion, Wiring, and Legacy Removal](final-ui-cohesion-and-legacy-removal.md) passing its standard completion gate. That plan owns deletion of dead compiled UI, the repeatable screenshot harness, fresh iPhone/iPad evidence, and final UI/accessibility approval.
+- This plan depends on the completed [Final UI Cohesion, Wiring, and Legacy Removal](../completed/final-ui-cohesion-and-legacy-removal.md), whose standard completion gate passed on 2026-08-17. That plan owns deletion of dead compiled UI, the repeatable screenshot harness, fresh iPhone/iPad evidence, and final UI/accessibility approval.
 - [QA](../../quality/qa.md) selects the release lane; [device runbooks](../../quality/device-runbooks.md) own the hardware journeys; [constraint verification](../../quality/constraint-verification.md) owns completion language.
 - [Architecture](../../../ARCHITECTURE.md), [decisions](../../decisions.md), and the product specs own engine, protocol, secrecy, compatibility, and player-facing behavior. This plan does not introduce gameplay, protocol, analytics, monetization, localization, or App Store public-release scope.
 - Pre-TestFlight development transcripts are disposable. The first processed TestFlight build establishes the supported compatibility boundary; later protocol-breaking work must explicitly preserve or migrate states created by that build.

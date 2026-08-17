@@ -76,6 +76,33 @@ final class TurnRobberStealV1Tests: XCTestCase {
         XCTAssertEqual(state, snapshot)
     }
 
+    func testMultipleEligibleVictimsAllowsSelectingEitherAdjacentPlayer() throws {
+        let victimHand = ResourceHandV1(wheat: 1)
+        let state = makeState(
+            board: makeBoard(robberTile: 0),
+            turnState: TurnStateV1(
+                step: .needsRobberSteal,
+                lastRoll: DiceRollV1(d1: 6, d2: 1),
+                eligibleStealVictims: ["B", "C"]
+            ),
+            resourcesByPlayer: [
+                "A": .zero,
+                "B": ResourceHandV1(ore: 1),
+                "C": victimHand,
+            ],
+            robberRngState: 77
+        )
+
+        let stolen = try apply(intent: .selectStealVictim(victimPlayer: "C"), to: state, actor: "A")
+
+        XCTAssertEqual(stolen.turnState?.step, .afterRoll)
+        XCTAssertEqual(stolen.turnState?.eligibleStealVictims, [])
+        XCTAssertEqual(stolen.resourcesByPlayer["A"], ResourceHandV1(wheat: 1))
+        XCTAssertEqual(stolen.resourcesByPlayer["B"], ResourceHandV1(ore: 1))
+        XCTAssertEqual(stolen.resourcesByPlayer["C"], .zero)
+        XCTAssertNoThrow(try validateTransition(from: state, to: stolen, actor: "A"))
+    }
+
     private func makeState(
         board: BoardSetupV1,
         turnState: TurnStateV1,
@@ -88,7 +115,7 @@ final class TurnRobberStealV1Tests: XCTestCase {
             rev: 21,
             prevHash: "hash-20",
             stateHash: "",
-            roster: ["A", "B"],
+            roster: resourcesByPlayer.keys.sorted(),
             currentPlayer: "A",
             phase: .turn,
             seed: 123,

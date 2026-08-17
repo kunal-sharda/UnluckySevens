@@ -40,6 +40,11 @@ struct LobbyShellView: View {
             start: viewModel.startGame
         )
         .id(lobbyCardIdentity(model))
+        // The cocktail-table scene is a fixed visual composition rather than a
+        // document. Cap its typography before accessibility sizes distort the
+        // props and controls; Tutorial provides its separate ordered large-text
+        // guide and remains outside this subtree.
+        .dynamicTypeSize(.large)
     }
 
     private func lobbyCardIdentity(_ model: LobbyScreenModel) -> String {

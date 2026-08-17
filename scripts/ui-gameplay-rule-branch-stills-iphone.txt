@@ -1,0 +1,16 @@
+Roll Dice	/Users/kunalsharda/Documents/Code/UnluckySevens/output/ui-gameplay-action-harness/20260814-fixed-recorded/stills/testGameplayActionRollCommitsCanonicalState.png
+Discard After a Seven	/Users/kunalsharda/Documents/Code/UnluckySevens/output/ui-gameplay-action-harness/20260814-fixed-recorded/stills/testGameplayActionDiscardCommitsCanonicalState.png
+End Turn	/Users/kunalsharda/Documents/Code/UnluckySevens/output/ui-gameplay-action-harness/20260814-remaining-recorded/stills/testGameplayActionEndTurnCommitsCanonicalState.png
+Bank or Port Trade	/Users/kunalsharda/Documents/Code/UnluckySevens/output/ui-gameplay-action-harness/20260814-remaining-recorded/stills/testGameplayActionMaritimeTradeCommitsCanonicalState.png
+Send Player Trade Offer	/Users/kunalsharda/Documents/Code/UnluckySevens/output/ui-gameplay-action-harness/20260814-remaining-recorded/stills/testGameplayActionPlayerTradeOfferCommitsCanonicalState.png
+Accept Player Trade	/Users/kunalsharda/Documents/Code/UnluckySevens/output/ui-gameplay-action-harness/20260814-remaining-recorded/stills/testGameplayActionTradeAcceptCommitsCanonicalState.png
+Buy Development Card	/Users/kunalsharda/Documents/Code/UnluckySevens/output/ui-gameplay-action-harness/20260814-remaining-recorded/stills/testGameplayActionBuyDevCardCommitsCanonicalState.png
+Build Road	/Users/kunalsharda/Documents/Code/UnluckySevens/output/ui-gameplay-action-harness/20260814-board-host-manifest-build-retry1/stills/testGameplayActionBuildRoadCommitsCanonicalState.png
+Build Settlement	/Users/kunalsharda/Documents/Code/UnluckySevens/output/ui-gameplay-action-harness/20260814-board-host-manifest-build-retry1/stills/testGameplayActionBuildSettlementCommitsCanonicalState.png
+Build City	/Users/kunalsharda/Documents/Code/UnluckySevens/output/ui-gameplay-action-harness/20260814-board-host-manifest-build-retry1/stills/testGameplayActionBuildCityCommitsCanonicalState.png
+Move the Robber	/Users/kunalsharda/Documents/Code/UnluckySevens/output/ui-gameplay-action-harness/20260814-board-host-manifest-build-retry1/stills/testGameplayActionMoveRobberCommitsCanonicalState.png
+Choose a Robber Victim	/Users/kunalsharda/Documents/Code/UnluckySevens/output/ui-gameplay-action-harness/20260814-board-host-manifest-build-retry1/stills/testGameplayActionChooseRobberVictimCommitsCanonicalState.png
+Play Monopoly	/Users/kunalsharda/Documents/Code/UnluckySevens/output/ui-gameplay-action-harness/20260814-dev-cards-fresh-recorded-retry1/stills/testGameplayActionPlayMonopolyCommitsCanonicalState.png
+Play Year of Plenty	/Users/kunalsharda/Documents/Code/UnluckySevens/output/ui-gameplay-action-harness/20260814-dev-cards-fresh-recorded-retry1/stills/testGameplayActionPlayYearOfPlentyCommitsCanonicalState.png
+Play Road Building	/Users/kunalsharda/Documents/Code/UnluckySevens/output/ui-gameplay-action-harness/20260814-dev-cards-fresh-recorded-retry1/stills/testGameplayActionPlayRoadBuildingCommitsCanonicalState.png
+Play Knight	/Users/kunalsharda/Documents/Code/UnluckySevens/output/ui-gameplay-action-harness/20260814-dev-cards-fresh-recorded-retry1/stills/testGameplayActionPlayKnightCommitsCanonicalState.png

@@ -47,13 +47,17 @@ enum UXTestFixtures {
         setupHandoff,
         turnNeedsRoll,
         turnAfterRoll,
+        endTurnAction,
         waitingOnAlice,
         waitingOnDiscard,
         pendingDiscard,
         robberMove,
+        robberMoveAction,
         robberVictim,
+        robberVictimAction,
         tradeOffer,
         multiTypeTradeOffer,
+        victoryAction,
         gameOver,
         tutorialVictory,
     ]
@@ -66,11 +70,15 @@ enum UXTestFixtures {
     static let setupRoadPlacementID = "setup-road-placement"
     static let setupHandoffID = "setup-handoff"
     static let turnNeedsRollID = "turn-needs-roll"
+    static let endTurnActionID = "end-turn-action"
     static let tradeOfferID = "trade-offer"
     static let multiTypeTradeOfferID = "multi-type-trade-offer"
     static let waitingOnAliceID = "waiting-on-alice"
     static let waitingOnDiscardID = "waiting-on-discard"
     static let robberVictimID = "robber-victim"
+    static let robberMoveActionID = "robber-move-action"
+    static let robberVictimActionID = "robber-victim-action"
+    static let victoryActionID = "victory-action"
     static let tutorialVictoryID = "tutorial-victory"
 
     static func fixture(id: String) -> UXTestFixture {
@@ -93,16 +101,9 @@ enum UXTestFixtures {
             rev: 9,
             currentPlayer: host,
             phase: .turn,
-            settlementsByNode: [
-                4: host,
-                18: alice,
-                31: ben,
-            ],
-            citiesByNode: [
-                8: host,
-                25: alice,
-                42: ben,
-            ],
+            settlementsByNode: defaultSettlements,
+            citiesByNode: defaultCities,
+            roadsByEdge: defaultRoads,
             largestArmyOwner: nil,
             largestArmySize: 0,
             longestRoadOwner: nil,
@@ -232,6 +233,25 @@ enum UXTestFixtures {
         )
     )
 
+    private static let endTurnAction = UXTestFixture(
+        id: endTurnActionID,
+        title: "End turn action",
+        detail: "Canonical post-roll state with award fields matching the placed pieces.",
+        defaultActorID: host,
+        state: makeTurnFixture(
+            rev: 9,
+            currentPlayer: host,
+            largestArmyOwner: nil,
+            largestArmySize: 0,
+            longestRoadOwner: nil,
+            longestRoadLength: 0,
+            turnState: TurnStateV1(
+                step: .afterRoll,
+                lastRoll: DiceRollV1(d1: 3, d2: 5)
+            )
+        )
+    )
+
     private static let waitingOnAlice = UXTestFixture(
         id: waitingOnAliceID,
         title: "Waiting on another player",
@@ -301,6 +321,25 @@ enum UXTestFixtures {
         )
     )
 
+    private static let robberMoveAction = UXTestFixture(
+        id: robberMoveActionID,
+        title: "Robber move action",
+        detail: "Canonical robber action state with award fields matching the placed pieces.",
+        defaultActorID: host,
+        state: makeTurnFixture(
+            rev: 12,
+            currentPlayer: host,
+            largestArmyOwner: nil,
+            largestArmySize: 0,
+            longestRoadOwner: nil,
+            longestRoadLength: 0,
+            turnState: TurnStateV1(
+                step: .needsRobberMove,
+                lastRoll: DiceRollV1(d1: 4, d2: 3)
+            )
+        )
+    )
+
     private static let robberVictim = UXTestFixture(
         id: robberVictimID,
         title: "Robber victim",
@@ -319,6 +358,27 @@ enum UXTestFixtures {
                 }
             }
             preconditionFailure("Robber victim fixture requires a destination beside an opponent.")
+        }()
+    )
+
+    private static let robberVictimAction = UXTestFixture(
+        id: robberVictimActionID,
+        title: "Robber victim action",
+        detail: "Canonical adjacent-victim action state derived through the rules engine.",
+        defaultActorID: host,
+        state: {
+            let state = robberMoveAction.state
+            for tileID in state.legalRobberMoveTiles(for: host) {
+                guard let moved = try? apply(
+                    intent: .moveRobber(tileID: tileID),
+                    to: state,
+                    actor: host
+                ) else { continue }
+                if moved.turnState?.step == .needsRobberSteal {
+                    return moved
+                }
+            }
+            preconditionFailure("Robber victim action fixture requires a destination beside an opponent.")
         }()
     )
 
@@ -384,6 +444,36 @@ enum UXTestFixtures {
         }()
     )
 
+    private static let victoryAction = UXTestFixture(
+        id: victoryActionID,
+        title: "Victory action",
+        detail: "Reveal the final Victory Point through the live Hand control to end the game.",
+        defaultActorID: host,
+        state: makeTurnFixture(
+            rev: 17,
+            currentPlayer: host,
+            devCardsByPlayer: [
+                host: DevCardInventoryV1(victoryPoint: 1),
+                alice: .zero,
+                ben: .zero,
+            ],
+            newDevCardsByPlayer: [:],
+            revealedVictoryPointsByPlayer: [host: 4],
+            settlementsByNode: defaultSettlements,
+            citiesByNode: defaultCities,
+            roadsByEdge: defaultRoads,
+            knightsPlayedByPlayer: [host: 3, alice: 1],
+            largestArmyOwner: host,
+            largestArmySize: 3,
+            longestRoadOwner: nil,
+            longestRoadLength: 0,
+            turnState: TurnStateV1(
+                step: .afterRoll,
+                lastRoll: DiceRollV1(d1: 5, d2: 3)
+            )
+        )
+    )
+
     private static let gameOver = UXTestFixture(
         id: "game-over",
         title: "Game over",
@@ -393,27 +483,25 @@ enum UXTestFixtures {
             rev: 18,
             currentPlayer: host,
             phase: .gameOver,
-            revealedVictoryPointsByPlayer: [host: 2],
+            devCardsByPlayer: [
+                host: DevCardInventoryV1(knight: 1, monopoly: 1, yearOfPlenty: 1, roadBuilding: 1),
+                alice: DevCardInventoryV1(knight: 1),
+            ],
+            newDevCardsByPlayer: [:],
+            revealedVictoryPointsByPlayer: [host: 5],
             auditLog: [
                 AuditEntryV1(rev: 7, actor: host, action: .playKnight),
                 AuditEntryV1(rev: 15, actor: host, action: .playRoadBuilding),
                 AuditEntryV1(rev: 18, actor: host, action: .revealVictoryPoint),
             ],
-            settlementsByNode: [
-                4: host,
-                12: host,
-                18: alice,
-                31: ben,
-            ],
-            citiesByNode: [
-                8: host,
-                20: host,
-                24: host,
-                25: alice,
-            ],
-            knightsPlayedByPlayer: [host: 1, alice: 1],
-            largestArmyOwner: nil,
-            largestArmySize: 0,
+            settlementsByNode: defaultSettlements,
+            citiesByNode: defaultCities,
+            roadsByEdge: defaultRoads,
+            knightsPlayedByPlayer: [host: 3, alice: 1],
+            largestArmyOwner: host,
+            largestArmySize: 3,
+            longestRoadOwner: nil,
+            longestRoadLength: 0,
             winnerPlayer: host,
             winningVictoryPoints: 10,
             lastTurnRecap: TurnRecapV1(
@@ -456,9 +544,12 @@ enum UXTestFixtures {
         tradeResponses: [TradeResponseV1] = [],
         settlementsByNode: [NodeID: String] = defaultSettlements,
         citiesByNode: [NodeID: String] = defaultCities,
+        roadsByEdge: [EdgeID: String] = defaultRoads,
         knightsPlayedByPlayer: [String: Int] = [host: 2, alice: 1],
         largestArmyOwner: String? = host,
         largestArmySize: Int = 2,
+        longestRoadOwner: String? = alice,
+        longestRoadLength: Int = 5,
         winnerPlayer: String? = nil,
         winningVictoryPoints: Int = 0,
         lastTurnRecap: TurnRecapV1? = nil,
@@ -477,9 +568,12 @@ enum UXTestFixtures {
             tradeResponses: tradeResponses,
             settlementsByNode: settlementsByNode,
             citiesByNode: citiesByNode,
+            roadsByEdge: roadsByEdge,
             knightsPlayedByPlayer: knightsPlayedByPlayer,
             largestArmyOwner: largestArmyOwner,
             largestArmySize: largestArmySize,
+            longestRoadOwner: longestRoadOwner,
+            longestRoadLength: longestRoadLength,
             winnerPlayer: winnerPlayer,
             winningVictoryPoints: winningVictoryPoints,
             lastTurnRecap: lastTurnRecap,
@@ -683,58 +777,52 @@ enum UXTestFixtures {
         host: DevCardInventoryV1(victoryPoint: 1),
     ]
 
-    private static let defaultSettlements = [
-        4: host,
-        18: alice,
-        31: ben,
-    ]
+    /// The shared DEBUG table is intentionally produced through the Core reducer.
+    /// This prevents visual fixtures from inventing disconnected roads or buildings
+    /// that could never occur in a real game.
+    private static let defaultPositionState: CoreGameStateV1 = {
+        let completedSetup = makeSetupHandoffState()
+        let buildReady = makeState(
+            rev: completedSetup.rev,
+            currentPlayer: host,
+            phase: .turn,
+            settlementsByNode: completedSetup.settlementsByNode,
+            citiesByNode: completedSetup.citiesByNode,
+            roadsByEdge: completedSetup.roadsByEdge,
+            largestArmyOwner: nil,
+            largestArmySize: 0,
+            longestRoadOwner: nil,
+            longestRoadLength: 0,
+            turnState: TurnStateV1(
+                step: .afterRoll,
+                lastRoll: DiceRollV1(d1: 3, d2: 5)
+            )
+        )
 
-    private static let defaultCities = [
-        8: host,
-        25: alice,
-    ]
+        for edgeID in buildReady.legalBuildRoadEdges(for: host) {
+            guard let withRoad = try? apply(
+                intent: .buildRoad(edgeID: edgeID),
+                to: buildReady,
+                actor: host
+            ),
+            !withRoad.legalBuildSettlementNodes(for: host).isEmpty,
+            let cityNode = withRoad.legalBuildCityNodes(for: host).first,
+            let withCity = try? apply(
+                intent: .buildCity(nodeID: cityNode),
+                to: withRoad,
+                actor: host
+            )
+            else { continue }
 
-    private static let defaultRoads: [EdgeID: String] = {
-        let topology = StandardBoardTopologyV1.standard()
-        let startNode = 4
-        let occupiedNodes: Set<NodeID> = [4, 8, 18, 25, 31]
-        var queue: [NodeID] = [startNode]
-        var visited: Set<NodeID> = [startNode]
-        var previous: [NodeID: (node: NodeID, edge: EdgeID)] = [:]
-        var targetNode: NodeID?
-
-        while !queue.isEmpty, targetNode == nil {
-            let node = queue.removeFirst()
-            for edgeID in topology.edges(incidentTo: node).sorted() {
-                let edge = topology.edges[edgeID]
-                let nextNode = edge.a == node ? edge.b : edge.a
-                guard !visited.contains(nextNode) else { continue }
-                guard nextNode == startNode || !occupiedNodes.contains(nextNode) else { continue }
-
-                visited.insert(nextNode)
-                previous[nextNode] = (node, edgeID)
-                queue.append(nextNode)
-
-                let adjacent = Set(topology.nodes(adjacentTo: nextNode))
-                if !occupiedNodes.contains(nextNode),
-                   adjacent.isDisjoint(with: occupiedNodes) {
-                    targetNode = nextNode
-                    break
-                }
-            }
+            return withCity
         }
 
-        var result: [EdgeID: String] = [:]
-        var cursor = targetNode
-        while let node = cursor, node != startNode, let step = previous[node] {
-            result[step.edge] = host
-            cursor = step.node
-        }
-
-        for (edge, owner) in [(17, alice), (18, alice), (29, ben)] where result[edge] == nil {
-            result[edge] = owner
-        }
-        return result
+        preconditionFailure("UX fixture requires a reducer-derived road and city position.")
     }()
+
+    private static let defaultSettlements = defaultPositionState.settlementsByNode
+    private static let defaultCities = defaultPositionState.citiesByNode
+    private static let defaultRoads = defaultPositionState.roadsByEdge
+
 }
 #endif

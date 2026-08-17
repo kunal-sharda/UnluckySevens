@@ -1,0 +1,4 @@
+# Single-iPhone guardrails and cancellation evidence.
+testGameplayGuardrailCancelTransientActionsPreserveCanonicalState
+testGameplayGuardrailDeclineTradeCommitsCanonicalState
+testGameplayGuardrailWaitingPlayerCannotAct

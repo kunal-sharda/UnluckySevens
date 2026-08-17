@@ -215,7 +215,7 @@ enum GameTradePanelModelBuilder {
         } else {
             recipientLabel = "\(recipients.count) players"
         }
-        return "\(proposerDisplay): \(give) for \(receive) to \(recipientLabel)"
+        return "\(proposerDisplay) offers \(give) for \(receive) · \(recipientLabel)"
     }
 
     private static func compactHandDescription(_ hand: ResourceHandV1) -> String {

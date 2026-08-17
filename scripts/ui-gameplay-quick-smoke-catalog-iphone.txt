@@ -1,0 +1,4 @@
+# Fast representative gameplay smoke using production controls.
+testGameplayActionRollCommitsCanonicalState
+testGameplayActionEndTurnCommitsCanonicalState
+testGameplayActionMaritimeTradeCommitsCanonicalState

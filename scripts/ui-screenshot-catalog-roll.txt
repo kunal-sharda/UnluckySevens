@@ -1,0 +1,2 @@
+# Focused Roll Dice affordance proof. Run with the mandatory isolated cold lifecycle.
+testOpenMessagesExtensionAndCaptureStartOfTurnComparison

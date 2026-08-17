@@ -1,0 +1,6 @@
+# Focused current-source Trade previews. Do not replace the complete catalog.
+testCapturePhysicalTradeCorrectionTutorialCheckpoint
+testCapturePendingTradeBannerPolish
+testCaptureNotPrimaryPlayerIncomingTrade
+testCaptureNotPrimaryPlayerMultiTypeIncomingTrade
+testOpenMessagesExtensionAndCapturePendingActivePlayerTradeSlice
