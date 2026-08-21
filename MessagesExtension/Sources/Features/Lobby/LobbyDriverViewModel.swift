@@ -14,7 +14,6 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var activeContextSource: String = "-"
     @Published var staleContextWarning: String = "-"
     @Published var boardStrategy: BoardGenStrategyV1
-    @Published private(set) var boardReloadToken: Int = 0
     @Published private(set) var gameShellResetToken: Int = 0
     @Published private(set) var recoveredGames: [ActiveGameRecoverySummary] = []
     @Published private(set) var dismissRequestToken: Int = 0
@@ -1836,11 +1835,6 @@ final class LobbyDriverViewModel: ObservableObject {
             incomingGameId: incomingGameId,
             currentGameId: currentGameId()
         )
-    }
-
-    func requestBoardReload(detail: String = "manual") {
-        _ = detail
-        boardReloadToken &+= 1
     }
 
     func resumeRecoveredGame(_ gameId: String) {

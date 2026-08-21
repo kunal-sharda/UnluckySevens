@@ -8,7 +8,6 @@ struct LiveGameBoardCanvasView: View {
     let showsIntegratedFrame: Bool
     let contentVerticalOffset: CGFloat
     let bottomOcclusionHeight: CGFloat
-    let reloadToken: Int
     let onInteractionChanged: ((Bool) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
@@ -19,7 +18,6 @@ struct LiveGameBoardCanvasView: View {
                 overlayModel: overlayModel,
                 interactionMode: interactionMode,
                 bottomOcclusionHeight: bottomOcclusionHeight,
-                reloadToken: reloadToken,
                 onInteractionChanged: onInteractionChanged,
                 onTargetTap: onTargetTap
             )

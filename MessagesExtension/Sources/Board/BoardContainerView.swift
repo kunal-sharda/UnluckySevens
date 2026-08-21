@@ -11,7 +11,6 @@ struct BoardContainerView: View {
     let showsCreamFrame: Bool
     let boardContentVerticalOffset: CGFloat
     var bottomOcclusionHeight: CGFloat = 0
-    let reloadToken: Int
     let onInteractionChanged: ((Bool) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
@@ -92,7 +91,6 @@ struct BoardContainerView: View {
                     showsIntegratedFrame: showsCreamFrame,
                     contentVerticalOffset: boardContentVerticalOffset,
                     bottomOcclusionHeight: bottomOcclusionHeight,
-                    reloadToken: reloadToken,
                     onInteractionChanged: onInteractionChanged,
                     onTargetTap: onTargetTap
                 )

@@ -443,7 +443,6 @@ private struct CocktailTableTop: View {
                 overlayModel: .empty,
                 interactionMode: .idle,
                 bottomOcclusionHeight: 0,
-                reloadToken: 0,
                 onInteractionChanged: nil,
                 onTargetTap: nil
             )

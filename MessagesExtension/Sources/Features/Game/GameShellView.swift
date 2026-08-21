@@ -383,7 +383,6 @@ struct GameShellView: View {
                                     ? 0
                                     : physicalBoardCenteringOffset,
                                 bottomOcclusionHeight: boardBottomOcclusionHeight,
-                                reloadToken: viewModel.boardReloadToken,
                                 onInteractionChanged: nil,
                                 onTargetTap: { target in
                                     handleBoardTap(target, mode: resolvedMode)

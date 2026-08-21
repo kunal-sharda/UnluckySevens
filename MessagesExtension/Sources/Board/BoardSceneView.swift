@@ -7,7 +7,6 @@ struct BoardSceneView: View, Equatable {
     let overlayModel: GameBoardOverlayModel
     let interactionMode: GameMode
     let bottomOcclusionHeight: CGFloat
-    let reloadToken: Int
     let onInteractionChanged: ((Bool) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
@@ -20,7 +19,6 @@ struct BoardSceneView: View, Equatable {
     @State private var pendingRenderModel: GameBoardRenderModel?
     @State private var pendingOverlayModel: GameBoardOverlayModel?
     @State private var resizeSettleTask: Task<Void, Never>?
-    @State private var boardHostReloadGeneration: Int = 0
     @AppStorage(GameBoardOceanStyle.defaultsKey)
     private var oceanStyleRawValue = GameBoardOceanStyle.flat.rawValue
 
@@ -32,7 +30,6 @@ struct BoardSceneView: View, Equatable {
             && lhs.overlayModel == rhs.overlayModel
             && lhs.interactionMode == rhs.interactionMode
             && lhs.bottomOcclusionHeight == rhs.bottomOcclusionHeight
-            && lhs.reloadToken == rhs.reloadToken
     }
 
     var body: some View {
@@ -56,9 +53,6 @@ struct BoardSceneView: View, Equatable {
                         onInteractionChanged?(active)
                     },
                     onTargetTap: onTargetTap
-                )
-                .id(
-                    "board-host-\(reloadToken)-\(boardHostReloadGeneration)"
                 )
             }
             .clipped()
@@ -99,13 +93,6 @@ struct BoardSceneView: View, Equatable {
             .onChange(of: geometry.size) { _, newValue in
                 handleLiveViewportResize(
                     viewportSize: newValue,
-                    renderModel: renderModel,
-                    overlayModel: overlayModel
-                )
-            }
-            .onChange(of: reloadToken) { _, _ in
-                rebuildBoardSurface(
-                    viewportSize: geometry.size,
                     renderModel: renderModel,
                     overlayModel: overlayModel
                 )
@@ -224,39 +211,6 @@ struct BoardSceneView: View, Equatable {
             overlayModel: overlayModel
         )
         scene.updateCamera(state: interactionController.cameraState, viewportSize: viewportSize)
-    }
-
-    private func rebuildBoardSurface(
-        viewportSize: CGSize,
-        renderModel: GameBoardRenderModel,
-        overlayModel: GameBoardOverlayModel
-    ) {
-        let preservedCameraState = interactionController.cameraState
-        let rebuiltScene = GameBoardScene(size: viewportSize)
-        let rebuiltInteractionController = BoardSceneInteractionController(cameraState: preservedCameraState)
-        rebuiltInteractionController.onInteractionChanged = onInteractionChanged
-        scene = rebuiltScene
-        interactionController = rebuiltInteractionController
-        boardHostReloadGeneration &+= 1
-
-        let referenceSize = resolvedReferenceSize(for: viewportSize)
-        rebuiltScene.updateBase(
-            renderModel: renderModel,
-            referenceSize: referenceSize,
-            viewportSize: viewportSize
-        )
-        rebuiltScene.updateOverlay(
-            renderModel: renderModel,
-            referenceSize: referenceSize,
-            viewportSize: viewportSize,
-            overlayModel: overlayModel
-        )
-        let referenceLayout = GameBoardLayout(size: referenceSize, geometry: renderModel.geometry)
-        rebuiltInteractionController.clampCameraState(
-            viewportSize: viewportSize,
-            contentFrame: referenceLayout.contentFrame,
-            scene: rebuiltScene
-        )
     }
 
     private func resolvedReferenceSize(for viewportSize: CGSize) -> CGSize {
