@@ -82,6 +82,10 @@ The validation circuit breaker applies: a harness failure receives only the boun
 - 2026-08-21: Integrated the Core rules-primitives/audit split after 139 tests, removed dead resize-freeze plumbing, and precomputed immutable `GameBoardLayout` geometry; the post-change 324-test extension lane passed.
 - 2026-08-21: Moved the unchanged compact-state codec implementation into `ULS_Transport`, added captured compact/raw compatibility fixtures, and passed the seven-test Transport package lane.
 - 2026-08-21: Removed the superseded `BoardTiles` catalog and uncolored merchant ship, made `BoardStamps`/`BoardMiniStamps` explicit in owner docs, and archived four plans whose own completion contracts were terminal.
+- 2026-08-21: Replaced controller token recursion with a deterministic, scheduler-tested cancellable selection watch; cancellation and selection replacement are generation-gated and the callback remains the existing hydration path.
+- 2026-08-21: Split GameShell trade layout/views and pure trade/discard transforms while retaining all shared `@State` and the mounted board in `GameShellView`.
+- 2026-08-21: Made the production shell projection immutable, removed its writable lobby facade and duplicate legacy summary helpers, and moved non-product string formatting to a separate DEBUG diagnostics projection without changing UX evidence keys.
+- 2026-08-21: Added a DEBUG-only game-agnostic fixture descriptor/registry seam while retaining all Catan fixture state, actions, IDs, accessibility contracts, and reducer provenance in the game-specific harness.
 
 ### Decisions
 
@@ -94,6 +98,7 @@ The validation circuit breaker applies: a harness failure receives only the boun
 - 2026-08-21: The current dirty tree contains two coherent slices with one file overlap: Core cost/topology forgiveness and compact fresh-launch/TestFlight work. They will be checkpointed separately.
 - 2026-08-21: Transport codec relocation can run beside Core work, but shared test-target extraction must follow Transport integration and share one extension owner.
 - 2026-08-21: JSON object-key order from Foundation encoding is not a stable golden-byte fixture across processes. Compatibility is therefore proved by the 99%-similarity source move, an unchanged encoder implementation, canonical compact-schema fixture equality, and legacy compact/raw decode fixtures; production encoding was not changed merely to make key ordering deterministic.
+- 2026-08-21: After the codec moved, the legacy duplicated-source test target could no longer compile because it still listed the removed extension-local codec path. This is the expected TD-004 dependency and is now the immediate shared-support-target integration gate, not a product regression or permission to alter codec behavior.
 
 ## Doc Freshness Ownership
 
