@@ -5,30 +5,76 @@ struct GameBoardLayout {
     let size: CGSize
     let geometry: BoardRenderGeometryV1
 
-    private let padding: CGFloat = 8
-    private let horizontalSeaMultiplier: CGFloat = 0.98
-    private let topSeaMultiplier: CGFloat = 0.78
-    private let bottomSeaMultiplier: CGFloat = 0.92
+    let tileRadius: CGFloat
+    let roadWidth: CGFloat
+    let structureRadius: CGFloat
+    let portBadgeSize: CGSize
+    let boardCenter: CGPoint
+    let contentFrame: CGRect
+    let boardHullFrame: CGRect
+
+    private let nodePoints: [CGPoint]
+    private let tileCenters: [CGPoint]
+
+    private static let padding: CGFloat = 8
+    private static let horizontalSeaMultiplier: CGFloat = 0.98
+    private static let topSeaMultiplier: CGFloat = 0.78
+    private static let bottomSeaMultiplier: CGFloat = 0.92
 
     init(size: CGSize, geometry: BoardRenderGeometryV1) {
         self.size = size
         self.geometry = geometry
-    }
 
-    var tileRadius: CGFloat {
-        max(normalizedTileRadius * layoutScale, 8)
-    }
+        let geometryBounds = Self.bounds(for: geometry)
+        let normalizedTileRadius = Self.normalizedTileRadius(for: geometry)
+        let expandedBounds = Self.expandedBounds(
+            geometryBounds: geometryBounds,
+            normalizedTileRadius: normalizedTileRadius
+        )
+        let layoutScale = Self.layoutScale(size: size, expandedBounds: expandedBounds)
+        let scaledWidth = expandedBounds.width * layoutScale
+        let scaledHeight = expandedBounds.height * layoutScale
+        let originX = ((size.width - scaledWidth) * 0.5) - (expandedBounds.minX * layoutScale)
+        let originY = ((size.height - scaledHeight) * 0.5) - (expandedBounds.minY * layoutScale)
 
-    var roadWidth: CGFloat {
-        max(tileRadius * 0.125, 4.5)
-    }
+        func resolvedPoint(_ point: BoardRenderPointV1) -> CGPoint {
+            CGPoint(
+                x: originX + (point.x * layoutScale),
+                y: originY + (point.y * layoutScale)
+            )
+        }
 
-    var structureRadius: CGFloat {
-        max(tileRadius * 0.275, 9.6)
-    }
+        let resolvedNodePoints = geometry.nodePositions.map(resolvedPoint)
+        let resolvedTileCenters = geometry.tileCenters.map(resolvedPoint)
+        let resolvedTileRadius = max(normalizedTileRadius * layoutScale, 8)
+        let minX = resolvedNodePoints.map(\.x).min() ?? 0
+        let maxX = resolvedNodePoints.map(\.x).max() ?? size.width
+        let minY = resolvedNodePoints.map(\.y).min() ?? 0
+        let maxY = resolvedNodePoints.map(\.y).max() ?? size.height
+        let contentInset = resolvedTileRadius * 1.5
 
-    var portBadgeSize: CGSize {
-        CGSize(width: max(tileRadius * 0.52, 19), height: max(tileRadius * 0.27, 12.5))
+        nodePoints = resolvedNodePoints
+        tileCenters = resolvedTileCenters
+        tileRadius = resolvedTileRadius
+        roadWidth = max(resolvedTileRadius * 0.125, 4.5)
+        structureRadius = max(resolvedTileRadius * 0.275, 9.6)
+        portBadgeSize = CGSize(
+            width: max(resolvedTileRadius * 0.52, 19),
+            height: max(resolvedTileRadius * 0.27, 12.5)
+        )
+        boardCenter = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
+        contentFrame = CGRect(
+            x: minX - contentInset,
+            y: minY - contentInset,
+            width: max((maxX - minX) + (contentInset * 2), 1),
+            height: max((maxY - minY) + (contentInset * 2), 1)
+        )
+        boardHullFrame = CGRect(
+            x: minX,
+            y: minY,
+            width: max(maxX - minX, 1),
+            height: max(maxY - minY, 1)
+        )
     }
 
     func portMarkerSize(for kind: PortKindV1) -> CGSize {
@@ -46,45 +92,12 @@ struct GameBoardLayout {
         }
     }
 
-    var boardCenter: CGPoint {
-        CGPoint(x: size.width * 0.5, y: size.height * 0.5)
-    }
-
-    var contentFrame: CGRect {
-        let minX = geometry.nodePositions.indices.map { nodePoint(for: $0).x }.min() ?? 0
-        let maxX = geometry.nodePositions.indices.map { nodePoint(for: $0).x }.max() ?? size.width
-        let minY = geometry.nodePositions.indices.map { nodePoint(for: $0).y }.min() ?? 0
-        let maxY = geometry.nodePositions.indices.map { nodePoint(for: $0).y }.max() ?? size.height
-
-        let inset = tileRadius * 1.5
-        return CGRect(
-            x: minX - inset,
-            y: minY - inset,
-            width: max((maxX - minX) + (inset * 2), 1),
-            height: max((maxY - minY) + (inset * 2), 1)
-        )
-    }
-
-    var boardHullFrame: CGRect {
-        let minX = geometry.nodePositions.indices.map { nodePoint(for: $0).x }.min() ?? 0
-        let maxX = geometry.nodePositions.indices.map { nodePoint(for: $0).x }.max() ?? size.width
-        let minY = geometry.nodePositions.indices.map { nodePoint(for: $0).y }.min() ?? 0
-        let maxY = geometry.nodePositions.indices.map { nodePoint(for: $0).y }.max() ?? size.height
-
-        return CGRect(
-            x: minX,
-            y: minY,
-            width: max(maxX - minX, 1),
-            height: max(maxY - minY, 1)
-        )
-    }
-
     func tileCenter(for tileID: TileID) -> CGPoint {
-        point(for: geometry.tileCenters[tileID])
+        tileCenters[tileID]
     }
 
     func nodePoint(for nodeID: NodeID) -> CGPoint {
-        point(for: geometry.nodePositions[nodeID])
+        nodePoints[nodeID]
     }
 
     func edgeLine(for edgeID: EdgeID, topology: BoardGraphV1) -> (start: CGPoint, end: CGPoint) {
@@ -124,7 +137,7 @@ struct GameBoardLayout {
         )
     }
 
-    private var bounds: CGRect {
+    private static func bounds(for geometry: BoardRenderGeometryV1) -> CGRect {
         let xs = geometry.nodePositions.map(\.x)
         let ys = geometry.nodePositions.map(\.y)
         let minX = xs.min() ?? 0
@@ -136,20 +149,6 @@ struct GameBoardLayout {
             y: minY,
             width: max(maxX - minX, 1),
             height: max(maxY - minY, 1)
-        )
-    }
-
-    private func point(for renderPoint: BoardRenderPointV1) -> CGPoint {
-        let bounds = expandedBounds
-        let scale = layoutScale
-        let scaledWidth = bounds.width * scale
-        let scaledHeight = bounds.height * scale
-        let originX = ((size.width - scaledWidth) * 0.5) - (bounds.minX * scale)
-        let originY = ((size.height - scaledHeight) * 0.5) - (bounds.minY * scale)
-
-        return CGPoint(
-            x: originX + (renderPoint.x * scale),
-            y: originY + (renderPoint.y * scale)
         )
     }
 
@@ -189,17 +188,16 @@ struct GameBoardLayout {
         (lhs.dx * rhs.dx) + (lhs.dy * rhs.dy)
     }
 
-    private var layoutScale: CGFloat {
+    private static func layoutScale(size: CGSize, expandedBounds: CGRect) -> CGFloat {
         let availableWidth = max(size.width - (padding * 2), 1)
         let availableHeight = max(size.height - (padding * 2), 1)
-        let expandedBounds = expandedBounds
         return min(
             availableWidth / max(expandedBounds.width, 1),
             availableHeight / max(expandedBounds.height, 1)
         )
     }
 
-    private var normalizedTileRadius: CGFloat {
+    private static func normalizedTileRadius(for geometry: BoardRenderGeometryV1) -> CGFloat {
         let radii = geometry.tileCenters.compactMap { tileCenter in
             geometry.nodePositions
                 .map { nodePoint in
@@ -219,16 +217,19 @@ struct GameBoardLayout {
         return radii.reduce(0, +) / CGFloat(radii.count)
     }
 
-    private var expandedBounds: CGRect {
+    private static func expandedBounds(
+        geometryBounds: CGRect,
+        normalizedTileRadius: CGFloat
+    ) -> CGRect {
         let horizontalInset = normalizedTileRadius * horizontalSeaMultiplier
         let topInset = normalizedTileRadius * topSeaMultiplier
         let bottomInset = normalizedTileRadius * bottomSeaMultiplier
 
         return CGRect(
-            x: bounds.minX - horizontalInset,
-            y: bounds.minY - topInset,
-            width: bounds.width + (horizontalInset * 2),
-            height: bounds.height + topInset + bottomInset
+            x: geometryBounds.minX - horizontalInset,
+            y: geometryBounds.minY - topInset,
+            width: geometryBounds.width + (horizontalInset * 2),
+            height: geometryBounds.height + topInset + bottomInset
         )
     }
 }
