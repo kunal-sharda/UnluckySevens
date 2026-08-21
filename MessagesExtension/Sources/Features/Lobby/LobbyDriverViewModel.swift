@@ -1872,13 +1872,13 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     func canResendRecoveredGame(_ gameId: String) -> Bool {
-        guard
-            let state = gameLedgerStore.latestState(for: gameId),
-            isCompatibleWithActiveConversation(state)
-        else {
-            return false
-        }
-        return localActorIdentifier(for: state) != nil
+        let state = gameLedgerStore.latestState(for: gameId)
+        return RecoveryLifecycleActionResolver.isAvailable(
+            action: .resend,
+            state: state,
+            actor: localActorIdentifier(for: state),
+            hasCompatibleActiveConversation: state.map(isCompatibleWithActiveConversation) ?? false
+        )
     }
 
     func resendRecoveredGame(_ gameId: String) {
@@ -1892,23 +1892,24 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         do {
-            let unchangedState = try RecoveryStatePublicationResolver.resolve(
+            let draft = try RecoveryLifecycleActionResolver.prepare(
+                action: .resend,
                 state: state,
                 actor: actor
             )
-            let payload = try jsonString(from: unchangedState)
+            let payload = try jsonString(from: draft.resultingState)
             let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
             try sendEnvelope(
                 envelope,
                 bubbleCopy: TranscriptBubbleCopyBuilder.recoveryResend(
-                    state: unchangedState,
+                    state: draft.resultingState,
                     actor: actor
                 ),
-                sessionPolicy: .state(gameId: unchangedState.gameId),
-                permitsRecoverySessionStart: true
+                sessionPolicy: .state(gameId: draft.resultingState.gameId),
+                permitsRecoverySessionStart: draft.permitsRecoverySessionStart
             )
-            setActiveContext(unchangedState, source: .lastSentState)
-            selectionStatus = "Resent unchanged game state rev\(unchangedState.rev)"
+            setActiveContext(draft.resultingState, source: .lastSentState)
+            selectionStatus = "Resent unchanged game state rev\(draft.resultingState.rev)"
             setLastError(nil)
         } catch {
             setLastError("Resend failed: \(error.localizedDescription)")
@@ -1916,17 +1917,7 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     func canResignRecoveredGame(_ gameId: String) -> Bool {
-        guard
-            let state = gameLedgerStore.latestState(for: gameId),
-            state.phase == .setup || state.phase == .turn,
-            state.activePlayers.count > 1,
-            let actor = localActorIdentifier(for: state),
-            state.isActivePlayer(actor),
-            isCompatibleWithActiveConversation(state)
-        else {
-            return false
-        }
-        return true
+        recoveryActionIsAvailable(.resign, for: gameId)
     }
 
     func resignRecoveredGame(_ gameId: String) {
@@ -1940,24 +1931,23 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         do {
-            let toState = try ULS_CoreGame.apply(
-                intent: GameLifecycleIntentV1.resign(anchoredTo: fromState),
-                to: fromState,
+            let draft = try RecoveryLifecycleActionResolver.prepare(
+                action: .resign,
+                state: fromState,
                 actor: actor
             )
-            try validateTransition(from: fromState, to: toState, actor: actor)
-            let payload = try jsonString(from: toState)
+            let payload = try jsonString(from: draft.resultingState)
             let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
             try sendEnvelope(
                 envelope,
                 bubbleCopy: TranscriptBubbleCopyBuilder.resignation(
-                    resultingState: toState,
+                    resultingState: draft.resultingState,
                     actor: actor
                 ),
-                sessionPolicy: .state(gameId: toState.gameId)
+                sessionPolicy: .state(gameId: draft.resultingState.gameId)
             )
-            setActiveContext(toState, source: .lastSentState)
-            selectionStatus = "Published resignation rev\(toState.rev)"
+            setActiveContext(draft.resultingState, source: .lastSentState)
+            selectionStatus = "Published resignation rev\(draft.resultingState.rev)"
             setLastError(nil)
         } catch {
             setLastError("Resign failed: \(error.localizedDescription)")
@@ -1965,22 +1955,13 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     func canProposeDraw(for gameId: String) -> Bool {
-        guard
-            let state = gameLedgerStore.latestState(for: gameId),
-            state.phase == .setup || state.phase == .turn,
-            state.drawVote == nil,
-            let actor = localActorIdentifier(for: state),
-            isCompatibleWithActiveConversation(state)
-        else {
-            return false
-        }
-        return state.isActivePlayer(actor)
+        recoveryActionIsAvailable(.proposeDraw, for: gameId)
     }
 
     func proposeDraw(for gameId: String) {
         publishLifecycleChange(
             gameId: gameId,
-            intent: { .proposeDraw(anchoredTo: $0) },
+            action: .proposeDraw,
             receipt: { state, actor in
                 TranscriptBubbleCopyBuilder.drawProposed(
                     resultingState: state,
@@ -1992,21 +1973,13 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     func canVoteOnDraw(for gameId: String) -> Bool {
-        guard
-            let state = gameLedgerStore.latestState(for: gameId),
-            let vote = state.drawVote,
-            let actor = localActorIdentifier(for: state),
-            isCompatibleWithActiveConversation(state)
-        else {
-            return false
-        }
-        return state.isActivePlayer(actor) && !vote.approvals.contains(actor)
+        recoveryActionIsAvailable(.voteOnDraw(approve: true), for: gameId)
     }
 
     func voteOnDraw(for gameId: String, approve: Bool) {
         publishLifecycleChange(
             gameId: gameId,
-            intent: { .voteDraw(approve: approve, anchoredTo: $0) },
+            action: .voteOnDraw(approve: approve),
             receipt: { state, actor in
                 TranscriptBubbleCopyBuilder.drawVote(
                     resultingState: state,
@@ -2019,28 +1992,19 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     func canHostEndGame(_ gameId: String) -> Bool {
-        guard
-            let state = gameLedgerStore.latestState(for: gameId),
-            state.phase == .setup || state.phase == .turn,
-            let actor = localActorIdentifier(for: state),
-            isCompatibleWithActiveConversation(state)
-        else {
-            return false
-        }
-        return actor == state.hostPlayer
+        recoveryActionIsAvailable(.hostEnd, for: gameId)
     }
 
     func shouldOfferDrawBeforeHostEnd(_ gameId: String) -> Bool {
-        guard let state = gameLedgerStore.latestState(for: gameId) else {
-            return false
-        }
-        return !state.hasAttemptedDrawVote && state.drawVote == nil
+        RecoveryLifecycleActionResolver.shouldOfferDrawBeforeHostEnd(
+            state: gameLedgerStore.latestState(for: gameId)
+        )
     }
 
     func hostEndGame(_ gameId: String) {
         publishLifecycleChange(
             gameId: gameId,
-            intent: { .endGame(anchoredTo: $0) },
+            action: .hostEnd,
             receipt: { state, actor in
                 TranscriptBubbleCopyBuilder.hostEnded(
                     resultingState: state,
@@ -2053,7 +2017,7 @@ final class LobbyDriverViewModel: ObservableObject {
 
     private func publishLifecycleChange(
         gameId: String,
-        intent: (CoreGameStateV1) -> GameLifecycleIntentV1,
+        action: RecoveryLifecycleAction,
         receipt: (CoreGameStateV1, String) -> TranscriptBubbleCopy,
         successStatus: String
     ) {
@@ -2067,25 +2031,37 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         do {
-            let toState = try ULS_CoreGame.apply(
-                intent: intent(fromState),
-                to: fromState,
+            let draft = try RecoveryLifecycleActionResolver.prepare(
+                action: action,
+                state: fromState,
                 actor: actor
             )
-            try validateTransition(from: fromState, to: toState, actor: actor)
-            let payload = try jsonString(from: toState)
+            let payload = try jsonString(from: draft.resultingState)
             let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
             try sendEnvelope(
                 envelope,
-                bubbleCopy: receipt(toState, actor),
-                sessionPolicy: .state(gameId: toState.gameId)
+                bubbleCopy: receipt(draft.resultingState, actor),
+                sessionPolicy: .state(gameId: draft.resultingState.gameId)
             )
-            setActiveContext(toState, source: .lastSentState)
-            selectionStatus = "\(successStatus) rev\(toState.rev)"
+            setActiveContext(draft.resultingState, source: .lastSentState)
+            selectionStatus = "\(successStatus) rev\(draft.resultingState.rev)"
             setLastError(nil)
         } catch {
             setLastError("Game action failed: \(error.localizedDescription)")
         }
+    }
+
+    private func recoveryActionIsAvailable(
+        _ action: RecoveryLifecycleAction,
+        for gameId: String
+    ) -> Bool {
+        let state = gameLedgerStore.latestState(for: gameId)
+        return RecoveryLifecycleActionResolver.isAvailable(
+            action: action,
+            state: state,
+            actor: localActorIdentifier(for: state),
+            hasCompatibleActiveConversation: state.map(isCompatibleWithActiveConversation) ?? false
+        )
     }
 
     func archiveRecoveredGame(_ gameId: String) {
