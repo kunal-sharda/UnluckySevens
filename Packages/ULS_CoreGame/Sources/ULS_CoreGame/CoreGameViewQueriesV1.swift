@@ -337,7 +337,7 @@ public extension CoreGameStateV1 {
         }
 
         let hand = resourcesByPlayer[player] ?? .zero
-        let cost = ResourceHandV1(wood: 1, brick: 1)
+        let cost = CoreBuildCostsV1.road
         guard canAfford(hand: hand, cost: cost) else {
             return []
         }
@@ -363,7 +363,7 @@ public extension CoreGameStateV1 {
         }
 
         let hand = resourcesByPlayer[player] ?? .zero
-        let cost = ResourceHandV1(wood: 1, brick: 1, sheep: 1, wheat: 1)
+        let cost = CoreBuildCostsV1.settlement
         guard canAfford(hand: hand, cost: cost) else {
             return []
         }
@@ -398,7 +398,7 @@ public extension CoreGameStateV1 {
         }
 
         let hand = resourcesByPlayer[player] ?? .zero
-        let cost = ResourceHandV1(wheat: 2, ore: 3)
+        let cost = CoreBuildCostsV1.city
         guard canAfford(hand: hand, cost: cost) else {
             return []
         }

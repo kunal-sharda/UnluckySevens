@@ -1917,11 +1917,11 @@ private func expectedEconomyAfterBuildIfAny(from: CoreGameStateV1, to: CoreGameS
 
     let cost: ResourceHandV1
     if roadsChanged && !settlementsChanged && !citiesChanged {
-        cost = ResourceHandV1(wood: 1, brick: 1)
+        cost = CoreBuildCostsV1.road
     } else if settlementsChanged && !roadsChanged && !citiesChanged {
-        cost = ResourceHandV1(wood: 1, brick: 1, sheep: 1, wheat: 1)
+        cost = CoreBuildCostsV1.settlement
     } else if settlementsChanged && citiesChanged && !roadsChanged {
-        cost = ResourceHandV1(wheat: 2, ore: 3)
+        cost = CoreBuildCostsV1.city
     } else {
         return EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
     }
@@ -2074,7 +2074,7 @@ private func expectedEconomyAfterDevCardIfAny(from: CoreGameStateV1, to: CoreGam
     let original = EconomyUpdateV1(resourcesByPlayer: from.resourcesByPlayer, bankResources: from.bankResources)
 
     if to.devDeck.count == from.devDeck.count - 1, Array(from.devDeck.dropFirst()) == to.devDeck {
-        let cost = ResourceHandV1(sheep: 1, wheat: 1, ore: 1)
+        let cost = CoreBuildCostsV1.developmentCard
         let hand = from.resourcesByPlayer[player] ?? .zero
         guard canAffordForValidation(hand: hand, cost: cost) else {
             return original

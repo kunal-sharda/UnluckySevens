@@ -62,12 +62,13 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - When to address: phase 14 if real-device concurrency shows visible lobby skew; otherwise later.
 - Links: [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift), [docs/product-specs/ui-flows.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/product-specs/ui-flows.md)
 
-### TD-007 — Board and shell render paths rebuild shared inputs on every update
+### TD-007 — Remaining board and shell render paths rebuild shared inputs on every update
 
 - Area: `MessagesExtension` board rendering, `ULS_CoreGame` query economy, SwiftUI projection churn
 - Why it matters: the 2026-04-12 render/perf audit traced observable device lag to a stack of pure rebuilds that happen on every state update, every tap, and every overlay change.
-- Current cost or risk: real-device responsiveness will remain worse than necessary until the topology/layout/projection allocations are eliminated, and every new board or shell feature pays the same amplification. The current shell projection still mixes product models with a large stringified diagnostic surface, while `LobbyDriverViewModel` retains a writable pass-through facade for those legacy fields.
-- Proposed fix shape: work the ordered audit list — cache topology/render geometry, precompute layout, memoize render-model building, split debug and render projections, remove unused writable projection pass-throughs, and keep only diagnostics that have a named DEBUG or operator consumer.
+- Current cost or risk: real-device responsiveness will remain worse than necessary until the remaining layout/projection allocations are eliminated, and every new board or shell feature pays the same amplification. The current shell projection still mixes product models with a large stringified diagnostic surface, while `LobbyDriverViewModel` retains a writable pass-through facade for those legacy fields.
+- Progress: F1 was resolved on 2026-08-21. `StandardBoardTopologyV1.standard()` and `renderGeometry()` now preserve their function APIs while returning lazy static values derived from one cached internal geometry; port and coastal-edge helpers reuse that geometry.
+- Proposed fix shape: continue the ordered audit after F1 — precompute layout, memoize render-model building, split debug and render projections, remove unused writable projection pass-throughs, and keep only diagnostics that have a named DEBUG or operator consumer.
 - When to address: phase 15.
 - Links: [2026-04-12 render/perf audit](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-12-render-performance.md), [GameShellProjection.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/GameShellProjection.swift), [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift)
 
@@ -90,13 +91,11 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - When to address: the release-critical TestFlight pass; the 2026-07-26 Pass 1 attempt found all available iPhone/iPad hardware offline.
 - Links: [TranscriptTransportSupport.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/TranscriptTransportSupport.swift)
 
-### TD-011 — Core build costs have multiple matching definitions
+### TD-011 — Resolved: Core build costs have one production definition
 
 - Area: `ULS_CoreGame` economy rules and presentation queries
-- Why it matters: `CoreBuildCostsV1` now gives presentation a Core-owned cost source, but reducers, validation, and legal-build queries still contain matching literals.
-- Current cost or risk: the values agree today, but a future rule adjustment could make displayed costs drift from validation or mutation behavior.
-- Proposed fix shape: route reducer, validation, and build-query costs through `CoreBuildCostsV1`, then add one regression test that covers every build and development-card cost consumer.
-- When to address: phase 15, before changing economy rules.
+- Resolution: reducers, transition validation, legal-build queries, development-card drafting, and lobby purchase availability now converge on `CoreBuildCostsV1`; table-driven Core and extension tests cover exact-cost deductions, bank repayment, validation, legal queries, and one-short rejection.
+- Resolved: 2026-08-21.
 - Links: [CoreBuildCostsV1.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/Packages/ULS_CoreGame/Sources/ULS_CoreGame/CoreBuildCostsV1.swift), [ARCHITECTURE.md](/Users/kunalsharda/Documents/Code/UnluckySevens/ARCHITECTURE.md)
 
 ### TD-012 — Resolved: ExecPlan terminal-state and flow-narration cleanup

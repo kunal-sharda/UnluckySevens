@@ -402,7 +402,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             throw CoreGameError.roadConnectionRequired
         }
 
-        let cost = ResourceHandV1(wood: 1, brick: 1)
+        let cost = CoreBuildCostsV1.road
         guard canAfford(hand: state.resourcesByPlayer[player] ?? .zero, cost: cost) else {
             throw CoreGameError.buildInsufficientResources
         }
@@ -449,7 +449,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             throw CoreGameError.settlementConnectionRequired
         }
 
-        let cost = ResourceHandV1(wood: 1, brick: 1, sheep: 1, wheat: 1)
+        let cost = CoreBuildCostsV1.settlement
         guard canAfford(hand: state.resourcesByPlayer[player] ?? .zero, cost: cost) else {
             throw CoreGameError.buildInsufficientResources
         }
@@ -490,7 +490,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             throw CoreGameError.buildPieceLimitReached
         }
 
-        let cost = ResourceHandV1(wheat: 2, ore: 3)
+        let cost = CoreBuildCostsV1.city
         guard canAfford(hand: state.resourcesByPlayer[player] ?? .zero, cost: cost) else {
             throw CoreGameError.buildInsufficientResources
         }
@@ -728,7 +728,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         }
 
         let player = state.currentPlayer
-        let cost = ResourceHandV1(sheep: 1, wheat: 1, ore: 1)
+        let cost = CoreBuildCostsV1.developmentCard
         guard canAfford(hand: state.resourcesByPlayer[player] ?? .zero, cost: cost) else {
             throw CoreGameError.devCardPurchaseInsufficientResources
         }

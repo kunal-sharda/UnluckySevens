@@ -3,7 +3,26 @@ import Foundation
 
 public enum StandardBoardTopologyV1 {
     public static func standard() -> BoardGraphV1 {
-        let geometry = buildGeometry()
+        cachedStandard
+    }
+
+    public static func renderGeometry() -> BoardRenderGeometryV1 {
+        cachedRenderGeometry
+    }
+
+    internal static func canonicalFramePortEdgesForStandard() -> [EdgeID] {
+        canonicalFramePortEdges(from: cachedGeometry)
+    }
+
+    internal static func coastalEdgeCycleForStandard() -> [EdgeID] {
+        canonicalCoastalEdgeCycle(from: cachedGeometry)
+    }
+
+    private static let cachedGeometry = buildGeometry()
+    private static let cachedStandard = makeStandard(from: cachedGeometry)
+    private static let cachedRenderGeometry = makeRenderGeometry(from: cachedGeometry)
+
+    private static func makeStandard(from geometry: Geometry) -> BoardGraphV1 {
         let portEdges = canonicalFramePortEdges(from: geometry)
         let portKinds: [PortKindV1] = [
             .threeToOne,
@@ -30,8 +49,7 @@ public enum StandardBoardTopologyV1 {
         )
     }
 
-    public static func renderGeometry() -> BoardRenderGeometryV1 {
-        let geometry = buildGeometry()
+    private static func makeRenderGeometry(from geometry: Geometry) -> BoardRenderGeometryV1 {
         let horizontalScale = sqrt(3.0) * 0.5
 
         let nodePositions = geometry.nodeCoordinates.map {
@@ -53,14 +71,6 @@ public enum StandardBoardTopologyV1 {
             tileCenters: tileCenters,
             nodePositions: nodePositions
         )
-    }
-
-    internal static func canonicalFramePortEdgesForStandard() -> [EdgeID] {
-        canonicalFramePortEdges(from: buildGeometry())
-    }
-
-    internal static func coastalEdgeCycleForStandard() -> [EdgeID] {
-        canonicalCoastalEdgeCycle(from: buildGeometry())
     }
 
     private static func buildGeometry() -> Geometry {

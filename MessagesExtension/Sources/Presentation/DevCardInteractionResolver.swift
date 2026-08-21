@@ -17,7 +17,7 @@ enum DevCardInteractionResolver {
         }
 
         let hand = state.resourcesByPlayer[actingAs] ?? .zero
-        guard hand.sheep >= 1, hand.wheat >= 1, hand.ore >= 1 else {
+        guard canAfford(hand: hand, cost: CoreBuildCostsV1.developmentCard) else {
             return nil
         }
 
@@ -26,6 +26,14 @@ enum DevCardInteractionResolver {
             actor: actingAs,
             state: state
         )
+    }
+
+    private static func canAfford(hand: ResourceHandV1, cost: ResourceHandV1) -> Bool {
+        hand.wood >= cost.wood &&
+            hand.brick >= cost.brick &&
+            hand.sheep >= cost.sheep &&
+            hand.wheat >= cost.wheat &&
+            hand.ore >= cost.ore
     }
 
     static func draftPlayKnightIntent(

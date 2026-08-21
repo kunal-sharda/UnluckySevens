@@ -5,7 +5,7 @@ import XCTest
 final class DevCardInteractionResolverTests: XCTestCase {
     func testDraftBuyDevCardIntentForCurrentPlayer() {
         let state = makeState(
-            resourcesByPlayer: ["A": ResourceHandV1(sheep: 1, wheat: 1, ore: 1), "B": .zero]
+            resourcesByPlayer: ["A": CoreBuildCostsV1.developmentCard, "B": .zero]
         )
 
         let intent = DevCardInteractionResolver.draftBuyDevCardIntent(
@@ -15,6 +15,50 @@ final class DevCardInteractionResolverTests: XCTestCase {
 
         XCTAssertEqual(intent?.intent, .buyDevCard)
         XCTAssertEqual(intent?.actor, "A")
+    }
+
+    func testDraftBuyDevCardIntentRejectsEachRequiredResourceWhenOneShort() {
+        let cost = CoreBuildCostsV1.developmentCard
+
+        for resource in [ResourceV1.sheep, .wheat, .ore] {
+            let state = makeState(
+                resourcesByPlayer: [
+                    "A": cost.subtracting(1, for: resource),
+                    "B": .zero,
+                ]
+            )
+
+            XCTAssertNil(
+                DevCardInteractionResolver.draftBuyDevCardIntent(
+                    state: state,
+                    actingAs: "A"
+                ),
+                "Expected purchase drafting to reject a hand one \(resource.rawValue) short."
+            )
+        }
+    }
+
+    func testDraftBuyDevCardIntentRejectsEmptyDeckWrongPhaseAndWrongActor() {
+        let resources = ["A": CoreBuildCostsV1.developmentCard, "B": CoreBuildCostsV1.developmentCard]
+
+        XCTAssertNil(
+            DevCardInteractionResolver.draftBuyDevCardIntent(
+                state: makeState(resourcesByPlayer: resources, devDeck: []),
+                actingAs: "A"
+            )
+        )
+        XCTAssertNil(
+            DevCardInteractionResolver.draftBuyDevCardIntent(
+                state: makeState(resourcesByPlayer: resources, phase: .lobby),
+                actingAs: "A"
+            )
+        )
+        XCTAssertNil(
+            DevCardInteractionResolver.draftBuyDevCardIntent(
+                state: makeState(resourcesByPlayer: resources),
+                actingAs: "B"
+            )
+        )
     }
 
     func testDraftPlayKnightIntentUsesExplicitTileAndVictim() throws {
@@ -128,7 +172,9 @@ final class DevCardInteractionResolverTests: XCTestCase {
         settlementsByNode: [Int: String] = [:],
         roadsByEdge: [Int: String] = [:],
         revealedVictoryPointsByPlayer: [String: Int] = [:],
-        turnState: TurnStateV1 = TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 4, d2: 2))
+        turnState: TurnStateV1 = TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 4, d2: 2)),
+        phase: PhaseV1 = .turn,
+        devDeck: [DevCardV1] = [.knight, .monopoly]
     ) -> CoreGameStateV1 {
         let topology = StandardBoardTopologyV1.standard()
         let board = BoardSetupV1(
@@ -147,13 +193,13 @@ final class DevCardInteractionResolverTests: XCTestCase {
             stateHash: "",
             roster: Array(resourcesByPlayer.keys).sorted(),
             currentPlayer: "A",
-            phase: .turn,
+            phase: phase,
             seed: 1,
             diceRngState: 2,
             robberRngState: 3,
             resourcesByPlayer: resourcesByPlayer,
             bankResources: ResourceHandV1(wood: 19, brick: 19, sheep: 19, wheat: 19, ore: 19),
-            devDeck: [.knight, .monopoly],
+            devDeck: devDeck,
             devCardsByPlayer: devCardsByPlayer,
             newDevCardsByPlayer: newDevCardsByPlayer,
             revealedVictoryPointsByPlayer: revealedVictoryPointsByPlayer,

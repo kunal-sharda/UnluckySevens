@@ -10,6 +10,7 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 ## [Unreleased]
 
 ### Changed
+- Core economy consumers now share `CoreBuildCostsV1` for every road, settlement, city, and development-card purchase cost, while the standard board topology and render geometry reuse one lazy cached geometry without changing public APIs or deterministic outputs.
 - Recovery and terminal lifecycle Pass 1 adds non-terminal inactive-player resignation, unanimous draw voting, host-only neutral end, ordinary victory results, validated deterministic snapshot recovery, a versioned Active/Finished local ledger, conversation-compatible publication controls, unchanged-state resend, a dedicated Games destination, accurate resignation/host confirmations, neutral final-score copy, and New Game without automatic archive or send.
 - The approved Physical Props trade family now routes in production: card-native Give/Get stages, centered recipient selection, complete paged maritime exchanges with explicit confirmation, physical live/pending states, and Tutorial reuse preserve the mounted board, canonical Hand geometry, and existing trade semantics.
 - The approved Start-of-Turn Physical Props ritual now routes in production for the active local player’s normal pre-roll state, preserving the mounted board while offering executable owned Dev Cards and a Core-result-decorating dice transition with skip, explicit continuation, and Reduce Motion behavior.

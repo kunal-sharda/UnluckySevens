@@ -935,18 +935,10 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private var canPublishDevCardPurchaseState: Bool {
-        guard
-            let state = selectedState,
-            state.phase == .turn,
-            state.turnState?.step == .afterRoll,
-            let actor = localActorIdentifier(),
-            actor == state.currentPlayer,
-            !state.devDeck.isEmpty
-        else {
-            return false
-        }
-        let hand = state.resourcesByPlayer[actor] ?? .zero
-        return hand.sheep >= 1 && hand.wheat >= 1 && hand.ore >= 1
+        DevCardInteractionResolver.draftBuyDevCardIntent(
+            state: selectedState,
+            actingAs: localActorIdentifier()
+        ) != nil
     }
 
     private var canPublishKnightState: Bool {
