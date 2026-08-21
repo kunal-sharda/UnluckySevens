@@ -117,7 +117,7 @@ struct LobbyCocktailTableView: View {
                 RoundedRectangle(cornerRadius: 6)
                     .fill(GameTheme.feltRaised)
 
-                LobbyRobberIdentityMark()
+                RobberIdentityMark()
                     .padding(4)
             }
             .frame(width: 32, height: 32)

@@ -59,6 +59,24 @@ struct MessagesRootView: View {
                         x: hostLayout.safeAreaInsets.leading,
                         y: hostLayout.safeAreaInsets.top
                     )
+                } else if
+                    hostLayout.presentationStyle == .compact,
+                    let compactLaunchToken = viewModel.compactFreshLaunchToken
+                {
+                    CompactLaunchView(
+                        skipsAnimations: appPreferences.skipsAnimations,
+                        openLobby: viewModel.openPreparedFreshLobby
+                    )
+                        .id(compactLaunchToken)
+                        .frame(
+                            width: hostLayout.usableSize.width,
+                            height: hostLayout.usableSize.height
+                        )
+                        .clipped()
+                        .offset(
+                            x: hostLayout.safeAreaInsets.leading,
+                            y: hostLayout.safeAreaInsets.top
+                        )
                 } else {
                     ZStack {
                         switch viewModel.rootRoute {
@@ -182,6 +200,11 @@ struct MessagesRootView: View {
         .background {
             GameTheme.appBackground
                 .ignoresSafeArea()
+        }
+        .onChange(of: viewModel.compactFreshLaunchToken) { _, token in
+            if token != nil {
+                utilityRoute = nil
+            }
         }
     }
 

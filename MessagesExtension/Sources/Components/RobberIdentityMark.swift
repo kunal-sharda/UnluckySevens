@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct LobbyRobberIdentityMark: View {
+struct RobberIdentityMark: View {
     var body: some View {
         Canvas { context, size in
             let height = min(size.height * 0.86, size.width * 1.72)

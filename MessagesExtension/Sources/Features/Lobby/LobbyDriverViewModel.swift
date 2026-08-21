@@ -15,6 +15,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published private(set) var gameShellResetToken: Int = 0
     @Published private(set) var recoveredGames: [ActiveGameRecoverySummary] = []
     @Published private(set) var dismissRequestToken: Int = 0
+    @Published private var compactFreshLaunchState = CompactFreshLaunchState()
     @Published var lobbyDisplayNameDraft: String = ""
     @Published private(set) var isSendingInvite = false
 
@@ -42,6 +43,10 @@ final class LobbyDriverViewModel: ObservableObject {
     private var cachedDevCardPanelModelValue: GameDevCardPanelModel??
     private var cachedBankTrayModelKey: BankTrayModelCacheKey?
     private var cachedBankTrayModelValue: GameBankTrayModel?
+
+    var compactFreshLaunchToken: Int? {
+        compactFreshLaunchState.visibleToken
+    }
     #if DEBUG
     @Published var uxTestingSelectedFixtureID: String = UXTestFixtures.defaultFixtureID
     @Published var uxTestingActorID: String = UXTestFixtures.defaultActorID
@@ -1051,6 +1056,9 @@ final class LobbyDriverViewModel: ObservableObject {
         trigger: TranscriptSelectionTrigger
     ) -> Bool {
         activeConversation = conversation
+        if selectedMessage != nil {
+            compactFreshLaunchState.dismiss()
+        }
         #if DEBUG
         if uxTestingIsActive {
             refreshActiveContextMetadata()
@@ -1094,6 +1102,12 @@ final class LobbyDriverViewModel: ObservableObject {
     func beginFreshLobby(conversation: MSConversation) {
         activeConversation = conversation
         prepareNewGame()
+        compactFreshLaunchState.begin()
+    }
+
+    func openPreparedFreshLobby() {
+        guard compactFreshLaunchState.consume() else { return }
+        onRequestExpanded?()
     }
 
     func inviteNewGame() {

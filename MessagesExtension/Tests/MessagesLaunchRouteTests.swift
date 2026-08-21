@@ -14,4 +14,12 @@ final class MessagesLaunchRouteTests: XCTestCase {
             .selectedMessage
         )
     }
+
+    func testFreshDrawerLaunchRemainsCompact() {
+        XCTAssertFalse(MessagesLaunchRoute.freshLobby.requestsExpandedPresentation)
+    }
+
+    func testSelectedGameBubbleRequestsExpandedPresentation() {
+        XCTAssertTrue(MessagesLaunchRoute.selectedMessage.requestsExpandedPresentation)
+    }
 }

@@ -3413,21 +3413,39 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         loadRecoveryGamesSlice()
 
         messages.terminate()
-        reopenUnluckySevensAfterMessagesTermination()
+        reopenUnluckySevensAfterMessagesTermination(automaticallyOpensCompactLaunch: false)
+
+        let compactLaunch = messages.descendants(matching: .any)[
+            "uls.compactLaunch"
+        ].firstMatch
+        XCTAssertTrue(
+            compactLaunch.waitForExistence(timeout: 8),
+            "Fresh app-drawer entry must present the compact robber entrance."
+        )
+
+        let skip = messages.buttons["uls.compactLaunch.skip"].firstMatch
+        if skip.exists {
+            skip.tap()
+        }
 
         XCTAssertTrue(
-            messages.staticTexts["uls.lobby.inviteTitle"].firstMatch.waitForExistence(timeout: 8),
-            "Opening from the app drawer must start at the fresh invitation lobby."
+            waitForCompactLaunchPhase("landed", timeout: 4),
+            "Skip or the natural animation must leave the robber settled on Open Lobby."
         )
-        XCTAssertEqual(
-            messages.staticTexts["uls.lobby.inviteTitle"].firstMatch.label,
-            "Invite Friends to Table"
-        )
+        attachScreenshot(named: "Drawer Relaunch - Compact Robber Entrance")
+
+        let openLobby = messages.buttons["uls.compactLaunch.openLobby"].firstMatch
+        XCTAssertTrue(openLobby.waitForExistence(timeout: 4))
+        openLobby.tap()
+
+        let inviteTitle = exactLabelElement("Invite Friends to Table", timeout: 8)
+        XCTAssertTrue(inviteTitle.exists, "Open Lobby must reveal the fresh invitation lobby.")
         let freshLobbyEvidence = gameplayActionEvidenceValue()
         XCTAssertTrue(
             freshLobbyEvidence.contains("game=-") && freshLobbyEvidence.contains("phase=-"),
             "A locally saved game must not become the active canonical context on drawer entry."
         )
+        attachScreenshot(named: "Drawer Relaunch - Fresh Invitation Lobby")
 
         openGamesLibraryFromCurrentSurface()
         XCTAssertGreaterThanOrEqual(
@@ -3437,7 +3455,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             2,
             "Fresh drawer entry must not discard games that remain available through Your Games."
         )
-        attachScreenshot(named: "Drawer Relaunch - Fresh Lobby With Saved Games")
+        attachScreenshot(named: "Drawer Relaunch - Saved Games Preserved")
     }
 
     func testRecoveryResendAndResignationContinuesJourney() throws {
@@ -4100,7 +4118,9 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: screenshotName)
     }
 
-    private func openUnluckySevensExtension() {
+    private func openUnluckySevensExtension(
+        automaticallyOpensCompactLaunch: Bool = true
+    ) {
         messages.launch()
         handleFirstRunPrompts()
         openExistingConversation()
@@ -4112,11 +4132,26 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             waitForUnluckySevensSurface(timeout: 8),
             "Expected Unlucky Sevens after resolving the current Messages state."
         )
+
+        if automaticallyOpensCompactLaunch {
+            let openLobby = messages.buttons["uls.compactLaunch.openLobby"].firstMatch
+            if openLobby.waitForExistence(timeout: 1) {
+                openLobby.tap()
+                XCTAssertTrue(
+                    openLobby.waitForNonExistence(timeout: 8),
+                    "Open Lobby must dismiss the compact launch gate."
+                )
+            }
+        }
         dismissPersistedUtilitySurfaces()
     }
 
-    private func reopenUnluckySevensAfterMessagesTermination() {
-        openUnluckySevensExtension()
+    private func reopenUnluckySevensAfterMessagesTermination(
+        automaticallyOpensCompactLaunch: Bool = true
+    ) {
+        openUnluckySevensExtension(
+            automaticallyOpensCompactLaunch: automaticallyOpensCompactLaunch
+        )
     }
 
     private func gameplayActionEvidenceValue(timeout: TimeInterval = 4) -> String {
@@ -4563,6 +4598,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         let deadline = Date().addingTimeInterval(timeout)
         repeat {
             if waitForInviteSlice(timeout: 0.2)
+                || messages.descendants(matching: .any)["uls.compactLaunch"].firstMatch.exists
                 || messages.buttons["uls.uxLab.toggle"].firstMatch.exists
                 || messages.buttons["uls.uxLab.restoreChrome"].firstMatch.exists
                 || messages.descendants(matching: .any)["uls.gameplay.actionEvidence"].firstMatch.exists
@@ -4572,6 +4608,21 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
                 return true
             }
             RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        } while Date() < deadline
+        return false
+    }
+
+    private func waitForCompactLaunchPhase(
+        _ expectedPhase: String,
+        timeout: TimeInterval
+    ) -> Bool {
+        let launch = messages.descendants(matching: .any)["uls.compactLaunch"].firstMatch
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if launch.exists, launch.value as? String == expectedPhase {
+                return true
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
         } while Date() < deadline
         return false
     }
@@ -5190,7 +5241,13 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
                 continue
             }
 
-            let lobbyGames = messages.buttons["uls.lobby.games"].firstMatch
+            let lobbyGames = firstExistingElement(
+                [
+                    messages.buttons["uls.lobby.games"].firstMatch,
+                    messages.buttons["Games"].firstMatch,
+                ],
+                timeout: 1
+            )
             if lobbyGames.exists {
                 tapCurrentFrame(of: lobbyGames)
                 RunLoop.current.run(until: Date().addingTimeInterval(0.4))
@@ -5394,6 +5451,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         firstExistingElement(
             [
                 messages.staticTexts["uls.lobby.inviteTitle"].firstMatch,
+                messages.staticTexts["Invite Friends to Table"].firstMatch,
                 messages.staticTexts["A table is open"].firstMatch,
             ],
             timeout: timeout

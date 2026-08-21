@@ -24,4 +24,19 @@ final class GameMotionPolicyTests: XCTestCase {
         XCTAssertTrue(policy.skipsAppAuthoredMotion)
         XCTAssertNil(policy.resolvedAnimation())
     }
+
+    func testCompactLaunchSpatialMotionIsSuppressedByEitherPreference() {
+        XCTAssertFalse(
+            GameMotionPolicy(
+                skipsAnimations: true,
+                reducesMotion: false
+            ).animatesSpatialMotion
+        )
+        XCTAssertFalse(
+            GameMotionPolicy(
+                skipsAnimations: false,
+                reducesMotion: true
+            ).animatesSpatialMotion
+        )
+    }
 }

@@ -72,14 +72,8 @@ final class MessagesViewController: MSMessagesAppViewController {
         hostLayoutStore.observe(currentHostMeasurement())
     }
 
-    override func willBecomeActive(with conversation: MSConversation) {
-        super.willBecomeActive(with: conversation)
-        requestExpandedPresentationIfNeeded()
-    }
-
     override func didBecomeActive(with conversation: MSConversation) {
         super.didBecomeActive(with: conversation)
-        requestExpandedPresentationIfNeeded()
         activateRoute(for: conversation)
     }
 
@@ -209,9 +203,14 @@ final class MessagesViewController: MSMessagesAppViewController {
     }
 
     private func activateRoute(for conversation: MSConversation) {
-        switch MessagesLaunchRoute.resolve(
+        let route = MessagesLaunchRoute.resolve(
             hasSelectedMessage: conversation.selectedMessage != nil
-        ) {
+        )
+        if route.requestsExpandedPresentation {
+            requestExpandedPresentationIfNeeded()
+        }
+
+        switch route {
         case .freshLobby:
             cancelSelectionPolling()
             viewModel.beginFreshLobby(conversation: conversation)
