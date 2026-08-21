@@ -6,8 +6,17 @@ final class MessagesViewController: MSMessagesAppViewController {
     private let viewModel = LobbyDriverViewModel()
     private let hostLayoutStore = MessagesHostLayoutStore()
     private let hostResizeShield = MessagesHostResizeShield()
-    private var selectionPollingToken: Int = 0
-    private let selectionPollingInterval: TimeInterval = 1.5
+    private lazy var selectionWatch = SelectionWatchLifecycle<MSConversation> { [weak self] conversation in
+        guard let self else {
+            return false
+        }
+        _ = self.viewModel.updateContext(
+            conversation: conversation,
+            selectedMessage: conversation.selectedMessage,
+            trigger: .selectionPoll
+        )
+        return self.viewModel.shouldMaintainSelectionWatch
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -112,6 +121,11 @@ final class MessagesViewController: MSMessagesAppViewController {
         cancelSelectionPolling()
     }
 
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        cancelSelectionPolling()
+    }
+
     override func willTransition(to presentationStyle: MSMessagesAppPresentationStyle) {
         super.willTransition(to: presentationStyle)
         hostLayoutStore.beginTransition()
@@ -137,13 +151,7 @@ final class MessagesViewController: MSMessagesAppViewController {
     }
 
     private func startSelectionPolling(conversation: MSConversation) {
-        cancelSelectionPolling()
-        let token = selectionPollingToken
-        scheduleSelectionPoll(
-            conversation: conversation,
-            token: token,
-            delay: 0.2
-        )
+        selectionWatch.start(watching: conversation)
     }
 
     private func refreshContextAndMaybePoll(
@@ -163,35 +171,8 @@ final class MessagesViewController: MSMessagesAppViewController {
         }
     }
 
-    private func scheduleSelectionPoll(
-        conversation: MSConversation,
-        token: Int,
-        delay: TimeInterval
-    ) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            guard let self, self.selectionPollingToken == token else { return }
-
-            _ = self.viewModel.updateContext(
-                conversation: conversation,
-                selectedMessage: conversation.selectedMessage,
-                trigger: .selectionPoll
-            )
-
-            guard self.selectionPollingToken == token, self.viewModel.shouldMaintainSelectionWatch else {
-                self.cancelSelectionPolling()
-                return
-            }
-
-            self.scheduleSelectionPoll(
-                conversation: conversation,
-                token: token,
-                delay: self.selectionPollingInterval
-            )
-        }
-    }
-
     private func cancelSelectionPolling() {
-        selectionPollingToken += 1
+        selectionWatch.cancel()
     }
 
     private func requestExpandedPresentationIfNeeded() {
