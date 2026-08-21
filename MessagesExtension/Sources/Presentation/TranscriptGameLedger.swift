@@ -1,5 +1,6 @@
 import Foundation
 import ULS_CoreGame
+import ULS_Transport
 
 struct TranscriptGameLedgerEntry: Codable, Equatable {
     static let currentSchemaVersion = 2

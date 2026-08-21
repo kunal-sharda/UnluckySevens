@@ -3,6 +3,10 @@ import PackageDescription
 
 let package = Package(
     name: "ULS_Transport",
+    platforms: [
+        .iOS(.v13),
+        .macOS(.v10_15),
+    ],
     products: [
         .library(
             name: "ULS_Transport",
@@ -14,7 +18,10 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "ULS_Transport"
+            name: "ULS_Transport",
+            dependencies: [
+                .product(name: "ULS_CoreGame", package: "ULS_CoreGame"),
+            ]
         ),
         .testTarget(
             name: "ULS_TransportTests",
