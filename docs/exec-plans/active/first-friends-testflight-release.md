@@ -163,7 +163,7 @@ Ship the first externally installable Unlucky Sevens beta to a small invited gro
 
 ### 2026-08-20 New-Task Handoff
 
-Clean integration source: `codex/messages-release-integration`, based on approved branch `ui-ux-single-device-testing` at `d8eeb8f`. It selectively carries durable routing, recovery, lobby-target, board-budget, transcript-summary, test, and documentation changes from the saved post-baseline work. Fixed-delay expansion code, the compact-opening timing gate, and the unverified custom gesture-boundary implementation/tests are excluded. The exact integration commit and physical artifact hash are recorded after validation. Do not resume from `b180957`, `2733468`, `codex/selector-expansion-200ms`, `codex/working-expansion-base`, or `codex/post-273-recovery-safety`; those are diagnostic/history branches.
+Canonical source is again the original `ui-ux-single-device-testing` branch, now fast-forwarded to clean integration commit `a0473d8`. That commit selectively carries durable routing, recovery, lobby-target, board-budget, transcript-summary, test, and documentation changes from the saved post-baseline work. Fixed-delay expansion code, the compact-opening timing gate, and the unverified custom gesture-boundary implementation/tests are excluded. Do not resume from `b180957`, `2733468`, or any retired `codex/*expansion*`/post-baseline diagnostic branch; they were investigation controls rather than release sources.
 
 Implemented in the latest checkpoint:
 
@@ -186,6 +186,7 @@ Required audit order in the next task:
 6. **Release proof:** after the above behavior is settled, run the owner-approved focused harness, then the release-critical gate, archive validation, two-account multiplayer matrix, and TestFlight installed smoke. TFR-002–019 remain pending unless already marked pass in the contract.
 
 - 2026-08-20: The clean integration branch selectively retained the fresh-drawer/selected-game route, explicit recovery-session binding, same-game state-selection coverage, transcript summary bridge, lobby target/sending feedback, and shared setup/ordinary board budget. It excluded the 100/200/300/500-ms expansion experiments, compact-opening gate, custom gesture-boundary source/tests, and their overstated top-only product contract. Canonical generation and the generic Messages simulator build pass. The focused routing/recovery/transcript/state/layout suites pass, followed by the complete `MessagesExtensionTests` target. That full run exposed an unrelated existing SpriteKit test setup bug: it asserted camera-relative occlusion geometry before initializing the camera; the test now exercises the production camera path and the complete target passes. No UI harness ran.
+- 2026-08-20: Clean integration commit `a0473d8` was fast-forwarded onto the original `ui-ux-single-device-testing` branch. Its signed Release extension SHA-256 is `af65514bf2355383897e3dd7b12e818203b8dece7ef2e5c754de1e2d6bb0f3b1`. Unlucky Sevens was fully uninstalled from the paired iPhone 16 Pro and original iPad (8th generation), then the identical app artifact was installed on both; both device app inventories report version `1.0` build `1`. Messages was confirmed non-resident on iPhone. The iPad disconnected during the optional process query after its successful install and app-record verification, so the owner should close Messages before testing there. No UI harness ran.
 
 ### Draft TestFlight Metadata
 
@@ -201,7 +202,7 @@ Required audit order in the next task:
 
 - Automated: UI dependency contract and standard completion gate pass; release-critical gate waits for the hardware matrix and remaining contract rows.
 - Simulator/UI: Current single-device and paired representative simulator evidence is green at UI baseline `2733468`; release-only packaging corrections do not alter product UI.
-- Real devices: The signed Release candidate is installed on the paired iPhone 16 Pro and iPad (8th generation). Messages drawer visibility, host behavior, and the two-account multiplayer matrix remain pending manual execution and evidence.
+- Real devices: Clean integration commit `a0473d8` and its identical signed Release artifact (`af65514b…f3b1`) are installed on the paired iPhone 16 Pro and original iPad (8th generation). Messages drawer visibility, host behavior, and the two-account multiplayer matrix remain pending manual execution and evidence.
 - Archive/App Store Connect: Candidate identity is partially frozen; live App Store Connect inspection is blocked on sign-in and archive/validation remains downstream of device proof.
 - Distribution: Not started.
 
