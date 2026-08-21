@@ -1,11 +1,50 @@
 #if DEBUG
 import ULS_CoreGame
 
-struct UXTestFixture: Equatable, Identifiable {
+/// Game-agnostic metadata for a DEBUG UX fixture.
+///
+/// A fixture's state and actions stay owned by its game. This descriptor only
+/// describes how the lab presents and selects that fixture.
+struct UXTestingFixtureDescriptor: Equatable, Identifiable {
     let id: String
     let title: String
     let detail: String
     let defaultActorID: String
+}
+
+/// Ordered fixture lookup with an explicit fallback for UI-driven selection.
+///
+/// This is intentionally agnostic about game state, rules, and action types so
+/// another game can adopt the same DEBUG harness shape without sharing a rules
+/// implementation or package boundary prematurely.
+struct UXTestingFixtureRegistry<Fixture> {
+    private let fixturesByID: [String: Fixture]
+    let all: [Fixture]
+
+    init(_ fixtures: [Fixture], id: (Fixture) -> String) {
+        var fixturesByID: [String: Fixture] = [:]
+        for fixture in fixtures {
+            let fixtureID = id(fixture)
+            precondition(
+                fixturesByID[fixtureID] == nil,
+                "DEBUG UX fixtures must have unique identifiers."
+            )
+            fixturesByID[fixtureID] = fixture
+        }
+        self.fixturesByID = fixturesByID
+        self.all = fixtures
+    }
+
+    func fixture(id: String, fallingBackTo fallbackID: String) -> Fixture {
+        guard let fallback = fixturesByID[fallbackID] else {
+            preconditionFailure("DEBUG UX fixture fallback must be registered.")
+        }
+        return fixturesByID[id] ?? fallback
+    }
+}
+
+struct UXTestFixture: Equatable, Identifiable {
+    let descriptor: UXTestingFixtureDescriptor
     let state: CoreGameStateV1
     let extraActorIDs: [String]
 
@@ -17,13 +56,20 @@ struct UXTestFixture: Equatable, Identifiable {
         state: CoreGameStateV1,
         extraActorIDs: [String] = []
     ) {
-        self.id = id
-        self.title = title
-        self.detail = detail
-        self.defaultActorID = defaultActorID
+        self.descriptor = UXTestingFixtureDescriptor(
+            id: id,
+            title: title,
+            detail: detail,
+            defaultActorID: defaultActorID
+        )
         self.state = state
         self.extraActorIDs = extraActorIDs
     }
+
+    var id: String { descriptor.id }
+    var title: String { descriptor.title }
+    var detail: String { descriptor.detail }
+    var defaultActorID: String { descriptor.defaultActorID }
 
     var actorIDs: [String] {
         var ids = state.roster
@@ -81,8 +127,10 @@ enum UXTestFixtures {
     static let victoryActionID = "victory-action"
     static let tutorialVictoryID = "tutorial-victory"
 
+    private static let registry = UXTestingFixtureRegistry(all) { $0.id }
+
     static func fixture(id: String) -> UXTestFixture {
-        all.first { $0.id == id } ?? turnAfterRoll
+        registry.fixture(id: id, fallingBackTo: defaultFixtureID)
     }
 
     static func displayName(for actorID: String) -> String? {

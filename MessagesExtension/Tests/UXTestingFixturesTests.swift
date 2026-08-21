@@ -3,6 +3,29 @@ import ULS_CoreGame
 import XCTest
 
 final class UXTestingFixturesTests: XCTestCase {
+    func testFixtureRegistryPreservesOrderAndUsesItsDeclaredFallback() {
+        let registry = UXTestingFixtureRegistry(["first", "second"], id: { $0 })
+
+        XCTAssertEqual(registry.all, ["first", "second"])
+        XCTAssertEqual(
+            registry.fixture(id: "second", fallingBackTo: "first"),
+            "second"
+        )
+        XCTAssertEqual(
+            registry.fixture(id: "missing", fallingBackTo: "first"),
+            "first"
+        )
+    }
+
+    func testFixtureDescriptorsRemainTheCatalogMetadataSource() {
+        let fixture = UXTestFixtures.fixture(id: UXTestFixtures.defaultFixtureID)
+
+        XCTAssertEqual(fixture.id, fixture.descriptor.id)
+        XCTAssertEqual(fixture.title, fixture.descriptor.title)
+        XCTAssertEqual(fixture.detail, fixture.descriptor.detail)
+        XCTAssertEqual(fixture.defaultActorID, fixture.descriptor.defaultActorID)
+    }
+
     func testRecoveryFixtureSupportsPersistedNonTerminalResignation() throws {
         let active = try XCTUnwrap(UXTestFixtures.recoveryStates.first)
         let resigned = try apply(
