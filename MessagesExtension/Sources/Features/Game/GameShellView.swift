@@ -106,7 +106,7 @@ struct GameShellView: View {
             overlayModel: overlayModel
         )
         let selectedDockKind = shellRoute.selectedDockKind
-        let selectedDiscardHandCounts = discardSelectedHandCounts()
+        let selectedDiscardHandCounts = GameResourceHandDraftTransform.countMap(for: discardDraft)
         let isGameInfoOpen = shellRoute == .gameInfo
         let hasPendingTrade = projection.tradePanelModel?.activeOffer != nil
         let visibleBoardSelectionText = resolvedMode.usesPhysicalHeaderTargetPrompt
@@ -825,8 +825,8 @@ struct GameShellView: View {
                                     closeTradePanel(resetDraft: true)
                                 },
                                 onSendMaritimeTrade: { option in
-                                    let give = resourceHand(from: option.give)
-                                    let receive = resourceHand(from: option.receive)
+                                    let give = GameResourceHandDraftTransform.resourceHand(from: option.give)
+                                    let receive = GameResourceHandDraftTransform.resourceHand(from: option.receive)
                                     guard viewModel.publishMaritimeTrade(give: give, receive: receive) else { return }
                                     closeTradePanel(resetDraft: true)
                                 }
@@ -1465,32 +1465,51 @@ struct GameShellView: View {
         guard case let .trade(.playerDraft(draft)) = shellRoute else {
             return
         }
-        let available = tradeResourceCount(resource, in: shellProjection.gameScreenModel.handTray.chips)
-        let selected = tradeResourceCount(resource, in: draft.give)
+        let available = GameResourceHandDraftTransform.resourceCount(
+            resource,
+            in: shellProjection.gameScreenModel.handTray.chips
+        )
+        let selected = GameResourceHandDraftTransform.resourceCount(resource, in: draft.give)
         guard selected < available else {
             return
         }
 
         mutateTradeDraft { draft in
-            draft.give = updating(resource: resource, in: draft.give, delta: 1)
+            draft.give = GameResourceHandDraftTransform.updating(
+                resource: resource,
+                in: draft.give,
+                delta: 1
+            )
         }
     }
 
     private func removeGiveResource(_ resource: ResourceV1) {
         mutateTradeDraft { draft in
-            draft.give = updating(resource: resource, in: draft.give, delta: -1)
+            draft.give = GameResourceHandDraftTransform.updating(
+                resource: resource,
+                in: draft.give,
+                delta: -1
+            )
         }
     }
 
     private func addWantResource(_ resource: ResourceV1) {
         mutateTradeDraft { draft in
-            draft.receive = updating(resource: resource, in: draft.receive, delta: 1)
+            draft.receive = GameResourceHandDraftTransform.updating(
+                resource: resource,
+                in: draft.receive,
+                delta: 1
+            )
         }
     }
 
     private func removeWantResource(_ resource: ResourceV1) {
         mutateTradeDraft { draft in
-            draft.receive = updating(resource: resource, in: draft.receive, delta: -1)
+            draft.receive = GameResourceHandDraftTransform.updating(
+                resource: resource,
+                in: draft.receive,
+                delta: -1
+            )
         }
     }
 
@@ -1506,51 +1525,7 @@ struct GameShellView: View {
 
     private func toggleTradeRecipient(_ playerID: String) {
         mutateTradeDraft { draft in
-            guard !draft.isCounter else {
-                return
-            }
-            if let existingIndex = draft.recipients.firstIndex(of: playerID) {
-                draft.recipients.remove(at: existingIndex)
-            } else {
-                draft.recipients.append(playerID)
-                draft.recipients.sort()
-            }
-        }
-    }
-
-    private func tradeCountMap(for hand: ResourceHandV1) -> [ResourceV1: Int] {
-        [
-            .wood: hand.wood,
-            .brick: hand.brick,
-            .sheep: hand.sheep,
-            .wheat: hand.wheat,
-            .ore: hand.ore,
-        ]
-        .filter { $0.value > 0 }
-    }
-
-    private func discardSelectedHandCounts() -> [ResourceV1: Int] {
-        tradeCountMap(for: discardDraft)
-    }
-
-    private func tradeResourceCount(_ resource: ResourceV1, in chips: [GameHandChip]) -> Int {
-        chips.first(where: { $0.resource == resource })?.count ?? 0
-    }
-
-    private func tradeResourceCount(_ resource: ResourceV1, in hand: ResourceHandV1) -> Int {
-        switch resource {
-        case .wood:
-            return hand.wood
-        case .brick:
-            return hand.brick
-        case .sheep:
-            return hand.sheep
-        case .wheat:
-            return hand.wheat
-        case .ore:
-            return hand.ore
-        case .desert:
-            return 0
+            draft = GameResourceHandDraftTransform.togglingRecipient(playerID, in: draft)
         }
     }
 
@@ -1559,17 +1534,28 @@ struct GameShellView: View {
             return
         }
 
-        let available = discardChoice.availableHand.first(where: { $0.resource == resource })?.count ?? 0
-        let selected = tradeResourceCount(resource, in: discardDraft)
+        let available = GameResourceHandDraftTransform.resourceCount(
+            resource,
+            in: discardChoice.availableHand
+        )
+        let selected = GameResourceHandDraftTransform.resourceCount(resource, in: discardDraft)
         guard selected < available, discardDraft.totalCount < discardChoice.requiredCount else {
             return
         }
 
-        discardDraft = updating(resource: resource, in: discardDraft, delta: 1)
+        discardDraft = GameResourceHandDraftTransform.updating(
+            resource: resource,
+            in: discardDraft,
+            delta: 1
+        )
     }
 
     private func removeDiscardResource(_ resource: ResourceV1) {
-        discardDraft = updating(resource: resource, in: discardDraft, delta: -1)
+        discardDraft = GameResourceHandDraftTransform.updating(
+            resource: resource,
+            in: discardDraft,
+            delta: -1
+        )
     }
 
     private func discardSelectionAction(
@@ -1593,45 +1579,10 @@ struct GameShellView: View {
             return
         }
 
-        var sanitized = ResourceHandV1.zero
-        for resource in ResourceV1.tradeableCases {
-            let selected = tradeResourceCount(resource, in: discardDraft)
-            let available = discardChoice.availableHand.first(where: { $0.resource == resource })?.count ?? 0
-            if selected > 0, available > 0 {
-                sanitized = sanitized.adding(min(selected, available), for: resource)
-            }
-        }
-
-        if sanitized.totalCount > discardChoice.requiredCount {
-            discardDraft = .zero
-        } else {
-            discardDraft = sanitized
-        }
-    }
-
-    private func updating(resource: ResourceV1, in hand: ResourceHandV1, delta: Int) -> ResourceHandV1 {
-        ResourceHandV1(
-            wood: resource == .wood ? max(hand.wood + delta, 0) : hand.wood,
-            brick: resource == .brick ? max(hand.brick + delta, 0) : hand.brick,
-            sheep: resource == .sheep ? max(hand.sheep + delta, 0) : hand.sheep,
-            wheat: resource == .wheat ? max(hand.wheat + delta, 0) : hand.wheat,
-            ore: resource == .ore ? max(hand.ore + delta, 0) : hand.ore
-        )
-    }
-
-    private func resourceHand(from chips: [GameHandChip]) -> ResourceHandV1 {
-        let wood = chips.first(where: { $0.resource == .wood })?.count ?? 0
-        let brick = chips.first(where: { $0.resource == .brick })?.count ?? 0
-        let sheep = chips.first(where: { $0.resource == .sheep })?.count ?? 0
-        let wheat = chips.first(where: { $0.resource == .wheat })?.count ?? 0
-        let ore = chips.first(where: { $0.resource == .ore })?.count ?? 0
-
-        return ResourceHandV1(
-            wood: wood,
-            brick: brick,
-            sheep: sheep,
-            wheat: wheat,
-            ore: ore
+        discardDraft = GameResourceHandDraftTransform.sanitizingDiscardDraft(
+            discardDraft,
+            requiredCount: discardChoice.requiredCount,
+            availableHand: discardChoice.availableHand
         )
     }
 
@@ -2141,133 +2092,6 @@ private extension GameMode {
     }
 }
 
-enum GameTradeOverlayLayout {
-    static func panelHeight(
-        for availableWidth: CGFloat,
-        route: GameTradeOverlayRoute?
-    ) -> CGFloat {
-        let isWide = availableWidth >= 520
-        switch route {
-        case .chooser, nil:
-            return isWide ? 220 : 236
-        case .maritime:
-            return isWide ? 264 : 292
-        case .liveOffer:
-            return isWide ? 300 : 336
-        case .playerDraft:
-            return isWide ? 364 : 408
-        }
-    }
-
-    static let bannerHeight: CGFloat = 44
-    static let verticalSpacing: CGFloat = 10
-}
-
-struct GameTradeOverlayView: View {
-    let route: GameTradeOverlayRoute
-    let panelModel: GameTradePanelModel
-    let bankChips: [GameBankChip]
-    let handChips: [GameHandChip]
-    let recipientSummaries: [GameOpponentSummary]
-    let tutorialScrollTarget: GameTutorialTarget?
-    @Binding var showsRecipients: Bool
-    let recipientScrimTopInset: CGFloat
-    let onClose: () -> Void
-    let onChoosePlayerTrade: () -> Void
-    let onChooseMaritimeTrade: () -> Void
-    let onReplaceOffer: () -> Void
-    let onStartCounterDraft: () -> Void
-    let onSendDraft: () -> Void
-    let onBackDraftStep: () -> Void
-    let onAddGiveResource: (ResourceV1) -> Void
-    let onRemoveGiveResource: (ResourceV1) -> Void
-    let onAddWantResource: (ResourceV1) -> Void
-    let onRemoveWantResource: (ResourceV1) -> Void
-    let onToggleRecipient: (String) -> Void
-    let onAcceptOffer: () -> Void
-    let onDeclineOffer: () -> Void
-    let onSendMaritimeTrade: (GameTradeMaritimeOption) -> Void
-
-    var body: some View {
-        GamePhysicalTradeSurfaceView(
-            route: route,
-            panelModel: panelModel,
-            bankChips: bankChips,
-            handChips: handChips,
-            recipientSummaries: recipientSummaries,
-            tutorialTarget: tutorialScrollTarget,
-            showsRecipients: $showsRecipients,
-            recipientScrimTopInset: recipientScrimTopInset,
-            onClose: onClose,
-            onChoosePlayerTrade: onChoosePlayerTrade,
-            onChooseMaritimeTrade: onChooseMaritimeTrade,
-            onReplaceOffer: onReplaceOffer,
-            onStartCounterDraft: onStartCounterDraft,
-            onSendDraft: onSendDraft,
-            onBack: onBackDraftStep,
-            onAddGiveResource: onAddGiveResource,
-            onRemoveGiveResource: onRemoveGiveResource,
-            onAddWantResource: onAddWantResource,
-            onRemoveWantResource: onRemoveWantResource,
-            onToggleRecipient: onToggleRecipient,
-            onAcceptOffer: onAcceptOffer,
-            onDeclineOffer: onDeclineOffer,
-            onSendMaritimeTrade: onSendMaritimeTrade
-        )
-        .transition(.opacity)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("uls.turn.tradeSurface")
-    }
-}
-struct GameTradePendingBannerView: View {
-    let text: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(alignment: .center, spacing: GameTheme.inlineSpacing) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Pending trade")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(GamePhysicalTurnPalette.selectedKeyline)
-
-                    Text(text)
-                        .font(GameTheme.metaFont.weight(.semibold))
-                        .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                }
-
-                Spacer(minLength: 0)
-
-                Text("Review")
-                    .font(GameTheme.metaFont.weight(.semibold))
-                    .foregroundStyle(GamePhysicalTurnPalette.selectedKeyline)
-            }
-            .padding(.horizontal, GameTheme.compactPadding)
-            .padding(.vertical, 9)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: GameTheme.mediumRadius)
-                    .fill(GameTheme.feltRaised.opacity(0.98))
-            )
-            .clipShape(RoundedRectangle(cornerRadius: GameTheme.mediumRadius))
-            .overlay(
-                RoundedRectangle(cornerRadius: GameTheme.mediumRadius)
-                    .stroke(
-                        GamePhysicalTurnPalette.selectedKeyline.opacity(0.78),
-                        lineWidth: 1.5
-                    )
-            )
-            .shadow(color: GameTheme.trayShadow, radius: 7, x: 0, y: 3)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(text)
-        .accessibilityHint("Opens the pending trade")
-        .accessibilityIdentifier("uls.trade.pendingBanner")
-    }
-}
-
 private extension GameMode {
     var isForcedBoardMode: Bool {
         switch self {
@@ -2276,12 +2100,6 @@ private extension GameMode {
         default:
             return false
         }
-    }
-}
-
-private extension ResourceV1 {
-    static var tradeableCases: [ResourceV1] {
-        [.wood, .brick, .sheep, .wheat, .ore]
     }
 }
 
