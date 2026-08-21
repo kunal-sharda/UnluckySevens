@@ -127,17 +127,17 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         let proposer = state.currentPlayer
         let proposerHand = state.resourcesByPlayer[proposer] ?? .zero
         let acceptorHand = state.resourcesByPlayer[acceptingPlayer] ?? .zero
-        guard canAfford(hand: proposerHand, cost: offer.give), canAfford(hand: acceptorHand, cost: offer.receive) else {
+        guard TurnRulesPrimitivesV1.canAfford(hand: proposerHand, cost: offer.give), TurnRulesPrimitivesV1.canAfford(hand: acceptorHand, cost: offer.receive) else {
             throw CoreGameError.tradeExecutionInsufficientResources
         }
 
         var updatedResourcesByPlayer = state.resourcesByPlayer
-        updatedResourcesByPlayer[proposer] = addHands(
-            subtractHands(proposerHand, offer.give),
+        updatedResourcesByPlayer[proposer] = TurnRulesPrimitivesV1.addHands(
+            TurnRulesPrimitivesV1.subtractHands(proposerHand, offer.give),
             offer.receive
         )
-        updatedResourcesByPlayer[acceptingPlayer] = addHands(
-            subtractHands(acceptorHand, offer.receive),
+        updatedResourcesByPlayer[acceptingPlayer] = TurnRulesPrimitivesV1.addHands(
+            TurnRulesPrimitivesV1.subtractHands(acceptorHand, offer.receive),
             offer.give
         )
 
@@ -180,7 +180,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         let rollTotal = roll.0 + roll.1
 
         if rollTotal == 7 {
-            let requirements = requiredDiscards(
+            let requirements = TurnRulesPrimitivesV1.requiredDiscards(
                 for: state.resourcesByPlayer,
                 players: state.activePlayers
             )
@@ -365,7 +365,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         }
 
         var rng = DeterministicRNG(seed: robberRngState)
-        let stolen = deterministicStolenResource(from: victimHand, rng: &rng)
+        let stolen = TurnRulesPrimitivesV1.deterministicStolenResource(from: victimHand, rng: &rng)
 
         let stealerHand = state.resourcesByPlayer[state.currentPlayer] ?? .zero
         var updatedResourcesByPlayer = state.resourcesByPlayer
@@ -403,7 +403,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         }
 
         let cost = CoreBuildCostsV1.road
-        guard canAfford(hand: state.resourcesByPlayer[player] ?? .zero, cost: cost) else {
+        guard TurnRulesPrimitivesV1.canAfford(hand: state.resourcesByPlayer[player] ?? .zero, cost: cost) else {
             throw CoreGameError.buildInsufficientResources
         }
         let economy = applyBuildCost(player: player, cost: cost, state: state)
@@ -450,7 +450,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         }
 
         let cost = CoreBuildCostsV1.settlement
-        guard canAfford(hand: state.resourcesByPlayer[player] ?? .zero, cost: cost) else {
+        guard TurnRulesPrimitivesV1.canAfford(hand: state.resourcesByPlayer[player] ?? .zero, cost: cost) else {
             throw CoreGameError.buildInsufficientResources
         }
         let economy = applyBuildCost(player: player, cost: cost, state: state)
@@ -491,7 +491,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         }
 
         let cost = CoreBuildCostsV1.city
-        guard canAfford(hand: state.resourcesByPlayer[player] ?? .zero, cost: cost) else {
+        guard TurnRulesPrimitivesV1.canAfford(hand: state.resourcesByPlayer[player] ?? .zero, cost: cost) else {
             throw CoreGameError.buildInsufficientResources
         }
         let economy = applyBuildCost(player: player, cost: cost, state: state)
@@ -520,8 +520,8 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         }
         let normalizedRecipients = normalizedTradeRecipients(recipients)
         guard
-            isValidTradeHand(give),
-            isValidTradeHand(receive),
+            TurnRulesPrimitivesV1.isValidTradeHand(give),
+            TurnRulesPrimitivesV1.isValidTradeHand(receive),
             give.totalCount > 0,
             receive.totalCount > 0,
             give != receive,
@@ -531,7 +531,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         else {
             throw CoreGameError.tradeOfferInvalid
         }
-        guard canAfford(hand: state.resourcesByPlayer[state.currentPlayer] ?? .zero, cost: give) else {
+        guard TurnRulesPrimitivesV1.canAfford(hand: state.resourcesByPlayer[state.currentPlayer] ?? .zero, cost: give) else {
             throw CoreGameError.tradeOfferInvalid
         }
 
@@ -631,12 +631,12 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             throw CoreGameError.tradeAcceptAlreadySubmitted
         }
         guard
-            isValidTradeHand(give),
-            isValidTradeHand(receive),
+            TurnRulesPrimitivesV1.isValidTradeHand(give),
+            TurnRulesPrimitivesV1.isValidTradeHand(receive),
             give.totalCount > 0,
             receive.totalCount > 0,
             give != receive,
-            canAfford(hand: state.resourcesByPlayer[counteringPlayer] ?? .zero, cost: give)
+            TurnRulesPrimitivesV1.canAfford(hand: state.resourcesByPlayer[counteringPlayer] ?? .zero, cost: give)
         else {
             throw CoreGameError.tradeOfferInvalid
         }
@@ -729,7 +729,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
 
         let player = state.currentPlayer
         let cost = CoreBuildCostsV1.developmentCard
-        guard canAfford(hand: state.resourcesByPlayer[player] ?? .zero, cost: cost) else {
+        guard TurnRulesPrimitivesV1.canAfford(hand: state.resourcesByPlayer[player] ?? .zero, cost: cost) else {
             throw CoreGameError.devCardPurchaseInsufficientResources
         }
         let economy = applyBuildCost(player: player, cost: cost, state: state)
@@ -807,7 +807,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             }
 
             var rng = DeterministicRNG(seed: robberSeed)
-            let stolen = deterministicStolenResource(from: victimHand, rng: &rng)
+            let stolen = TurnRulesPrimitivesV1.deterministicStolenResource(from: victimHand, rng: &rng)
             nextRobberSeed = rng.state
 
             let stealerHand = state.resourcesByPlayer[state.currentPlayer] ?? .zero
@@ -1061,7 +1061,7 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         var newDevCardsByPlayer = state.newDevCardsByPlayer
         let endingPlayable = devCardsByPlayer[endingPlayer] ?? .zero
         let endingNew = newDevCardsByPlayer[endingPlayer] ?? .zero
-        devCardsByPlayer[endingPlayer] = mergeDevInventories(endingPlayable, endingNew)
+        devCardsByPlayer[endingPlayer] = TurnRulesPrimitivesV1.mergeDevInventories(endingPlayable, endingNew)
         newDevCardsByPlayer[endingPlayer] = .zero
 
         return nextTurnState(
@@ -1397,20 +1397,6 @@ private func auditRollTotal(for intent: TurnIntentV1, turnState: TurnStateV1?) -
     return roll.d1 + roll.d2
 }
 
-private func requiredDiscards(
-    for resourcesByPlayer: [String: ResourceHandV1],
-    players: [String]
-) -> [String: Int] {
-    var result: [String: Int] = [:]
-    for player in players {
-        let hand = resourcesByPlayer[player] ?? .zero
-        if hand.totalCount > 7 {
-            result[player] = hand.totalCount / 2
-        }
-    }
-    return result
-}
-
 private func eligibleRobberVictims(
     for tileID: Int,
     settlementsByNode: [NodeID: String],
@@ -1447,65 +1433,6 @@ private func eligibleRobberVictims(
     return victims.sorted()
 }
 
-private func deterministicStolenResource(from hand: ResourceHandV1, rng: inout DeterministicRNG) -> ResourceV1 {
-    let total = hand.totalCount
-    let pick = Int(rng.nextUInt64() % UInt64(total))
-
-    let resources: [(ResourceV1, Int)] = [
-        (.wood, hand.wood),
-        (.brick, hand.brick),
-        (.sheep, hand.sheep),
-        (.wheat, hand.wheat),
-        (.ore, hand.ore),
-    ]
-
-    var cursor = 0
-    for (resource, count) in resources {
-        if pick < cursor + count {
-            return resource
-        }
-        cursor += count
-    }
-
-    return .wood
-}
-
-private func canAfford(hand: ResourceHandV1, cost: ResourceHandV1) -> Bool {
-    hand.wood >= cost.wood &&
-        hand.brick >= cost.brick &&
-        hand.sheep >= cost.sheep &&
-        hand.wheat >= cost.wheat &&
-        hand.ore >= cost.ore
-}
-
-private func isValidTradeHand(_ hand: ResourceHandV1) -> Bool {
-    hand.wood >= 0 &&
-        hand.brick >= 0 &&
-        hand.sheep >= 0 &&
-        hand.wheat >= 0 &&
-        hand.ore >= 0
-}
-
-private func addHands(_ lhs: ResourceHandV1, _ rhs: ResourceHandV1) -> ResourceHandV1 {
-    ResourceHandV1(
-        wood: lhs.wood + rhs.wood,
-        brick: lhs.brick + rhs.brick,
-        sheep: lhs.sheep + rhs.sheep,
-        wheat: lhs.wheat + rhs.wheat,
-        ore: lhs.ore + rhs.ore
-    )
-}
-
-private func subtractHands(_ lhs: ResourceHandV1, _ rhs: ResourceHandV1) -> ResourceHandV1 {
-    ResourceHandV1(
-        wood: lhs.wood - rhs.wood,
-        brick: lhs.brick - rhs.brick,
-        sheep: lhs.sheep - rhs.sheep,
-        wheat: lhs.wheat - rhs.wheat,
-        ore: lhs.ore - rhs.ore
-    )
-}
-
 private func ensureDevCardActionCanBePlayed(state: CoreGameStateV1) throws {
     if state.devCardActionPlayedThisTurn {
         throw CoreGameError.devCardAlreadyPlayedThisTurn
@@ -1517,16 +1444,6 @@ private func ensureCardAvailable(card: DevCardV1, state: CoreGameStateV1) throws
     if hand.count(for: card) <= 0 {
         throw CoreGameError.devCardNotOwned
     }
-}
-
-private func mergeDevInventories(_ lhs: DevCardInventoryV1, _ rhs: DevCardInventoryV1) -> DevCardInventoryV1 {
-    DevCardInventoryV1(
-        knight: lhs.knight + rhs.knight,
-        monopoly: lhs.monopoly + rhs.monopoly,
-        yearOfPlenty: lhs.yearOfPlenty + rhs.yearOfPlenty,
-        roadBuilding: lhs.roadBuilding + rhs.roadBuilding,
-        victoryPoint: lhs.victoryPoint + rhs.victoryPoint
-    )
 }
 
 private func applyBuildCost(player: String, cost: ResourceHandV1, state: CoreGameStateV1) -> EconomyUpdateV1 {
