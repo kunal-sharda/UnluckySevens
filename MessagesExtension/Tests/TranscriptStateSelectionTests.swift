@@ -23,6 +23,42 @@ final class TranscriptStateSelectionTests: XCTestCase {
         XCTAssertFalse(result.redirectedToLatestKnown)
     }
 
+    func testResolvePromotesNewerIncomingStateOverRecoveredGame() {
+        let recoveredState = makeTurnState(rev: 1)
+        let incomingState = makeTurnState(rev: 2)
+
+        let result = TranscriptStateSelection.resolve(
+            decodedState: incomingState,
+            latestKnownStatesByGameId: [incomingState.gameId: incomingState],
+            activeState: recoveredState,
+            activeSource: .localLedgerState,
+            source: .url,
+            trigger: .didReceive
+        )
+
+        XCTAssertEqual(result.preferredState.rev, 2)
+        XCTAssertEqual(result.preferredState.stateHash, incomingState.stateHash)
+        XCTAssertTrue(result.shouldActivate)
+    }
+
+    func testResolveDoesNotRollRecoveredGameBackToOlderIncomingState() {
+        let recoveredState = makeTurnState(rev: 2)
+        let staleIncomingState = makeTurnState(rev: 1)
+
+        let result = TranscriptStateSelection.resolve(
+            decodedState: staleIncomingState,
+            latestKnownStatesByGameId: [recoveredState.gameId: recoveredState],
+            activeState: recoveredState,
+            activeSource: .localLedgerState,
+            source: .url,
+            trigger: .didReceive
+        )
+
+        XCTAssertEqual(result.preferredState.rev, 2)
+        XCTAssertEqual(result.preferredState.stateHash, recoveredState.stateHash)
+        XCTAssertTrue(result.redirectedToLatestKnown)
+    }
+
     func testResolveRedirectsOlderBubbleSelectionToLatestKnownState() {
         let stateV1 = makeTurnState(rev: 1)
         let stateV2 = makeTurnState(rev: 2)

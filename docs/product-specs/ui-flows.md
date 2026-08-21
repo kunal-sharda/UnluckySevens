@@ -57,6 +57,8 @@ These are the most important UI requirements:
 Additional requirements:
 
 - Preferred lobby name is device-local prefill convenience. The submitted display name becomes table-local canonical metadata.
+- Selecting Unlucky Sevens from the Messages app drawer always opens the fresh invitation entry. A game resumes only when the player taps that game’s transcript bubble or explicitly chooses it in Your Games; local recovery records never auto-open on drawer entry.
+- Selecting a game bubble or explicitly opening a record from Your Games requests the expanded extension on both iPhone and iPad. If Apple keeps the iPad entry in transcript presentation, the app shows a compact game summary with **Open Game** instead of compressing the tabletop; that explicit action requests the normal game surface. While the expanded game remains open, a newer valid message for the same game refreshes the visible canonical state whether entry came from the bubble or Your Games; stale/equal state cannot roll it back, and other-game updates are recorded without hijacking the current game.
 - If no custom name exists, deterministic per-game aliases are used.
 - Reopening a real lobby bubble shows the normal roster/start surface even when only the host has joined.
 - New games default to the seeded balanced board strategy that avoids adjacent `6` and `8` tokens.
@@ -371,6 +373,7 @@ Additional requirements:
 
 - The app tracks the latest locally recoverable state per game.
 - A dedicated Games destination is available from the fresh invitation/loading card. Inside current-game Game Information, the die-labeled Games action swaps the player rows for a compact saved-game switcher in the same centered panel; it never takes a separate gameplay top-bar slot. The centered Your Games header is a 44-point lifecycle destination, and the dedicated lifecycle screen keeps its title centered independently of Back and the saved-game count.
+- Opening a saved game binds only a proven same-game selected or in-memory transcript session. After a cold recovery with no such session, gameplay cannot silently fork the transcript; the player explicitly chooses **Reconnect to Chat** before a new bubble chain is created.
 - Games separates Active and Finished records and identifies them by player names, phase/result, and update time.
 - The local list may include games retained from other Unlucky Sevens conversations. Publish actions enable only when the saved roster is compatible with the currently open Messages conversation; Messages does not expose a durable identifier that can distinguish two chats with the same participant set.
 - Joined players can Open, Resend Latest State, Archive locally, Resign, propose or vote on a draw, and—if they are the original host—End an Active game. Finished games remain openable, resendable, and locally archivable.

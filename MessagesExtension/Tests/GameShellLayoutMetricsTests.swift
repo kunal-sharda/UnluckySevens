@@ -155,6 +155,30 @@ final class GameShellLayoutMetricsTests: XCTestCase {
         XCTAssertEqual(GameShellLayoutMetrics.normalTurnActionWellHeight(for: 834), 220)
     }
 
+    func testSetupAndOrdinaryPlayReserveTheSameActionSurface() {
+        let setupReservation = GameTabletopBoardBudget.actionSurfaceReservation(
+            actionSurfaceHeight: 76,
+            sectionSpacing: 14,
+            isGameOver: false
+        )
+        let ordinaryReservation = GameTabletopBoardBudget.actionSurfaceReservation(
+            actionSurfaceHeight: 76,
+            sectionSpacing: 14,
+            isGameOver: false
+        )
+
+        XCTAssertEqual(setupReservation, 90)
+        XCTAssertEqual(setupReservation, ordinaryReservation)
+        XCTAssertEqual(
+            GameTabletopBoardBudget.actionSurfaceReservation(
+                actionSurfaceHeight: 76,
+                sectionSpacing: 14,
+                isGameOver: true
+            ),
+            0
+        )
+    }
+
     func testPhysicalPropsLayoutUsesClampedResponsiveZones() {
         let compact = GamePhysicalTurnLayout.resolve(
             availableSize: CGSize(width: 375, height: 667)

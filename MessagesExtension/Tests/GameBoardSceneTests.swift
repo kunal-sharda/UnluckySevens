@@ -65,6 +65,9 @@ final class GameBoardSceneTests: XCTestCase {
         let viewport = CGSize(width: 320, height: 240)
         let scene = GameBoardScene(size: viewport)
 
+        // Production initializes the camera before presenting Game Information.
+        // Exercise that path so the authored viewport coordinates are meaningful.
+        scene.updateCamera(state: GameBoardCameraState(), viewportSize: viewport)
         scene.updateBottomOcclusion(height: 72, viewportSize: viewport)
 
         let occlusion = try XCTUnwrap(

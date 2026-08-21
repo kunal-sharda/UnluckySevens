@@ -229,6 +229,8 @@ What we learned:
 - Same-device cached last-published state is an acceptable temporary recovery bridge for the current-player device when the extension reopens without an active state already in memory, but it must be keyed per game rather than as one global record.
 - `MSConversation.selectedMessage` is the currently selected transcript bubble, not a live-updating pointer to the latest game update.
 - `didReceive` should be treated as the live-update optimization path for the currently open game, not as permission to hijack the shell onto any newer game update in the thread. If another game's message arrives while a game is open, record it for recovery but keep the visible shell anchored to the active game.
+- Drawer entry begins in an Apple-owned compact presentation and `requestPresentationStyle(.expanded)` is only a request. Repeated physical tests showed automatic expansion can vary on unchanged bytes, so fixed-delay retries are not a durable contract. Record activation, style, bounds, and transition callbacks on an unchanged build before changing controller timing. iPad may retain Apple-owned transcript presentation; render a bounded summary/**Open Game** continuation there and never mount or scale the tabletop into the transcript card.
+- Opening a ledger-backed game must keep the same active-game observation contract as bubble entry. A valid newer `didReceive` for that game advances the visible state and ledger; stale/equal state cannot roll it back, and other-game updates remain recovery-only. `selectedMessage` polling is hydration/reselection support, not a live-update source.
 - Do not rebuild player-facing transport diagnostics as a product dependency. If a flow only feels debuggable with custom in-app transport HUDs, the UX contract is still too brittle.
 
 Current repo answer:
@@ -239,6 +241,7 @@ Current repo answer:
 - Pre-TestFlight legacy responder action bubbles are intentionally unsupported after the hard runtime reset. Fresh gameplay no longer depends on responder envelopes surfacing on another device.
 - Authoring from a stale selected bubble is a different failure mode from recovering from a stale selected bubble. Turn/setup/trade/dev-card publication paths should resolve against the newest known canonical state for the same game before drafting or validating an action, otherwise the shell can still produce obsolete anchors even after recovery logic improved.
 - A short post-selection polling burst is not enough for Messages-hosted async play. If the extension is open on a game bubble, it needs a lightweight ongoing selection watch while that context remains active, because same-session surfacing can lag well past the first couple of seconds.
+- Your Games recovery explicitly requests the expanded host and a successful `didReceive` preserves the ongoing active-context watch; this reuses the canonical state resolver rather than creating a second synchronization path.
 - Same-device cached published-state recovery now stores a per-game bridge for reopen/response selection paths instead of relying on one global last-published state.
 - Trade-response copy no longer exposes old transport intent terminology, and fresh responder gameplay no longer uses action bubbles as the main transport primitive.
 
@@ -359,7 +362,7 @@ Current repo answer:
 - The fresh invitation/loading card and current-game top bar expose a Games destination backed by a versioned per-game ledger with Active and Finished sections. The ledger never floats over the live board.
 - The ledger validates canonical snapshots, repairs corrupt records, converges equal-revision siblings by greatest hash, retains active games until archive, and caps finished history at eight.
 - Joined players can reopen or resend the unchanged latest state. Local archive removes only the device record, so a later valid bubble can recreate it.
-- Recovery publish reuses a selected same-game or cached in-memory `MSSession`; after host restart, absence of a proven restorable session deliberately creates a fresh recovery bubble.
+- Recovery publish reuses a decoded selected same-game or cached in-memory `MSSession`. After host restart, absence of a proven restorable session marks the recovery unbound; only the explicit **Reconnect to Chat** action may create a fresh recovery bubble.
 
 ### 9. Messages layout classes are not enough; host height is a separate constraint
 

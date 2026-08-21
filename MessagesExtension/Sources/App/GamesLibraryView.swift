@@ -227,7 +227,12 @@ struct GamesLibraryView: View {
                     dismiss()
                 }
 
-                Button("Resend Latest State", systemImage: "paperplane") {
+                Button(
+                    viewModel.requiresTranscriptReconnect(game.gameId)
+                        ? "Reconnect to Chat"
+                        : "Resend Latest State",
+                    systemImage: "paperplane"
+                ) {
                     viewModel.resendRecoveredGame(game.gameId)
                 }
                 .disabled(!viewModel.canResendRecoveredGame(game.gameId))

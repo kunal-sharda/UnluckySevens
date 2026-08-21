@@ -15,6 +15,9 @@ final class MessagesViewController: MSMessagesAppViewController {
         viewModel.onRequestDismiss = { [weak self] in
             self?.dismiss()
         }
+        viewModel.onRequestExpanded = { [weak self] in
+            self?.requestExpandedPresentationIfNeeded()
+        }
 
         #if DEBUG
         let rootView = MessagesRootView(
@@ -22,12 +25,18 @@ final class MessagesViewController: MSMessagesAppViewController {
             hostLayoutStore: hostLayoutStore,
             onSettingsTap: { [weak viewModel] in
                 viewModel?.recordUXTestingSettingsHookInvocation()
+            },
+            onRequestExpanded: { [weak self] in
+                self?.requestExpandedPresentationIfNeeded()
             }
         )
         #else
         let rootView = MessagesRootView(
             viewModel: viewModel,
-            hostLayoutStore: hostLayoutStore
+            hostLayoutStore: hostLayoutStore,
+            onRequestExpanded: { [weak self] in
+                self?.requestExpandedPresentationIfNeeded()
+            }
         )
         #endif
         let hostingController = UIHostingController(rootView: rootView)
@@ -44,10 +53,11 @@ final class MessagesViewController: MSMessagesAppViewController {
             hostingController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
-        if let conversation = activeConversation {
+        if let conversation = activeConversation,
+           let selectedMessage = conversation.selectedMessage {
             refreshContextAndMaybePoll(
                 conversation: conversation,
-                selectedMessage: conversation.selectedMessage,
+                selectedMessage: selectedMessage,
                 trigger: .viewDidLoad
             )
         }
@@ -65,21 +75,12 @@ final class MessagesViewController: MSMessagesAppViewController {
     override func willBecomeActive(with conversation: MSConversation) {
         super.willBecomeActive(with: conversation)
         requestExpandedPresentationIfNeeded()
-        refreshContextAndMaybePoll(
-            conversation: conversation,
-            selectedMessage: conversation.selectedMessage,
-            trigger: .viewDidLoad
-        )
     }
 
     override func didBecomeActive(with conversation: MSConversation) {
         super.didBecomeActive(with: conversation)
         requestExpandedPresentationIfNeeded()
-        refreshContextAndMaybePoll(
-            conversation: conversation,
-            selectedMessage: conversation.selectedMessage,
-            trigger: .viewDidLoad
-        )
+        activateRoute(for: conversation)
     }
 
     override func didSelect(_ message: MSMessage, conversation: MSConversation) {
@@ -205,6 +206,22 @@ final class MessagesViewController: MSMessagesAppViewController {
         }
 
         requestPresentationStyle(.expanded)
+    }
+
+    private func activateRoute(for conversation: MSConversation) {
+        switch MessagesLaunchRoute.resolve(
+            hasSelectedMessage: conversation.selectedMessage != nil
+        ) {
+        case .freshLobby:
+            cancelSelectionPolling()
+            viewModel.beginFreshLobby(conversation: conversation)
+        case .selectedMessage:
+            refreshContextAndMaybePoll(
+                conversation: conversation,
+                selectedMessage: conversation.selectedMessage,
+                trigger: .viewDidLoad
+            )
+        }
     }
 
     private var resizeGrabberExclusionHeight: CGFloat {

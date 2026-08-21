@@ -224,10 +224,11 @@ struct GameShellView: View {
                     shellLayout.headerHeight - physicalLayout.topBarHeight,
                     0
                 )
-                let feltToolSurfaceReservation = !isPhysicalSetup
-                    && !isPhysicalGameOver
-                    ? actionSurfaceHeight + tabletopSectionSpacing
-                    : 0
+                let feltToolSurfaceReservation = GameTabletopBoardBudget.actionSurfaceReservation(
+                    actionSurfaceHeight: actionSurfaceHeight,
+                    sectionSpacing: tabletopSectionSpacing,
+                    isGameOver: isPhysicalGameOver
+                )
                 let endBoardContractCorrection = isPhysicalGameOver
                     ? max(
                         actionSurfaceHeight

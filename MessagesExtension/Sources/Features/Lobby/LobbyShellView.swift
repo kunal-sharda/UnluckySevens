@@ -29,6 +29,7 @@ struct LobbyShellView: View {
             model: model,
             settingsSummary: GameSettingsSummary(boardStrategy: viewModel.boardStrategy),
             boardStrategy: viewModel.boardStrategy,
+            isSendingInvite: viewModel.isSendingInvite,
             displayNameDraft: $viewModel.lobbyDisplayNameDraft,
             canSaveDisplayName: viewModel.canPublishLobbyDisplayName,
             settings: onSettingsTap,

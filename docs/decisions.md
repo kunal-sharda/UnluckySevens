@@ -105,7 +105,9 @@ Recommended canonical state cadence per turn:
 - Fresh forced-discard and targeted trade-response publishes also stay on that same canonical game session so the game transcript remains one thread.
 - If the shell can recover canonical `STATE` for a game, it should prefer recovered game state over any raw responder artifact or stale transcript selection.
 - A joined player may resend an unchanged validated snapshot under a `Game Restored` receipt. Resend preserves revision and hash and does not advance play.
-- Recovery publication reuses a selected same-game or cached in-memory session when possible. If no live session survives, it creates a fresh recovery bubble; persisted `MSSession` archival remains disallowed until proven by a two-device replacement experiment.
+- Recovery publication reuses only a decoded selected same-game or cached in-memory session. If no live session survives, opening the ledger state does not silently create a session: **Reconnect to Chat** is the explicit action that starts a fresh recovery bubble. Persisted `MSSession` archival remains disallowed until proven by a two-device replacement experiment.
+- Apple-owned transcript presentation uses a compact summary and **Open Game** action. The full tabletop never scales into that floating host card; normal gameplay remains in the settled extension canvas.
+- Messages entry intent is explicit: the app drawer opens a fresh invitation lobby, a selected Unlucky Sevens transcript bubble opens that bubble’s game, and Your Games opens only the chosen recovery record. Local ledger state remains discoverable but cannot implicitly replace a drawer launch.
 - Rich transcript previews reuse production components: canonical lobby states render the current four-seat table, setup states render the board without number tokens, and post-setup states render the current board. These images are presentation-only and fail soft to the unchanged caption and summary.
 
 Current transition rule:

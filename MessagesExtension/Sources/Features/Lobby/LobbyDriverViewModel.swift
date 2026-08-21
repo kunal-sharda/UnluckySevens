@@ -16,6 +16,7 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published private(set) var recoveredGames: [ActiveGameRecoverySummary] = []
     @Published private(set) var dismissRequestToken: Int = 0
     @Published var lobbyDisplayNameDraft: String = ""
+    @Published private(set) var isSendingInvite = false
 
     private let boardStrategyKey = "uls.boardStrategy"
     private let userDefaults: UserDefaults
@@ -26,11 +27,13 @@ final class LobbyDriverViewModel: ObservableObject {
 
     private weak var activeConversation: MSConversation?
     var onRequestDismiss: (() -> Void)?
+    var onRequestExpanded: (() -> Void)?
     private var selectedState: CoreGameStateV1?
     private var selectionStatus: String = "No message selected"
     private var latestKnownStatesByGameId: [String: CoreGameStateV1] = [:]
     private var activeSource: ActiveContextSource?
     private var stateSessionsByGameId: [String: MSSession] = [:]
+    private var unboundRecoveredGameIds: Set<String> = []
     private var selectedTranscriptGameId: String?
     private var lastResolvedSelectionSignature: String?
     private var cachedBoardOverlayModelKey: BoardOverlayModelCacheKey?
@@ -1090,11 +1093,19 @@ final class LobbyDriverViewModel: ObservableObject {
 
     func prepareNewGame() {
         clearActiveContext()
+        selectedTranscriptGameId = nil
+        lastResolvedSelectionSignature = nil
         selectionStatus = "Ready for a new game"
         setLastError(nil)
     }
 
+    func beginFreshLobby(conversation: MSConversation) {
+        activeConversation = conversation
+        prepareNewGame()
+    }
+
     func inviteNewGame() {
+        guard !isSendingInvite else { return }
         guard let actor = localParticipantIdentifier() else {
             setLastError("Missing local participant identifier.")
             return
@@ -1117,6 +1128,7 @@ final class LobbyDriverViewModel: ObservableObject {
             board: nil
         ).rehashed()
 
+        isSendingInvite = true
         do {
             let payload = try jsonString(from: state)
             let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
@@ -1131,6 +1143,7 @@ final class LobbyDriverViewModel: ObservableObject {
             selectionStatus = "Invite sent: lobby rev0"
             setLastError(nil)
         } catch {
+            isSendingInvite = false
             setLastError("Invite failed: \(error.localizedDescription)")
         }
     }
@@ -1784,9 +1797,6 @@ final class LobbyDriverViewModel: ObservableObject {
 
         guard let message else {
             selectedTranscriptGameId = nil
-            if selectedState == nil, restoreLocalLedgerStateIfAvailable(trigger: trigger) {
-                return false
-            }
             selectionStatus = "No message selected"
             if selectedState == nil {
                 resetDisplayedFields()
@@ -1796,9 +1806,6 @@ final class LobbyDriverViewModel: ObservableObject {
 
         guard let encodedEnvelope = payloadValue(from: message) else {
             selectedTranscriptGameId = nil
-            if selectedState == nil, restoreLocalLedgerStateIfAvailable(trigger: trigger) {
-                return false
-            }
             selectionStatus = "Selected message has no transport payload"
             if selectedState == nil {
                 resetDisplayedFields()
@@ -1855,6 +1862,9 @@ final class LobbyDriverViewModel: ObservableObject {
         gameLedgerStore.record(state: state, payload: payload)
         refreshRecoveredGames()
         stateSessionsByGameId[state.gameId] = message.session
+        if message.session != nil {
+            unboundRecoveredGameIds.remove(state.gameId)
+        }
         let transcriptActiveSource: TranscriptActiveContextSource?
         switch activeSource {
         case .selectedBubble:
@@ -1987,9 +1997,25 @@ final class LobbyDriverViewModel: ObservableObject {
             return
         }
 
+        bindRecoveredSessionIfAvailable(for: gameId)
         setActiveContext(recoveredState, source: .localLedgerState)
+        onRequestExpanded?()
         selectionStatus = "Recovered latest game rev\(recoveredState.rev)"
         setLastError(nil)
+    }
+
+    func requiresTranscriptReconnect(_ gameId: String) -> Bool {
+        if stateSessionsByGameId[gameId] != nil {
+            return false
+        }
+        if
+            let selected = activeConversation?.selectedMessage,
+            selected.session != nil,
+            gameIdEncodedInMessage(selected) == gameId
+        {
+            return false
+        }
+        return gameLedgerStore.latestState(for: gameId) != nil
     }
 
     func canResendRecoveredGame(_ gameId: String) -> Bool {
@@ -2025,7 +2051,8 @@ final class LobbyDriverViewModel: ObservableObject {
                     state: unchangedState,
                     actor: actor
                 ),
-                sessionPolicy: .state(gameId: unchangedState.gameId)
+                sessionPolicy: .state(gameId: unchangedState.gameId),
+                permitsRecoverySessionStart: true
             )
             setActiveContext(unchangedState, source: .lastSentState)
             selectionStatus = "Resent unchanged game state rev\(unchangedState.rev)"
@@ -2220,22 +2247,6 @@ final class LobbyDriverViewModel: ObservableObject {
             refreshRecoveredGames()
         }
         setLastError(nil)
-    }
-
-    private func restoreLocalLedgerStateIfAvailable(
-        trigger: TranscriptSelectionTrigger
-    ) -> Bool {
-        guard allowsLocalLedgerStateRecovery else {
-            return false
-        }
-        guard let ledgerState = localLedgerState() else {
-            return false
-        }
-
-        setActiveContext(ledgerState, source: .localLedgerState)
-        selectionStatus = "Restored local ledger game rev\(ledgerState.rev)"
-        setLastError(nil)
-        return true
     }
 
     private func cacheLocalLedgerStateRecord(_ data: Data) {
@@ -2571,7 +2582,8 @@ final class LobbyDriverViewModel: ObservableObject {
         _ envelope: EnvelopeV1,
         bubbleCopy: TranscriptBubbleCopy,
         sessionPolicy: TranscriptSessionPolicy,
-        postPublishEffect: PostPublishEffect = .none
+        postPublishEffect: PostPublishEffect = .none,
+        permitsRecoverySessionStart: Bool = false
     ) throws {
         #if DEBUG
         if uxTestingIsActive {
@@ -2591,7 +2603,10 @@ final class LobbyDriverViewModel: ObservableObject {
             caption: bubbleCopy.caption,
             summaryLabel: bubbleCopy.summary,
             image: bubbleImage,
-            session: session(for: sessionPolicy),
+            session: try session(
+                for: sessionPolicy,
+                permitsRecoverySessionStart: permitsRecoverySessionStart
+            ),
             sessionPolicy: sessionPolicy
         )
         let localLedgerStateRecord = localLedgerStateRecord(from: envelope)
@@ -2641,6 +2656,7 @@ final class LobbyDriverViewModel: ObservableObject {
         conversation.send(message) { [weak self] error in
             Task { @MainActor in
                 guard let self else { return }
+                self.isSendingInvite = false
                 if let error {
                     self.setLastError("Publish failed: \(error.localizedDescription)")
                 } else {
@@ -2980,24 +2996,84 @@ final class LobbyDriverViewModel: ObservableObject {
         return "Malformed game payload."
     }
 
-    private func session(for policy: TranscriptSessionPolicy) -> MSSession {
+    private func session(
+        for policy: TranscriptSessionPolicy,
+        permitsRecoverySessionStart: Bool
+    ) throws -> MSSession {
         switch policy {
         case .new:
             return MSSession()
         case let .state(gameId):
             let selected = activeConversation?.selectedMessage
-            let selectedGameId = selectedTranscriptGameId
-            let cached = stateSessionsByGameId[gameId]
-            let preferredSession = TranscriptTransportSupport.preferredStateSession(
+            let selectedGameId = selected.flatMap(gameIdEncodedInMessage)
+            let binding = TranscriptRecoverySessionBinding.resolve(
                 gameId: gameId,
-                selectedMessage: selected,
-                selectedGameId: selectedGameId,
-                cachedSession: cached
+                selectedMessageGameId: selectedGameId,
+                hasSelectedMessageSession: selected?.session != nil,
+                hasCachedSession: stateSessionsByGameId[gameId] != nil
             )
 
-            stateSessionsByGameId[gameId] = preferredSession
-            return preferredSession
+            switch binding {
+            case .cached:
+                guard let cached = stateSessionsByGameId[gameId] else {
+                    throw SendError.recoverySessionUnbound
+                }
+                return cached
+            case .selectedMessage:
+                guard let selectedSession = selected?.session else {
+                    throw SendError.recoverySessionUnbound
+                }
+                stateSessionsByGameId[gameId] = selectedSession
+                unboundRecoveredGameIds.remove(gameId)
+                return selectedSession
+            case .unbound:
+                guard TranscriptRecoverySessionBinding.permitsNewSession(
+                    isMarkedRecoveryUnbound: unboundRecoveredGameIds.contains(gameId),
+                    isExplicitReconnect: permitsRecoverySessionStart
+                ) else {
+                    throw SendError.recoverySessionUnbound
+                }
+                let newSession = MSSession()
+                stateSessionsByGameId[gameId] = newSession
+                unboundRecoveredGameIds.remove(gameId)
+                return newSession
+            }
         }
+    }
+
+    private func bindRecoveredSessionIfAvailable(for gameId: String) {
+        let selected = activeConversation?.selectedMessage
+        let selectedGameId = selected.flatMap(gameIdEncodedInMessage)
+        let binding = TranscriptRecoverySessionBinding.resolve(
+            gameId: gameId,
+            selectedMessageGameId: selectedGameId,
+            hasSelectedMessageSession: selected?.session != nil,
+            hasCachedSession: stateSessionsByGameId[gameId] != nil
+        )
+
+        switch binding {
+        case .cached:
+            unboundRecoveredGameIds.remove(gameId)
+        case .selectedMessage:
+            if let selectedSession = selected?.session {
+                stateSessionsByGameId[gameId] = selectedSession
+                unboundRecoveredGameIds.remove(gameId)
+            }
+        case .unbound:
+            unboundRecoveredGameIds.insert(gameId)
+        }
+    }
+
+    private func gameIdEncodedInMessage(_ message: MSMessage) -> String? {
+        guard
+            let encoded = payloadValue(from: message),
+            let envelope = try? decode(encoded.payload),
+            case let .state(payload) = envelope.body,
+            let state = try? decodePayload(CoreGameStateV1.self, from: payload)
+        else {
+            return nil
+        }
+        return state.gameId
     }
 
     private enum ActiveContextSource {
@@ -3066,6 +3142,7 @@ final class LobbyDriverViewModel: ObservableObject {
         case noActiveConversation
         case invalidJSONPayload
         case invalidIntentPayload
+        case recoverySessionUnbound
 
         var errorDescription: String? {
             switch self {
@@ -3075,6 +3152,8 @@ final class LobbyDriverViewModel: ObservableObject {
                 return "Could not create JSON payload string."
             case .invalidIntentPayload:
                 return "Intent payload is missing required fields."
+            case .recoverySessionUnbound:
+                return "Reconnect this game to the chat from Your Games before making a move."
             }
         }
     }

@@ -3408,6 +3408,38 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Gameplay Recovery - Saved Games Restored After Messages Relaunch")
     }
 
+    func testDrawerRelaunchStartsFreshLobbyWithoutDiscardingSavedGames() throws {
+        openUnluckySevensExtension()
+        loadRecoveryGamesSlice()
+
+        messages.terminate()
+        reopenUnluckySevensAfterMessagesTermination()
+
+        XCTAssertTrue(
+            messages.staticTexts["uls.lobby.inviteTitle"].firstMatch.waitForExistence(timeout: 8),
+            "Opening from the app drawer must start at the fresh invitation lobby."
+        )
+        XCTAssertEqual(
+            messages.staticTexts["uls.lobby.inviteTitle"].firstMatch.label,
+            "Invite Friends to Table"
+        )
+        let freshLobbyEvidence = gameplayActionEvidenceValue()
+        XCTAssertTrue(
+            freshLobbyEvidence.contains("game=-") && freshLobbyEvidence.contains("phase=-"),
+            "A locally saved game must not become the active canonical context on drawer entry."
+        )
+
+        openGamesLibraryFromCurrentSurface()
+        XCTAssertGreaterThanOrEqual(
+            messages.buttons.matching(
+                NSPredicate(format: "label BEGINSWITH %@", "Actions for")
+            ).count,
+            2,
+            "Fresh drawer entry must not discard games that remain available through Your Games."
+        )
+        attachScreenshot(named: "Drawer Relaunch - Fresh Lobby With Saved Games")
+    }
+
     func testRecoveryResendAndResignationContinuesJourney() throws {
         openUnluckySevensExtension()
         loadRecoveryGamesSlice()

@@ -121,7 +121,11 @@ Internal authoring actions must still be anchored to the current canonical base 
 
 The Messages UX uses one `MSSession` per game for canonical `STATE` updates so the main game bubble stays grouped across lobby, setup, turn play, responder actions, and game over.
 
-Session continuity is an in-memory host adaptation, not canonical persistence. Recovery publication reuses the selected same-game or cached in-memory `MSSession` when available. If extension restart leaves neither available, it deliberately starts a fresh recovery bubble; persisted `MSSession` archival is prohibited until a two-device replacement experiment proves it reliable.
+Session continuity is an in-memory host adaptation, not canonical persistence. Recovery binds only a decoded selected same-game session or a cached in-memory `MSSession`; it never borrows a mismatched bubble. If extension restart leaves neither available, the recovered game is read-only until the player explicitly chooses **Reconnect to Chat**, which starts a fresh recovery bubble. Persisted `MSSession` archival is prohibited until a two-device replacement experiment proves it reliable.
+
+A game opened from Your Games enters the same active-game observation path as a selected bubble: it requests the expanded host, and a valid newer same-game `didReceive` advances the canonical context and ledger. The originally selected `MSMessage` remains only a selection/hydration input because Apple does not update `selectedMessage` when later messages arrive.
+
+Apple may present a selected Messages bubble using transcript presentation, especially on iPad. That host mounts a compact summary bridge with an explicit **Open Game** request; the full Lobby/Game shells mount only in the normal compact or expanded extension canvas. Transcript presentation is therefore never treated as a scaled gameplay viewport.
 
 The local per-game ledger stores validated canonical snapshots independently of the compact wire representation. Higher revisions win; valid equal-revision siblings converge on the lexicographically greatest state hash. Active records persist until local archive, while only the eight most recently updated finished games are retained. Archive is device-local and a later valid transcript bubble can recreate the record.
 

@@ -440,3 +440,13 @@ struct GameShellLayoutMetrics: Equatable {
         }
     }
 }
+
+enum GameTabletopBoardBudget {
+    static func actionSurfaceReservation(
+        actionSurfaceHeight: CGFloat,
+        sectionSpacing: CGFloat,
+        isGameOver: Bool
+    ) -> CGFloat {
+        isGameOver ? 0 : actionSurfaceHeight + sectionSpacing
+    }
+}

@@ -6,6 +6,7 @@ struct LobbyCocktailTableView: View {
     let model: LobbyScreenModel
     let settingsSummary: GameSettingsSummary
     let boardStrategy: BoardGenStrategyV1
+    let isSendingInvite: Bool
     @Binding var displayNameDraft: String
     let canSaveDisplayName: Bool
     let settings: () -> Void
@@ -22,60 +23,73 @@ struct LobbyCocktailTableView: View {
                 .ignoresSafeArea()
 
             GeometryReader { proxy in
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 0) {
-                        brandHeader
+                ViewThatFits(in: .vertical) {
+                    lobbyContent(availableSize: proxy.size)
 
-                        inviteTitle
-                            .padding(.top, 20)
-                            .padding(.bottom, 14)
-
-                        CocktailLobbyTableScene(model: model, boardStrategy: boardStrategy)
-                            .frame(
-                                height: dynamicTypeSize.isAccessibilitySize
-                                    ? 400
-                                    : min(320, max(280, proxy.size.height * 0.40))
-                            )
-
-                        lobbyOptions
-
-                        Spacer(minLength: 24)
-
-                        if model.showsInviteEntryHero, model.nameEditor != nil {
-                            compactEntryName
-                                .frame(maxWidth: 320)
-                        } else if let editor = model.nameEditor {
-                            LobbyInviteNameField(
-                                editor: editor,
-                                displayName: $displayNameDraft,
-                                canSaveDisplayName: canSaveDisplayName,
-                                saveDisplayName: saveDisplayName
-                            )
-                            .frame(maxWidth: 320)
-                        }
-
-                        if let action = primaryAction {
-                            LobbyInvitePrimaryButton(model: action.model, action: action.perform)
-                                .frame(maxWidth: 320)
-                                .padding(.top, GameTheme.blockSpacing)
-                        }
-
-                        if !model.helperText.isEmpty {
-                            Text(model.helperText)
-                                .font(GameTheme.metaFont)
-                                .foregroundStyle(LobbyInvitePalette.mutedPaper.opacity(0.78))
-                                .multilineTextAlignment(.center)
-                                .padding(.top, GameTheme.inlineSpacing)
-                        }
+                    ScrollView(.vertical, showsIndicators: false) {
+                        lobbyContent(availableSize: proxy.size)
                     }
-                    .frame(minHeight: max(0, proxy.size.height - 36), alignment: .top)
-                    .padding(.horizontal, 20)
-                    .padding(.top, GameTheme.inlineSpacing)
-                    .padding(.bottom, 12)
+                    .scrollBounceBehavior(.basedOnSize)
                 }
             }
         }
         .accessibilityIdentifier("uls.lobby.tableSurface")
+    }
+
+    private func lobbyContent(availableSize: CGSize) -> some View {
+        VStack(spacing: 0) {
+            brandHeader
+
+            inviteTitle
+                .padding(.top, 20)
+                .padding(.bottom, 14)
+
+            CocktailLobbyTableScene(model: model, boardStrategy: boardStrategy)
+                .frame(
+                    height: dynamicTypeSize.isAccessibilitySize
+                        ? 400
+                        : min(320, max(280, availableSize.height * 0.40))
+                )
+
+            lobbyOptions
+
+            Spacer(minLength: 24)
+
+            if model.showsInviteEntryHero, model.nameEditor != nil {
+                compactEntryName
+                    .frame(maxWidth: 320)
+            } else if let editor = model.nameEditor {
+                LobbyInviteNameField(
+                    editor: editor,
+                    displayName: $displayNameDraft,
+                    canSaveDisplayName: canSaveDisplayName,
+                    saveDisplayName: saveDisplayName
+                )
+                .frame(maxWidth: 320)
+            }
+
+            if let action = primaryAction {
+                LobbyInvitePrimaryButton(
+                    model: action.model,
+                    isWorking: isSendingInvite,
+                    action: action.perform
+                )
+                .frame(maxWidth: 320)
+                .padding(.top, GameTheme.blockSpacing)
+            }
+
+            if !model.helperText.isEmpty {
+                Text(model.helperText)
+                    .font(GameTheme.metaFont)
+                    .foregroundStyle(LobbyInvitePalette.mutedPaper.opacity(0.78))
+                    .multilineTextAlignment(.center)
+                    .padding(.top, GameTheme.inlineSpacing)
+            }
+        }
+        .frame(minHeight: max(0, availableSize.height - 36), alignment: .top)
+        .padding(.horizontal, 20)
+        .padding(.top, GameTheme.inlineSpacing)
+        .padding(.bottom, 12)
     }
 
     private var brandHeader: some View {
