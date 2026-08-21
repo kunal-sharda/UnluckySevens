@@ -27,6 +27,7 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 
 ### Removed
 - Removed `ULS_Transport.TurnIntentV1`, transport resource/dev-card action draft helpers, obsolete action-draft transport tests, and the unused summary-payload mirror length field.
+- Removed the unused `BoardTiles` terrain imagesets and uncolored `merchant_ship` catalog asset after source, catalog, and bundle-reference audits; the active tutorial validity, validation circuit-breaker, lobby tutorial-entry, and robber physical-flow plans were archived with their historical evidence.
 
 ### Added
 - Pre-TestFlight transcript bubbles can attach presentation-only images: a deterministic programmatic lobby invite graphic for the first invite, and action-card graphics for setup, turn, and game-over `STATE` publishes.
@@ -36,7 +37,6 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 - XCUITest design-slice harness that drives Messages to the Unlucky Sevens extension and stores invite-slice plus UX Lab screenshots as test attachments.
 - Clean setup gameplay screenshot harness path that loads the setup fixture and hides DEBUG UX Lab chrome before capture.
 - Numbered terrain and wood studies informed the integrated board assets, then were deleted as non-durable iteration history; current visual direction lives in `DESIGN.md` and production assets live under `MessagesExtension/Resources`.
-- Board tile asset catalog imagesets under `MessagesExtension/Resources/Assets.xcassets/BoardTiles/`, exported from pass 10 as one canonical PNG texture per resource for the default theme.
 - `scripts/check-doc-freshness.sh`, `make doc-freshness`, `make build`, and `make practical-gate` as lightweight automation guardrails for owner-doc updates before build/validation.
 - Simulator-first UI sprint workflow documented, with the browser mirror kept as an explicit backup lane and the design-slice harness hardened for Messages app drawer label differences.
 - First invite surface visual reset with a tabletop invitation direction: green felt/table background, ivory paper invite card, compact setup chips, RSVP-style name field, and `Send Invite` CTA.

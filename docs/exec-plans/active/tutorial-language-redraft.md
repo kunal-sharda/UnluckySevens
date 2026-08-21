@@ -54,6 +54,10 @@ Rewrite the full sixteen-step tutorial in a conversational teaching voice whose 
 | behavioral | no | not-applicable | Gameplay rules and state transitions are unchanged |
 <!-- fresh-review:end -->
 
+## Relationship Notes
+
+- Tutorial fixture legality and piece provenance are historical evidence in [Tutorial Piece Validity](../completed/tutorial-piece-validity.md); this plan owns wording and its remaining visual/readability proof only.
+
 ## Living Record
 
 ### Progress

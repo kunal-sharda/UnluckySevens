@@ -48,6 +48,10 @@ Rerun every canonical player-facing Messages screen from newly generated and exp
 | behavioral | no | not-applicable | Production behavior is unchanged; canonical fixture journeys assert their existing behavior |
 <!-- fresh-review:end -->
 
+## Relationship Notes
+
+- The later [Single-Device Gameplay Action Harness](single-device-gameplay-action-harness.md) owns the expanded current-source action/recovery catalog. This plan remains active only for its separate 60-screen catalog and unresolved Trade geometry constraint.
+
 ## Living Record
 
 ### Progress

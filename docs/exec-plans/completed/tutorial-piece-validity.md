@@ -77,5 +77,5 @@ Make every shipping tutorial fixture use a legal Catan piece position. Setup pla
 - `make build` — passed after the sandboxed attempt failed only because Tuist could not write its external cache; the escalated rerun completed canonical generation and the generic simulator MessagesExtension build.
 - `git diff --check` and `make doc-freshness` — passed.
 - Fresh constraint, behavioral, and product/UX reviews — passed.
-- `make completion-gate PLAN=docs/exec-plans/active/tutorial-piece-validity.md` — passed under the standard profile, including contract validation, harness audit, diff hygiene, doc freshness, canonical generation, and generic simulator build.
+- `make completion-gate PLAN=docs/exec-plans/completed/tutorial-piece-validity.md` — passed under the standard profile, including contract validation, harness audit, diff hygiene, doc freshness, canonical generation, and generic simulator build.
 - Remaining work: none for this slice.

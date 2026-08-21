@@ -86,7 +86,7 @@ source_pattern='^((App|MessagesExtension|Packages|Tuist)(/|$)|Project\.swift$|Wo
 workflow_pattern='^(scripts/|\.github/workflows/|Makefile$|Project\.swift$|Workspace\.swift$|Tuist\.swift$|Tuist/)'
 core_transport_pattern='^(Packages/ULS_(CoreGame|Transport)/|MessagesExtension/Sources/Presentation/Transcript|MessagesExtension/Sources/.*Transport)'
 ui_pattern='^(MessagesExtension/Sources/|MessagesExtension/Resources/)'
-design_pattern='^(docs/design/|MessagesExtension/Resources/Assets\.xcassets/BoardTiles/)'
+design_pattern='^docs/design/'
 product_pattern='^(MessagesExtension/Sources/|docs/product-specs/)'
 
 tier1_count="$(count_matching "$tier1_pattern")"

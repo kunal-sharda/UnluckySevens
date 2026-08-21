@@ -72,4 +72,4 @@ Make Game Settings and Tutorial unmistakable destinations in every lobby state w
 
 ## Validation and Outcome
 
-The focused Messages XCUITest passed in 209.697 seconds with zero failures. Its refreshed lobby capture is at `output/lobby-tutorial-entry-2026-08-03/refined-attachments/F413FFCB-73C7-4E4E-8D11-4BB631E2DA3F.png`. Fresh constraint-auditor and product-UX reviews passed with no blockers. `make completion-gate PLAN=docs/exec-plans/active/lobby-tutorial-entry.md` passed under the standard profile.
+The focused Messages XCUITest passed in 209.697 seconds with zero failures. Its refreshed lobby capture is at `output/lobby-tutorial-entry-2026-08-03/refined-attachments/F413FFCB-73C7-4E4E-8D11-4BB631E2DA3F.png`. Fresh constraint-auditor and product-UX reviews passed with no blockers. `make completion-gate PLAN=docs/exec-plans/completed/lobby-tutorial-entry.md` passed under the standard profile.

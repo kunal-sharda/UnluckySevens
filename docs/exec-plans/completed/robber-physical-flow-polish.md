@@ -82,4 +82,4 @@ Migrate ordinary Move Robber and Choose a Victim states out of the hybrid comman
 - Device screenshots inspected at `output/robber-physical-flow-2026-08-02/01-move-robber.png` and `02-choose-player.png`; both show the same mounted-table geometry with no legacy command bar or forced-flow card.
 - `git diff --check` — passed.
 - `make doc-freshness` — passed; affected design, product-flow, QA/UX Lab, and active-plan owners are updated.
-- `make completion-gate PLAN=docs/exec-plans/active/robber-physical-flow-polish.md` — passed under the standard profile (contract, harness audit, diff hygiene, doc freshness, canonical generation, and generic simulator build).
+- `make completion-gate PLAN=docs/exec-plans/completed/robber-physical-flow-polish.md` — passed under the standard profile (contract, harness audit, diff hygiene, doc freshness, canonical generation, and generic simulator build).

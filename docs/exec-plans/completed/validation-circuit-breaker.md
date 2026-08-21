@@ -63,5 +63,5 @@ Prevent focused UI validation from turning into silent, open-ended proof expansi
 - Automated: `make harness-audit` passed; `make doc-freshness` passed; `git diff --check` passed.
 - Product/runtime: intentionally not run because this slice changes documentation-only harness policy.
 - Judgment: not triggered; the user explicitly approved the rule set before implementation.
-- Completion: `make completion-gate PLAN=docs/exec-plans/active/validation-circuit-breaker.md` passed on 2026-08-04.
+- Completion: `make completion-gate PLAN=docs/exec-plans/completed/validation-circuit-breaker.md` passed on 2026-08-04.
 - Remaining: none for this harness correction.

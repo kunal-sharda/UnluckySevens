@@ -10,15 +10,15 @@ This receipt records the 2026-07-10 deletion of the untracked numbered tree-desi
 - Archive created: no. Superseded iterations were deleted as requested.
 - Production source of truth: `MessagesExtension/Resources/Assets.xcassets`.
 
-Before deletion, each selected pass-10 tile export was compared byte-for-byte with its production `BoardTiles` PNG. All six pairs matched. The production hashes recorded before deletion and rechecked after deletion are:
+Before the 2026-08-21 hygiene removal, each selected pass-10 tile export was compared byte-for-byte with the then-production `BoardTiles` PNG. All six pairs matched; these hashes are retained as historical evidence for the removed files:
 
 | Production tile | SHA-256 before | SHA-256 after |
 | --- | --- | --- |
-| `tile_brick.png` | `6cfeda69c57c191985e0791a200194b03167d28d269831a64b8d9b56005e9767` | `6cfeda69c57c191985e0791a200194b03167d28d269831a64b8d9b56005e9767` |
-| `tile_desert.png` | `5836bb620432f930482715f2e65c0cafa2d84eaaee54ae8dd88494afb4bcf432` | `5836bb620432f930482715f2e65c0cafa2d84eaaee54ae8dd88494afb4bcf432` |
-| `tile_ore.png` | `0ede0f1ffd4720d74276dee351f54610736a52558eb67709c1614fd71e5776de` | `0ede0f1ffd4720d74276dee351f54610736a52558eb67709c1614fd71e5776de` |
-| `tile_sheep.png` | `aa731fa17e71497e9da2479120cb265051833690314b099b32ae7f53a6e1c252` | `aa731fa17e71497e9da2479120cb265051833690314b099b32ae7f53a6e1c252` |
-| `tile_wheat.png` | `8182e4650af60ad4c56885e411bc30ad0c878bfbda0fd17af28325af072a8369` | `8182e4650af60ad4c56885e411bc30ad0c878bfbda0fd17af28325af072a8369` |
-| `tile_wood.png` | `0040acb5f67e84694da4218fb0921a4ba7de5f12765447996c3aea078dc71d2b` | `0040acb5f67e84694da4218fb0921a4ba7de5f12765447996c3aea078dc71d2b` |
+| `tile_brick.png` | `6cfeda69c57c191985e0791a200194b03167d28d269831a64b8d9b56005e9767` | removed |
+| `tile_desert.png` | `5836bb620432f930482715f2e65c0cafa2d84eaaee54ae8dd88494afb4bcf432` | removed |
+| `tile_ore.png` | `0ede0f1ffd4720d74276dee351f54610736a52558eb67709c1614fd71e5776de` | removed |
+| `tile_sheep.png` | `aa731fa17e71497e9da2479120cb265051833690314b099b32ae7f53a6e1c252` | removed |
+| `tile_wheat.png` | `8182e4650af60ad4c56885e411bc30ad0c878bfbda0fd17af28325af072a8369` | removed |
+| `tile_wood.png` | `0040acb5f67e84694da4218fb0921a4ba7de5f12765447996c3aea078dc71d2b` | removed |
 
-The current audit also verifies that all six production `BoardTiles` and all six production `BoardStamps` remain present. Future candidates belong in ignored `docs/design/workbench/`; durable binary admission follows `references/manifest.json` and requires explicit user approval.
+The 2026-08-21 audit verified that runtime source and generated bundle inputs reference `BoardStamps`/`BoardMiniStamps`, not `BoardTiles`; all six `BoardTiles` imagesets and the uncolored `merchant_ship` imageset were removed. Future candidates belong in ignored `docs/design/workbench/`; durable binary admission follows `references/manifest.json` and requires explicit user approval.

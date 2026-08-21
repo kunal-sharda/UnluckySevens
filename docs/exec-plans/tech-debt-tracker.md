@@ -130,11 +130,9 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - Resolved: 2026-07-26.
 - Links: [TranscriptGameLedger.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/TranscriptGameLedger.swift), [Messages host lessons](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/messages-host.md)
 
-### TD-016 — Board-art owner docs and runtime asset usage disagree
+### TD-016 — Resolved: superseded board-art assets removed
 
 - Area: board assets, design source of truth, repository hygiene
-- Why it matters: `DESIGN.md` and the durable cleanup receipt identify `BoardTiles` as production terrain assets, while the current runtime renderer loads `BoardStamps` and `BoardMiniStamps`; the six `tile_*` images have no discovered runtime reference.
-- Current cost or risk: agents cannot safely decide whether the binary tiles are protected production inputs or superseded baggage, so cleanup can either delete approved art or preserve unused assets and stale documentation indefinitely.
-- Proposed fix shape: make one explicit design decision based on the installed production board: either restore `BoardTiles` as the renderer input, or declare the stamp-based board canonical, update `DESIGN.md` and the cleanup receipt, and remove superseded tile and uncolored merchant-ship assets after reference and installed-bundle verification.
-- When to address: immediately after the current visual checkpoint, before aggressive asset cleanup or phase 15 decomposition.
-- Links: [DESIGN.md](/Users/kunalsharda/Documents/Code/UnluckySevens/DESIGN.md), [GameBoardTileArt.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Board/GameBoardTileArt.swift), [cleanup receipt](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/design/cleanup-receipt.md)
+- Resolution: source and generated-catalog searches found no runtime consumer for `BoardTiles` or the uncolored `merchant_ship`; the renderer uses `BoardStamps`/`BoardMiniStamps` and `merchant_ship_colored`. The six tile imagesets and uncolored ship imageset were removed from the extension catalog after the installed-bundle/reference audit.
+- Resolved: 2026-08-21.
+- Links: [GameBoardTileArt.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Board/GameBoardTileArt.swift), [cleanup receipt](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/design/cleanup-receipt.md), [maintainability forgiveness program](active/maintainability-forgiveness-program.md)
