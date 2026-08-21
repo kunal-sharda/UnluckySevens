@@ -7,35 +7,22 @@ struct LiveGameBoardCanvasView: View {
     let interactionMode: GameMode
     let showsIntegratedFrame: Bool
     let contentVerticalOffset: CGFloat
-    let frozenBoardImage: UIImage?
     let bottomOcclusionHeight: CGFloat
     let reloadToken: Int
     let onInteractionChanged: ((Bool) -> Void)?
-    let onResizeFreezeChanged: ((BoardResizeFreezeState) -> Void)?
-    let onFreezeRecoveryReloadRequested: ((String) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
     var body: some View {
         GeometryReader { geometry in
-            Group {
-                    if let frozenBoardImage {
-                        Image(uiImage: frozenBoardImage)
-                            .resizable()
-                            .scaledToFill()
-                    } else {
-                        BoardSceneView(
-                            renderModel: renderModel,
-                            overlayModel: overlayModel,
-                            interactionMode: interactionMode,
-                            bottomOcclusionHeight: bottomOcclusionHeight,
-                            reloadToken: reloadToken,
-                            onInteractionChanged: onInteractionChanged,
-                            onResizeFreezeChanged: onResizeFreezeChanged,
-                            onFreezeRecoveryReloadRequested: onFreezeRecoveryReloadRequested,
-                            onTargetTap: onTargetTap
-                        )
-                    }
-                }
+            BoardSceneView(
+                renderModel: renderModel,
+                overlayModel: overlayModel,
+                interactionMode: interactionMode,
+                bottomOcclusionHeight: bottomOcclusionHeight,
+                reloadToken: reloadToken,
+                onInteractionChanged: onInteractionChanged,
+                onTargetTap: onTargetTap
+            )
                 .offset(y: contentVerticalOffset)
                 .frame(maxWidth: .infinity)
                 .frame(height: geometry.size.height)
@@ -49,5 +36,4 @@ struct LiveGameBoardCanvasView: View {
             )
         }
     }
-
 }

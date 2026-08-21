@@ -10,12 +10,9 @@ struct BoardContainerView: View {
     let hintBottomInset: CGFloat
     let showsCreamFrame: Bool
     let boardContentVerticalOffset: CGFloat
-    let frozenBoardImage: UIImage?
     var bottomOcclusionHeight: CGFloat = 0
     let reloadToken: Int
     let onInteractionChanged: ((Bool) -> Void)?
-    let onResizeFreezeChanged: ((BoardResizeFreezeState) -> Void)?
-    let onFreezeRecoveryReloadRequested: ((String) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
     private var shouldShowBoardHeader: Bool {
@@ -94,12 +91,9 @@ struct BoardContainerView: View {
                     interactionMode: interactionMode,
                     showsIntegratedFrame: showsCreamFrame,
                     contentVerticalOffset: boardContentVerticalOffset,
-                    frozenBoardImage: frozenBoardImage,
                     bottomOcclusionHeight: bottomOcclusionHeight,
                     reloadToken: reloadToken,
                     onInteractionChanged: onInteractionChanged,
-                    onResizeFreezeChanged: onResizeFreezeChanged,
-                    onFreezeRecoveryReloadRequested: onFreezeRecoveryReloadRequested,
                     onTargetTap: onTargetTap
                 )
             } else {

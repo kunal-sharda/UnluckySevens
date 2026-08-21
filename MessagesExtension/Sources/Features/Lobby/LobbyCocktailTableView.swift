@@ -445,8 +445,6 @@ private struct CocktailTableTop: View {
                 bottomOcclusionHeight: 0,
                 reloadToken: 0,
                 onInteractionChanged: nil,
-                onResizeFreezeChanged: nil,
-                onFreezeRecoveryReloadRequested: nil,
                 onTargetTap: nil
             )
             .allowsHitTesting(false)

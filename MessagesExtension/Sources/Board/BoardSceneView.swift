@@ -9,8 +9,6 @@ struct BoardSceneView: View, Equatable {
     let bottomOcclusionHeight: CGFloat
     let reloadToken: Int
     let onInteractionChanged: ((Bool) -> Void)?
-    let onResizeFreezeChanged: ((BoardResizeFreezeState) -> Void)?
-    let onFreezeRecoveryReloadRequested: ((String) -> Void)?
     let onTargetTap: ((GameBoardTarget) -> Void)?
 
     @State private var scene = GameBoardScene(size: CGSize(width: 320, height: 240))

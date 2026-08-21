@@ -382,14 +382,9 @@ struct GameShellView: View {
                                 boardContentVerticalOffset: isPhysicalSetup
                                     ? 0
                                     : physicalBoardCenteringOffset,
-                                frozenBoardImage: nil,
                                 bottomOcclusionHeight: boardBottomOcclusionHeight,
                                 reloadToken: viewModel.boardReloadToken,
                                 onInteractionChanged: nil,
-                                onResizeFreezeChanged: nil,
-                                onFreezeRecoveryReloadRequested: { detail in
-                                    viewModel.requestBoardReload(detail: detail)
-                                },
                                 onTargetTap: { target in
                                     handleBoardTap(target, mode: resolvedMode)
                                 }
