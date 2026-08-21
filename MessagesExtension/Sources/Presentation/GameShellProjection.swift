@@ -1,88 +1,28 @@
 import ULS_CoreGame
 
 struct GameShellProjection: Equatable {
-    var kind: String
-    var gameId: String
-    var rev: String
-    var prevHash: String
-    var stateHash: String
-    var roster: String
-    var currentPlayer: String
-    var phase: String
-    var seed: String
-    var diceRngState: String
-    var turnStep: String
-    var lastRoll: String
-    var pendingDiscardRequirements: String
-    var submittedDiscardsStatus: String
-    var robberMoveReadiness: String
-    var eligibleStealVictims: String
-    var remainingPieces: String
-    var activeTradeOffer: String
-    var tradeResponses: String
-    var maritimeTradePreview: String
-    var largestArmyStatus: String
-    var longestRoadStatus: String
-    var victoryPointsSummary: String
-    var gameOverSummary: String
-    var lastTurnRecapSummary: String
-    var boardHash: String
-    var boardGenerator: String
-    var boardRobberTile: String
-    var boardResourcesByTile: String
-    var boardNumbersByTile: String
-    var boardPortsByIndex: String
-    var visibleHands: String
-    var bankResources: String
-    var devDeckRemaining: String
-    var visibleDevCards: String
-    var setupPlacement: String
-    var turnIntent: String
-    var gameScreenModel: GameScreenModel
-    var setupPlacementModel: GameSetupPlacementModel?
-    var setupGuidanceText: String?
-    var discardPanelModel: GameDiscardPanelModel?
-    var robberVictimOptions: [GameRobberVictimOption]
-    var tradePanelModel: GameTradePanelModel?
+    let gameId: String
+    let rev: String
+    let stateHash: String
+    let currentPlayer: String
+    let phase: String
+    let turnStep: String
+    let lastTurnRecapSummary: String
+    let gameScreenModel: GameScreenModel
+    let setupPlacementModel: GameSetupPlacementModel?
+    let setupGuidanceText: String?
+    let discardPanelModel: GameDiscardPanelModel?
+    let robberVictimOptions: [GameRobberVictimOption]
+    let tradePanelModel: GameTradePanelModel?
 
     static let empty = GameShellProjection(
-        kind: "-",
         gameId: "-",
         rev: "-",
-        prevHash: "-",
         stateHash: "-",
-        roster: "-",
         currentPlayer: "-",
         phase: "-",
-        seed: "-",
-        diceRngState: "-",
         turnStep: "-",
-        lastRoll: "-",
-        pendingDiscardRequirements: "-",
-        submittedDiscardsStatus: "-",
-        robberMoveReadiness: "-",
-        eligibleStealVictims: "-",
-        remainingPieces: "-",
-        activeTradeOffer: "-",
-        tradeResponses: "-",
-        maritimeTradePreview: "-",
-        largestArmyStatus: "-",
-        longestRoadStatus: "-",
-        victoryPointsSummary: "-",
-        gameOverSummary: "-",
         lastTurnRecapSummary: "-",
-        boardHash: "-",
-        boardGenerator: "-",
-        boardRobberTile: "-",
-        boardResourcesByTile: "-",
-        boardNumbersByTile: "-",
-        boardPortsByIndex: "-",
-        visibleHands: "-",
-        bankResources: "-",
-        devDeckRemaining: "-",
-        visibleDevCards: "-",
-        setupPlacement: "-",
-        turnIntent: "-",
         gameScreenModel: GameScreenModelBuilder.build(
             context: GameScreenContext(
                 selectedState: nil,
@@ -100,6 +40,60 @@ struct GameShellProjection: Equatable {
         tradePanelModel: nil
     )
 }
+
+#if DEBUG
+struct GameShellProjectionDiagnostics: Equatable {
+    let kind, gameId, rev, prevHash, stateHash, roster, currentPlayer, phase: String
+    let seed, diceRngState, turnStep, lastRoll: String
+    let pendingDiscardRequirements, submittedDiscardsStatus, robberMoveReadiness, eligibleStealVictims: String
+    let remainingPieces, activeTradeOffer, tradeResponses, maritimeTradePreview: String
+    let largestArmyStatus, longestRoadStatus, victoryPointsSummary, gameOverSummary, lastTurnRecapSummary: String
+    let boardHash, boardGenerator, boardRobberTile, boardResourcesByTile, boardNumbersByTile, boardPortsByIndex: String
+    let visibleHands, bankResources, devDeckRemaining, visibleDevCards, setupPlacement, turnIntent: String
+
+    static let empty = GameShellProjectionDiagnostics(
+        kind: "-", gameId: "-", rev: "-", prevHash: "-", stateHash: "-", roster: "-", currentPlayer: "-", phase: "-", seed: "-", diceRngState: "-", turnStep: "-", lastRoll: "-", pendingDiscardRequirements: "-", submittedDiscardsStatus: "-", robberMoveReadiness: "-", eligibleStealVictims: "-", remainingPieces: "-", activeTradeOffer: "-", tradeResponses: "-", maritimeTradePreview: "-", largestArmyStatus: "-", longestRoadStatus: "-", victoryPointsSummary: "-", gameOverSummary: "-", lastTurnRecapSummary: "-", boardHash: "-", boardGenerator: "-", boardRobberTile: "-", boardResourcesByTile: "-", boardNumbersByTile: "-", boardPortsByIndex: "-", visibleHands: "-", bankResources: "-", devDeckRemaining: "-", visibleDevCards: "-", setupPlacement: "-", turnIntent: "-"
+    )
+}
+
+enum GameShellProjectionDiagnosticsBuilder {
+    static func build(state: CoreGameStateV1?, actingAs: String?) -> GameShellProjectionDiagnostics {
+        guard let state else { return .empty }
+        return GameShellProjectionDiagnostics(
+            kind: "STATE", gameId: state.gameId, rev: String(state.rev),
+            prevHash: state.prevHash ?? "nil", stateHash: state.stateHash,
+            roster: state.roster.joined(separator: ", "), currentPlayer: state.currentPlayer,
+            phase: state.phase.rawValue, seed: state.seed.map(String.init) ?? "nil",
+            diceRngState: state.diceRngState.map(String.init) ?? "nil",
+            turnStep: state.turnState?.step.rawValue ?? "nil",
+            lastRoll: state.turnState?.lastRoll.map { "\($0.d1)+\($0.d2)" } ?? "nil",
+            pendingDiscardRequirements: GameShellProjectionBuilder.discardRequirementsSummary(for: state.turnState),
+            submittedDiscardsStatus: GameShellProjectionBuilder.discardSubmissionSummary(for: state.turnState),
+            robberMoveReadiness: GameShellProjectionBuilder.robberReadinessSummary(for: state.turnState),
+            eligibleStealVictims: GameShellProjectionBuilder.stealVictimsSummary(for: state.turnState),
+            remainingPieces: GameShellProjectionBuilder.remainingPiecesSummary(for: state),
+            activeTradeOffer: GameShellProjectionBuilder.activeTradeOfferSummary(for: state),
+            tradeResponses: GameShellProjectionBuilder.tradeResponsesSummary(for: state),
+            maritimeTradePreview: GameShellProjectionBuilder.maritimeTradeSummary(for: state, actingAs: actingAs),
+            largestArmyStatus: GameShellProjectionBuilder.largestArmySummary(for: state),
+            longestRoadStatus: GameShellProjectionBuilder.longestRoadSummary(for: state),
+            victoryPointsSummary: GameShellProjectionBuilder.vpSummary(for: state),
+            gameOverSummary: GameShellProjectionBuilder.gameOverStateSummary(for: state),
+            lastTurnRecapSummary: GameShellProjectionBuilder.recapSummary(for: state),
+            boardHash: state.board?.boardHash ?? "-", boardGenerator: state.board?.generator.rawValue ?? "-",
+            boardRobberTile: state.board.map { String($0.robberTile) } ?? "-",
+            boardResourcesByTile: state.board?.resourcesByTile.enumerated().map { "\($0.offset): \($0.element.rawValue)" }.joined(separator: ", ") ?? "-",
+            boardNumbersByTile: state.board?.numbersByTile.enumerated().map { "\($0.offset): \($0.element.map(String.init) ?? "nil")" }.joined(separator: ", ") ?? "-",
+            boardPortsByIndex: state.board?.portsByIndex.enumerated().map { "\($0.offset): \(GameShellProjectionBuilder.portKindDescription($0.element))" }.joined(separator: ", ") ?? "-",
+            visibleHands: GameShellProjectionBuilder.visibleHandsSummary(for: state, actingAs: actingAs),
+            bankResources: GameShellProjectionBuilder.resourceHandDescription(state.bankResources),
+            devDeckRemaining: String(state.devDeck.count),
+            visibleDevCards: GameShellProjectionBuilder.visibleDevCardsSummary(for: state, actingAs: actingAs),
+            setupPlacement: "-", turnIntent: "-"
+        )
+    }
+}
+#endif
 
 enum GameShellProjectionBuilder {
     static func build(
@@ -123,43 +117,13 @@ enum GameShellProjectionBuilder {
 
         guard let state else {
             return GameShellProjection(
-                kind: "-",
                 gameId: "-",
                 rev: "-",
-                prevHash: "-",
                 stateHash: "-",
-                roster: "-",
                 currentPlayer: "-",
                 phase: "-",
-                seed: "-",
-                diceRngState: "-",
                 turnStep: "-",
-                lastRoll: "-",
-                pendingDiscardRequirements: "-",
-                submittedDiscardsStatus: "-",
-                robberMoveReadiness: "-",
-                eligibleStealVictims: "-",
-                remainingPieces: "-",
-                activeTradeOffer: "-",
-                tradeResponses: "-",
-                maritimeTradePreview: "-",
-                largestArmyStatus: "-",
-                longestRoadStatus: "-",
-                victoryPointsSummary: "-",
-                gameOverSummary: "-",
                 lastTurnRecapSummary: "-",
-                boardHash: "-",
-                boardGenerator: "-",
-                boardRobberTile: "-",
-                boardResourcesByTile: "-",
-                boardNumbersByTile: "-",
-                boardPortsByIndex: "-",
-                visibleHands: "-",
-                bankResources: "-",
-                devDeckRemaining: "-",
-                visibleDevCards: "-",
-                setupPlacement: "-",
-                turnIntent: "-",
                 gameScreenModel: screenModel,
                 setupPlacementModel: nil,
                 setupGuidanceText: nil,
@@ -170,49 +134,13 @@ enum GameShellProjectionBuilder {
         }
 
         return GameShellProjection(
-            kind: "STATE",
             gameId: state.gameId,
             rev: String(state.rev),
-            prevHash: state.prevHash ?? "nil",
             stateHash: state.stateHash,
-            roster: state.roster.joined(separator: ", "),
             currentPlayer: state.currentPlayer,
             phase: state.phase.rawValue,
-            seed: state.seed.map(String.init) ?? "nil",
-            diceRngState: state.diceRngState.map(String.init) ?? "nil",
             turnStep: state.turnState?.step.rawValue ?? "nil",
-            lastRoll: state.turnState?.lastRoll.map { "\($0.d1)+\($0.d2)" } ?? "nil",
-            pendingDiscardRequirements: discardRequirementsSummary(for: state.turnState),
-            submittedDiscardsStatus: discardSubmissionSummary(for: state.turnState),
-            robberMoveReadiness: robberReadinessSummary(for: state.turnState),
-            eligibleStealVictims: stealVictimsSummary(for: state.turnState),
-            remainingPieces: remainingPiecesSummary(for: state),
-            activeTradeOffer: activeTradeOfferSummary(for: state),
-            tradeResponses: tradeResponsesSummary(for: state),
-            maritimeTradePreview: maritimeTradeSummary(for: state, actingAs: actingAs),
-            largestArmyStatus: largestArmySummary(for: state),
-            longestRoadStatus: longestRoadSummary(for: state),
-            victoryPointsSummary: vpSummary(for: state),
-            gameOverSummary: gameOverStateSummary(for: state),
-            lastTurnRecapSummary: recapSummary(for: state),
-            boardHash: state.board?.boardHash ?? "-",
-            boardGenerator: state.board?.generator.rawValue ?? "-",
-            boardRobberTile: state.board.map { String($0.robberTile) } ?? "-",
-            boardResourcesByTile: state.board?.resourcesByTile.enumerated()
-                .map { "\($0.offset): \($0.element.rawValue)" }
-                .joined(separator: ", ") ?? "-",
-            boardNumbersByTile: state.board?.numbersByTile.enumerated()
-                .map { "\($0.offset): \($0.element.map(String.init) ?? "nil")" }
-                .joined(separator: ", ") ?? "-",
-            boardPortsByIndex: state.board?.portsByIndex.enumerated()
-                .map { "\($0.offset): \(portKindDescription($0.element))" }
-                .joined(separator: ", ") ?? "-",
-            visibleHands: visibleHandsSummary(for: state, actingAs: actingAs),
-            bankResources: resourceHandDescription(state.bankResources),
-            devDeckRemaining: String(state.devDeck.count),
-            visibleDevCards: visibleDevCardsSummary(for: state, actingAs: actingAs),
-            setupPlacement: "-",
-            turnIntent: "-",
+            lastTurnRecapSummary: GameShellProjectionBuilder.recapSummary(for: state),
             gameScreenModel: screenModel,
             setupPlacementModel: GameSetupPlacementModelBuilder.build(
                 state: state,
@@ -238,7 +166,7 @@ enum GameShellProjectionBuilder {
         )
     }
 
-    private static func maritimeTradeSummary(
+    static func maritimeTradeSummary(
         for state: CoreGameStateV1,
         actingAs: String?
     ) -> String {
@@ -254,7 +182,7 @@ enum GameShellProjectionBuilder {
         return "give: \(resourceHandDescription(maritime.give)) receive: \(resourceHandDescription(maritime.receive)) ratio: \(maritime.ratio):1"
     }
 
-    private static func visibleHandsSummary(
+    static func visibleHandsSummary(
         for state: CoreGameStateV1,
         actingAs: String?
     ) -> String {
@@ -268,7 +196,7 @@ enum GameShellProjectionBuilder {
             .joined(separator: " | ")
     }
 
-    private static func visibleDevCardsSummary(
+    static func visibleDevCardsSummary(
         for state: CoreGameStateV1,
         actingAs: String?
     ) -> String {
@@ -284,15 +212,15 @@ enum GameShellProjectionBuilder {
             .joined(separator: " | ")
     }
 
-    private static func resourceHandDescription(_ hand: ResourceHandV1) -> String {
+    static func resourceHandDescription(_ hand: ResourceHandV1) -> String {
         "w:\(hand.wood), b:\(hand.brick), s:\(hand.sheep), wh:\(hand.wheat), o:\(hand.ore)"
     }
 
-    private static func devCardInventoryDescription(_ inventory: DevCardInventoryV1) -> String {
+    static func devCardInventoryDescription(_ inventory: DevCardInventoryV1) -> String {
         "k:\(inventory.knight), m:\(inventory.monopoly), yop:\(inventory.yearOfPlenty), rb:\(inventory.roadBuilding), vp:\(inventory.victoryPoint)"
     }
 
-    private static func discardRequirementsSummary(for turnState: TurnStateV1?) -> String {
+    static func discardRequirementsSummary(for turnState: TurnStateV1?) -> String {
         guard let turnState else {
             return "-"
         }
@@ -304,7 +232,7 @@ enum GameShellProjectionBuilder {
         }.joined(separator: ", ")
     }
 
-    private static func discardSubmissionSummary(for turnState: TurnStateV1?) -> String {
+    static func discardSubmissionSummary(for turnState: TurnStateV1?) -> String {
         guard let turnState else {
             return "-"
         }
@@ -317,7 +245,7 @@ enum GameShellProjectionBuilder {
         return "\(submittedCount)/\(requiredCount) [\(submittedPlayers)]"
     }
 
-    private static func robberReadinessSummary(for turnState: TurnStateV1?) -> String {
+    static func robberReadinessSummary(for turnState: TurnStateV1?) -> String {
         guard let turnState else {
             return "-"
         }
@@ -331,7 +259,7 @@ enum GameShellProjectionBuilder {
         }
     }
 
-    private static func stealVictimsSummary(for turnState: TurnStateV1?) -> String {
+    static func stealVictimsSummary(for turnState: TurnStateV1?) -> String {
         guard let turnState else {
             return "-"
         }
@@ -341,7 +269,7 @@ enum GameShellProjectionBuilder {
         return turnState.eligibleStealVictims.sorted().joined(separator: ", ")
     }
 
-    private static func remainingPiecesSummary(for state: CoreGameStateV1) -> String {
+    static func remainingPiecesSummary(for state: CoreGameStateV1) -> String {
         state.roster.map { player in
             let roadsUsed = state.roadsByEdge.values.filter { $0 == player }.count
             let settlementsUsed = state.settlementsByNode.values.filter { $0 == player }.count
@@ -350,7 +278,7 @@ enum GameShellProjectionBuilder {
         }.joined(separator: " | ")
     }
 
-    private static func activeTradeOfferSummary(for state: CoreGameStateV1) -> String {
+    static func activeTradeOfferSummary(for state: CoreGameStateV1) -> String {
         guard let offer = state.activeTradeOffer else {
             return "none"
         }
@@ -359,7 +287,7 @@ enum GameShellProjectionBuilder {
         return "\(offer.proposer) \(resourceHandDescription(offer.give)) -> \(resourceHandDescription(offer.receive)) to [\(recipients)] [\(shortHash)]"
     }
 
-    private static func tradeResponsesSummary(for state: CoreGameStateV1) -> String {
+    static func tradeResponsesSummary(for state: CoreGameStateV1) -> String {
         if state.tradeResponses.isEmpty {
             return "none"
         }
@@ -380,23 +308,23 @@ enum GameShellProjectionBuilder {
             .joined(separator: ", ")
     }
 
-    private static func largestArmySummary(for state: CoreGameStateV1) -> String {
+    static func largestArmySummary(for state: CoreGameStateV1) -> String {
         let owner = state.largestArmyOwner ?? "none"
         return "\(owner) (\(state.largestArmySize))"
     }
 
-    private static func longestRoadSummary(for state: CoreGameStateV1) -> String {
+    static func longestRoadSummary(for state: CoreGameStateV1) -> String {
         let owner = state.longestRoadOwner ?? "none"
         return "\(owner) (\(state.longestRoadLength))"
     }
 
-    private static func vpSummary(for state: CoreGameStateV1) -> String {
+    static func vpSummary(for state: CoreGameStateV1) -> String {
         state.roster
             .map { "\($0):\(victoryPoints(for: $0, in: state))" }
             .joined(separator: " | ")
     }
 
-    private static func gameOverStateSummary(for state: CoreGameStateV1) -> String {
+    static func gameOverStateSummary(for state: CoreGameStateV1) -> String {
         guard state.phase == .gameOver else {
             return "no"
         }
@@ -404,7 +332,7 @@ enum GameShellProjectionBuilder {
         return "winner: \(winner) vp: \(state.winningVictoryPoints)"
     }
 
-    private static func recapSummary(for state: CoreGameStateV1) -> String {
+    static func recapSummary(for state: CoreGameStateV1) -> String {
         guard let recap = state.lastTurnRecap else {
             return "none"
         }
@@ -413,7 +341,7 @@ enum GameShellProjectionBuilder {
         return "actor: \(recap.actor) rev: \(recap.startRev)-\(recap.endRev) roll: \(roll) actions: \(actions)"
     }
 
-    private static func portKindDescription(_ kind: PortKindV1) -> String {
+    static func portKindDescription(_ kind: PortKindV1) -> String {
         switch kind {
         case .threeToOne:
             return "3:1"
@@ -421,5 +349,4 @@ enum GameShellProjectionBuilder {
             return "2:1 \(resource.rawValue)"
         }
     }
-
 }

@@ -7,6 +7,9 @@ import ULS_Transport
 @MainActor
 final class LobbyDriverViewModel: ObservableObject {
     @Published private(set) var gameplayShellProjection: GameShellProjection = .empty
+    #if DEBUG
+    @Published private(set) var gameplayShellDiagnostics: GameShellProjectionDiagnostics = .empty
+    #endif
     @Published var lastError: String = "-"
     @Published var activeContextSource: String = "-"
     @Published var staleContextWarning: String = "-"
@@ -102,25 +105,26 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     var uxTestingGameplayEvidence: String {
-        [
-            "game=\(gameId)",
-            "rev=\(rev)",
-            "phase=\(phase)",
+        let diagnostics = gameplayShellDiagnostics
+        return [
+            "game=\(diagnostics.gameId)",
+            "rev=\(diagnostics.rev)",
+            "phase=\(diagnostics.phase)",
             "winner=\(selectedState?.winnerPlayer ?? "-")",
             "winningVP=\(selectedState?.winningVictoryPoints ?? 0)",
-            "step=\(gameplayShellProjection.turnStep)",
-            "current=\(currentPlayer)",
-            "hash=\(stateHash)",
-            "hand=\(visibleHands)",
-            "dev=\(visibleDevCards)",
-            "pieces=\(remainingPieces)",
-            "discard=\(gameplayShellProjection.pendingDiscardRequirements)",
-            "submitted=\(gameplayShellProjection.submittedDiscardsStatus)",
-            "robber=\(gameplayShellProjection.boardRobberTile)",
-            "victims=\(gameplayShellProjection.eligibleStealVictims)",
-            "setup=\(gameplayShellProjection.setupPlacement)",
-            "trade=\(gameplayShellProjection.activeTradeOffer)",
-            "responses=\(gameplayShellProjection.tradeResponses)",
+            "step=\(diagnostics.turnStep)",
+            "current=\(diagnostics.currentPlayer)",
+            "hash=\(diagnostics.stateHash)",
+            "hand=\(diagnostics.visibleHands)",
+            "dev=\(diagnostics.visibleDevCards)",
+            "pieces=\(diagnostics.remainingPieces)",
+            "discard=\(diagnostics.pendingDiscardRequirements)",
+            "submitted=\(diagnostics.submittedDiscardsStatus)",
+            "robber=\(diagnostics.boardRobberTile)",
+            "victims=\(diagnostics.eligibleStealVictims)",
+            "setup=\(diagnostics.setupPlacement)",
+            "trade=\(diagnostics.activeTradeOffer)",
+            "responses=\(diagnostics.tradeResponses)",
             "status=\(selectionStatus)",
             "error=\(lastError)",
             "rawError=\(uxTestingLastRawError)",
@@ -429,163 +433,6 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
     #endif
-
-    private func mutateGameplayShellProjection(
-        _ mutate: (inout GameShellProjection) -> Void
-    ) {
-        var projection = gameplayShellProjection
-        mutate(&projection)
-        gameplayShellProjection = projection
-    }
-
-    var kind: String {
-        get { gameplayShellProjection.kind }
-        set { mutateGameplayShellProjection { $0.kind = newValue } }
-    }
-    var gameId: String {
-        get { gameplayShellProjection.gameId }
-        set { mutateGameplayShellProjection { $0.gameId = newValue } }
-    }
-    var rev: String {
-        get { gameplayShellProjection.rev }
-        set { mutateGameplayShellProjection { $0.rev = newValue } }
-    }
-    var prevHash: String {
-        get { gameplayShellProjection.prevHash }
-        set { mutateGameplayShellProjection { $0.prevHash = newValue } }
-    }
-    var stateHash: String {
-        get { gameplayShellProjection.stateHash }
-        set { mutateGameplayShellProjection { $0.stateHash = newValue } }
-    }
-    var roster: String {
-        get { gameplayShellProjection.roster }
-        set { mutateGameplayShellProjection { $0.roster = newValue } }
-    }
-    var currentPlayer: String {
-        get { gameplayShellProjection.currentPlayer }
-        set { mutateGameplayShellProjection { $0.currentPlayer = newValue } }
-    }
-    var phase: String {
-        get { gameplayShellProjection.phase }
-        set { mutateGameplayShellProjection { $0.phase = newValue } }
-    }
-    var seed: String {
-        get { gameplayShellProjection.seed }
-        set { mutateGameplayShellProjection { $0.seed = newValue } }
-    }
-    var diceRngState: String {
-        get { gameplayShellProjection.diceRngState }
-        set { mutateGameplayShellProjection { $0.diceRngState = newValue } }
-    }
-    var turnStep: String {
-        get { gameplayShellProjection.turnStep }
-        set { mutateGameplayShellProjection { $0.turnStep = newValue } }
-    }
-    var lastRoll: String {
-        get { gameplayShellProjection.lastRoll }
-        set { mutateGameplayShellProjection { $0.lastRoll = newValue } }
-    }
-    var pendingDiscardRequirements: String {
-        get { gameplayShellProjection.pendingDiscardRequirements }
-        set { mutateGameplayShellProjection { $0.pendingDiscardRequirements = newValue } }
-    }
-    var submittedDiscardsStatus: String {
-        get { gameplayShellProjection.submittedDiscardsStatus }
-        set { mutateGameplayShellProjection { $0.submittedDiscardsStatus = newValue } }
-    }
-    var robberMoveReadiness: String {
-        get { gameplayShellProjection.robberMoveReadiness }
-        set { mutateGameplayShellProjection { $0.robberMoveReadiness = newValue } }
-    }
-    var eligibleStealVictims: String {
-        get { gameplayShellProjection.eligibleStealVictims }
-        set { mutateGameplayShellProjection { $0.eligibleStealVictims = newValue } }
-    }
-    var remainingPieces: String {
-        get { gameplayShellProjection.remainingPieces }
-        set { mutateGameplayShellProjection { $0.remainingPieces = newValue } }
-    }
-    var activeTradeOffer: String {
-        get { gameplayShellProjection.activeTradeOffer }
-        set { mutateGameplayShellProjection { $0.activeTradeOffer = newValue } }
-    }
-    var tradeResponses: String {
-        get { gameplayShellProjection.tradeResponses }
-        set { mutateGameplayShellProjection { $0.tradeResponses = newValue } }
-    }
-    var maritimeTradePreview: String {
-        get { gameplayShellProjection.maritimeTradePreview }
-        set { mutateGameplayShellProjection { $0.maritimeTradePreview = newValue } }
-    }
-    var largestArmyStatus: String {
-        get { gameplayShellProjection.largestArmyStatus }
-        set { mutateGameplayShellProjection { $0.largestArmyStatus = newValue } }
-    }
-    var longestRoadStatus: String {
-        get { gameplayShellProjection.longestRoadStatus }
-        set { mutateGameplayShellProjection { $0.longestRoadStatus = newValue } }
-    }
-    var victoryPointsSummary: String {
-        get { gameplayShellProjection.victoryPointsSummary }
-        set { mutateGameplayShellProjection { $0.victoryPointsSummary = newValue } }
-    }
-    var gameOverSummary: String {
-        get { gameplayShellProjection.gameOverSummary }
-        set { mutateGameplayShellProjection { $0.gameOverSummary = newValue } }
-    }
-    var lastTurnRecapSummary: String {
-        get { gameplayShellProjection.lastTurnRecapSummary }
-        set { mutateGameplayShellProjection { $0.lastTurnRecapSummary = newValue } }
-    }
-    var boardHash: String {
-        get { gameplayShellProjection.boardHash }
-        set { mutateGameplayShellProjection { $0.boardHash = newValue } }
-    }
-    var boardGenerator: String {
-        get { gameplayShellProjection.boardGenerator }
-        set { mutateGameplayShellProjection { $0.boardGenerator = newValue } }
-    }
-    var boardRobberTile: String {
-        get { gameplayShellProjection.boardRobberTile }
-        set { mutateGameplayShellProjection { $0.boardRobberTile = newValue } }
-    }
-    var boardResourcesByTile: String {
-        get { gameplayShellProjection.boardResourcesByTile }
-        set { mutateGameplayShellProjection { $0.boardResourcesByTile = newValue } }
-    }
-    var boardNumbersByTile: String {
-        get { gameplayShellProjection.boardNumbersByTile }
-        set { mutateGameplayShellProjection { $0.boardNumbersByTile = newValue } }
-    }
-    var boardPortsByIndex: String {
-        get { gameplayShellProjection.boardPortsByIndex }
-        set { mutateGameplayShellProjection { $0.boardPortsByIndex = newValue } }
-    }
-    var visibleHands: String {
-        get { gameplayShellProjection.visibleHands }
-        set { mutateGameplayShellProjection { $0.visibleHands = newValue } }
-    }
-    var bankResources: String {
-        get { gameplayShellProjection.bankResources }
-        set { mutateGameplayShellProjection { $0.bankResources = newValue } }
-    }
-    var devDeckRemaining: String {
-        get { gameplayShellProjection.devDeckRemaining }
-        set { mutateGameplayShellProjection { $0.devDeckRemaining = newValue } }
-    }
-    var visibleDevCards: String {
-        get { gameplayShellProjection.visibleDevCards }
-        set { mutateGameplayShellProjection { $0.visibleDevCards = newValue } }
-    }
-    var setupPlacement: String {
-        get { gameplayShellProjection.setupPlacement }
-        set { mutateGameplayShellProjection { $0.setupPlacement = newValue } }
-    }
-    var turnIntent: String {
-        get { gameplayShellProjection.turnIntent }
-        set { mutateGameplayShellProjection { $0.turnIntent = newValue } }
-    }
 
     var canInvite: Bool {
         activeConversation != nil
@@ -2331,189 +2178,35 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func updateGameplayShellProjection(_ projection: GameShellProjection) {
-        guard gameplayShellProjection != projection else {
-            return
+        if gameplayShellProjection != projection {
+            gameplayShellProjection = projection
         }
-        gameplayShellProjection = projection
-    }
-
-    private func shortIdentifier(_ value: String) -> String {
-        String(value.prefix(8))
     }
 
     private func render(state: CoreGameStateV1, source: TranscriptPayloadSource) {
         selectionStatus = "Decoded game rev\(state.rev) via \(source.label)"
+        let actor = localActorIdentifier()
         updateGameplayShellProjection(
             GameShellProjectionBuilder.build(
                 state: state,
-                actingAs: localActorIdentifier(),
+                actingAs: actor,
                 actionAvailability: shellActionAvailability,
                 modeAvailability: shellModeAvailability
             )
         )
+        #if DEBUG
+        gameplayShellDiagnostics = GameShellProjectionDiagnosticsBuilder.build(
+            state: state,
+            actingAs: actor
+        )
+        #endif
     }
 
     private func resetDisplayedFields() {
         updateGameplayShellProjection(.empty)
-    }
-
-    private func visibleHandsSummary(for state: CoreGameStateV1) -> String {
-        state.visibleResourceHands(for: localActorIdentifier())
-            .map { playerView in
-                if let revealedHand = playerView.revealedHand {
-                    return "\(playerView.player): \(resourceHandDescription(revealedHand))"
-                }
-                return "\(playerView.player): \(playerView.totalCount)"
-            }
-            .joined(separator: " | ")
-    }
-
-    private func visibleDevCardsSummary(for state: CoreGameStateV1) -> String {
-        state.visibleDevCards(for: localActorIdentifier())
-            .map { playerView in
-                if let playable = playerView.revealedPlayable,
-                   let newCards = playerView.revealedNew
-                {
-                    return "\(playerView.player): \(devCardInventoryDescription(playable))/new:\(devCardInventoryDescription(newCards))"
-                }
-                return "\(playerView.player): \(playerView.totalCount)"
-            }
-            .joined(separator: " | ")
-    }
-
-    private func resourceHandDescription(_ hand: ResourceHandV1) -> String {
-        "w:\(hand.wood), b:\(hand.brick), s:\(hand.sheep), wh:\(hand.wheat), o:\(hand.ore)"
-    }
-
-    private func devCardInventoryDescription(_ inventory: DevCardInventoryV1) -> String {
-        "k:\(inventory.knight), m:\(inventory.monopoly), yop:\(inventory.yearOfPlenty), rb:\(inventory.roadBuilding), vp:\(inventory.victoryPoint)"
-    }
-
-    private func discardRequirementsSummary(for turnState: TurnStateV1?) -> String {
-        guard let turnState else {
-            return "-"
-        }
-        if turnState.discardRequirementsByPlayer.isEmpty {
-            return "none"
-        }
-        return turnState.discardRequirementsByPlayer.keys.sorted().map { player in
-            "\(player):\(turnState.discardRequirementsByPlayer[player] ?? 0)"
-        }.joined(separator: ", ")
-    }
-
-    private func discardSubmissionSummary(for turnState: TurnStateV1?) -> String {
-        guard let turnState else {
-            return "-"
-        }
-        let requiredCount = turnState.discardRequirementsByPlayer.count
-        let submittedCount = turnState.submittedDiscardsByPlayer.count
-        if requiredCount == 0 {
-            return "0/0"
-        }
-        let submittedPlayers = turnState.submittedDiscardsByPlayer.keys.sorted().joined(separator: ",")
-        return "\(submittedCount)/\(requiredCount) [\(submittedPlayers)]"
-    }
-
-    private func robberReadinessSummary(for turnState: TurnStateV1?) -> String {
-        guard let turnState else {
-            return "-"
-        }
-        switch turnState.step {
-        case .needsRobberMove:
-            return "ready"
-        case .pendingDiscards:
-            return "waiting"
-        default:
-            return "n/a"
-        }
-    }
-
-    private func stealVictimsSummary(for turnState: TurnStateV1?) -> String {
-        guard let turnState else {
-            return "-"
-        }
-        if turnState.eligibleStealVictims.isEmpty {
-            return "none"
-        }
-        return turnState.eligibleStealVictims.sorted().joined(separator: ", ")
-    }
-
-    private func remainingPiecesSummary(for state: CoreGameStateV1) -> String {
-        state.roster.map { player in
-            let roadsUsed = state.roadsByEdge.values.filter { $0 == player }.count
-            let settlementsUsed = state.settlementsByNode.values.filter { $0 == player }.count
-            let citiesUsed = state.citiesByNode.values.filter { $0 == player }.count
-            return "\(player):R\(max(0, 15 - roadsUsed))/S\(max(0, 5 - settlementsUsed))/C\(max(0, 4 - citiesUsed))"
-        }.joined(separator: " | ")
-    }
-
-    private func activeTradeOfferSummary(for state: CoreGameStateV1) -> String {
-        guard let offer = state.activeTradeOffer else {
-            return "none"
-        }
-        let shortHash = String(offer.offerHash.prefix(8))
-        return "\(offer.proposer) \(resourceHandDescription(offer.give)) -> \(resourceHandDescription(offer.receive)) [\(shortHash)]"
-    }
-
-    private func tradeResponsesSummary(for state: CoreGameStateV1) -> String {
-        if state.tradeResponses.isEmpty {
-            return "none"
-        }
-        return state.tradeResponses
-            .sorted { lhs, rhs in
-                if lhs.respondingPlayer == rhs.respondingPlayer {
-                    return lhs.kind.rawValue < rhs.kind.rawValue
-                }
-                return lhs.respondingPlayer < rhs.respondingPlayer
-            }
-            .map { "\($0.respondingPlayer):\($0.kind.rawValue)" }
-            .joined(separator: ", ")
-    }
-
-    private func maritimeTradeSummary(for state: CoreGameStateV1) -> String {
-        guard
-            state.phase == .turn,
-            state.turnState?.step == .afterRoll,
-            let actor = localActorIdentifier(),
-            actor == state.currentPlayer,
-            let maritime = defaultMaritimeTrade(for: actor, from: state)
-        else {
-            return "none"
-        }
-        return "give: \(resourceHandDescription(maritime.give)) receive: \(resourceHandDescription(maritime.receive)) ratio: \(maritime.ratio):1"
-    }
-
-    private func largestArmySummary(for state: CoreGameStateV1) -> String {
-        let owner = state.largestArmyOwner ?? "none"
-        return "\(owner) (\(state.largestArmySize))"
-    }
-
-    private func longestRoadSummary(for state: CoreGameStateV1) -> String {
-        let owner = state.longestRoadOwner ?? "none"
-        return "\(owner) (\(state.longestRoadLength))"
-    }
-
-    private func vpSummary(for state: CoreGameStateV1) -> String {
-        state.roster
-            .map { "\($0):\(victoryPoints(for: $0, in: state))" }
-            .joined(separator: " | ")
-    }
-
-    private func gameOverStateSummary(for state: CoreGameStateV1) -> String {
-        guard state.phase == .gameOver else {
-            return "no"
-        }
-        let winner = state.winnerPlayer ?? "none"
-        return "winner: \(winner) vp: \(state.winningVictoryPoints)"
-    }
-
-    private func recapSummary(for state: CoreGameStateV1) -> String {
-        guard let recap = state.lastTurnRecap else {
-            return "none"
-        }
-        let actions = recap.actions.map(\.rawValue).joined(separator: "->")
-        let roll = recap.rollTotal.map(String.init) ?? "n/a"
-        return "actor: \(recap.actor) rev: \(recap.startRev)-\(recap.endRev) roll: \(roll) actions: \(actions)"
+        #if DEBUG
+        gameplayShellDiagnostics = .empty
+        #endif
     }
 
     private func canPublishNamedDevCardState(

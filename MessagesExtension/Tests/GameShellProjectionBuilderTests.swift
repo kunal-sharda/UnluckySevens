@@ -25,15 +25,35 @@ final class GameShellProjectionBuilderTests: XCTestCase {
             contextMeta: "meta"
         )
 
-        XCTAssertEqual(projection.kind, "STATE")
+        XCTAssertEqual(projection.gameId, state.gameId)
+        XCTAssertEqual(projection.phase, PhaseV1.turn.rawValue)
         XCTAssertEqual(projection.gameScreenModel.header.statusLine.title, "Your turn")
         XCTAssertNotNil(projection.gameScreenModel.boardRenderModel)
         XCTAssertNil(projection.setupGuidanceText)
         XCTAssertNil(projection.discardPanelModel)
         XCTAssertTrue(projection.robberVictimOptions.isEmpty)
         XCTAssertEqual(projection.tradePanelModel?.roleTitle, "Trade")
-        XCTAssertEqual(projection.boardHash, state.board?.boardHash)
-        XCTAssertEqual(projection.visibleHands, "A: w:2, b:1, s:1, wh:1, o:1 | B: 0")
+        let diagnostics = GameShellProjectionDiagnosticsBuilder.build(state: state, actingAs: "A")
+        XCTAssertEqual(
+            projection,
+            GameShellProjectionBuilder.build(
+                state: state,
+                actingAs: "A",
+                actionAvailability: .none,
+                modeAvailability: .none,
+                contextBanner: "banner",
+                contextMeta: "meta"
+            )
+        )
+        XCTAssertEqual(
+            diagnostics,
+            GameShellProjectionDiagnosticsBuilder.build(state: state, actingAs: "A")
+        )
+        XCTAssertEqual(diagnostics.kind, "STATE")
+        XCTAssertEqual(diagnostics.gameId, projection.gameId)
+        XCTAssertEqual(diagnostics.phase, projection.phase)
+        XCTAssertEqual(diagnostics.boardHash, state.board?.boardHash)
+        XCTAssertEqual(diagnostics.visibleHands, "A: w:2, b:1, s:1, wh:1, o:1 | B: 0")
     }
 
     func testBuildStateProjectionKeepsTradePanelStateDrivenAndDiscardPanelStateDriven() throws {
