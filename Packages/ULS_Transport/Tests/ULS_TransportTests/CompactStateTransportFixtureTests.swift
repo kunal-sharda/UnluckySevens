@@ -3,7 +3,7 @@ import XCTest
 @testable import ULS_Transport
 
 final class CompactStateTransportFixtureTests: XCTestCase {
-    func testCompactStateV4FixtureRemainsByteIdentical() throws {
+    func testCompactStateV4FixtureRemainsSchemaIdentical() throws {
         let encodedPayload = try CompactStateTransport.encode(fixtureState)
         XCTAssertEqual(
             try canonicalJSONBytes(encodedPayload),

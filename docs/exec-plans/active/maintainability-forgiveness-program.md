@@ -79,6 +79,9 @@ The validation circuit breaker applies: a harness failure receives only the boun
 - 2026-08-21: Read-only parallel mapping found Core, Transport, and hygiene safe to implement independently; shared test-support extraction and extension decomposition must remain sequential because they overlap `Project.swift` and extension source ownership.
 - 2026-08-21: Baseline Core tests (139), MessagesExtension tests (324), canonical generation, diff hygiene, and doc freshness passed with zero failures.
 - 2026-08-21: Checkpointed the completed Core debt-forgiveness slice and compact fresh-launch slice as separate commits before beginning new structural work.
+- 2026-08-21: Integrated the Core rules-primitives/audit split after 139 tests, removed dead resize-freeze plumbing, and precomputed immutable `GameBoardLayout` geometry; the post-change 324-test extension lane passed.
+- 2026-08-21: Moved the unchanged compact-state codec implementation into `ULS_Transport`, added captured compact/raw compatibility fixtures, and passed the seven-test Transport package lane.
+- 2026-08-21: Removed the superseded `BoardTiles` catalog and uncolored merchant ship, made `BoardStamps`/`BoardMiniStamps` explicit in owner docs, and archived four plans whose own completion contracts were terminal.
 
 ### Decisions
 
@@ -90,6 +93,7 @@ The validation circuit breaker applies: a harness failure receives only the boun
 
 - 2026-08-21: The current dirty tree contains two coherent slices with one file overlap: Core cost/topology forgiveness and compact fresh-launch/TestFlight work. They will be checkpointed separately.
 - 2026-08-21: Transport codec relocation can run beside Core work, but shared test-target extraction must follow Transport integration and share one extension owner.
+- 2026-08-21: JSON object-key order from Foundation encoding is not a stable golden-byte fixture across processes. Compatibility is therefore proved by the 99%-similarity source move, an unchanged encoder implementation, canonical compact-schema fixture equality, and legacy compact/raw decode fixtures; production encoding was not changed merely to make key ordering deterministic.
 
 ## Doc Freshness Ownership
 
