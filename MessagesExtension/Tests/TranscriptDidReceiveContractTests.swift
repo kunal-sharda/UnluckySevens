@@ -35,6 +35,57 @@ final class TranscriptDidReceiveContractTests: XCTestCase {
         )
     }
 
+    func testSelectionPollCannotRestorePreviouslySelectedGameOverRecoveredGame() {
+        XCTAssertEqual(
+            TranscriptDidReceiveContract.disposition(
+                trigger: .selectionPoll,
+                incomingGameId: "previous-game",
+                currentGameId: "recovered-game"
+            ),
+            .storeForRecoveryOnly
+        )
+    }
+
+    func testSelectionPollCanRefreshRecoveredGameWhenIdentifiersMatch() {
+        XCTAssertEqual(
+            TranscriptDidReceiveContract.disposition(
+                trigger: .selectionPoll,
+                incomingGameId: "recovered-game",
+                currentGameId: "recovered-game"
+            ),
+            .applyToActiveContext
+        )
+    }
+
+    func testYourGamesSwitchSequenceKeepsRecoveredGameLive() {
+        let recoveredGame = "recovered-game"
+
+        XCTAssertEqual(
+            TranscriptDidReceiveContract.disposition(
+                trigger: .selectionPoll,
+                incomingGameId: "previously-selected-game",
+                currentGameId: recoveredGame
+            ),
+            .storeForRecoveryOnly
+        )
+        XCTAssertEqual(
+            TranscriptDidReceiveContract.disposition(
+                trigger: .didReceive,
+                incomingGameId: recoveredGame,
+                currentGameId: recoveredGame
+            ),
+            .applyToActiveContext
+        )
+        XCTAssertEqual(
+            TranscriptDidReceiveContract.disposition(
+                trigger: .didReceive,
+                incomingGameId: "unrelated-game",
+                currentGameId: recoveredGame
+            ),
+            .storeForRecoveryOnly
+        )
+    }
+
     func testNonDidReceiveTriggersStillAllowExplicitContextSwitches() {
         XCTAssertEqual(
             TranscriptDidReceiveContract.disposition(

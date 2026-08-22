@@ -31,6 +31,7 @@ final class LobbyDriverViewModel: ObservableObject {
     private weak var activeConversation: MSConversation?
     var onRequestDismiss: (() -> Void)?
     var onRequestExpanded: (() -> Void)?
+    var onRequestSelectionWatch: ((MSConversation) -> Void)?
     private var selectedState: CoreGameStateV1?
     private var selectionStatus: String = "No message selected"
     private var latestKnownStatesByGameId: [String: CoreGameStateV1] = [:]
@@ -1846,6 +1847,9 @@ final class LobbyDriverViewModel: ObservableObject {
 
         bindRecoveredSessionIfAvailable(for: gameId)
         setActiveContext(recoveredState, source: .localLedgerState)
+        if let activeConversation {
+            onRequestSelectionWatch?(activeConversation)
+        }
         onRequestExpanded?()
         selectionStatus = "Recovered latest game rev\(recoveredState.rev)"
         setLastError(nil)

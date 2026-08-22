@@ -18,7 +18,10 @@ enum TranscriptDidReceiveContract {
         incomingGameId: String?,
         currentGameId: String?
     ) -> TranscriptDidReceiveDisposition {
-        guard trigger == .didReceive else {
+        // didReceive and selectionPoll are implicit host observations. Neither may
+        // replace a game the player explicitly opened from Your Games. Bubble
+        // selection and initial hydration remain explicit context switches.
+        guard trigger == .didReceive || trigger == .selectionPoll else {
             return .applyToActiveContext
         }
 

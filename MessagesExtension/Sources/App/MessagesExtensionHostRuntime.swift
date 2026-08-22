@@ -35,6 +35,9 @@ public final class MessagesExtensionHostRuntime {
         viewModel.onRequestExpanded = { [weak self] in
             self?.requestExpanded?()
         }
+        viewModel.onRequestSelectionWatch = { [weak self] conversation in
+            self?.startSelectionPolling(conversation: conversation)
+        }
     }
 
     public func configureHostCallbacks(
@@ -165,7 +168,7 @@ public final class MessagesExtensionHostRuntime {
             selectedMessage: selectedMessage,
             trigger: trigger
         )
-        if shouldContinuePolling {
+        if shouldContinuePolling || viewModel.shouldMaintainSelectionWatch {
             startSelectionPolling(conversation: conversation)
         } else {
             cancelSelectionPolling()
