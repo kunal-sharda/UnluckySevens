@@ -2,7 +2,7 @@ import Combine
 import Foundation
 import Messages
 import ULS_CoreGame
-import ULS_Transport
+@_spi(CompactState) import ULS_Transport
 
 @MainActor
 final class LobbyDriverViewModel: ObservableObject {

@@ -38,21 +38,21 @@ Retire the confirmed structural debt from the 2026-08-21 maintainability review 
 <!-- verification-contract:start -->
 | ID | Class | Source | Acceptance | Verification | Evidence | Status | Rationale |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| MFP-001 | behavioral | user decisions | Resize shield, host measurement, canonical board fit, tutorial, compact entrance, live board identity, and named evidence surfaces behave exactly as before | existing focused tests, full extension unit lane, source inspection, and behavioral review | pending | pending | Retained defensive behavior must survive cleanup |
-| MFP-002 | mechanical | user decisions | Dead freeze plumbing, duplicate layout calculations, unused `BoardTiles`, and unused uncolored merchant-ship asset are absent without bundle/reference regressions | targeted source/bundle scans, generated build, and extension tests | pending | pending | Removal is allowed only for proven dead or duplicate paths |
-| MFP-003 | architecture | TD-004 and user decisions | `compactStateV4` lives in Transport with byte-identical fixtures; testable extension sources compile through one shared library target rather than duplicate target membership | Transport fixture tests, project inspection, generation, extension tests, and architecture review | pending | pending | Ownership changes must preserve protocol compatibility |
-| MFP-004 | behavioral | user decisions | Game selection watch is lifecycle-cancellable and retains same-game, newer-state-only, explicit-switch, and non-authoritative polling semantics | focused state-transition tests and behavioral review | pending | pending | Cancellation must never become a state mutation |
-| MFP-005 | architecture | user decisions | `GameShellView`, lobby orchestration, projection diagnostics, recovery orchestration, and DEBUG harness are decomposed by responsibility without introducing alternate state or rules authority | source structure inspection, existing state/recovery tests, extension lane, and architecture review | pending | pending | Decomposition is justified by separable responsibilities, not line count |
-| MFP-006 | behavioral | user decisions | Core reducer/validation internals are organized by rules domain, shared only at immutable definitions/math boundaries, and retain deterministic outcomes plus independent cross-checking | Core package suite and behavioral review | pending | pending | Refactoring must not collapse defense-in-depth |
-| MFP-007 | mechanical | repo workflow | Debt tracker, changelog, active-plan archive state, generation, diff hygiene, doc freshness, and completion gate are current | owner-doc inspection and prescribed repository commands | pending | pending | Durable status must live in owner docs rather than chat |
+| MFP-001 | behavioral | user decisions | Resize shield, host measurement, canonical board fit, tutorial, compact entrance, live board identity, and named evidence surfaces behave exactly as before | existing focused tests, full extension unit lane, source inspection, and behavioral review | command:MessagesExtensionTests-336-pass; report:behavioral-pass | pass | Retained defensive behavior survived cleanup |
+| MFP-002 | mechanical | user decisions | Dead freeze plumbing, duplicate layout calculations, unused `BoardTiles`, and unused uncolored merchant-ship asset are absent without bundle/reference regressions | targeted source/bundle scans, generated build, and extension tests | inspection:removed-symbol-and-asset-scans-clean; command:gen-and-extension-lane-pass | pass | Removed paths are absent and retained assets still build |
+| MFP-003 | architecture | TD-004 and user decisions | `compactStateV4` lives in Transport with byte-identical fixtures; testable extension sources compile through one shared library target rather than duplicate target membership | Transport fixture tests, project inspection, generation, extension tests, and architecture review | command:ULS_Transport-7-pass; inspection:static-support-single-source-and-release-package; report:architecture-pass | pass | Protocol compatibility and single ownership are verified |
+| MFP-004 | behavioral | user decisions | Game selection watch is lifecycle-cancellable and retains same-game, newer-state-only, explicit-switch, and non-authoritative polling semantics | focused state-transition tests and behavioral review | command:selection-watch-tests-in-336-pass; report:behavioral-pass | pass | Cancellation is generation-gated and remains non-authoritative |
+| MFP-005 | architecture | user decisions | `GameShellView`, lobby orchestration, projection diagnostics, recovery orchestration, and DEBUG harness are decomposed by responsibility without introducing alternate state or rules authority | source structure inspection, existing state/recovery tests, extension lane, and architecture review | inspection:responsibility-and-authority-boundaries; command:recovery-projection-fixture-tests-in-336-pass; report:architecture-pass | pass | Decomposition preserved the existing state and rules owners |
+| MFP-006 | behavioral | user decisions | Core reducer/validation internals are organized by rules domain, shared only at immutable definitions/math boundaries, and retain deterministic outcomes plus independent cross-checking | Core package suite and behavioral review | command:ULS_CoreGame-139-pass; report:behavioral-pass | pass | Deterministic reducer and independent validation paths remain green |
+| MFP-007 | mechanical | repo workflow | Debt tracker, changelog, active-plan archive state, generation, diff hygiene, doc freshness, and completion gate are current | owner-doc inspection and prescribed repository commands | command:gen-pass; command:diff-check-pass; command:doc-freshness-pass; command:completion-gate-pass | pass | Owner docs and prescribed closure checks are current |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
 | Reviewer | Required | Verdict | Evidence |
 | --- | --- | --- | --- |
-| constraint-auditor | yes | pending | pending |
-| architecture | yes | pending | pending |
-| behavioral | yes | pending | pending |
+| constraint-auditor | yes | pass | Final source/docs audit: MFP-001 through MFP-006 pass; historical Core public API restored; relocated codec is SPI-only |
+| architecture | yes | pass | Static support packaging, thin Apple host, Core/Transport direction, runtime authority, and topology cache all pass |
+| behavioral | yes | pass | Core, codec, selection watch, recovery, board mounting, shell decomposition, diagnostics, and DEBUG fixture behavior all pass |
 | product-ux | no | not-applicable | No UI, copy, accessibility, or visual change is authorized; trigger only if implementation crosses that boundary |
 <!-- fresh-review:end -->
 
@@ -86,6 +86,10 @@ The validation circuit breaker applies: a harness failure receives only the boun
 - 2026-08-21: Split GameShell trade layout/views and pure trade/discard transforms while retaining all shared `@State` and the mounted board in `GameShellView`.
 - 2026-08-21: Made the production shell projection immutable, removed its writable lobby facade and duplicate legacy summary helpers, and moved non-product string formatting to a separate DEBUG diagnostics projection without changing UX evidence keys.
 - 2026-08-21: Added a DEBUG-only game-agnostic fixture descriptor/registry seam while retaining all Catan fixture state, actions, IDs, accessibility contracts, and reducer provenance in the game-specific harness.
+- 2026-08-21: Extracted pure recovery lifecycle policy while leaving conversation publication, ledger/session mutation, UI status, and Core authority in their existing owners; removed the remaining no-caller board reload reconstruction route without touching mounted-board resize settling.
+- 2026-08-21: Replaced duplicated test-source membership with extension-safe static `MessagesExtensionSupport`; the shipping target retains only Apple host/resize-shield glue, tests consume the same compiled implementation, Release embeds no support framework, and the missing-dependency warning is gone.
+- 2026-08-21: Final package lanes passed 139 Core tests and 7 Transport tests; canonical generation passed; the integrated simulator lane passed 336 extension tests with UI tests skipped; the generic Release build and static-support packaging inspection passed.
+- 2026-08-21: Fresh constraint, architecture, and behavioral reviews passed. The constraint audit caught and corrected ordinary-public exposure of the relocated codec while preserving the pre-existing public Core build-cost API.
 
 ### Decisions
 
@@ -103,5 +107,7 @@ The validation circuit breaker applies: a harness failure receives only the boun
 ## Doc Freshness Ownership
 
 - Affected: this active plan, `docs/exec-plans/tech-debt-tracker.md`, `docs/exec-plans/CHANGELOG.md`, and active-plan archive state.
-- Conditionally affected: `ARCHITECTURE.md`, `docs/decisions.md`, and `docs/quality/` only if implementation reveals a durable boundary, decision, or validation-policy fact not already owned there.
-- Intentionally unaffected unless the locked boundary is crossed: product specs, `PRODUCT.md`, and `DESIGN.md`; dated audits remain historical evidence.
+- Updated: `ARCHITECTURE.md` for the Core-dependent Transport codec and static extension-support boundary.
+- Intentionally unaffected: `docs/decisions.md` and `docs/quality/`; no locked decision or validation policy changed.
+- Updated: `DESIGN.md` only to keep the board-art source of truth accurate after removing superseded assets; no visual direction changed.
+- Intentionally unaffected: product specs and `PRODUCT.md`; dated audits remain unchanged historical evidence.

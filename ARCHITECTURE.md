@@ -16,9 +16,10 @@ There are three runtime layers:
 1. `ULS_CoreGame`
    - pure game rules, reducers, validation, board generation, economy, awards, victory, and viewer-safe query helpers
 2. `ULS_Transport`
-   - message envelope encoding/decoding, canonical `STATE` payload transport, hashing helpers, and payload-size handling
+   - message envelope encoding/decoding, canonical `STATE` payload transport, hashing helpers, and payload-size handling; it depends on Core's canonical state schema but no UI framework
 3. `MessagesExtension`
-   - iMessage lifecycle, transcript selection, message send/receive orchestration, and UI rendering
+   - thin iMessage host lifecycle and resize-shield glue
+   - links the static, extension-safe `MessagesExtensionSupport` module that owns transcript selection, message send/receive orchestration, presentation, board rendering, and DEBUG harnesses
 
 The generated app target is a resource-only standalone Messages app bundle that embeds `MessagesExtension`. It exists for installation and TestFlight packaging, but the shipped product surface is only accessible from Messages.
 
@@ -27,8 +28,9 @@ The generated app target is a resource-only standalone Messages app bundle that 
 The dependency rule is strict:
 
 - `ULS_CoreGame` depends on no UI framework and owns gameplay truth
-- `ULS_Transport` depends on no UI framework and owns the protocol boundary
-- `MessagesExtension` consumes both packages and owns the app-extension surface
+- `ULS_Transport` depends on `ULS_CoreGame` state schemas but no UI framework and owns the protocol boundary
+- `MessagesExtensionSupport` consumes both packages and compiles the testable extension implementation once
+- `MessagesExtension` consumes that static support module and owns only the Apple extension host surface and resize shield
 
 `MessagesExtension` may format or present engine state, but it must not become a second rules engine.
 
@@ -83,6 +85,10 @@ Examples:
 - screen state and mode switching
 - SwiftUI and SpriteKit presentation
 - recovery and transcript selection behavior
+
+The shipping controller reaches support code through one narrow SPI host runtime. Unit tests import the same static support module; they do not recompile selected production source files. The static module is linked into the extension and is not embedded as a second runtime framework.
+
+The compact canonical-state codec is likewise an implementation SPI between Transport and extension support, not an ordinary public product API. Transport remains the codec owner while Core remains the canonical schema and rules owner.
 
 The controller is the sole authority for host geometry. SwiftUI consumes one settled
 `MessagesHostLayoutSnapshot`; product routes cannot publish layout revisions. UIKit
@@ -168,4 +174,4 @@ If a feature needs the UI to compute legality or hidden-information policy on it
 
 ## Current Pressure Points
 
-The main architectural pressure is not package shape; it is keeping the growing UI phase from collapsing back into a single monolithic extension file. The next stage should organize `MessagesExtension` internally by feature and presentation responsibility while keeping rules and protocol logic in their current packages.
+The extension now has explicit host, support, feature, presentation, board, recovery-policy, and DEBUG-harness seams. `LobbyDriverViewModel` and `GameShellView` intentionally remain orchestration/state-owner facades; further splits should be driven by independently testable responsibilities, not line count. The remaining render-path work is tracked in TD-007 and should not move rules or transport authority into presentation code.

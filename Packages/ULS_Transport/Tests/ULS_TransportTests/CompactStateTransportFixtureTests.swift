@@ -1,6 +1,6 @@
 import XCTest
 @testable import ULS_CoreGame
-@testable import ULS_Transport
+@_spi(CompactState) import ULS_Transport
 
 final class CompactStateTransportFixtureTests: XCTestCase {
     func testCompactStateV4FixtureRemainsSchemaIdentical() throws {

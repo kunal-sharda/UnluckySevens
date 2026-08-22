@@ -35,22 +35,18 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - When to address: phase 15, unless an urgent visual regression forces an earlier slice.
 - Links: [Phase 11 Plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/completed/phase-11-spritekit-board.md), [QA](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/qa.md)
 
-### TD-003 — `MessagesExtension` still needs feature-level internal decomposition
+### TD-003 — Resolved: `MessagesExtension` feature responsibilities are isolated
 
 - Area: UI architecture
-- Why it matters: the engine boundaries are clean, but the extension target is still vulnerable to becoming monolithic and mixing product authority, transcript recovery, board update coordination, and debug tooling.
-- Current cost or risk: slower UI iteration, board redraw churn, and harder reviewability when host-boundary logic and feature logic live in the same places.
-- Proposed fix shape: split the extension internally by host lifecycle/context recovery, transport adaptation, lobby/game orchestration, board-scene coordination, and debug/operator surfaces. Isolate the required Messages selection watch behind a cancellable lifecycle component instead of leaving its manual polling token and scheduling inside `MessagesViewController`, and migrate presentation ownership away from the catch-all `LobbyDriverViewModel` without changing Core or transport authority.
-- When to address: phase 15.
+- Resolution: the controller now delegates through a narrow host runtime; selection watching is lifecycle-cancellable and generation-gated; GameShell trade/draft presentation, lobby recovery policy, production projection, DEBUG diagnostics, and fixture registry responsibilities have focused seams. The lobby and shell types remain intentional state-owner/orchestration facades, while Core and Transport stay authoritative.
+- Resolved: 2026-08-21.
 - Links: [ARCHITECTURE.md](/Users/kunalsharda/Documents/Code/UnluckySevens/ARCHITECTURE.md), [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift), [MessagesViewController.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/App/MessagesViewController.swift)
 
-### TD-004 — `MessagesExtensionTests` duplicates selected extension sources
+### TD-004 — Resolved: extension and tests share one compiled support module
 
 - Area: build/test architecture
-- Why it matters: Xcode dependency scanning recognizes that the tests import `MessagesExtension`, but Tuist does not allow a direct unit-test dependency on an iMessage extension target in the current project shape.
-- Current cost or risk: the workspace test lane emits a persistent warning, and the duplicated-source setup makes future test architecture changes easier to get wrong.
-- Proposed fix shape: extract the testable presentation/board seams into a shared library target the extension and tests can both depend on, then remove the duplicated extension sources from the test target.
-- When to address: phase 15.
+- Resolution: extension implementation sources compile once in the static, extension-safe `MessagesExtensionSupport` target. The shipping target keeps only Apple host glue and the custom resize shield; tests import support and compile no production source paths. Release packaging embeds no support framework and the former undeclared dependency warning is absent.
+- Resolved: 2026-08-21.
 - Links: [ARCHITECTURE.md](/Users/kunalsharda/Documents/Code/UnluckySevens/ARCHITECTURE.md)
 
 ### TD-005 — Lobby roster assembly still depends on observed-join merge
@@ -66,9 +62,9 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 
 - Area: `MessagesExtension` board rendering, `ULS_CoreGame` query economy, SwiftUI projection churn
 - Why it matters: the 2026-04-12 render/perf audit traced observable device lag to a stack of pure rebuilds that happen on every state update, every tap, and every overlay change.
-- Current cost or risk: real-device responsiveness will remain worse than necessary until the remaining layout/projection allocations are eliminated, and every new board or shell feature pays the same amplification. The current shell projection still mixes product models with a large stringified diagnostic surface, while `LobbyDriverViewModel` retains a writable pass-through facade for those legacy fields.
-- Progress: F1 was resolved on 2026-08-21. `StandardBoardTopologyV1.standard()` and `renderGeometry()` now preserve their function APIs while returning lazy static values derived from one cached internal geometry; port and coastal-edge helpers reuse that geometry.
-- Proposed fix shape: continue the ordered audit after F1 — precompute layout, memoize render-model building, split debug and render projections, remove unused writable projection pass-throughs, and keep only diagnostics that have a named DEBUG or operator consumer.
+- Current cost or risk: remaining SpriteKit node construction, render-model rebuilding, adjacency walks, and query amplification still need device profiling and targeted optimization. This slice does not claim measured device-latency improvement.
+- Progress: F1, F2, F6, F7, and the repeated bounds work in F17 were resolved on 2026-08-21. Topology/render geometry share one lazy cache; `GameBoardLayout` precomputes immutable geometry once; production projection is separate from DEBUG diagnostics; the writable diagnostic pass-through facade is gone.
+- Proposed fix shape: continue with measured work only: F3–F5, F8–F16, and F18–F21 remain candidates, led by render-model memoization, adjacency/query economy, and SpriteKit layer diffing where profiling confirms value.
 - When to address: phase 15.
 - Links: [2026-04-12 render/perf audit](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/quality/audits/2026-04-12-render-performance.md), [GameShellProjection.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Presentation/GameShellProjection.swift), [LobbyDriverViewModel.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Features/Lobby/LobbyDriverViewModel.swift)
 

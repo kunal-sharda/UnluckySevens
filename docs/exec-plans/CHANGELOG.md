@@ -10,6 +10,7 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 ## [Unreleased]
 
 ### Changed
+- Maintainability forgiveness split Core transition internals by rules domain, moved compact-state encoding to Transport, made selection polling lifecycle-cancellable, isolated recovery and DEBUG diagnostics/fixtures, precomputed board layout geometry, and compiled extension implementation once through a static support module shared by the shipping target and tests—without changing gameplay, protocol schema, host resize policy, or UI.
 - Core economy consumers now share `CoreBuildCostsV1` for every road, settlement, city, and development-card purchase cost, while the standard board topology and render geometry reuse one lazy cached geometry without changing public APIs or deterministic outputs.
 - Recovery and terminal lifecycle Pass 1 adds non-terminal inactive-player resignation, unanimous draw voting, host-only neutral end, ordinary victory results, validated deterministic snapshot recovery, a versioned Active/Finished local ledger, conversation-compatible publication controls, unchanged-state resend, a dedicated Games destination, accurate resignation/host confirmations, neutral final-score copy, and New Game without automatic archive or send.
 - The approved Physical Props trade family now routes in production: card-native Give/Get stages, centered recipient selection, complete paged maritime exchanges with explicit confirmation, physical live/pending states, and Tutorial reuse preserve the mounted board, canonical Hand geometry, and existing trade semantics.
@@ -26,6 +27,7 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 - Repo workflow docs now make `bash ./scripts/gen.sh` the canonical agent generation path, keep Xcode GUI out of agent validation, remove the redundant `gen-local.sh`/`gen.sh --open` generation paths, and add `scripts/check-doc-freshness.sh` plus Make-owned `doc-freshness`/`build`/`practical-gate` targets used by CI and local validation to classify doc-freshness tiers so active plans, design notes, and historical evidence do not become competing sources of truth.
 
 ### Removed
+- Removed dead board freeze/manual-reload reconstruction plumbing while preserving the live mounted board, camera state, viewport settling, and custom Messages resize shield.
 - Removed `ULS_Transport.TurnIntentV1`, transport resource/dev-card action draft helpers, obsolete action-draft transport tests, and the unused summary-payload mirror length field.
 - Removed the unused `BoardTiles` terrain imagesets and uncolored `merchant_ship` catalog asset after source, catalog, and bundle-reference audits; the active tutorial validity, validation circuit-breaker, lobby tutorial-entry, and robber physical-flow plans were archived with their historical evidence.
 

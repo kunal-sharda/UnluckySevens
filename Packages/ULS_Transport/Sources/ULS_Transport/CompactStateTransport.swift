@@ -1,6 +1,7 @@
 import Foundation
 import ULS_CoreGame
 
+@_spi(CompactState)
 public enum CompactStateTransportError: Error {
     case invalidPayload
 }
@@ -1005,6 +1006,7 @@ private struct CompactStateTransportV1: Codable, Equatable {
     }
 }
 
+@_spi(CompactState)
 public enum CompactStateTransport {
     public static func encode(_ state: CoreGameStateV1) throws -> String {
         let encoder = JSONEncoder()

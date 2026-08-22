@@ -1,7 +1,7 @@
 import Messages
 import XCTest
 import ULS_CoreGame
-import ULS_Transport
+@_spi(CompactState) import ULS_Transport
 @testable import MessagesExtensionSupport
 
 final class CompactStateTransportTests: XCTestCase {
