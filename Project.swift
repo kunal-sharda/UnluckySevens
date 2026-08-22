@@ -81,6 +81,8 @@ let project = Project(
                 with: [
                     "CFBundleDisplayName": .string("Unlucky Sevens"),
                     "CFBundleIconName": .string("AppIcon"),
+                    "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
+                    "CFBundleVersion": .string("$(CURRENT_PROJECT_VERSION)"),
                     "ITSAppUsesNonExemptEncryption": .boolean(false),
                     "UILaunchScreen": .dictionary([:]),
                 ]
@@ -124,6 +126,8 @@ let project = Project(
             infoPlist: .extendingDefault(
                 with: [
                     "CFBundleDisplayName": .string("Unlucky Sevens"),
+                    "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
+                    "CFBundleVersion": .string("$(CURRENT_PROJECT_VERSION)"),
                     "NSExtension": .dictionary([
                         "NSExtensionPointIdentifier": .string("com.apple.message-payload-provider"),
                         "NSExtensionPrincipalClass": .string(
