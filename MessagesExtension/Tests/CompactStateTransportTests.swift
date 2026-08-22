@@ -2,7 +2,7 @@ import Messages
 import XCTest
 import ULS_CoreGame
 import ULS_Transport
-@testable import MessagesExtension
+@testable import MessagesExtensionSupport
 
 final class CompactStateTransportTests: XCTestCase {
     func testCompactStateTransportRoundTripsExactState() throws {

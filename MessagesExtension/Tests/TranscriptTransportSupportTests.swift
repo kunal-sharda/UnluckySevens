@@ -1,7 +1,7 @@
 import Messages
 import UIKit
 import XCTest
-@testable import MessagesExtension
+@testable import MessagesExtensionSupport
 
 final class TranscriptTransportSupportTests: XCTestCase {
     func testBuildMessageIncludesPayloadQueryAndPreservesSessionPolicy() throws {

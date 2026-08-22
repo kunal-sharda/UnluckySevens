@@ -1,5 +1,5 @@
 import XCTest
-@testable import MessagesExtension
+@testable import MessagesExtensionSupport
 
 final class TranscriptDidReceiveContractTests: XCTestCase {
     func testDidReceiveAppliesWhenNoActiveGameExists() {

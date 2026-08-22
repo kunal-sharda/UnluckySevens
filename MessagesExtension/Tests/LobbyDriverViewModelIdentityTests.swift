@@ -1,6 +1,6 @@
 import XCTest
 import ULS_CoreGame
-@testable import MessagesExtension
+@testable import MessagesExtensionSupport
 
 @MainActor
 final class LobbyDriverViewModelIdentityTests: XCTestCase {

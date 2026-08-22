@@ -1,5 +1,5 @@
 import XCTest
-@testable import MessagesExtension
+@testable import MessagesExtensionSupport
 
 final class GameBoardCommitCoordinatorTests: XCTestCase {
     func testUnsupportedModeReturnsNilDecision() {

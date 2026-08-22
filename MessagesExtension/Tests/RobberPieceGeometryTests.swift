@@ -1,6 +1,6 @@
 import CoreGraphics
 import XCTest
-@testable import MessagesExtension
+@testable import MessagesExtensionSupport
 
 final class RobberPieceGeometryTests: XCTestCase {
     func testGeometryUsesRequestedHeightAndCentersArtwork() {

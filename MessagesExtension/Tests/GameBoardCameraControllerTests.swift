@@ -1,3 +1,4 @@
+@testable import MessagesExtensionSupport
 import CoreGraphics
 import ULS_CoreGame
 import XCTest

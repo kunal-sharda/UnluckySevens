@@ -1,55 +1,24 @@
 import Messages
-import SwiftUI
+@_spi(MessagesHost) import MessagesExtensionSupport
 import UIKit
 
 final class MessagesViewController: MSMessagesAppViewController {
-    private let viewModel = LobbyDriverViewModel()
-    private let hostLayoutStore = MessagesHostLayoutStore()
+    private let runtime = MessagesExtensionHostRuntime()
     private let hostResizeShield = MessagesHostResizeShield()
-    private lazy var selectionWatch = SelectionWatchLifecycle<MSConversation> { [weak self] conversation in
-        guard let self else {
-            return false
-        }
-        _ = self.viewModel.updateContext(
-            conversation: conversation,
-            selectedMessage: conversation.selectedMessage,
-            trigger: .selectionPoll
-        )
-        return self.viewModel.shouldMaintainSelectionWatch
-    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        viewModel.onRequestDismiss = { [weak self] in
-            self?.dismiss()
-        }
-        viewModel.onRequestExpanded = { [weak self] in
-            self?.requestExpandedPresentationIfNeeded()
-        }
-
-        #if DEBUG
-        let rootView = MessagesRootView(
-            viewModel: viewModel,
-            hostLayoutStore: hostLayoutStore,
-            onSettingsTap: { [weak viewModel] in
-                viewModel?.recordUXTestingSettingsHookInvocation()
+        runtime.configureHostCallbacks(
+            requestDismiss: { [weak self] in
+                self?.dismiss()
             },
-            onRequestExpanded: { [weak self] in
+            requestExpanded: { [weak self] in
                 self?.requestExpandedPresentationIfNeeded()
             }
         )
-        #else
-        let rootView = MessagesRootView(
-            viewModel: viewModel,
-            hostLayoutStore: hostLayoutStore,
-            onRequestExpanded: { [weak self] in
-                self?.requestExpandedPresentationIfNeeded()
-            }
-        )
-        #endif
-        let hostingController = UIHostingController(rootView: rootView)
 
+        let hostingController = runtime.makeHostingController()
         addChild(hostingController)
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(hostingController.view)
@@ -62,13 +31,8 @@ final class MessagesViewController: MSMessagesAppViewController {
             hostingController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
-        if let conversation = activeConversation,
-           let selectedMessage = conversation.selectedMessage {
-            refreshContextAndMaybePoll(
-                conversation: conversation,
-                selectedMessage: selectedMessage,
-                trigger: .viewDidLoad
-            )
+        if let conversation = activeConversation {
+            runtime.loadInitialContext(from: conversation)
         }
     }
 
@@ -78,148 +42,80 @@ final class MessagesViewController: MSMessagesAppViewController {
             to: view,
             topExclusionHeight: resizeGrabberExclusionHeight
         )
-        hostLayoutStore.observe(currentHostMeasurement())
+        observeCurrentHostLayout()
     }
 
     override func didBecomeActive(with conversation: MSConversation) {
         super.didBecomeActive(with: conversation)
-        activateRoute(for: conversation)
+        runtime.didBecomeActive(with: conversation)
     }
 
     override func didSelect(_ message: MSMessage, conversation: MSConversation) {
         super.didSelect(message, conversation: conversation)
-        requestExpandedPresentationIfNeeded()
-        let shouldContinuePolling = viewModel.updateContext(
-            conversation: conversation,
-            selectedMessage: message,
-            trigger: .didSelect
-        )
-        if shouldContinuePolling {
-            startSelectionPolling(conversation: conversation)
-        } else {
-            cancelSelectionPolling()
-        }
+        runtime.didSelect(message, conversation: conversation)
     }
 
     override func didReceive(_ message: MSMessage, conversation: MSConversation) {
         super.didReceive(message, conversation: conversation)
-        requestExpandedPresentationIfNeeded()
-        let shouldContinuePolling = viewModel.updateContext(
-            conversation: conversation,
-            selectedMessage: message,
-            trigger: .didReceive
-        )
-        if shouldContinuePolling {
-            startSelectionPolling(conversation: conversation)
-        } else {
-            cancelSelectionPolling()
-        }
+        runtime.didReceive(message, conversation: conversation)
     }
 
     override func willResignActive(with conversation: MSConversation) {
         super.willResignActive(with: conversation)
-        cancelSelectionPolling()
+        runtime.cancelSelectionPolling()
     }
 
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
-        cancelSelectionPolling()
+        runtime.cancelSelectionPolling()
     }
 
     override func willTransition(to presentationStyle: MSMessagesAppPresentationStyle) {
         super.willTransition(to: presentationStyle)
-        hostLayoutStore.beginTransition()
+        runtime.beginHostTransition()
     }
 
     override func didTransition(to presentationStyle: MSMessagesAppPresentationStyle) {
         super.didTransition(to: presentationStyle)
-        hostLayoutStore.completeTransition(
-            with: currentHostMeasurement(presentationStyle: presentationStyle)
-        )
+        completeHostTransition(presentationStyle: presentationStyle)
     }
 
     override func viewWillTransition(
         to size: CGSize,
         with coordinator: UIViewControllerTransitionCoordinator
     ) {
-        hostLayoutStore.beginTransition()
+        runtime.beginHostTransition()
         super.viewWillTransition(to: size, with: coordinator)
         coordinator.animate(alongsideTransition: nil) { [weak self] _ in
-            guard let self else { return }
-            self.hostLayoutStore.completeTransition(with: self.currentHostMeasurement())
+            self?.completeHostTransition()
         }
-    }
-
-    private func startSelectionPolling(conversation: MSConversation) {
-        selectionWatch.start(watching: conversation)
-    }
-
-    private func refreshContextAndMaybePoll(
-        conversation: MSConversation,
-        selectedMessage: MSMessage?,
-        trigger: TranscriptSelectionTrigger
-    ) {
-        let shouldContinuePolling = viewModel.updateContext(
-            conversation: conversation,
-            selectedMessage: selectedMessage,
-            trigger: trigger
-        )
-        if shouldContinuePolling || viewModel.shouldMaintainSelectionWatch {
-            startSelectionPolling(conversation: conversation)
-        } else {
-            cancelSelectionPolling()
-        }
-    }
-
-    private func cancelSelectionPolling() {
-        selectionWatch.cancel()
     }
 
     private func requestExpandedPresentationIfNeeded() {
         guard presentationStyle != .expanded else {
             return
         }
-
         requestPresentationStyle(.expanded)
-    }
-
-    private func activateRoute(for conversation: MSConversation) {
-        let route = MessagesLaunchRoute.resolve(
-            hasSelectedMessage: conversation.selectedMessage != nil
-        )
-        if route.requestsExpandedPresentation {
-            requestExpandedPresentationIfNeeded()
-        }
-
-        switch route {
-        case .freshLobby:
-            cancelSelectionPolling()
-            viewModel.beginFreshLobby(conversation: conversation)
-        case .selectedMessage:
-            refreshContextAndMaybePoll(
-                conversation: conversation,
-                selectedMessage: conversation.selectedMessage,
-                trigger: .viewDidLoad
-            )
-        }
     }
 
     private var resizeGrabberExclusionHeight: CGFloat {
         max(36, view.safeAreaInsets.top + 12)
     }
 
-    private func currentHostMeasurement(
-        presentationStyle resolvedPresentationStyle: MSMessagesAppPresentationStyle? = nil
-    ) -> MessagesHostLayoutStore.Measurement {
-        let insets = view.safeAreaInsets
-        return MessagesHostLayoutStore.Measurement(
+    private func observeCurrentHostLayout() {
+        runtime.observeHostLayout(
             boundsSize: view.bounds.size,
-            safeAreaInsets: MessagesHostInsets(
-                top: insets.top,
-                leading: insets.left,
-                bottom: insets.bottom,
-                trailing: insets.right
-            ),
+            safeAreaInsets: view.safeAreaInsets,
+            presentationStyle: hostPresentationStyle(presentationStyle)
+        )
+    }
+
+    private func completeHostTransition(
+        presentationStyle resolvedPresentationStyle: MSMessagesAppPresentationStyle? = nil
+    ) {
+        runtime.completeHostTransition(
+            boundsSize: view.bounds.size,
+            safeAreaInsets: view.safeAreaInsets,
             presentationStyle: hostPresentationStyle(
                 resolvedPresentationStyle ?? presentationStyle
             )
@@ -228,16 +124,16 @@ final class MessagesViewController: MSMessagesAppViewController {
 
     private func hostPresentationStyle(
         _ style: MSMessagesAppPresentationStyle
-    ) -> MessagesHostPresentationStyle {
+    ) -> MessagesExtensionHostRuntime.PresentationStyle {
         switch style {
         case .compact:
-            return .compact
+            .compact
         case .expanded:
-            return .expanded
+            .expanded
         case .transcript:
-            return .transcript
+            .transcript
         @unknown default:
-            return .unknown
+            .unknown
         }
     }
 }

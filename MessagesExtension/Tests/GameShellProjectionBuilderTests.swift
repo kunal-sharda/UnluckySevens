@@ -1,6 +1,6 @@
 import XCTest
 import ULS_CoreGame
-@testable import MessagesExtension
+@testable import MessagesExtensionSupport
 
 final class GameShellProjectionBuilderTests: XCTestCase {
     private let topology = StandardBoardTopologyV1.standard()

@@ -1,3 +1,4 @@
+@testable import MessagesExtensionSupport
 #if DEBUG
 import ULS_CoreGame
 import XCTest

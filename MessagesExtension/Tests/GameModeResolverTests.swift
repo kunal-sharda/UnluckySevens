@@ -1,3 +1,4 @@
+@testable import MessagesExtensionSupport
 import XCTest
 
 final class GameModeResolverTests: XCTestCase {

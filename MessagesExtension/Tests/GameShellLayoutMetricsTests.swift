@@ -1,5 +1,5 @@
 import XCTest
-@testable import MessagesExtension
+@testable import MessagesExtensionSupport
 
 final class GameShellLayoutMetricsTests: XCTestCase {
     func testBoardViewportFitsCanonicalAspectByWidth() {

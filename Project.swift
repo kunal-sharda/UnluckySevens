@@ -92,6 +92,30 @@ let project = Project(
             settings: appTargetSettings
         ),
         .target(
+            name: "MessagesExtensionSupport",
+            destinations: .iOS,
+            product: .staticFramework,
+            bundleId: "com.unluckysevens.app.messagesextension.support",
+            deploymentTargets: .iOS("17.0"),
+            infoPlist: .default,
+            sources: .sourceFilesList(globs: [
+                .glob(
+                    "MessagesExtension/Sources/**",
+                    excluding: [
+                        "MessagesExtension/Sources/App/MessagesHostResizeShield.swift",
+                        "MessagesExtension/Sources/App/MessagesViewController.swift",
+                    ]
+                ),
+            ]),
+            dependencies: [
+                .package(product: "ULS_CoreGame"),
+                .package(product: "ULS_Transport"),
+            ],
+            settings: .settings(base: [
+                "APPLICATION_EXTENSION_API_ONLY": "YES",
+            ])
+        ),
+        .target(
             name: "MessagesExtension",
             destinations: .iOS,
             product: .messagesExtension,
@@ -111,11 +135,13 @@ let project = Project(
                     ]),
                 ]
             ),
-            sources: ["MessagesExtension/Sources/**"],
+            sources: [
+                "MessagesExtension/Sources/App/MessagesHostResizeShield.swift",
+                "MessagesExtension/Sources/App/MessagesViewController.swift",
+            ],
             resources: ["MessagesExtension/Resources/**"],
             dependencies: [
-                .package(product: "ULS_CoreGame"),
-                .package(product: "ULS_Transport"),
+                .target(name: "MessagesExtensionSupport"),
             ],
             settings: messagesExtensionSettings
         ),
@@ -126,31 +152,10 @@ let project = Project(
             bundleId: "com.unluckysevens.app.messagesextension.tests",
             deploymentTargets: .iOS("17.0"),
             infoPlist: .default,
-            sources: [
-                "MessagesExtension/Tests/**",
-                "MessagesExtension/Sources/App/MessagesHostLayoutStore.swift",
-                "MessagesExtension/Sources/Developer/UXTestFixture.swift",
-                "MessagesExtension/Sources/Developer/UXTestingAutoplayResolver.swift",
-                "MessagesExtension/Sources/Features/Tutorial/GameTutorialStateComposer.swift",
-                "MessagesExtension/Sources/Presentation/**",
-                "MessagesExtension/Sources/Board/GameBoardCameraController.swift",
-                "MessagesExtension/Sources/Board/GameBoardLayout.swift",
-                "MessagesExtension/Sources/Board/GameBoardPalette.swift",
-                "MessagesExtension/Sources/Board/GamePieceGeometry.swift",
-                "MessagesExtension/Sources/Board/GameBoardRenderModel.swift",
-                "MessagesExtension/Sources/Board/GameBoardRenderModelBuilder.swift",
-                "MessagesExtension/Sources/Board/GameBoardScene.swift",
-                "MessagesExtension/Sources/Board/GameBoardSnapshotRenderer.swift",
-                "MessagesExtension/Sources/Board/GameBoardSnapshotVariant.swift",
-                "MessagesExtension/Sources/Board/GameBoardTarget.swift",
-                "MessagesExtension/Sources/Board/GameBoardTileArt.swift",
-                "MessagesExtension/Sources/Components/GameFinalScoreStripView.swift",
-                "MessagesExtension/Sources/Components/GameTabletopPortraitCardView.swift",
-                "MessagesExtension/Sources/Components/GameTabletopResourceStampView.swift",
-                "MessagesExtension/Sources/Components/GameTradeReceiptView.swift",
-            ],
+            sources: ["MessagesExtension/Tests/**"],
             resources: ["MessagesExtension/Resources/**"],
             dependencies: [
+                .target(name: "MessagesExtensionSupport"),
                 .package(product: "ULS_CoreGame"),
                 .package(product: "ULS_Transport"),
             ]

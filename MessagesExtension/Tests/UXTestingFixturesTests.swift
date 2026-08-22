@@ -1,5 +1,7 @@
+@testable import MessagesExtensionSupport
 #if DEBUG
 import ULS_CoreGame
+import ULS_Transport
 import XCTest
 
 final class UXTestingFixturesTests: XCTestCase {

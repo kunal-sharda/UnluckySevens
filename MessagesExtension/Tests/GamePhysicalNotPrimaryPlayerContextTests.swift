@@ -1,5 +1,5 @@
 import XCTest
-@testable import MessagesExtension
+@testable import MessagesExtensionSupport
 import ULS_CoreGame
 
 final class GamePhysicalNotPrimaryPlayerContextTests: XCTestCase {

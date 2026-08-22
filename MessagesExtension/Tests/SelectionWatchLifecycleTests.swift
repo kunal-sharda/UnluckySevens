@@ -1,5 +1,5 @@
 import XCTest
-@testable import MessagesExtension
+@testable import MessagesExtensionSupport
 
 @MainActor
 final class SelectionWatchLifecycleTests: XCTestCase {

@@ -1,6 +1,6 @@
 import ULS_CoreGame
 import XCTest
-@testable import MessagesExtension
+@testable import MessagesExtensionSupport
 
 final class GameRobberVictimOptionBuilderTests: XCTestCase {
     private let topology = StandardBoardTopologyV1.standard()

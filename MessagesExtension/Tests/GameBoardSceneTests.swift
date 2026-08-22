@@ -3,7 +3,7 @@ import SpriteKit
 import UIKit
 import ULS_CoreGame
 import XCTest
-@testable import MessagesExtension
+@testable import MessagesExtensionSupport
 
 final class GameBoardSceneTests: XCTestCase {
     func testFlatWaterIsProductionOceanDefault() {
