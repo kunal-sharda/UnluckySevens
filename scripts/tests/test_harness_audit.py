@@ -38,7 +38,7 @@ class HarnessAuditTests(unittest.TestCase):
     def make_manifests(self) -> None:
         self.write(
             "Packages/ULS_Transport/Package.swift",
-            '// swift-tools-version: 5.9\nimport PackageDescription\nlet package = Package(name: "ULS_Transport", targets: [.target(name: "ULS_Transport")])\n',
+            '// swift-tools-version: 5.9\nimport PackageDescription\nlet package = Package(name: "ULS_Transport", dependencies: [.package(path: "../ULS_CoreGame")], targets: [.target(name: "ULS_Transport", dependencies: [.product(name: "ULS_CoreGame", package: "ULS_CoreGame")])])\n',
         )
         self.write(
             "Packages/ULS_CoreGame/Package.swift",
@@ -152,6 +152,34 @@ class HarnessAuditTests(unittest.TestCase):
         errors: list[str] = []
         check_harness.check_imports(errors)
         self.assertTrue(any("production target must remain dependency-free" in item for item in errors))
+
+    def test_transport_target_dependency_other_than_core_is_reported(self) -> None:
+        self.make_manifests()
+        self.write(
+            "Packages/ULS_Transport/Package.swift",
+            '// swift-tools-version: 5.9\nimport PackageDescription\nlet package = Package(name: "ULS_Transport", targets: [.target(name: "Other"), .target(name: "ULS_Transport", dependencies: ["Other"])])\n',
+        )
+        errors: list[str] = []
+        check_harness.check_imports(errors)
+        self.assertTrue(any("must depend only on ULS_CoreGame" in item for item in errors))
+
+    def test_transport_extra_package_dependency_is_reported(self) -> None:
+        self.make_manifests()
+        manifest = (self.root / "Packages/ULS_Transport/Package.swift").read_text(encoding="utf-8")
+        self.write(
+            "Packages/ULS_Transport/Package.swift",
+            manifest.replace(
+                'dependencies: [.package(path: "../ULS_CoreGame")]',
+                'dependencies: [.package(path: "../ULS_CoreGame"), .package(path: "../Other")]',
+            ),
+        )
+        self.write(
+            "Packages/Other/Package.swift",
+            '// swift-tools-version: 5.9\nimport PackageDescription\nlet package = Package(name: "Other", targets: [.target(name: "Other")])\n',
+        )
+        errors: list[str] = []
+        check_harness.check_imports(errors)
+        self.assertTrue(any("must depend only on ULS_CoreGame" in item for item in errors))
 
     def test_unmanifested_design_binary_is_reported(self) -> None:
         self.write(

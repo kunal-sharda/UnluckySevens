@@ -131,4 +131,4 @@ Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans
 - Area: board assets, design source of truth, repository hygiene
 - Resolution: source and generated-catalog searches found no runtime consumer for `BoardTiles` or the uncolored `merchant_ship`; the renderer uses `BoardStamps`/`BoardMiniStamps` and `merchant_ship_colored`. The six tile imagesets and uncolored ship imageset were removed from the extension catalog after the installed-bundle/reference audit.
 - Resolved: 2026-08-21.
-- Links: [GameBoardTileArt.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Board/GameBoardTileArt.swift), [cleanup receipt](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/design/cleanup-receipt.md), [maintainability forgiveness program](active/maintainability-forgiveness-program.md)
+- Links: [GameBoardTileArt.swift](/Users/kunalsharda/Documents/Code/UnluckySevens/MessagesExtension/Sources/Board/GameBoardTileArt.swift), [cleanup receipt](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/design/cleanup-receipt.md), [maintainability forgiveness program](completed/maintainability-forgiveness-program.md)

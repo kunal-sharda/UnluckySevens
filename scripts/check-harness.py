@@ -142,10 +142,25 @@ def check_imports(errors: list[str]) -> None:
         production = next((target for target in payload.get("targets", []) if target.get("name") == package), None)
         if production is None:
             error(errors, f"missing production target in {package} manifest")
-        elif production.get("dependencies"):
-            error(errors, f"{package} production target must remain dependency-free")
-        if package == "ULS_CoreGame" and payload.get("dependencies"):
-            error(errors, "ULS_CoreGame package must not declare package dependencies")
+        elif package == "ULS_CoreGame":
+            if production.get("dependencies"):
+                error(errors, "ULS_CoreGame production target must remain dependency-free")
+            if payload.get("dependencies"):
+                error(errors, "ULS_CoreGame package must not declare package dependencies")
+        else:
+            dependencies = production.get("dependencies", [])
+            package_dependencies = payload.get("dependencies", [])
+            is_core_product = (
+                len(dependencies) == 1
+                and dependencies[0].get("product", [])[:2]
+                == ["ULS_CoreGame", "ULS_CoreGame"]
+            )
+            is_core_package = (
+                len(package_dependencies) == 1
+                and "uls_coregame" in json.dumps(package_dependencies[0]).lower()
+            )
+            if not (is_core_product and is_core_package):
+                error(errors, "ULS_Transport production target must depend only on ULS_CoreGame")
 
     project = ROOT / "Project.swift"
     if project.is_file():
