@@ -6,15 +6,22 @@ struct GameTurnGameInfoView: View {
     static let boardClearanceHeight: CGFloat = 1
 
     let model: GameInfoModel
-    let games: [ActiveGameRecoverySummary]
-    let onOpenGame: (String) -> Void
-    let onManageGamesTap: () -> Void
+    let canProposeDraw: Bool
+    let canVoteOnDraw: Bool
+    let canResign: Bool
+    let canHostEnd: Bool
+    let shouldOfferDrawBeforeHostEnd: Bool
+    let onPlayerRecordTap: () -> Void
+    let onProposeDraw: () -> Void
+    let onVoteOnDraw: (Bool) -> Void
+    let onResign: () -> Void
+    let onHostEnd: () -> Void
     let onClose: () -> Void
-    @State private var contentMode: ContentMode = .players
+    @State private var pendingConfirmation: Confirmation?
 
-    private enum ContentMode {
-        case players
-        case games
+    private enum Confirmation {
+        case resign
+        case hostEnd
     }
 
     static func preferredHeight(for model: GameInfoModel) -> CGFloat {
@@ -32,53 +39,31 @@ struct GameTurnGameInfoView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 ZStack {
-                    if contentMode == .players {
-                        Text("Players")
-                            .font(.headline)
-                            .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Button(action: onManageGamesTap) {
-                            Text("Your Games")
-                                .font(.headline)
-                                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                                .frame(maxWidth: .infinity, minHeight: 44)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityHint("Opens recovery and lifecycle actions")
-                        .accessibilityIdentifier("uls.gameInfo.manageGames")
-                    }
+                    Text("Players")
+                        .font(.headline)
+                        .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                        .frame(maxWidth: .infinity)
 
                     HStack {
                         Button(
-                            contentMode == .players ? "Games" : "Players",
-                            systemImage: contentMode == .players
-                                ? "die.face.5.fill"
-                                : "person.2.fill"
-                        ) {
-                            withAnimation(GameTheme.quickAnimation) {
-                                contentMode = contentMode == .players ? .games : .players
-                            }
-                        }
+                            "Player Record",
+                            systemImage: "chart.bar.xaxis",
+                            action: onPlayerRecordTap
+                        )
                         .labelStyle(.iconOnly)
                         .font(.headline)
                         .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                         .buttonStyle(.plain)
-                        .accessibilityHint(
-                            contentMode == .players
-                                ? "Replaces the player list with saved games"
-                                : "Returns to player and game information"
-                        )
-                        .accessibilityIdentifier(
-                            contentMode == .players
-                                ? "uls.gameInfo.games"
-                                : "uls.gameInfo.players"
-                        )
+                        .accessibilityHint("Shows read-only results saved on this device")
+                        .accessibilityIdentifier("uls.gameInfo.playerRecord")
 
                         Spacer(minLength: 0)
+
+                        if canProposeDraw || canVoteOnDraw || canResign || canHostEnd {
+                            lifecycleMenu
+                        }
 
                         Button(
                             "Close game information",
@@ -96,35 +81,44 @@ struct GameTurnGameInfoView: View {
                 }
 
                 ScrollView(.vertical, showsIndicators: true) {
-                    Group {
-                        switch contentMode {
-                        case .players:
-                            VStack(spacing: 6) {
-                                ForEach(model.players) { player in
-                                    GameTurnGameInfoPlayerRow(player: player)
-                                }
+                    VStack(spacing: 6) {
+                        ForEach(model.players) { player in
+                            GameTurnGameInfoPlayerRow(player: player)
+                        }
 
-                                if let recapText = model.recapText, !recapText.isEmpty {
-                                    Label(recapText, systemImage: "clock.arrow.circlepath")
-                                        .font(.caption)
-                                        .foregroundStyle(GameTheme.surface.opacity(0.82))
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.top, 2)
-                                }
-                            }
-                            .accessibilityIdentifier("uls.gameInfo.playerList")
-                        case .games:
-                            GameTurnSavedGamesList(
-                                games: games,
-                                onOpenGame: onOpenGame
-                            )
+                        if let recapText = model.recapText, !recapText.isEmpty {
+                            Label(recapText, systemImage: "clock.arrow.circlepath")
+                                .font(.caption)
+                                .foregroundStyle(GameTheme.surface.opacity(0.82))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, 2)
                         }
                     }
-                    .transition(.opacity)
+                    .accessibilityIdentifier("uls.gameInfo.playerList")
                 }
                 .scrollBounceBehavior(.basedOnSize)
             }
             .padding(14)
+
+            if let pendingConfirmation {
+                GameLifecycleConfirmationView(
+                    title: pendingConfirmation == .resign
+                        ? "Resign from this game?"
+                        : "End this game?",
+                    message: confirmationMessage(for: pendingConfirmation),
+                    destructiveTitle: pendingConfirmation == .resign ? "Resign" : "End Game Anyway",
+                    showsProposeDraw: pendingConfirmation == .hostEnd && shouldOfferDrawBeforeHostEnd && canProposeDraw,
+                    onKeepPlaying: { self.pendingConfirmation = nil },
+                    onProposeDraw: {
+                        onProposeDraw()
+                        self.pendingConfirmation = nil
+                    },
+                    onConfirm: {
+                        if pendingConfirmation == .resign { onResign() } else { onHostEnd() }
+                        self.pendingConfirmation = nil
+                    }
+                )
+            }
         }
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay {
@@ -136,100 +130,44 @@ struct GameTurnGameInfoView: View {
         .accessibilityIdentifier("uls.turn.gameInfo")
         .gameTutorialTarget(.gameInfo)
     }
-}
 
-private struct GameTurnSavedGamesList: View {
-    let games: [ActiveGameRecoverySummary]
-    let onOpenGame: (String) -> Void
-
-    private var activeGames: [ActiveGameRecoverySummary] {
-        games.filter { !$0.isFinished }
-    }
-
-    private var finishedGames: [ActiveGameRecoverySummary] {
-        games.filter(\.isFinished)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
-            if games.isEmpty {
-                Label("No saved games", systemImage: "die.face.5")
-                    .font(GameTheme.metaFont.weight(.semibold))
-                    .foregroundStyle(GameTheme.surface.opacity(0.76))
-                    .frame(maxWidth: .infinity, minHeight: 52, alignment: .center)
-            } else {
-                gamesSection(title: "Active", games: activeGames)
-                gamesSection(title: "Finished", games: finishedGames)
+    private var lifecycleMenu: some View {
+        Menu {
+            if canVoteOnDraw {
+                Button("Agree to Draw", systemImage: "hand.thumbsup") { onVoteOnDraw(true) }
+                Button("Decline Draw", systemImage: "hand.thumbsdown") { onVoteOnDraw(false) }
+            } else if canProposeDraw {
+                Button("Propose Draw", systemImage: "hand.raised", action: onProposeDraw)
             }
-        }
-    }
-
-    @ViewBuilder
-    private func gamesSection(
-        title: String,
-        games: [ActiveGameRecoverySummary]
-    ) -> some View {
-        if !games.isEmpty {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(GameTheme.surface.opacity(0.68))
-                    .textCase(.uppercase)
-                    .accessibilityAddTraits(.isHeader)
-
-                ForEach(games) { game in
-                    Button {
-                        onOpenGame(game.gameId)
-                    } label: {
-                        HStack(spacing: GameTheme.inlineSpacing) {
-                            Image(systemName: game.isFinished ? "checkmark.seal.fill" : "play.circle.fill")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(game.isCurrentSelection ? GameTheme.accent : GameTheme.surface.opacity(0.68))
-
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(game.title)
-                                    .font(.caption.weight(.bold))
-                                    .lineLimit(1)
-
-                                Text(game.subtitle)
-                                    .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(GameTheme.surface.opacity(0.72))
-                                    .lineLimit(1)
-                            }
-
-                            Spacer(minLength: 4)
-
-                            if game.isCurrentSelection {
-                                Text("Current")
-                                    .font(.caption2.weight(.bold))
-                                    .foregroundStyle(GameTheme.accent)
-                            } else {
-                                Image(systemName: "chevron.right")
-                                    .font(.caption2.weight(.bold))
-                                    .foregroundStyle(GameTheme.surface.opacity(0.56))
-                            }
-                        }
-                        .foregroundStyle(GameTheme.surface)
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("uls.gameInfo.open.\(game.gameId)")
-                    .accessibilityLabel(
-                        [
-                            game.title,
-                            game.subtitle,
-                            game.isCurrentSelection ? "Current game" : "Open game",
-                        ]
-                        .joined(separator: ", ")
-                    )
-
-                    if game.id != games.last?.id {
-                        Divider()
-                            .overlay(GameTheme.surface.opacity(0.14))
-                    }
+            if canResign {
+                Button("Resign", systemImage: "figure.walk.departure", role: .destructive) {
+                    pendingConfirmation = .resign
                 }
             }
+            if canHostEnd {
+                Button("End Game", systemImage: "xmark.octagon", role: .destructive) {
+                    pendingConfirmation = .hostEnd
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.headline)
+                .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Current game actions")
+        .accessibilityIdentifier("uls.gameInfo.lifecycleActions")
+    }
+
+    private func confirmationMessage(for confirmation: Confirmation) -> String {
+        switch confirmation {
+        case .resign:
+            "You will leave active play. Your pieces stay on the board, and the remaining players continue."
+        case .hostEnd:
+            shouldOfferDrawBeforeHostEnd
+                ? "A draw gives every active player a say. You can still end the game immediately as host."
+                : "Ending is unilateral. Final scores remain visible, but no winner is declared."
         }
     }
 }

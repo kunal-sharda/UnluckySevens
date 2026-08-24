@@ -4,27 +4,30 @@ struct MessagesTranscriptBridgeModel: Equatable {
     let title: String
     let status: String
     let detail: String
+    let canOpenGame: Bool
 
     static func resolve(
         currentGameId: String?,
         recoveredGames: [ActiveGameRecoverySummary]
     ) -> MessagesTranscriptBridgeModel {
-        let game = recoveredGames.first { $0.gameId == currentGameId }
-            ?? recoveredGames.first(where: \.isCurrentSelection)
-            ?? recoveredGames.first(where: \.isLastActive)
+        let game = currentGameId.flatMap { currentGameId in
+            recoveredGames.first { $0.gameId == currentGameId }
+        }
 
         guard let game else {
             return MessagesTranscriptBridgeModel(
                 title: "Unlucky Sevens",
-                status: "Open the game to continue",
-                detail: "Your saved games remain available in Messages."
+                status: "Select a game bubble to continue",
+                detail: "Player Record is available from the app drawer.",
+                canOpenGame: false
             )
         }
 
         return MessagesTranscriptBridgeModel(
             title: game.title,
             status: game.subtitle,
-            detail: game.detail
+            detail: game.detail,
+            canOpenGame: true
         )
     }
 }

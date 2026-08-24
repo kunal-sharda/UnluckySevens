@@ -1,31 +1,27 @@
 import ULS_CoreGame
 
-/// Pure recovery-action policy. The lobby facade retains conversation I/O,
+/// Pure current-game lifecycle policy. The lobby facade retains conversation I/O,
 /// ledger mutation, UI status, and player-facing error presentation.
-enum RecoveryLifecycleAction: Equatable {
-    case resend
+enum GameLifecycleAction: Equatable {
     case resign
     case proposeDraw
     case voteOnDraw(approve: Bool)
     case hostEnd
 }
 
-struct RecoveryLifecycleActionDraft: Equatable {
-    let action: RecoveryLifecycleAction
+struct GameLifecycleActionDraft: Equatable {
+    let action: GameLifecycleAction
     let fromState: CoreGameStateV1
     let actor: String
     let resultingState: CoreGameStateV1
 
-    var permitsRecoverySessionStart: Bool {
-        action == .resend
-    }
 }
 
-enum RecoveryLifecycleActionResolver {
-    /// A single pure availability decision used by recovery affordances and
+enum GameLifecycleActionResolver {
+    /// A single pure availability decision used by bound-game affordances and
     /// publish preflight. Core remains the authority for lifecycle legality.
     static func isAvailable(
-        action: RecoveryLifecycleAction,
+        action: GameLifecycleAction,
         state: CoreGameStateV1?,
         actor: String?,
         hasCompatibleActiveConversation: Bool
@@ -45,19 +41,14 @@ enum RecoveryLifecycleActionResolver {
     /// applies it through Core, and independently validates its transition.
     /// Resend deliberately returns the identical canonical state.
     static func prepare(
-        action: RecoveryLifecycleAction,
+        action: GameLifecycleAction,
         state: CoreGameStateV1,
         actor: String
-    ) throws -> RecoveryLifecycleActionDraft {
+    ) throws -> GameLifecycleActionDraft {
         try validateCanonicalSnapshot(state)
 
         let resultingState: CoreGameStateV1
         switch action {
-        case .resend:
-            resultingState = try RecoveryStatePublicationResolver.resolve(
-                state: state,
-                actor: actor
-            )
         case .resign, .proposeDraw, .voteOnDraw, .hostEnd:
             let intent = lifecycleIntent(for: action, anchoredTo: state)
             resultingState = try ULS_CoreGame.apply(
@@ -68,7 +59,7 @@ enum RecoveryLifecycleActionResolver {
             try validateTransition(from: state, to: resultingState, actor: actor)
         }
 
-        return RecoveryLifecycleActionDraft(
+        return GameLifecycleActionDraft(
             action: action,
             fromState: state,
             actor: actor,
@@ -84,7 +75,7 @@ enum RecoveryLifecycleActionResolver {
     }
 
     private static func lifecycleIntent(
-        for action: RecoveryLifecycleAction,
+        for action: GameLifecycleAction,
         anchoredTo state: CoreGameStateV1
     ) -> GameLifecycleIntentV1 {
         switch action {
@@ -96,8 +87,6 @@ enum RecoveryLifecycleActionResolver {
             return .voteDraw(approve: approve, anchoredTo: state)
         case .hostEnd:
             return .endGame(anchoredTo: state)
-        case .resend:
-            preconditionFailure("Resend does not have a lifecycle intent.")
         }
     }
 }

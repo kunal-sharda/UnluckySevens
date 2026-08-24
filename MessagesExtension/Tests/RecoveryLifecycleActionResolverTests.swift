@@ -2,7 +2,7 @@ import XCTest
 import ULS_CoreGame
 @testable import MessagesExtensionSupport
 
-final class RecoveryLifecycleActionResolverTests: XCTestCase {
+final class GameLifecycleActionResolverTests: XCTestCase {
     func testPrepareAllowedActionsProducesCanonicalDrafts() throws {
         let base = makeTurnState()
         let proposed = try ULS_CoreGame.apply(
@@ -10,8 +10,7 @@ final class RecoveryLifecycleActionResolverTests: XCTestCase {
             to: base,
             actor: "A"
         )
-        let cases: [(name: String, action: RecoveryLifecycleAction, state: CoreGameStateV1, actor: String)] = [
-            ("resend", .resend, base, "A"),
+        let cases: [(name: String, action: GameLifecycleAction, state: CoreGameStateV1, actor: String)] = [
             ("resign", .resign, base, "B"),
             ("propose draw", .proposeDraw, base, "B"),
             ("approve draw", .voteOnDraw(approve: true), proposed, "B"),
@@ -20,7 +19,7 @@ final class RecoveryLifecycleActionResolverTests: XCTestCase {
         ]
 
         for testCase in cases {
-            let draft = try RecoveryLifecycleActionResolver.prepare(
+            let draft = try GameLifecycleActionResolver.prepare(
                 action: testCase.action,
                 state: testCase.state,
                 actor: testCase.actor
@@ -31,31 +30,25 @@ final class RecoveryLifecycleActionResolverTests: XCTestCase {
             XCTAssertEqual(draft.actor, testCase.actor, testCase.name)
             XCTAssertNoThrow(try validateCanonicalSnapshot(draft.resultingState), testCase.name)
 
-            if testCase.action == .resend {
-                XCTAssertEqual(draft.resultingState, testCase.state, testCase.name)
-                XCTAssertTrue(draft.permitsRecoverySessionStart, testCase.name)
-            } else {
-                XCTAssertEqual(draft.resultingState.rev, testCase.state.rev + 1, testCase.name)
-                XCTAssertFalse(draft.permitsRecoverySessionStart, testCase.name)
-                XCTAssertNoThrow(
-                    try validateTransition(
-                        from: testCase.state,
-                        to: draft.resultingState,
-                        actor: testCase.actor
-                    ),
-                    testCase.name
-                )
-            }
+            XCTAssertEqual(draft.resultingState.rev, testCase.state.rev + 1, testCase.name)
+            XCTAssertNoThrow(
+                try validateTransition(
+                    from: testCase.state,
+                    to: draft.resultingState,
+                    actor: testCase.actor
+                ),
+                testCase.name
+            )
         }
 
-        let resigned = try RecoveryLifecycleActionResolver.prepare(
+        let resigned = try GameLifecycleActionResolver.prepare(
             action: .resign,
             state: base,
             actor: "B"
         )
         XCTAssertEqual(resigned.resultingState.resignedPlayers, ["B"])
 
-        let hostEnded = try RecoveryLifecycleActionResolver.prepare(
+        let hostEnded = try GameLifecycleActionResolver.prepare(
             action: .hostEnd,
             state: base,
             actor: "A"
@@ -70,9 +63,7 @@ final class RecoveryLifecycleActionResolverTests: XCTestCase {
             to: base,
             actor: "A"
         )
-        let cases: [(name: String, action: RecoveryLifecycleAction, state: CoreGameStateV1, actor: String, compatible: Bool)] = [
-            ("unbound resend", .resend, base, "A", false),
-            ("non-player resend", .resend, base, "observer", true),
+        let cases: [(name: String, action: GameLifecycleAction, state: CoreGameStateV1, actor: String, compatible: Bool)] = [
             ("non-player resign", .resign, base, "observer", true),
             ("second draw proposal", .proposeDraw, proposed, "B", true),
             ("vote without proposal", .voteOnDraw(approve: true), base, "B", true),
@@ -81,7 +72,7 @@ final class RecoveryLifecycleActionResolverTests: XCTestCase {
 
         for testCase in cases {
             XCTAssertFalse(
-                RecoveryLifecycleActionResolver.isAvailable(
+                GameLifecycleActionResolver.isAvailable(
                     action: testCase.action,
                     state: testCase.state,
                     actor: testCase.actor,
@@ -101,13 +92,13 @@ final class RecoveryLifecycleActionResolverTests: XCTestCase {
         )
 
         XCTAssertTrue(
-            RecoveryLifecycleActionResolver.shouldOfferDrawBeforeHostEnd(state: state)
+            GameLifecycleActionResolver.shouldOfferDrawBeforeHostEnd(state: state)
         )
         XCTAssertFalse(
-            RecoveryLifecycleActionResolver.shouldOfferDrawBeforeHostEnd(state: proposed)
+            GameLifecycleActionResolver.shouldOfferDrawBeforeHostEnd(state: proposed)
         )
         XCTAssertFalse(
-            RecoveryLifecycleActionResolver.shouldOfferDrawBeforeHostEnd(state: nil)
+            GameLifecycleActionResolver.shouldOfferDrawBeforeHostEnd(state: nil)
         )
     }
 

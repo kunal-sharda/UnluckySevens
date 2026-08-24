@@ -140,8 +140,98 @@ enum UXTestFixtures {
     static var recoveryStates: [CoreGameStateV1] {
         [
             reidentified(recoveryCoWinnerTurnState, gameId: "ux-recovery-active"),
-            reidentified(gameOver.state, gameId: "ux-recovery-finished"),
+            recoveryFinishedState(
+                gameId: "ux-record-win-1",
+                auditLog: recoveryAudit(turns: 9, sevenRolls: 2)
+            ),
+            recoveryFinishedState(
+                gameId: "ux-record-loss-1",
+                auditLog: recoveryAudit(turns: 11, sevenRolls: 1)
+            ),
+            recoveryFinishedState(
+                gameId: "ux-record-draw",
+                auditLog: recoveryAudit(turns: 12, sevenRolls: 2)
+            ),
+            recoveryFinishedState(
+                gameId: "ux-record-win-2",
+                auditLog: recoveryAudit(turns: 8, sevenRolls: 3)
+            ),
+            recoveryFinishedState(
+                gameId: "ux-record-loss-2",
+                auditLog: recoveryAudit(turns: 10, sevenRolls: 1)
+            ),
+            recoveryFinishedState(
+                gameId: "ux-record-win-3",
+                auditLog: recoveryAudit(turns: 7, sevenRolls: 4)
+            ),
+            recoveryFinishedState(
+                gameId: "ux-record-win-4",
+                auditLog: recoveryAudit(turns: 6, sevenRolls: 5)
+            ),
         ]
+    }
+
+    private static func recoveryFinishedState(
+        gameId: String,
+        auditLog: [AuditEntryV1]
+    ) -> CoreGameStateV1 {
+        let base = gameOver.state
+        return CoreGameStateV1(
+            gameId: gameId,
+            rev: base.rev,
+            prevHash: base.prevHash,
+            stateHash: "",
+            roster: base.roster,
+            currentPlayer: base.currentPlayer,
+            playerDisplayNamesByPlayer: base.playerDisplayNamesByPlayer,
+            phase: .gameOver,
+            seed: base.seed,
+            diceRngState: base.diceRngState,
+            robberRngState: base.robberRngState,
+            resourcesByPlayer: base.resourcesByPlayer,
+            bankResources: base.bankResources,
+            devDeck: base.devDeck,
+            devCardsByPlayer: base.devCardsByPlayer,
+            newDevCardsByPlayer: base.newDevCardsByPlayer,
+            revealedVictoryPointsByPlayer: base.revealedVictoryPointsByPlayer,
+            knightsPlayedByPlayer: base.knightsPlayedByPlayer,
+            largestArmyOwner: base.largestArmyOwner,
+            largestArmySize: base.largestArmySize,
+            longestRoadOwner: base.longestRoadOwner,
+            longestRoadLength: base.longestRoadLength,
+            winnerPlayer: base.winnerPlayer,
+            winningVictoryPoints: base.winningVictoryPoints,
+            gameResult: base.gameResult,
+            auditLog: auditLog,
+            settlementsByNode: base.settlementsByNode,
+            citiesByNode: base.citiesByNode,
+            roadsByEdge: base.roadsByEdge,
+            boardRules: base.boardRules,
+            board: base.board
+        ).rehashed()
+    }
+
+    private static func recoveryAudit(turns: Int, sevenRolls: Int) -> [AuditEntryV1] {
+        var entries: [AuditEntryV1] = []
+        var rev = 1
+        var remainingSevens = sevenRolls
+        for turn in 0..<turns {
+            let actor = roster[turn % roster.count]
+            if actor == host, remainingSevens > 0 {
+                entries.append(AuditEntryV1(rev: rev, actor: actor, action: .rollDice, rollTotal: 7))
+                rev += 1
+                remainingSevens -= 1
+            }
+            entries.append(AuditEntryV1(rev: rev, actor: actor, action: .endTurn))
+            rev += 1
+        }
+        while remainingSevens > 0 {
+            entries.append(AuditEntryV1(rev: rev, actor: host, action: .rollDice, rollTotal: 7))
+            rev += 1
+            remainingSevens -= 1
+        }
+        entries.append(AuditEntryV1(rev: rev, actor: host, action: .buildCity))
+        return entries
     }
 
     private static var recoveryCoWinnerTurnState: CoreGameStateV1 {

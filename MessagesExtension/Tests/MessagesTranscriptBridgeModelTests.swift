@@ -15,6 +15,7 @@ final class MessagesTranscriptBridgeModelTests: XCTestCase {
 
         XCTAssertEqual(model.title, "Players current")
         XCTAssertEqual(model.status, "Status current")
+        XCTAssertTrue(model.canOpenGame)
     }
 
     func testBridgeHasUsefulEmptyState() {
@@ -24,7 +25,18 @@ final class MessagesTranscriptBridgeModelTests: XCTestCase {
         )
 
         XCTAssertEqual(model.title, "Unlucky Sevens")
-        XCTAssertEqual(model.status, "Open the game to continue")
+        XCTAssertEqual(model.status, "Select a game bubble to continue")
+        XCTAssertFalse(model.canOpenGame)
+    }
+
+    func testBridgeDoesNotFallBackToSavedRecordWithoutCurrentGame() {
+        let model = MessagesTranscriptBridgeModel.resolve(
+            currentGameId: nil,
+            recoveredGames: [summary(id: "saved", current: true, lastActive: true)]
+        )
+
+        XCTAssertEqual(model.title, "Unlucky Sevens")
+        XCTAssertFalse(model.canOpenGame)
     }
 
     private func summary(

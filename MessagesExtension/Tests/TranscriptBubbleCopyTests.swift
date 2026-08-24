@@ -197,22 +197,6 @@ final class TranscriptBubbleCopyTests: XCTestCase {
         XCTAssertTrue(ended.gameResult?.winnerPlayers.isEmpty == true)
     }
 
-    func testRecoveryResendUsesUnchangedStateAndRestoredReceipt() {
-        let state = makeTurnState(
-            currentPlayer: "B",
-            customNames: ["A": "Avery"]
-        )
-
-        let copy = TranscriptBubbleCopyBuilder.recoveryResend(
-            state: state,
-            actor: "A"
-        )
-
-        XCTAssertEqual(copy.caption, "Unlucky Sevens: Game Restored")
-        XCTAssertEqual(copy.summary, "Avery resent the latest game state.")
-        XCTAssertEqual(boardVisual(from: copy)?.showsNumberTokens, true)
-    }
-
     func testLiveTradeToAllPlayersUsesSharedReceipt() {
         let state = makeTradeState(recipients: ["B", "C"])
 

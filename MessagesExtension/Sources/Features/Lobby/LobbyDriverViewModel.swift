@@ -37,7 +37,6 @@ final class LobbyDriverViewModel: ObservableObject {
     private var latestKnownStatesByGameId: [String: CoreGameStateV1] = [:]
     private var activeSource: ActiveContextSource?
     private var stateSessionsByGameId: [String: MSSession] = [:]
-    private var unboundRecoveredGameIds: Set<String> = []
     private var selectedTranscriptGameId: String?
     private var lastResolvedSelectionSignature: String?
     private var cachedBoardOverlayModelKey: BoardOverlayModelCacheKey?
@@ -245,13 +244,18 @@ final class LobbyDriverViewModel: ObservableObject {
             return
         }
 
+        gameLedgerStore.archive(gameId: "ux-recovery-completed")
         for state in states {
             gameLedgerStore.archive(gameId: state.gameId)
         }
         for state in states {
             do {
                 let payload = try CompactStateTransport.encode(state)
-                gameLedgerStore.record(state: state, payload: payload)
+                gameLedgerStore.record(
+                    state: state,
+                    payload: payload,
+                    localActor: UXTestFixtures.host
+                )
             } catch {
                 setLastError("UX Lab could not seed recovery fixtures.")
                 return
@@ -452,6 +456,20 @@ final class LobbyDriverViewModel: ObservableObject {
 
     var finishedRecoveredGames: [ActiveGameRecoverySummary] {
         recoveredGames.filter(\.isFinished)
+    }
+
+    var playerRecordModel: PlayerRecordModel {
+        #if DEBUG
+        let participantIDs = uxTestingIsActive
+            ? Set(selectedState?.roster ?? [])
+            : activeConversationParticipantIDs
+        #else
+        let participantIDs = activeConversationParticipantIDs
+        #endif
+        return PlayerRecordModelBuilder.build(
+            from: gameLedgerStore.recoveredStates(),
+            currentParticipantIDs: participantIDs
+        )
     }
 
     var lobbyScreenModel: LobbyScreenModel {
@@ -1712,12 +1730,13 @@ final class LobbyDriverViewModel: ObservableObject {
             state,
             in: latestKnownStatesByGameId
         )
-        gameLedgerStore.record(state: state, payload: payload)
+        gameLedgerStore.record(
+            state: state,
+            payload: payload,
+            localActor: localActorIdentifier(for: state)
+        )
         refreshRecoveredGames()
         stateSessionsByGameId[state.gameId] = message.session
-        if message.session != nil {
-            unboundRecoveredGameIds.remove(state.gameId)
-        }
         let transcriptActiveSource: TranscriptActiveContextSource?
         switch activeSource {
         case .selectedBubble:
@@ -1758,7 +1777,7 @@ final class LobbyDriverViewModel: ObservableObject {
             setActiveContext(stateSelection.preferredState, source: activationSource)
         }
 
-        if didReceiveDisposition == .storeForRecoveryOnly {
+        if didReceiveDisposition == .storeInLedgerOnly {
             selectionStatus = "Stored received game rev\(stateSelection.preferredState.rev) for another game"
         } else {
             selectionStatus = stateSelection.selectionStatus
@@ -1838,127 +1857,26 @@ final class LobbyDriverViewModel: ObservableObject {
         )
     }
 
-    func resumeRecoveredGame(_ gameId: String) {
-        guard let recoveredState = gameLedgerStore.latestState(for: gameId) else {
-            refreshRecoveredGames()
-            setLastError("Corrupt local recovery record.")
-            return
-        }
-
-        bindRecoveredSessionIfAvailable(for: gameId)
-        setActiveContext(recoveredState, source: .localLedgerState)
-        if let activeConversation {
-            onRequestSelectionWatch?(activeConversation)
-        }
-        onRequestExpanded?()
-        selectionStatus = "Recovered latest game rev\(recoveredState.rev)"
-        setLastError(nil)
+    func canResignCurrentGame() -> Bool {
+        currentGameActionIsAvailable(.resign)
     }
 
-    func requiresTranscriptReconnect(_ gameId: String) -> Bool {
-        if stateSessionsByGameId[gameId] != nil {
-            return false
-        }
-        if
-            let selected = activeConversation?.selectedMessage,
-            selected.session != nil,
-            gameIdEncodedInMessage(selected) == gameId
-        {
-            return false
-        }
-        return gameLedgerStore.latestState(for: gameId) != nil
-    }
-
-    func canResendRecoveredGame(_ gameId: String) -> Bool {
-        let state = gameLedgerStore.latestState(for: gameId)
-        return RecoveryLifecycleActionResolver.isAvailable(
-            action: .resend,
-            state: state,
-            actor: localActorIdentifier(for: state),
-            hasCompatibleActiveConversation: state.map(isCompatibleWithActiveConversation) ?? false
+    func resignCurrentGame() {
+        publishCurrentGameLifecycleChange(
+            action: .resign,
+            receipt: { state, actor in
+                TranscriptBubbleCopyBuilder.resignation(resultingState: state, actor: actor)
+            },
+            successStatus: "Published resignation"
         )
     }
 
-    func resendRecoveredGame(_ gameId: String) {
-        guard
-            let state = gameLedgerStore.latestState(for: gameId),
-            let actor = localActorIdentifier(for: state),
-            isCompatibleWithActiveConversation(state)
-        else {
-            setLastError("Open this game from its original group chat before resending it.")
-            return
-        }
-
-        do {
-            let draft = try RecoveryLifecycleActionResolver.prepare(
-                action: .resend,
-                state: state,
-                actor: actor
-            )
-            let payload = try jsonString(from: draft.resultingState)
-            let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
-            try sendEnvelope(
-                envelope,
-                bubbleCopy: TranscriptBubbleCopyBuilder.recoveryResend(
-                    state: draft.resultingState,
-                    actor: actor
-                ),
-                sessionPolicy: .state(gameId: draft.resultingState.gameId),
-                permitsRecoverySessionStart: draft.permitsRecoverySessionStart
-            )
-            setActiveContext(draft.resultingState, source: .lastSentState)
-            selectionStatus = "Resent unchanged game state rev\(draft.resultingState.rev)"
-            setLastError(nil)
-        } catch {
-            setLastError("Resend failed: \(error.localizedDescription)")
-        }
+    func canProposeDrawInCurrentGame() -> Bool {
+        currentGameActionIsAvailable(.proposeDraw)
     }
 
-    func canResignRecoveredGame(_ gameId: String) -> Bool {
-        recoveryActionIsAvailable(.resign, for: gameId)
-    }
-
-    func resignRecoveredGame(_ gameId: String) {
-        guard
-            let fromState = gameLedgerStore.latestState(for: gameId),
-            let actor = localActorIdentifier(for: fromState),
-            isCompatibleWithActiveConversation(fromState)
-        else {
-            setLastError("Open this game from its original group chat before resigning.")
-            return
-        }
-
-        do {
-            let draft = try RecoveryLifecycleActionResolver.prepare(
-                action: .resign,
-                state: fromState,
-                actor: actor
-            )
-            let payload = try jsonString(from: draft.resultingState)
-            let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
-            try sendEnvelope(
-                envelope,
-                bubbleCopy: TranscriptBubbleCopyBuilder.resignation(
-                    resultingState: draft.resultingState,
-                    actor: actor
-                ),
-                sessionPolicy: .state(gameId: draft.resultingState.gameId)
-            )
-            setActiveContext(draft.resultingState, source: .lastSentState)
-            selectionStatus = "Published resignation rev\(draft.resultingState.rev)"
-            setLastError(nil)
-        } catch {
-            setLastError("Resign failed: \(error.localizedDescription)")
-        }
-    }
-
-    func canProposeDraw(for gameId: String) -> Bool {
-        recoveryActionIsAvailable(.proposeDraw, for: gameId)
-    }
-
-    func proposeDraw(for gameId: String) {
-        publishLifecycleChange(
-            gameId: gameId,
+    func proposeDrawInCurrentGame() {
+        publishCurrentGameLifecycleChange(
             action: .proposeDraw,
             receipt: { state, actor in
                 TranscriptBubbleCopyBuilder.drawProposed(
@@ -1970,13 +1888,12 @@ final class LobbyDriverViewModel: ObservableObject {
         )
     }
 
-    func canVoteOnDraw(for gameId: String) -> Bool {
-        recoveryActionIsAvailable(.voteOnDraw(approve: true), for: gameId)
+    func canVoteOnDrawInCurrentGame() -> Bool {
+        currentGameActionIsAvailable(.voteOnDraw(approve: true))
     }
 
-    func voteOnDraw(for gameId: String, approve: Bool) {
-        publishLifecycleChange(
-            gameId: gameId,
+    func voteOnDrawInCurrentGame(approve: Bool) {
+        publishCurrentGameLifecycleChange(
             action: .voteOnDraw(approve: approve),
             receipt: { state, actor in
                 TranscriptBubbleCopyBuilder.drawVote(
@@ -1989,19 +1906,18 @@ final class LobbyDriverViewModel: ObservableObject {
         )
     }
 
-    func canHostEndGame(_ gameId: String) -> Bool {
-        recoveryActionIsAvailable(.hostEnd, for: gameId)
+    func canHostEndCurrentGame() -> Bool {
+        currentGameActionIsAvailable(.hostEnd)
     }
 
-    func shouldOfferDrawBeforeHostEnd(_ gameId: String) -> Bool {
-        RecoveryLifecycleActionResolver.shouldOfferDrawBeforeHostEnd(
-            state: gameLedgerStore.latestState(for: gameId)
+    func shouldOfferDrawBeforeEndingCurrentGame() -> Bool {
+        GameLifecycleActionResolver.shouldOfferDrawBeforeHostEnd(
+            state: selectedState
         )
     }
 
-    func hostEndGame(_ gameId: String) {
-        publishLifecycleChange(
-            gameId: gameId,
+    func hostEndCurrentGame() {
+        publishCurrentGameLifecycleChange(
             action: .hostEnd,
             receipt: { state, actor in
                 TranscriptBubbleCopyBuilder.hostEnded(
@@ -2013,23 +1929,23 @@ final class LobbyDriverViewModel: ObservableObject {
         )
     }
 
-    private func publishLifecycleChange(
-        gameId: String,
-        action: RecoveryLifecycleAction,
+    private func publishCurrentGameLifecycleChange(
+        action: GameLifecycleAction,
         receipt: (CoreGameStateV1, String) -> TranscriptBubbleCopy,
         successStatus: String
     ) {
         guard
-            let fromState = gameLedgerStore.latestState(for: gameId),
+            let fromState = selectedState,
             let actor = localActorIdentifier(for: fromState),
+            hasBoundSession(for: fromState.gameId),
             isCompatibleWithActiveConversation(fromState)
         else {
-            setLastError("Open this game from its original group chat before taking that action.")
+            setLastError("Open this game from its Messages bubble before taking that action.")
             return
         }
 
         do {
-            let draft = try RecoveryLifecycleActionResolver.prepare(
+            let draft = try GameLifecycleActionResolver.prepare(
                 action: action,
                 state: fromState,
                 actor: actor
@@ -2049,31 +1965,26 @@ final class LobbyDriverViewModel: ObservableObject {
         }
     }
 
-    private func recoveryActionIsAvailable(
-        _ action: RecoveryLifecycleAction,
-        for gameId: String
-    ) -> Bool {
-        let state = gameLedgerStore.latestState(for: gameId)
-        return RecoveryLifecycleActionResolver.isAvailable(
+    private func currentGameActionIsAvailable(_ action: GameLifecycleAction) -> Bool {
+        let state = selectedState
+        return GameLifecycleActionResolver.isAvailable(
             action: action,
             state: state,
             actor: localActorIdentifier(for: state),
-            hasCompatibleActiveConversation: state.map(isCompatibleWithActiveConversation) ?? false
+            hasCompatibleActiveConversation: state.map {
+                hasBoundSession(for: $0.gameId) && isCompatibleWithActiveConversation($0)
+            } ?? false
         )
     }
 
-    func archiveRecoveredGame(_ gameId: String) {
-        gameLedgerStore.archive(gameId: gameId)
-        latestKnownStatesByGameId.removeValue(forKey: gameId)
-        stateSessionsByGameId.removeValue(forKey: gameId)
+    private func hasBoundSession(for gameId: String) -> Bool {
+        #if DEBUG
+        if uxTestingIsActive { return true }
+        #endif
 
-        if selectedState?.gameId == gameId {
-            clearActiveContext()
-            selectionStatus = "Archived local game"
-        } else {
-            refreshRecoveredGames()
-        }
-        setLastError(nil)
+        if stateSessionsByGameId[gameId] != nil { return true }
+        guard let selectedMessage = activeConversation?.selectedMessage else { return false }
+        return selectedMessage.session != nil && gameIdEncodedInMessage(selectedMessage) == gameId
     }
 
     private func cacheLocalLedgerStateRecord(_ data: Data) {
@@ -2088,7 +1999,11 @@ final class LobbyDriverViewModel: ObservableObject {
         else {
             return
         }
-        gameLedgerStore.record(state: state, payload: cached.payload)
+        gameLedgerStore.record(
+            state: state,
+            payload: cached.payload,
+            localActor: localActorIdentifier(for: state)
+        )
         refreshRecoveredGames()
     }
 
@@ -2255,8 +2170,7 @@ final class LobbyDriverViewModel: ObservableObject {
         _ envelope: EnvelopeV1,
         bubbleCopy: TranscriptBubbleCopy,
         sessionPolicy: TranscriptSessionPolicy,
-        postPublishEffect: PostPublishEffect = .none,
-        permitsRecoverySessionStart: Bool = false
+        postPublishEffect: PostPublishEffect = .none
     ) throws {
         #if DEBUG
         if uxTestingIsActive {
@@ -2276,10 +2190,7 @@ final class LobbyDriverViewModel: ObservableObject {
             caption: bubbleCopy.caption,
             summaryLabel: bubbleCopy.summary,
             image: bubbleImage,
-            session: try session(
-                for: sessionPolicy,
-                permitsRecoverySessionStart: permitsRecoverySessionStart
-            ),
+            session: try session(for: sessionPolicy),
             sessionPolicy: sessionPolicy
         )
         let localLedgerStateRecord = localLedgerStateRecord(from: envelope)
@@ -2305,7 +2216,11 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         let state = try decodePayload(CoreGameStateV1.self, from: payload)
-        gameLedgerStore.record(state: state, payload: payload)
+        gameLedgerStore.record(
+            state: state,
+            payload: payload,
+            localActor: state.roster.contains(uxTestingActorID) ? uxTestingActorID : nil
+        )
         if uxTestingFollowsTurnOwner, state.roster.contains(state.currentPlayer) {
             uxTestingActorID = state.currentPlayer
         } else if !state.roster.contains(uxTestingActorID) {
@@ -2440,15 +2355,20 @@ final class LobbyDriverViewModel: ObservableObject {
         }
         #endif
 
-        guard let activeConversation else {
+        guard activeConversation != nil else {
             return false
         }
 
-        let participantIDs = Set(
+        let participantIDs = activeConversationParticipantIDs
+        return Set(state.roster).isSubset(of: participantIDs)
+    }
+
+    private var activeConversationParticipantIDs: Set<String> {
+        guard let activeConversation else { return [] }
+        return Set(
             [activeConversation.localParticipantIdentifier.uuidString]
                 + activeConversation.remoteParticipantIdentifiers.map(\.uuidString)
         )
-        return Set(state.roster).isSubset(of: participantIDs)
     }
 
     private func shouldRecoverActiveContext(to state: CoreGameStateV1) -> Bool {
@@ -2669,17 +2589,14 @@ final class LobbyDriverViewModel: ObservableObject {
         return "Malformed game payload."
     }
 
-    private func session(
-        for policy: TranscriptSessionPolicy,
-        permitsRecoverySessionStart: Bool
-    ) throws -> MSSession {
+    private func session(for policy: TranscriptSessionPolicy) throws -> MSSession {
         switch policy {
         case .new:
             return MSSession()
         case let .state(gameId):
             let selected = activeConversation?.selectedMessage
             let selectedGameId = selected.flatMap(gameIdEncodedInMessage)
-            let binding = TranscriptRecoverySessionBinding.resolve(
+            let binding = TranscriptGameSessionBinding.resolve(
                 gameId: gameId,
                 selectedMessageGameId: selectedGameId,
                 hasSelectedMessageSession: selected?.session != nil,
@@ -2697,43 +2614,10 @@ final class LobbyDriverViewModel: ObservableObject {
                     throw SendError.recoverySessionUnbound
                 }
                 stateSessionsByGameId[gameId] = selectedSession
-                unboundRecoveredGameIds.remove(gameId)
                 return selectedSession
             case .unbound:
-                guard TranscriptRecoverySessionBinding.permitsNewSession(
-                    isMarkedRecoveryUnbound: unboundRecoveredGameIds.contains(gameId),
-                    isExplicitReconnect: permitsRecoverySessionStart
-                ) else {
-                    throw SendError.recoverySessionUnbound
-                }
-                let newSession = MSSession()
-                stateSessionsByGameId[gameId] = newSession
-                unboundRecoveredGameIds.remove(gameId)
-                return newSession
+                throw SendError.recoverySessionUnbound
             }
-        }
-    }
-
-    private func bindRecoveredSessionIfAvailable(for gameId: String) {
-        let selected = activeConversation?.selectedMessage
-        let selectedGameId = selected.flatMap(gameIdEncodedInMessage)
-        let binding = TranscriptRecoverySessionBinding.resolve(
-            gameId: gameId,
-            selectedMessageGameId: selectedGameId,
-            hasSelectedMessageSession: selected?.session != nil,
-            hasCachedSession: stateSessionsByGameId[gameId] != nil
-        )
-
-        switch binding {
-        case .cached:
-            unboundRecoveredGameIds.remove(gameId)
-        case .selectedMessage:
-            if let selectedSession = selected?.session {
-                stateSessionsByGameId[gameId] = selectedSession
-                unboundRecoveredGameIds.remove(gameId)
-            }
-        case .unbound:
-            unboundRecoveredGameIds.insert(gameId)
         }
     }
 
@@ -2826,7 +2710,7 @@ final class LobbyDriverViewModel: ObservableObject {
             case .invalidIntentPayload:
                 return "Intent payload is missing required fields."
             case .recoverySessionUnbound:
-                return "Reconnect this game to the chat from Your Games before making a move."
+                return "Open this game from its Messages bubble before making a move."
             }
         }
     }

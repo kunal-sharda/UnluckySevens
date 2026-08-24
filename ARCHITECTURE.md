@@ -127,13 +127,13 @@ Internal authoring actions must still be anchored to the current canonical base 
 
 The Messages UX uses one `MSSession` per game for canonical `STATE` updates so the main game bubble stays grouped across lobby, setup, turn play, responder actions, and game over.
 
-Session continuity is an in-memory host adaptation, not canonical persistence. Recovery binds only a decoded selected same-game session or a cached in-memory `MSSession`; it never borrows a mismatched bubble. If extension restart leaves neither available, the recovered game is read-only until the player explicitly chooses **Reconnect to Chat**, which starts a fresh recovery bubble. Persisted `MSSession` archival is prohibited until a two-device replacement experiment proves it reliable.
+Session continuity is an in-memory host adaptation, not canonical persistence. Only a decoded selected same-game session or a cached in-memory `MSSession` may authorize a canonical update; a mismatched or absent session fails closed and never creates a replacement chain. Persisted `MSSession` archival remains prohibited.
 
-A game opened from Your Games enters the same active-game observation path as a selected bubble: it requests the expanded host, and a valid newer same-game `didReceive` advances the canonical context and ledger. The originally selected `MSMessage` remains only a selection/hydration input because Apple does not update `selectedMessage` when later messages arrive.
+Gameplay context is established only by selecting a real game bubble. A valid newer same-game `didReceive` advances that context and the ledger; another game's update is stored without changing the mounted game. The local ledger is a read-only source for Player Record history and statistics, not a gameplay-entry or publication source.
 
 Apple may present a selected Messages bubble using transcript presentation, especially on iPad. That host mounts a compact summary bridge with an explicit **Open Game** request; the full Lobby/Game shells mount only in the normal compact or expanded extension canvas. Transcript presentation is therefore never treated as a scaled gameplay viewport.
 
-The local per-game ledger stores validated canonical snapshots independently of the compact wire representation. Higher revisions win; valid equal-revision siblings converge on the lexicographically greatest state hash. Active records persist until local archive, while only the eight most recently updated finished games are retained. Archive is device-local and a later valid transcript bubble can recreate the record.
+The local per-game ledger stores validated canonical snapshots plus a device-local player-identity annotation independently of the compact wire representation. Higher revisions win; valid equal-revision siblings converge on the lexicographically greatest state hash. The annotation is presentation metadata and never enters canonical state or transport. Active records persist while only the eight most recently updated finished games are retained.
 
 The protocol source of truth is the message URL payload. Pre-TestFlight dev-era summary mirroring, legacy envelopes, and retired transcript debug surfaces are intentionally unsupported on the current branch.
 

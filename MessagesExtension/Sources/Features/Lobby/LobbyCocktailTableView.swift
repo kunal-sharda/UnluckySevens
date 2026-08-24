@@ -135,14 +135,14 @@ struct LobbyCocktailTableView: View {
     @ViewBuilder
     private var gamesAction: some View {
         if let games {
-            Button("Games", systemImage: "die.face.5.fill", action: games)
+            Button("Player Record", systemImage: "chart.bar.xaxis", action: games)
                 .labelStyle(.iconOnly)
                 .font(GameTheme.bodyFont.bold())
                 .foregroundStyle(LobbyInvitePalette.mutedPaper)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
                 .buttonStyle(.plain)
-                .accessibilityHint("Opens saved active and finished games")
+                .accessibilityHint("Opens read-only results saved on this device")
                 .accessibilityIdentifier("uls.lobby.games")
         }
     }

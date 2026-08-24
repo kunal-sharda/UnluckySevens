@@ -3,7 +3,7 @@
 This file records **locked product + architecture decisions** for the MVP.  
 If a change is desired, update this file **first**, then update code/tests.
 
-**Last updated:** 2026-08-02
+**Last updated:** 2026-08-23
 
 ---
 
@@ -23,7 +23,7 @@ If a change is desired, update this file **first**, then update code/tests.
 - **No backend** for MVP. The iMessage thread is the “storage.”
 - If the message thread is deleted, the game is effectively lost (acceptable for MVP).
 - **Fixed roster** at game start: host invites → players join → host starts → roster locks.
-- The device-local recovery ledger keeps active games until local archive and keeps the eight most recent finished games. Local archive never mutates canonical game state; a later valid bubble can restore the record.
+- The device-local ledger retains observed active games and the eight most recent finished games for Player Record and same-game state resolution. It has no player-facing archive or gameplay-launch action; a valid bubble may refresh or recreate a local record.
 
 ---
 
@@ -104,10 +104,10 @@ Recommended canonical state cadence per turn:
 - Fresh current-player gameplay actions publish updated canonical `STATE` on that same canonical game session.
 - Fresh forced-discard and targeted trade-response publishes also stay on that same canonical game session so the game transcript remains one thread.
 - If the shell can recover canonical `STATE` for a game, it should prefer recovered game state over any raw responder artifact or stale transcript selection.
-- A joined player may resend an unchanged validated snapshot under a `Game Restored` receipt. Resend preserves revision and hash and does not advance play.
-- Recovery publication reuses only a decoded selected same-game or cached in-memory session. If no live session survives, opening the ledger state does not silently create a session: **Reconnect to Chat** is the explicit action that starts a fresh recovery bubble. Persisted `MSSession` archival remains disallowed until proven by a two-device replacement experiment.
+- Gameplay resumes only from a real selected game bubble. A device-local ledger snapshot cannot open, reconnect, resend, or publish a game, because it cannot recreate Apple-selected transcript/session continuity.
+- Canonical publication reuses only a decoded selected same-game or cached in-memory session. If no live session survives, publication fails closed; the product never creates a replacement game chain from local history. Persisted `MSSession` archival remains disallowed.
 - Apple-owned transcript presentation uses a compact summary and **Open Game** action. The full tabletop never scales into that floating host card; normal gameplay remains in the settled extension canvas.
-- Messages entry intent is explicit: the app drawer first presents one compact masked-seven placement entrance, whose raised **Open Lobby** button reveals the fresh invitation lobby and requests expansion. The robber lands on that button’s top edge. The Skip control only settles the animation; Reduce Motion and the persisted Skip Animations preference start settled. A selected Unlucky Sevens transcript bubble opens that bubble’s game, and Your Games opens only the chosen recovery record. Local ledger state remains discoverable but cannot implicitly replace a drawer launch.
+- Messages entry intent is explicit: the app drawer first presents one compact masked-seven placement entrance, whose raised **Open Lobby** button reveals the fresh invitation lobby and requests expansion. The robber lands on that button’s top edge. The Skip control only settles the animation; Reduce Motion and the persisted Skip Animations preference start settled. A selected Unlucky Sevens transcript bubble opens that bubble’s game. Local ledger state remains discoverable only through the read-only Player Record and cannot replace a drawer launch.
 - Rich transcript previews reuse production components: canonical lobby states render the current four-seat table, setup states render the board without number tokens, and post-setup states render the current board. These images are presentation-only and fail soft to the unchanged caption and summary.
 
 Current transition rule:
@@ -137,10 +137,10 @@ Current transition rule:
 ## 11) Approved lobby and utility-screen composition
 
 - The Lobby, Join, Settings, and Rules compositions approved on 2026-08-02 are locked. Changing their visual structure requires explicit user direction and an update to this decision.
-- Lobby opens Games directly from one compact die affordance. Explicit Game Settings and Tutorial rows sit below the table with matching text hierarchy and chevrons. Invite and Join both show a full-contrast `Playing as` identity treatment and keep the identity/action group near the bottom of the available canvas.
+- Lobby opens Player Record directly from one compact chart affordance. Explicit Game Settings and Tutorial rows sit below the table with matching text hierarchy and chevrons. Invite and Join both show a full-contrast `Playing as` identity treatment and keep the identity/action group near the bottom of the available canvas.
 - Settings presents Skip animations directly, then current-game facts, then the Rules destination without separate Experience or Help headings or explanatory animation copy.
 - Rules uses text-only content headings and a text-only initial scroll cue; functional navigation controls remain permitted. A final Strategy row opens the existing three-tip Strategy card as its own focused overlay, and closing it returns to Rules.
-- Players/Game Information uses people and die symbols for its two in-place modes, with no mode-specific ellipsis in the header. It uses a centered Trade-style translucent felt panel and focus veil while the mounted board, water frame, and turn-object rail remain fixed behind it. The inline Your Games title is centered and opens lifecycle management through a 44-point target; the dedicated Games screen centers its title independently of Back and count utilities. Resignation and host-end choices use the same centered felt panel, gold keyline, and focus veil as Players and Trade, with explicit safe and destructive actions.
+- Players/Game Information uses a centered Trade-style translucent felt panel and focus veil while the mounted board, water frame, and turn-object rail remain fixed behind it. A chart action opens read-only Player Record; an ellipsis contains resignation, draw, and host-end actions only for the current bubble-bound game. Their confirmations use the same felt panel, gold keyline, and focus veil as Players and Trade, with explicit safe and destructive actions.
 - The shared system-type contract and existing board-number rendering remain unchanged.
 - Gameplay has one canonical Physical Props shell across setup, start turn, ordinary turns, forced actions, waiting, trades, and terminal play. Retired lower trays, shelves, alternate headers, embedded board racks, and shell-level resize snapshots are not fallback routes; host resizing preserves the live canonical composition. Messages layout is container-responsive and state-static: the controller publishes one settled usable-canvas snapshot after a genuine host transition, while internal routes never change its revision. The board and ocean fit as one canonical-aspect viewport using a single uniform scale from that settled region; temporary surfaces may overlay it but must not trigger a new fit or stretch either axis.
 - Local victory leads with `Victory!` and the concise winning score (`10 points` in the standard fixture). Decisive summaries use `secured the victory`; Road and Knight award wins are named as `Gaining Longest Road` and `Gaining Largest Army` with canonical casing.

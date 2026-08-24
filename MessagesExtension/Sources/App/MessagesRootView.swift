@@ -136,8 +136,8 @@ struct MessagesRootView: View {
                         }
                     }
                     .overlay {
-                        if utilityRoute == .games {
-                            GamesLibraryView(
+                        if utilityRoute == .playerRecord {
+                            PlayerRecordView(
                                 viewModel: viewModel,
                                 dismiss: dismissUtility
                             )
@@ -222,7 +222,7 @@ struct MessagesRootView: View {
     }
 
     private func showGames() {
-        utilityRoute = .games
+        utilityRoute = .playerRecord
     }
 
     private func dismissUtility() {

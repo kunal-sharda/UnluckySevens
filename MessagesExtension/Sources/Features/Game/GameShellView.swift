@@ -678,12 +678,16 @@ struct GameShellView: View {
 
                                 GameTurnGameInfoView(
                                     model: screenModel.gameInfo,
-                                    games: viewModel.recoveredGames,
-                                    onOpenGame: { gameId in
-                                        viewModel.resumeRecoveredGame(gameId)
-                                        shellRoute = .none
-                                    },
-                                    onManageGamesTap: onGamesTap,
+                                    canProposeDraw: viewModel.canProposeDrawInCurrentGame(),
+                                    canVoteOnDraw: viewModel.canVoteOnDrawInCurrentGame(),
+                                    canResign: viewModel.canResignCurrentGame(),
+                                    canHostEnd: viewModel.canHostEndCurrentGame(),
+                                    shouldOfferDrawBeforeHostEnd: viewModel.shouldOfferDrawBeforeEndingCurrentGame(),
+                                    onPlayerRecordTap: onGamesTap,
+                                    onProposeDraw: viewModel.proposeDrawInCurrentGame,
+                                    onVoteOnDraw: viewModel.voteOnDrawInCurrentGame,
+                                    onResign: viewModel.resignCurrentGame,
+                                    onHostEnd: viewModel.hostEndCurrentGame,
                                     onClose: handleGameInfoToggle
                                 )
                                 .gameTutorialTarget(.gameInfo)

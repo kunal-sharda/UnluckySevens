@@ -32,15 +32,17 @@ struct MessagesTranscriptBridgeView: View {
                 .foregroundStyle(GameTheme.surface.opacity(0.68))
                 .lineLimit(1)
 
-            Button(action: openGame) {
-                Label("Open Game", systemImage: "arrow.up.right.square")
-                    .font(GameTheme.metaFont.weight(.bold))
-                    .frame(maxWidth: .infinity, minHeight: 44)
+            if model.canOpenGame {
+                Button(action: openGame) {
+                    Label("Open Game", systemImage: "arrow.up.right.square")
+                        .font(GameTheme.metaFont.weight(.bold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(GameTheme.accent)
+                .foregroundStyle(GameTheme.ink)
+                .accessibilityIdentifier("uls.transcript.openGame")
             }
-            .buttonStyle(.borderedProminent)
-            .tint(GameTheme.accent)
-            .foregroundStyle(GameTheme.ink)
-            .accessibilityIdentifier("uls.transcript.openGame")
         }
         .padding(GameTheme.shellPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

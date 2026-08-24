@@ -295,40 +295,6 @@ enum TranscriptBubbleCopyBuilder {
         )
     }
 
-    static func recoveryResend(
-        state: CoreGameStateV1,
-        actor: String
-    ) -> TranscriptBubbleCopy {
-        let actorName = displayName(for: actor, in: state)
-        let visual: TranscriptBubbleVisual
-        switch state.phase {
-        case .lobby:
-            visual = lobbyVisual(for: state)
-        case .setup:
-            visual = boardVisual(for: state, showsNumberTokens: false)
-        case .turn:
-            visual = boardVisual(for: state, showsNumberTokens: true)
-        case .gameOver:
-            let title: String
-            switch state.gameResult?.reason {
-            case .victory:
-                title = "\(winnerNames(in: state)) won"
-            case .draw:
-                title = "Draw"
-            case .hostEnded:
-                title = "Game ended"
-            case nil:
-                title = "Game over"
-            }
-            visual = gameOverVisual(for: state, winnerTitle: title)
-        }
-        return titled(
-            "Game Restored",
-            summary: "\(actorName) resent the latest game state.",
-            visual: visual
-        )
-    }
-
     private static func titled(
         _ title: String,
         summary: String,

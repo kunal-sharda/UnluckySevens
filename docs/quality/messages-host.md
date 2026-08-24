@@ -230,7 +230,7 @@ What we learned:
 - `MSConversation.selectedMessage` is the currently selected transcript bubble, not a live-updating pointer to the latest game update.
 - `didReceive` should be treated as the live-update optimization path for the currently open game, not as permission to hijack the shell onto any newer game update in the thread. If another game's message arrives while a game is open, record it for recovery but keep the visible shell anchored to the active game.
 - Drawer entry begins in an Apple-owned compact presentation and `requestPresentationStyle(.expanded)` is only a request. Repeated physical tests showed automatic expansion can vary on unchanged bytes, so fixed-delay retries are not a durable contract. Record activation, style, bounds, and transition callbacks on an unchanged build before changing controller timing. iPad may retain Apple-owned transcript presentation; render a bounded summary/**Open Game** continuation there and never mount or scale the tabletop into the transcript card.
-- Opening a ledger-backed game must keep the same active-game observation contract as bubble entry. A valid newer `didReceive` for that game advances the visible state and ledger; stale/equal state cannot roll it back, and other-game updates remain recovery-only. `selectedMessage` polling is hydration/reselection support, not a live-update source.
+- A ledger-backed snapshot cannot establish a live game. Two-account physical tests showed that restoring its game ID does not recreate Apple-selected message/session delivery; gameplay must begin from a real selected bubble. A valid newer `didReceive` then advances that bubble-bound game, while other-game updates remain ledger-only.
 - Do not rebuild player-facing transport diagnostics as a product dependency. If a flow only feels debuggable with custom in-app transport HUDs, the UX contract is still too brittle.
 
 Current repo answer:
@@ -241,8 +241,7 @@ Current repo answer:
 - Pre-TestFlight legacy responder action bubbles are intentionally unsupported after the hard runtime reset. Fresh gameplay no longer depends on responder envelopes surfacing on another device.
 - Authoring from a stale selected bubble is a different failure mode from recovering from a stale selected bubble. Turn/setup/trade/dev-card publication paths should resolve against the newest known canonical state for the same game before drafting or validating an action, otherwise the shell can still produce obsolete anchors even after recovery logic improved.
 - A short post-selection polling burst is not enough for Messages-hosted async play. If the extension is open on a game bubble, it needs a lightweight ongoing selection watch while that context remains active, because same-session surfacing can lag well past the first couple of seconds.
-- Your Games recovery explicitly requests the expanded host and a successful `didReceive` preserves the ongoing active-context watch; this reuses the canonical state resolver rather than creating a second synchronization path.
-- Same-device cached published-state recovery now stores a per-game bridge for reopen/response selection paths instead of relying on one global last-published state.
+- Same-device cached published state remains a per-game ledger input for history, latest-state resolution after real bubble selection, and response safety; it is not a navigation or publication authority.
 - Trade-response copy no longer exposes old transport intent terminology, and fresh responder gameplay no longer uses action bubbles as the main transport primitive.
 
 ### 7. Per-game recovery beats one global cached-state bridge
@@ -345,24 +344,26 @@ Current repo answer:
 - Forced discard and targeted trade responses now also publish canonical `STATE` on that same game session.
 - The per-game ledger must record decoded incoming `STATE` as well as locally published `STATE`; otherwise recovery becomes asymmetrically worse on receiving devices, which is exactly where Messages host churn already hurts the most.
 
-### 8. Active-game recovery needs a player-visible affordance, not only invisible cache logic
+### 8. Local history must not impersonate a live Messages selection
 
 What went wrong:
 
-- Even after the repo gained a per-game ledger, recoverable games could still feel "missing" if the currently selected transcript bubble was stale or unrelated.
-- Recovery that exists only as internal cache logic is not enough if the player has no obvious way to tell the app which known game to reopen.
+- The first Games surface let a player open a ledger snapshot and appeared to restore the intended game ID.
+- On two separate physical builds, A bubble → saved game B → newer B left the receiver stale until B's real bubble was selected.
+- Apple does not expose transcript enumeration, a setter for `selectedMessage`, or a reconstructible public `MSSession` identity, so the app cannot honestly turn arbitrary local history into a live selected game.
 
 What we learned:
 
-- Messages-hosted recovery needs both substrate and surface.
-- Once the app knows about multiple recoverable games, it should expose a dedicated in-app Games destination rather than forcing transcript archaeology.
+- Canonical state identity and live Messages delivery identity are separate constraints.
+- A local ledger is valuable for statistics, history, and stale-state resolution after real selection, but not as a gameplay launcher.
+- When the platform cannot prove a live session, publication must fail closed rather than create a parallel bubble chain.
 
 Current repo answer:
 
-- The fresh invitation/loading card and current-game top bar expose a Games destination backed by a versioned per-game ledger with Active and Finished sections. The ledger never floats over the live board.
-- The ledger validates canonical snapshots, repairs corrupt records, converges equal-revision siblings by greatest hash, retains active games until archive, and caps finished history at eight.
-- Joined players can reopen or resend the unchanged latest state. Local archive removes only the device record, so a later valid bubble can recreate it.
-- Recovery publish reuses a decoded selected same-game or cached in-memory `MSSession`. After host restart, absence of a proven restorable session marks the recovery unbound; only the explicit **Reconnect to Chat** action may create a fresh recovery bubble.
+- The fresh invitation/loading card and current-game Game Information expose a read-only Player Record backed by the versioned per-game ledger.
+- Player Record presents device-local overall results and an exact-participant-set group view. It does not claim a stable chat identity, because Messages does not expose one.
+- The ledger validates canonical snapshots, repairs corrupt records, converges equal-revision siblings by greatest hash, stores the local player's identity outside canonical state, and caps finished history at eight.
+- Player Record has no Open, Reconnect, Resend, archive, or lifecycle publication controls. Resign, draw, and host end live on the current game and require its bound session.
 
 ### 9. Messages layout classes are not enough; host height is a separate constraint
 

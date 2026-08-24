@@ -19,6 +19,31 @@ final class TranscriptGameLedgerTests: XCTestCase {
         XCTAssertEqual(store.observedJoiners(for: state.gameId), ["guest"])
     }
 
+    func testRecordPersistsLocalActorWithoutChangingCanonicalState() {
+        let userDefaults = makeUserDefaults()
+        let store = TranscriptGameLedgerStore(userDefaults: userDefaults)
+        let state = makeLobbyState(gameId: "game-actor", rev: 2, roster: ["host", "guest"])
+
+        store.record(state: state, payload: try! encode(state), localActor: "guest")
+
+        let recovered = store.recoveredStates().first
+        XCTAssertEqual(recovered?.state, state)
+        XCTAssertEqual(recovered?.localActor, "guest")
+    }
+
+    func testRecordBackfillsLocalActorWithoutReplacingNewerState() {
+        let userDefaults = makeUserDefaults()
+        let store = TranscriptGameLedgerStore(userDefaults: userDefaults)
+        let newer = makeLobbyState(gameId: "game-backfill", rev: 3, roster: ["host", "guest"])
+        let older = makeLobbyState(gameId: "game-backfill", rev: 2, roster: ["host", "guest"])
+        store.record(state: newer, payload: try! encode(newer))
+
+        store.record(state: older, payload: try! encode(older), localActor: "guest")
+
+        XCTAssertEqual(store.recoveredStates().first?.state, newer)
+        XCTAssertEqual(store.recoveredStates().first?.localActor, "guest")
+    }
+
     func testRecordJoinDeduplicatesObservedJoiners() {
         let userDefaults = makeUserDefaults()
         let store = TranscriptGameLedgerStore(userDefaults: userDefaults)

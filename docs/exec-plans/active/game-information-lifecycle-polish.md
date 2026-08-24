@@ -1,5 +1,7 @@
 # Game Information and Lifecycle Polish
 
+> Superseded 2026-08-23 for current product behavior: the completed Players/Your Games checkpoint remains historical evidence, but production now uses a read-only Player Record and keeps lifecycle actions on the current bubble-bound game's Game Information panel. See `first-friends-testflight-release.md` TFR-017/019/020.
+
 ## Purpose and Outcome
 
 Make Players and Games feel like one coherent in-place switcher, make the dedicated Games library read as one native screen, and present lifecycle confirmations in the same centered tabletop-overlay family without changing recovery or game-end semantics.

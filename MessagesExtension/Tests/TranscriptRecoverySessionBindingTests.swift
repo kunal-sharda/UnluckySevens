@@ -1,10 +1,10 @@
 import XCTest
 @testable import MessagesExtensionSupport
 
-final class TranscriptRecoverySessionBindingTests: XCTestCase {
+final class TranscriptGameSessionBindingTests: XCTestCase {
     func testCachedSessionWinsWhenSelectedBubbleDoesNotMatch() {
         XCTAssertEqual(
-            TranscriptRecoverySessionBinding.resolve(
+            TranscriptGameSessionBinding.resolve(
                 gameId: "game-1",
                 selectedMessageGameId: "game-2",
                 hasSelectedMessageSession: true,
@@ -16,7 +16,7 @@ final class TranscriptRecoverySessionBindingTests: XCTestCase {
 
     func testMatchingSelectedBubbleWinsOverCachedSession() {
         XCTAssertEqual(
-            TranscriptRecoverySessionBinding.resolve(
+            TranscriptGameSessionBinding.resolve(
                 gameId: "game-1",
                 selectedMessageGameId: "game-1",
                 hasSelectedMessageSession: true,
@@ -26,9 +26,9 @@ final class TranscriptRecoverySessionBindingTests: XCTestCase {
         )
     }
 
-    func testMatchingSelectedBubbleCanBindRecoveredGame() {
+    func testMatchingSelectedBubbleCanBindCurrentGame() {
         XCTAssertEqual(
-            TranscriptRecoverySessionBinding.resolve(
+            TranscriptGameSessionBinding.resolve(
                 gameId: "game-1",
                 selectedMessageGameId: "game-1",
                 hasSelectedMessageSession: true,
@@ -38,9 +38,9 @@ final class TranscriptRecoverySessionBindingTests: XCTestCase {
         )
     }
 
-    func testMismatchedOrMissingBubbleLeavesRecoveryUnbound() {
+    func testMismatchedOrMissingBubbleLeavesGameUnbound() {
         XCTAssertEqual(
-            TranscriptRecoverySessionBinding.resolve(
+            TranscriptGameSessionBinding.resolve(
                 gameId: "game-1",
                 selectedMessageGameId: "game-2",
                 hasSelectedMessageSession: true,
@@ -49,7 +49,7 @@ final class TranscriptRecoverySessionBindingTests: XCTestCase {
             .unbound
         )
         XCTAssertEqual(
-            TranscriptRecoverySessionBinding.resolve(
+            TranscriptGameSessionBinding.resolve(
                 gameId: "game-1",
                 selectedMessageGameId: nil,
                 hasSelectedMessageSession: false,
@@ -59,24 +59,4 @@ final class TranscriptRecoverySessionBindingTests: XCTestCase {
         )
     }
 
-    func testOnlyExplicitReconnectMayStartSessionForMarkedRecovery() {
-        XCTAssertFalse(
-            TranscriptRecoverySessionBinding.permitsNewSession(
-                isMarkedRecoveryUnbound: true,
-                isExplicitReconnect: false
-            )
-        )
-        XCTAssertTrue(
-            TranscriptRecoverySessionBinding.permitsNewSession(
-                isMarkedRecoveryUnbound: true,
-                isExplicitReconnect: true
-            )
-        )
-        XCTAssertTrue(
-            TranscriptRecoverySessionBinding.permitsNewSession(
-                isMarkedRecoveryUnbound: false,
-                isExplicitReconnect: false
-            )
-        )
-    }
 }

@@ -1,4 +1,4 @@
-enum TranscriptRecoverySessionBinding: Equatable {
+enum TranscriptGameSessionBinding: Equatable {
     case cached
     case selectedMessage
     case unbound
@@ -8,7 +8,7 @@ enum TranscriptRecoverySessionBinding: Equatable {
         selectedMessageGameId: String?,
         hasSelectedMessageSession: Bool,
         hasCachedSession: Bool
-    ) -> TranscriptRecoverySessionBinding {
+    ) -> TranscriptGameSessionBinding {
         if selectedMessageGameId == gameId, hasSelectedMessageSession {
             return .selectedMessage
         }
@@ -16,12 +16,5 @@ enum TranscriptRecoverySessionBinding: Equatable {
             return .cached
         }
         return .unbound
-    }
-
-    static func permitsNewSession(
-        isMarkedRecoveryUnbound: Bool,
-        isExplicitReconnect: Bool
-    ) -> Bool {
-        !isMarkedRecoveryUnbound || isExplicitReconnect
     }
 }

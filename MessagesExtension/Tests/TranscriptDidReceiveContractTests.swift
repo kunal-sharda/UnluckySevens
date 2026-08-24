@@ -31,48 +31,48 @@ final class TranscriptDidReceiveContractTests: XCTestCase {
                 incomingGameId: "game-2",
                 currentGameId: "game-1"
             ),
-            .storeForRecoveryOnly
+            .storeInLedgerOnly
         )
     }
 
-    func testSelectionPollCannotRestorePreviouslySelectedGameOverRecoveredGame() {
+    func testSelectionPollCannotReplaceBubbleBoundGameWithPreviousSelection() {
         XCTAssertEqual(
             TranscriptDidReceiveContract.disposition(
                 trigger: .selectionPoll,
                 incomingGameId: "previous-game",
-                currentGameId: "recovered-game"
+                currentGameId: "bubble-bound-game"
             ),
-            .storeForRecoveryOnly
+            .storeInLedgerOnly
         )
     }
 
-    func testSelectionPollCanRefreshRecoveredGameWhenIdentifiersMatch() {
+    func testSelectionPollCanRefreshCurrentGameWhenIdentifiersMatch() {
         XCTAssertEqual(
             TranscriptDidReceiveContract.disposition(
                 trigger: .selectionPoll,
-                incomingGameId: "recovered-game",
-                currentGameId: "recovered-game"
+                incomingGameId: "current-game",
+                currentGameId: "current-game"
             ),
             .applyToActiveContext
         )
     }
 
-    func testYourGamesSwitchSequenceKeepsRecoveredGameLive() {
-        let recoveredGame = "recovered-game"
+    func testBubbleBoundGameRejectsOtherUpdatesAndAcceptsMatchingUpdate() {
+        let currentGame = "current-game"
 
         XCTAssertEqual(
             TranscriptDidReceiveContract.disposition(
                 trigger: .selectionPoll,
                 incomingGameId: "previously-selected-game",
-                currentGameId: recoveredGame
+                currentGameId: currentGame
             ),
-            .storeForRecoveryOnly
+            .storeInLedgerOnly
         )
         XCTAssertEqual(
             TranscriptDidReceiveContract.disposition(
                 trigger: .didReceive,
-                incomingGameId: recoveredGame,
-                currentGameId: recoveredGame
+                incomingGameId: currentGame,
+                currentGameId: currentGame
             ),
             .applyToActiveContext
         )
@@ -80,9 +80,9 @@ final class TranscriptDidReceiveContractTests: XCTestCase {
             TranscriptDidReceiveContract.disposition(
                 trigger: .didReceive,
                 incomingGameId: "unrelated-game",
-                currentGameId: recoveredGame
+                currentGameId: currentGame
             ),
-            .storeForRecoveryOnly
+            .storeInLedgerOnly
         )
     }
 

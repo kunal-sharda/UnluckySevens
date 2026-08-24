@@ -1,7 +1,7 @@
 enum AppUtilitySheetRoute: String, Identifiable {
     case settings
     case tutorial
-    case games
+    case playerRecord
 
     var id: String { rawValue }
 }

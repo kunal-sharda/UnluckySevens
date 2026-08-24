@@ -3,7 +3,7 @@ import ULS_CoreGame
 @_spi(CompactState) import ULS_Transport
 
 struct TranscriptGameLedgerEntry: Codable, Equatable {
-    static let currentSchemaVersion = 2
+    static let currentSchemaVersion = 3
 
     let schemaVersion: Int
     let gameId: String
@@ -11,6 +11,7 @@ struct TranscriptGameLedgerEntry: Codable, Equatable {
     var latestStatePayload: String?
     var latestStateRev: Int?
     var latestStateHash: String?
+    var localActor: String?
     var observedJoiners: [String]
     var updatedAt: TimeInterval
 
@@ -21,6 +22,7 @@ struct TranscriptGameLedgerEntry: Codable, Equatable {
         latestStatePayload: String? = nil,
         latestStateRev: Int? = nil,
         latestStateHash: String? = nil,
+        localActor: String? = nil,
         observedJoiners: [String] = [],
         updatedAt: TimeInterval = Date.now.timeIntervalSince1970
     ) {
@@ -30,6 +32,7 @@ struct TranscriptGameLedgerEntry: Codable, Equatable {
         self.latestStatePayload = latestStatePayload
         self.latestStateRev = latestStateRev
         self.latestStateHash = latestStateHash
+        self.localActor = localActor
         self.observedJoiners = observedJoiners
         self.updatedAt = updatedAt
     }
@@ -41,6 +44,7 @@ struct TranscriptGameLedgerEntry: Codable, Equatable {
         case latestStatePayload
         case latestStateRev
         case latestStateHash
+        case localActor
         case observedJoiners
         case updatedAt
     }
@@ -53,6 +57,7 @@ struct TranscriptGameLedgerEntry: Codable, Equatable {
         latestStatePayload = try values.decodeIfPresent(String.self, forKey: .latestStatePayload)
         latestStateRev = try values.decodeIfPresent(Int.self, forKey: .latestStateRev)
         latestStateHash = try values.decodeIfPresent(String.self, forKey: .latestStateHash)
+        localActor = try values.decodeIfPresent(String.self, forKey: .localActor)
         observedJoiners = try values.decodeIfPresent([String].self, forKey: .observedJoiners) ?? []
         updatedAt = try values.decodeIfPresent(TimeInterval.self, forKey: .updatedAt) ?? 0
     }
@@ -67,6 +72,7 @@ struct TranscriptGameLedgerRecoveredState {
     let state: CoreGameStateV1
     let updatedAt: TimeInterval
     let isLastActive: Bool
+    let localActor: String?
 
     var isFinished: Bool {
         state.phase == .gameOver
@@ -153,7 +159,10 @@ struct TranscriptGameLedgerStore {
                 return TranscriptGameLedgerRecoveredState(
                     state: state,
                     updatedAt: entry.updatedAt,
-                    isLastActive: gameId == lastActiveGameId
+                    isLastActive: gameId == lastActiveGameId,
+                    localActor: entry.localActor.flatMap {
+                        state.roster.contains($0) ? $0 : nil
+                    }
                 )
             }
             .sorted { lhs, rhs in
@@ -174,19 +183,31 @@ struct TranscriptGameLedgerStore {
         entry(for: gameId)?.observedJoiners ?? []
     }
 
-    func record(state: CoreGameStateV1, payload _: String) {
+    func record(state: CoreGameStateV1, payload _: String, localActor: String? = nil) {
         guard (try? validateCanonicalSnapshot(state)) != nil else {
             return
         }
 
         if let existingState = latestState(for: state.gameId) {
             guard shouldReplace(existingState, with: state) else {
+                if
+                    let localActor,
+                    existingState.roster.contains(localActor),
+                    var existingEntry = entry(for: state.gameId),
+                    existingEntry.localActor != localActor
+                {
+                    existingEntry.localActor = localActor
+                    save(existingEntry)
+                }
                 return
             }
         }
         var updatedEntry = entry(for: state.gameId) ?? TranscriptGameLedgerEntry(gameId: state.gameId)
 
         updatedEntry = migratedEntry(updatedEntry, state: state)
+        if let localActor, state.roster.contains(localActor) {
+            updatedEntry.localActor = localActor
+        }
         updatedEntry.observedJoiners = orderedUnion(
             updatedEntry.observedJoiners,
             state.roster.dropFirst()
@@ -252,6 +273,9 @@ struct TranscriptGameLedgerStore {
             latestStateData: try? JSONEncoder().encode(state),
             latestStateRev: state.rev,
             latestStateHash: state.stateHash,
+            localActor: entry.localActor.flatMap {
+                state.roster.contains($0) ? $0 : nil
+            },
             observedJoiners: entry.observedJoiners,
             updatedAt: entry.updatedAt
         )

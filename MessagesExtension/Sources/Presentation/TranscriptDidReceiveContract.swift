@@ -1,12 +1,12 @@
 enum TranscriptDidReceiveDisposition: Equatable {
     case applyToActiveContext
-    case storeForRecoveryOnly
+    case storeInLedgerOnly
 
     var label: String {
         switch self {
         case .applyToActiveContext:
             return "apply"
-        case .storeForRecoveryOnly:
+        case .storeInLedgerOnly:
             return "storeOnly"
         }
     }
@@ -19,8 +19,8 @@ enum TranscriptDidReceiveContract {
         currentGameId: String?
     ) -> TranscriptDidReceiveDisposition {
         // didReceive and selectionPoll are implicit host observations. Neither may
-        // replace a game the player explicitly opened from Your Games. Bubble
-        // selection and initial hydration remain explicit context switches.
+        // replace the game established by explicit bubble selection. Bubble
+        // selection and initial hydration are the only explicit context switches.
         guard trigger == .didReceive || trigger == .selectionPoll else {
             return .applyToActiveContext
         }
@@ -33,6 +33,6 @@ enum TranscriptDidReceiveContract {
             return .applyToActiveContext
         }
 
-        return .storeForRecoveryOnly
+        return .storeInLedgerOnly
     }
 }

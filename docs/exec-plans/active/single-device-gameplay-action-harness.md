@@ -1,5 +1,7 @@
 # Single-Device Gameplay Action Harness
 
+> Scope amendment 2026-08-23: saved-record Open/Resend/archive/lifecycle journeys are retired with Your Games. Any resumed recovery-catalog work must instead prove Player Record is read-only, gameplay resumes from a real bubble, and current-game lifecycle actions remain session-bound; historical retry evidence below is unchanged.
+
 ## Purpose and Outcome
 
 Add a repeatable iPhone 17 Messages-extension lane that seeds deterministic canonical states, operates real player-facing controls, and proves the resulting canonical state changed as expected. The expanded single-device scope covers every deterministic local gameplay mutation supported before the later real-device multiplayer matrix.
