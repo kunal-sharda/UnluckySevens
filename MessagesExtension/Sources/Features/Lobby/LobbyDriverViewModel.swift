@@ -1010,7 +1010,7 @@ final class LobbyDriverViewModel: ObservableObject {
             try sendEnvelope(
                 envelope,
                 bubbleCopy: TranscriptBubbleCopyBuilder.invite(for: state),
-                sessionPolicy: .state(gameId: state.gameId),
+                sessionPolicy: .newState(gameId: state.gameId),
                 postPublishEffect: .dismissExtension
             )
             persistPreferredLobbyDisplayNameIfPresent(preferredDisplayName)
@@ -2594,34 +2594,42 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func session(for policy: TranscriptSessionPolicy) throws -> MSSession {
+        let selected = activeConversation?.selectedMessage
+        let selectedGameId = selected.flatMap(gameIdEncodedInMessage)
+        let gameId: String?
         switch policy {
         case .new:
-            return MSSession()
-        case let .state(gameId):
-            let selected = activeConversation?.selectedMessage
-            let selectedGameId = selected.flatMap(gameIdEncodedInMessage)
-            let binding = TranscriptGameSessionBinding.resolve(
-                gameId: gameId,
-                selectedMessageGameId: selectedGameId,
-                hasSelectedMessageSession: selected?.session != nil,
-                hasCachedSession: stateSessionsByGameId[gameId] != nil
-            )
+            gameId = nil
+        case let .newState(value), let .state(value):
+            gameId = value
+        }
+        let binding = TranscriptGameSessionBinding.resolve(
+            policy: policy,
+            selectedMessageGameId: selectedGameId,
+            hasSelectedMessageSession: selected?.session != nil,
+            hasCachedSession: gameId.flatMap { stateSessionsByGameId[$0] } != nil
+        )
 
-            switch binding {
-            case .cached:
-                guard let cached = stateSessionsByGameId[gameId] else {
-                    throw SendError.recoverySessionUnbound
-                }
-                return cached
-            case .selectedMessage:
-                guard let selectedSession = selected?.session else {
-                    throw SendError.recoverySessionUnbound
-                }
-                stateSessionsByGameId[gameId] = selectedSession
-                return selectedSession
-            case .unbound:
+        switch binding {
+        case .new:
+            let newSession = MSSession()
+            if case let .newState(gameId) = policy {
+                stateSessionsByGameId[gameId] = newSession
+            }
+            return newSession
+        case .cached:
+            guard let gameId, let cached = stateSessionsByGameId[gameId] else {
                 throw SendError.recoverySessionUnbound
             }
+            return cached
+        case .selectedMessage:
+            guard let gameId, let selectedSession = selected?.session else {
+                throw SendError.recoverySessionUnbound
+            }
+            stateSessionsByGameId[gameId] = selectedSession
+            return selectedSession
+        case .unbound:
+            throw SendError.recoverySessionUnbound
         }
     }
 

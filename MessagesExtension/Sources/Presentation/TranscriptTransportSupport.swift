@@ -4,12 +4,15 @@ import UIKit
 
 enum TranscriptSessionPolicy: Equatable {
     case new
+    case newState(gameId: String)
     case state(gameId: String)
 
     var label: String {
         switch self {
         case .new:
             return "new"
+        case let .newState(gameId):
+            return "newState(\(gameId))"
         case let .state(gameId):
             return "state(\(gameId))"
         }

@@ -2,10 +2,34 @@ import XCTest
 @testable import MessagesExtensionSupport
 
 final class TranscriptGameSessionBindingTests: XCTestCase {
+    func testNewStateStartsFreshSessionWithoutExistingBinding() {
+        XCTAssertEqual(
+            TranscriptGameSessionBinding.resolve(
+                policy: .newState(gameId: "new-game"),
+                selectedMessageGameId: nil,
+                hasSelectedMessageSession: false,
+                hasCachedSession: false
+            ),
+            .new
+        )
+    }
+
+    func testGenericNewMessageStartsFreshSessionWithoutExistingBinding() {
+        XCTAssertEqual(
+            TranscriptGameSessionBinding.resolve(
+                policy: .new,
+                selectedMessageGameId: "other-game",
+                hasSelectedMessageSession: true,
+                hasCachedSession: true
+            ),
+            .new
+        )
+    }
+
     func testCachedSessionWinsWhenSelectedBubbleDoesNotMatch() {
         XCTAssertEqual(
             TranscriptGameSessionBinding.resolve(
-                gameId: "game-1",
+                policy: .state(gameId: "game-1"),
                 selectedMessageGameId: "game-2",
                 hasSelectedMessageSession: true,
                 hasCachedSession: true
@@ -17,7 +41,7 @@ final class TranscriptGameSessionBindingTests: XCTestCase {
     func testMatchingSelectedBubbleWinsOverCachedSession() {
         XCTAssertEqual(
             TranscriptGameSessionBinding.resolve(
-                gameId: "game-1",
+                policy: .state(gameId: "game-1"),
                 selectedMessageGameId: "game-1",
                 hasSelectedMessageSession: true,
                 hasCachedSession: true
@@ -29,7 +53,7 @@ final class TranscriptGameSessionBindingTests: XCTestCase {
     func testMatchingSelectedBubbleCanBindCurrentGame() {
         XCTAssertEqual(
             TranscriptGameSessionBinding.resolve(
-                gameId: "game-1",
+                policy: .state(gameId: "game-1"),
                 selectedMessageGameId: "game-1",
                 hasSelectedMessageSession: true,
                 hasCachedSession: false
@@ -41,7 +65,7 @@ final class TranscriptGameSessionBindingTests: XCTestCase {
     func testMismatchedOrMissingBubbleLeavesGameUnbound() {
         XCTAssertEqual(
             TranscriptGameSessionBinding.resolve(
-                gameId: "game-1",
+                policy: .state(gameId: "game-1"),
                 selectedMessageGameId: "game-2",
                 hasSelectedMessageSession: true,
                 hasCachedSession: false
@@ -50,7 +74,7 @@ final class TranscriptGameSessionBindingTests: XCTestCase {
         )
         XCTAssertEqual(
             TranscriptGameSessionBinding.resolve(
-                gameId: "game-1",
+                policy: .state(gameId: "game-1"),
                 selectedMessageGameId: nil,
                 hasSelectedMessageSession: false,
                 hasCachedSession: false
