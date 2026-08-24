@@ -950,6 +950,21 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
                     "Follow the Roll callouts must not overlap."
                 )
             }
+            if title == "Place Your First Settlement" {
+                let setupOrderCallout = messages.staticTexts[
+                    "Everyone places a settlement and road twice. Round two goes in reverse order."
+                ].firstMatch
+                let boardCallout = messages.staticTexts[
+                    "First, place a settlement on a glowing corner."
+                ].firstMatch
+                XCTAssertTrue(setupOrderCallout.exists)
+                XCTAssertTrue(boardCallout.exists)
+                XCTAssertGreaterThanOrEqual(
+                    boardCallout.frame.minY,
+                    setupOrderCallout.frame.maxY,
+                    "The first placement instruction must sit below the setup-order card."
+                )
+            }
             attachScreenshot(named: String(format: "Tutorial %02d - %@", index + 1, title))
 
             if index < titles.count - 1 {

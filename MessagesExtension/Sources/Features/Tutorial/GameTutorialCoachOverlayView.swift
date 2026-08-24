@@ -18,6 +18,7 @@ struct GameTutorialCoachOverlayView: View {
     private let edgeInset: CGFloat = 10
     private let topExclusionHeight: CGFloat = 72
     private let shortHostBottomExclusionHeight: CGFloat = 78
+    private let calloutSpacing: CGFloat = 12
 
     let callouts: [GameTutorialCallout]
     let anchors: [GameTutorialTarget: Anchor<CGRect>]
@@ -88,7 +89,8 @@ struct GameTutorialCoachOverlayView: View {
                     callout: callout
                 )
             }
-            let verticalStep = bubbleSize(for: callout, availableSize: proxy.size).height + 12
+            let verticalStep = bubbleSize(for: callout, availableSize: proxy.size).height
+                + calloutSpacing
             let candidates = baseCandidates.flatMap { center in
                 [
                     center,
@@ -122,7 +124,12 @@ struct GameTutorialCoachOverlayView: View {
                     availableSize: proxy.size
                 )
             }?.element ?? candidates[0]
-            let selected = compactBoardPairCenter(
+            let selected = setupSettlementBoardCenter(
+                callout: callout,
+                proposedCenter: scoredSelection,
+                resolvedCallouts: resolved,
+                availableSize: proxy.size
+            ) ?? compactBoardPairCenter(
                 calloutIndex: calloutIndex,
                 callout: callout,
                 availableSize: proxy.size
@@ -146,6 +153,41 @@ struct GameTutorialCoachOverlayView: View {
         }
 
         return resolved
+    }
+
+    private func setupSettlementBoardCenter(
+        callout: GameTutorialCallout,
+        proposedCenter: CGPoint,
+        resolvedCallouts: [ResolvedCallout],
+        availableSize: CGSize
+    ) -> CGPoint? {
+        guard callout.target == .board,
+              callouts.count == 2,
+              callouts.contains(where: { $0.target == .setupOrder }),
+              let setupOrderCallout = resolvedCallouts.first(where: {
+                  $0.callout.target == .setupOrder
+              }) else {
+            return nil
+        }
+
+        let setupOrderRect = bubbleRect(
+            centeredAt: setupOrderCallout.bubbleCenter,
+            callout: setupOrderCallout.callout,
+            availableSize: availableSize
+        )
+        let boardCalloutHeight = bubbleSize(
+            for: callout,
+            availableSize: availableSize
+        ).height
+
+        return clampedCenter(
+            CGPoint(
+                x: proposedCenter.x,
+                y: setupOrderRect.maxY + calloutSpacing + (boardCalloutHeight / 2)
+            ),
+            availableSize: availableSize,
+            callout: callout
+        )
     }
 
     private func orderedPlacements(
