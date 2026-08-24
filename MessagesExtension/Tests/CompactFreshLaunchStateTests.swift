@@ -27,10 +27,10 @@ final class CompactFreshLaunchStateTests: XCTestCase {
 
     func testRepeatedBeginDoesNotReplayConsumedEntranceWithinOneActivation() {
         var state = CompactFreshLaunchState()
-        state.begin()
+        XCTAssertTrue(state.begin())
 
         XCTAssertTrue(state.consume())
-        state.begin()
+        XCTAssertFalse(state.begin())
 
         XCTAssertNil(state.visibleToken)
     }

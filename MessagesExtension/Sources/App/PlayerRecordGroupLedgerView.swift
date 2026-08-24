@@ -4,10 +4,12 @@ struct PlayerRecordGroupLedgerView: View {
     let model: PlayerRecordModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+        VStack(alignment: .leading, spacing: GameTheme.blockSpacing) {
             Text("Games With \(model.currentGroupNamesText)")
                 .font(GameTheme.headingFont)
                 .foregroundStyle(GameTheme.surface)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .multilineTextAlignment(.center)
                 .accessibilityAddTraits(.isHeader)
 
             if model.hasCurrentGroup {
@@ -42,10 +44,10 @@ struct PlayerRecordGroupLedgerView: View {
                     }
 
                     if model.withCurrentGroup.games.isEmpty {
-                        Text("No saved games match this player group yet.")
+                        Text("No games with this group yet.")
                             .font(GameTheme.metaFont)
-                            .foregroundStyle(GameTheme.mutedInk)
-                            .frame(maxWidth: .infinity, minHeight: 88, alignment: .center)
+                            .foregroundStyle(GameTheme.surface.opacity(0.78))
+                            .frame(maxWidth: .infinity, minHeight: 64, alignment: .center)
                             .padding(.horizontal, GameTheme.compactPadding)
                     } else {
                         ForEach(model.withCurrentGroup.games) { game in
@@ -78,11 +80,7 @@ struct PlayerRecordGroupLedgerView: View {
                             }
                             .padding(GameTheme.compactPadding)
                             .accessibilityElement(children: .combine)
-                            .accessibilityLabel(
-                                [game.playersText, game.outcomeText, game.scoreText, game.updatedText]
-                                    .compactMap { $0 }
-                                    .joined(separator: ", ")
-                            )
+                            .accessibilityLabel(game.accessibilityLabel)
                             .accessibilityIdentifier("uls.playerRecord.game.\(game.id)")
 
                             if game.id != model.withCurrentGroup.games.last?.id {
@@ -91,8 +89,18 @@ struct PlayerRecordGroupLedgerView: View {
                         }
                     }
                 }
-                .background(GameTheme.surface, in: RoundedRectangle(cornerRadius: GameTheme.mediumRadius))
-                .shadow(color: GameTheme.trayShadow, radius: 5, x: 0, y: 3)
+                .background {
+                    if !model.withCurrentGroup.games.isEmpty || !model.currentGroupStandings.isEmpty {
+                        RoundedRectangle(cornerRadius: GameTheme.smallRadius)
+                            .fill(GameTheme.surface)
+                    }
+                }
+                .overlay {
+                    if !model.withCurrentGroup.games.isEmpty || !model.currentGroupStandings.isEmpty {
+                        RoundedRectangle(cornerRadius: GameTheme.smallRadius)
+                            .stroke(GameTheme.outline.opacity(0.24), lineWidth: 1)
+                    }
+                }
             } else {
                 Text("Open Player Record from a Messages conversation to compare games with that exact player group.")
                     .font(GameTheme.metaFont)

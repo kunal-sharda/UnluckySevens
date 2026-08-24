@@ -15,10 +15,11 @@ struct PlayerRecordHonorsView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
+        VStack(alignment: .leading, spacing: GameTheme.blockSpacing) {
             Text("Table Honors")
                 .font(GameTheme.headingFont)
                 .foregroundStyle(GameTheme.surface)
+                .frame(maxWidth: .infinity, alignment: .center)
                 .accessibilityAddTraits(.isHeader)
 
             HStack(alignment: .top, spacing: GameTheme.chipSpacing) {

@@ -1,6 +1,6 @@
 import Combine
 import Foundation
-import Messages
+@preconcurrency import Messages
 import ULS_CoreGame
 @_spi(CompactState) import ULS_Transport
 
@@ -29,6 +29,7 @@ final class LobbyDriverViewModel: ObservableObject {
     private let tutorialActorID: String?
 
     private weak var activeConversation: MSConversation?
+    private var invitePublicationHostContext = InvitePublicationHostContext()
     var onRequestDismiss: (() -> Void)?
     var onRequestExpanded: (() -> Void)?
     var onRequestSelectionWatch: ((MSConversation) -> Void)?
@@ -37,6 +38,7 @@ final class LobbyDriverViewModel: ObservableObject {
     private var latestKnownStatesByGameId: [String: CoreGameStateV1] = [:]
     private var activeSource: ActiveContextSource?
     private var stateSessionsByGameId: [String: MSSession] = [:]
+    private var invitePublicationTransaction = InvitePublicationTransaction()
     private var selectedTranscriptGameId: String?
     private var lastResolvedSelectionSignature: String?
     private var cachedBoardOverlayModelKey: BoardOverlayModelCacheKey?
@@ -920,7 +922,10 @@ final class LobbyDriverViewModel: ObservableObject {
         selectedMessage: MSMessage?,
         trigger: TranscriptSelectionTrigger
     ) -> Bool {
-        activeConversation = conversation
+        _ = adoptActiveConversation(conversation)
+        if trigger == .didSelect {
+            invalidateInvitePublication()
+        }
         if selectedMessage != nil {
             compactFreshLaunchState.dismiss()
         }
@@ -965,9 +970,13 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     func beginFreshLobby(conversation: MSConversation) {
-        activeConversation = conversation
+        let conversationChanged = adoptActiveConversation(conversation)
+        if conversationChanged {
+            compactFreshLaunchState.endActivation()
+        }
+        guard compactFreshLaunchState.begin() else { return }
+        invalidateInvitePublication()
         prepareNewGame()
-        compactFreshLaunchState.begin()
     }
 
     func openPreparedFreshLobby() {
@@ -976,11 +985,30 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     func endFreshLobbyActivation() {
+        invalidateInvitePublication()
         compactFreshLaunchState.endActivation()
     }
 
+    @discardableResult
+    private func adoptActiveConversation(_ conversation: MSConversation?) -> Bool {
+        let newIdentity = conversation.map(ObjectIdentifier.init)
+        let conversationChanged = invitePublicationHostContext.adopt(
+            conversationIdentity: newIdentity
+        )
+        if conversationChanged {
+            invalidateInvitePublication()
+        }
+        activeConversation = conversation
+        return conversationChanged
+    }
+
+    private func invalidateInvitePublication() {
+        guard invitePublicationTransaction.invalidate() != nil else { return }
+        isSendingInvite = false
+    }
+
     func inviteNewGame() {
-        guard !isSendingInvite else { return }
+        guard !invitePublicationTransaction.isSending else { return }
         guard let actor = localParticipantIdentifier() else {
             setLastError("Missing local participant identifier.")
             return
@@ -1003,6 +1031,11 @@ final class LobbyDriverViewModel: ObservableObject {
             board: nil
         ).rehashed()
 
+        guard let attempt = invitePublicationTransaction.begin(gameId: state.gameId) else {
+            return
+        }
+
+        let provisionalSession = MSSession()
         isSendingInvite = true
         do {
             let payload = try jsonString(from: state)
@@ -1011,15 +1044,71 @@ final class LobbyDriverViewModel: ObservableObject {
                 envelope,
                 bubbleCopy: TranscriptBubbleCopyBuilder.invite(for: state),
                 sessionPolicy: .newState(gameId: state.gameId),
-                postPublishEffect: .dismissExtension
+                sessionOverride: provisionalSession
+            ) { [weak self] result in
+                self?.completeInvitePublication(
+                    attempt: attempt,
+                    state: state,
+                    preferredDisplayName: preferredDisplayName,
+                    provisionalSession: provisionalSession,
+                    result: result
+                )
+            }
+        } catch {
+            completeInvitePublication(
+                attempt: attempt,
+                state: state,
+                preferredDisplayName: preferredDisplayName,
+                provisionalSession: provisionalSession,
+                result: .failure(error)
             )
+        }
+    }
+
+    private func completeInvitePublication(
+        attempt: InvitePublicationAttempt,
+        state: CoreGameStateV1,
+        preferredDisplayName: String?,
+        provisionalSession: MSSession,
+        result: Result<PublicationReceipt, Error>
+    ) {
+        let outcome: InvitePublicationOutcome = switch result {
+        case .success:
+            .succeeded
+        case .failure:
+            .failed
+        }
+        let resolution = invitePublicationTransaction.resolve(
+            attemptID: attempt.id,
+            outcome: outcome
+        )
+
+        guard resolution != .ignore else { return }
+        isSendingInvite = invitePublicationTransaction.isSending
+
+        switch (resolution, result) {
+        case let (.commit(committedAttempt), .success(receipt)):
+            guard committedAttempt.gameId == state.gameId else { return }
+            stateSessionsByGameId[state.gameId] = receipt.session
+            if let localLedgerStateRecord = receipt.localLedgerStateRecord {
+                cacheLocalLedgerStateRecord(localLedgerStateRecord)
+            }
             persistPreferredLobbyDisplayNameIfPresent(preferredDisplayName)
             setActiveContext(state, source: .lastSentState)
             selectionStatus = "Invite sent: lobby rev0"
             setLastError(nil)
-        } catch {
-            isSendingInvite = false
+            requestExtensionDismissal()
+        case let (.rollback(rolledBackAttempt), .failure(error)):
+            if
+                rolledBackAttempt.gameId == state.gameId,
+                let cachedSession = stateSessionsByGameId[state.gameId],
+                cachedSession === provisionalSession
+            {
+                stateSessionsByGameId[state.gameId] = nil
+            }
             setLastError("Invite failed: \(error.localizedDescription)")
+        case (.commit, .failure), (.rollback, .success), (.ignore, _):
+            break
         }
     }
 
@@ -2174,11 +2263,23 @@ final class LobbyDriverViewModel: ObservableObject {
         _ envelope: EnvelopeV1,
         bubbleCopy: TranscriptBubbleCopy,
         sessionPolicy: TranscriptSessionPolicy,
-        postPublishEffect: PostPublishEffect = .none
+        postPublishEffect: PostPublishEffect = .none,
+        sessionOverride: MSSession? = nil,
+        completion: ((Result<PublicationReceipt, Error>) -> Void)? = nil
     ) throws {
         #if DEBUG
         if uxTestingIsActive {
             try applyUXTestingEnvelope(envelope, bubbleCopy: bubbleCopy)
+            if let completion {
+                completion(
+                    .success(
+                        PublicationReceipt(
+                            session: sessionOverride ?? MSSession(),
+                            localLedgerStateRecord: nil
+                        )
+                    )
+                )
+            }
             return
         }
         #endif
@@ -2189,12 +2290,18 @@ final class LobbyDriverViewModel: ObservableObject {
 
         let encodedEnvelope = try encode(envelope)
         let bubbleImage = TranscriptBubbleImageRenderer.render(visual: bubbleCopy.visual)
+        let publicationSession: MSSession
+        if let sessionOverride {
+            publicationSession = sessionOverride
+        } else {
+            publicationSession = try session(for: sessionPolicy)
+        }
         let builtMessage = try TranscriptTransportSupport.buildMessage(
             encodedEnvelope: encodedEnvelope,
             caption: bubbleCopy.caption,
             summaryLabel: bubbleCopy.summary,
             image: bubbleImage,
-            session: try session(for: sessionPolicy),
+            session: publicationSession,
             sessionPolicy: sessionPolicy
         )
         let localLedgerStateRecord = localLedgerStateRecord(from: envelope)
@@ -2204,8 +2311,10 @@ final class LobbyDriverViewModel: ObservableObject {
             into: conversation,
             envelopeKind: envelope.kind,
             sessionPolicy: builtMessage.sessionPolicy,
+            session: publicationSession,
             localLedgerStateRecord: localLedgerStateRecord,
-            postPublishEffect: postPublishEffect
+            postPublishEffect: postPublishEffect,
+            completion: completion
         )
     }
 
@@ -2242,20 +2351,36 @@ final class LobbyDriverViewModel: ObservableObject {
         into conversation: MSConversation,
         envelopeKind _: EnvelopeV1.Kind,
         sessionPolicy _: TranscriptSessionPolicy,
+        session: MSSession,
         localLedgerStateRecord: Data?,
-        postPublishEffect: PostPublishEffect
+        postPublishEffect: PostPublishEffect,
+        completion: ((Result<PublicationReceipt, Error>) -> Void)?
     ) {
         conversation.send(message) { [weak self] error in
             Task { @MainActor in
                 guard let self else { return }
-                self.isSendingInvite = false
                 if let error {
-                    self.setLastError("Publish failed: \(error.localizedDescription)")
-                } else {
-                    if let localLedgerStateRecord {
-                        self.cacheLocalLedgerStateRecord(localLedgerStateRecord)
+                    if let completion {
+                        completion(.failure(error))
+                    } else {
+                        self.setLastError("Publish failed: \(error.localizedDescription)")
                     }
-                    self.apply(postPublishEffect: postPublishEffect)
+                } else {
+                    if let completion {
+                        completion(
+                            .success(
+                                PublicationReceipt(
+                                    session: session,
+                                    localLedgerStateRecord: localLedgerStateRecord
+                                )
+                            )
+                        )
+                    } else {
+                        if let localLedgerStateRecord {
+                            self.cacheLocalLedgerStateRecord(localLedgerStateRecord)
+                        }
+                        self.apply(postPublishEffect: postPublishEffect)
+                    }
                 }
             }
         }
@@ -2612,11 +2737,7 @@ final class LobbyDriverViewModel: ObservableObject {
 
         switch binding {
         case .new:
-            let newSession = MSSession()
-            if case let .newState(gameId) = policy {
-                stateSessionsByGameId[gameId] = newSession
-            }
-            return newSession
+            return MSSession()
         case .cached:
             guard let gameId, let cached = stateSessionsByGameId[gameId] else {
                 throw SendError.recoverySessionUnbound
@@ -2705,6 +2826,11 @@ final class LobbyDriverViewModel: ObservableObject {
     private enum PostPublishEffect {
         case none
         case dismissExtension
+    }
+
+    private struct PublicationReceipt {
+        let session: MSSession
+        let localLedgerStateRecord: Data?
     }
 
     private enum SendError: LocalizedError {

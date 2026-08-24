@@ -14,6 +14,7 @@ struct PlayerRecordStats: Equatable {
     let largestArmyRecord: Int?
     let largestArmyTitles: Int
     let sevenRolls: Int
+    let mostUsedResource: ResourceV1?
 
     var winRateText: String {
         let decidedGames = wins + losses + draws
@@ -33,7 +34,8 @@ struct PlayerRecordStats: Equatable {
         longestRoadTitles: 0,
         largestArmyRecord: nil,
         largestArmyTitles: 0,
-        sevenRolls: 0
+        sevenRolls: 0,
+        mostUsedResource: nil
     )
 }
 
@@ -55,6 +57,12 @@ struct PlayerRecordGame: Identifiable, Equatable {
     let updatedText: String
     let isFinished: Bool
     let outcomeKind: PlayerRecordOutcomeKind
+
+    var accessibilityLabel: String {
+        [playersText, outcomeText, scoreText, updatedText]
+            .compactMap { $0 }
+            .joined(separator: ", ")
+    }
 }
 
 struct PlayerRecordStanding: Identifiable, Equatable {
@@ -129,7 +137,8 @@ enum PlayerRecordModelBuilder {
                 longestRoadTitles: roadTitles,
                 largestArmyRecord: completed.compactMap(\.largestArmyRecord).max(),
                 largestArmyTitles: armyTitles,
-                sevenRolls: identified.reduce(0) { $0 + $1.sevenRolls }
+                sevenRolls: identified.reduce(0) { $0 + $1.sevenRolls },
+                mostUsedResource: mostUsedResource(in: identified)
             ),
             games: records.map(makeGame),
             unidentifiedGameCount: records.count - identified.count
@@ -141,6 +150,37 @@ enum PlayerRecordModelBuilder {
             .sorted { $0.updatedAt > $1.updatedAt }
             .prefix { $0.didWin }
             .count
+    }
+
+    private static func mostUsedResource(in records: [Record]) -> ResourceV1? {
+        let resources: [ResourceV1] = [.wood, .brick, .sheep, .wheat, .ore]
+        let spending = records.reduce(into: ResourceHandV1.zero) { total, record in
+            for entry in record.state.auditLog where entry.actor == record.localActor {
+                guard let cost = paidCost(for: entry.action) else { continue }
+                for resource in resources {
+                    total = total.adding(cost.count(for: resource), for: resource)
+                }
+            }
+        }
+        let largestCount = resources.map { spending.count(for: $0) }.max() ?? 0
+        guard largestCount > 0 else { return nil }
+        let leaders = resources.filter { spending.count(for: $0) == largestCount }
+        return leaders.count == 1 ? leaders[0] : nil
+    }
+
+    private static func paidCost(for action: AuditActionV1) -> ResourceHandV1? {
+        switch action {
+        case .buildRoad:
+            CoreBuildCostsV1.road
+        case .buildSettlement:
+            CoreBuildCostsV1.settlement
+        case .buildCity:
+            CoreBuildCostsV1.city
+        case .buyDevCard:
+            CoreBuildCostsV1.developmentCard
+        default:
+            nil
+        }
     }
 
     private static func groupNames(from records: [Record]) -> String {
@@ -219,7 +259,7 @@ enum PlayerRecordModelBuilder {
             id: state.gameId,
             playersText: joinedNames(names),
             outcomeText: outcome,
-            scoreText: record.localScore.map { "\($0) VP" },
+            scoreText: record.didWin ? nil : record.localScore.map { "\($0) VP" },
             updatedText: Date(timeIntervalSince1970: record.updatedAt)
                 .formatted(date: .abbreviated, time: .omitted),
             isFinished: state.phase == .gameOver,

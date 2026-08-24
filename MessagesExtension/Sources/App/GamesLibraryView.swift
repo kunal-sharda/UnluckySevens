@@ -14,7 +14,7 @@ struct PlayerRecordView: View {
                 PlayerRecordHeaderView(dismiss: dismiss)
 
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: GameTheme.blockSpacing + 6) {
+                    LazyVStack(alignment: .leading, spacing: GameTheme.blockSpacing * 2) {
                         PlayerRecordScoreSheetView(stats: model.overall.stats)
                         PlayerRecordHonorsView(
                             stats: model.overall.stats,
@@ -23,16 +23,12 @@ struct PlayerRecordView: View {
                         PlayerRecordGroupLedgerView(model: model)
 
                         if model.overall.unidentifiedGameCount > 0 {
-                            Text("\(model.overall.unidentifiedGameCount) older local record\(model.overall.unidentifiedGameCount == 1 ? "" : "s") cannot be included because the saved copy does not identify which player was you.")
+                            Text("\(model.overall.unidentifiedGameCount) earlier game\(model.overall.unidentifiedGameCount == 1 ? "" : "s") can’t be counted because \(model.overall.unidentifiedGameCount == 1 ? "it doesn’t" : "they don’t") identify you.")
                                 .font(GameTheme.chipFont)
                                 .foregroundStyle(GameTheme.surface.opacity(0.78))
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .multilineTextAlignment(.center)
                         }
-
-                        Text("Recorded on this device")
-                            .font(GameTheme.chipFont)
-                            .foregroundStyle(GameTheme.surface.opacity(0.68))
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.bottom, GameTheme.blockSpacing)
                     }
                     .padding(GameTheme.shellPadding)
                 }

@@ -111,6 +111,11 @@ final class PlayerRecordModelTests: XCTestCase {
             model.overall.games.first?.outcomeText,
             "In progress · open its game bubble to continue"
         )
+        XCTAssertTrue(
+            model.overall.games.first?.accessibilityLabel.contains(
+                "open its game bubble to continue"
+            ) == true
+        )
     }
 
     func testResignationCountsWhenCanonicalGameContinues() {
@@ -187,6 +192,58 @@ final class PlayerRecordModelTests: XCTestCase {
         XCTAssertEqual(model.overall.stats.largestArmyRecord, 5)
         XCTAssertEqual(model.overall.stats.largestArmyTitles, 1)
         XCTAssertEqual(model.overall.stats.sevenRolls, 3)
+    }
+
+    func testMostUsedResourceUsesOnlyLocalPaidPurchaseCosts() {
+        let state = finishedState(
+            gameId: "resource-leader",
+            roster: ["me", "friend"],
+            winners: ["me"],
+            scores: ["me": 10, "friend": 8],
+            auditLog: [
+                AuditEntryV1(rev: 1, actor: "me", action: .buildCity),
+                AuditEntryV1(rev: 2, actor: "me", action: .buildCity),
+                AuditEntryV1(rev: 3, actor: "me", action: .buyDevCard),
+                AuditEntryV1(rev: 4, actor: "friend", action: .buildRoad),
+            ]
+        )
+
+        let model = PlayerRecordModelBuilder.build(
+            from: [recovered(state, actor: "me", updatedAt: 1)],
+            currentParticipantIDs: ["me", "friend"]
+        )
+
+        XCTAssertEqual(model.overall.stats.mostUsedResource, .ore)
+        XCTAssertNil(model.overall.games.first?.scoreText)
+    }
+
+    func testMostUsedResourceHasNoLeaderForTieOrMissingSpending() {
+        let tied = finishedState(
+            gameId: "resource-tie",
+            roster: ["me", "friend"],
+            winners: ["friend"],
+            scores: ["me": 8, "friend": 10],
+            auditLog: [AuditEntryV1(rev: 1, actor: "me", action: .buildRoad)]
+        )
+        let noSpending = finishedState(
+            gameId: "no-resource-spending",
+            roster: ["me", "friend"],
+            winners: ["friend"],
+            scores: ["me": 7, "friend": 10]
+        )
+
+        let tiedModel = PlayerRecordModelBuilder.build(
+            from: [recovered(tied, actor: "me", updatedAt: 2)],
+            currentParticipantIDs: ["me", "friend"]
+        )
+        let emptyModel = PlayerRecordModelBuilder.build(
+            from: [recovered(noSpending, actor: "me", updatedAt: 1)],
+            currentParticipantIDs: ["me", "friend"]
+        )
+
+        XCTAssertNil(tiedModel.overall.stats.mostUsedResource)
+        XCTAssertNil(emptyModel.overall.stats.mostUsedResource)
+        XCTAssertEqual(tiedModel.overall.games.first?.scoreText, "8 VP")
     }
 
     private func recovered(

@@ -3,11 +3,13 @@ struct CompactFreshLaunchState: Equatable {
     private var nextToken = 0
     private var hasPreparedCurrentActivation = false
 
-    mutating func begin() {
-        guard !hasPreparedCurrentActivation else { return }
+    @discardableResult
+    mutating func begin() -> Bool {
+        guard !hasPreparedCurrentActivation else { return false }
         hasPreparedCurrentActivation = true
         nextToken &+= 1
         visibleToken = nextToken
+        return true
     }
 
     @discardableResult
