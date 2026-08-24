@@ -50,7 +50,7 @@ What we learned:
 
 Current repo answer:
 
-- Main transport builds `https://unluckysevens.app/msg?payload=<encodedEnvelope>` (`MessagesExtension/Sources/Presentation/TranscriptTransportSupport.swift`). The host does not need to resolve; it only has to pass the scheme check.
+- Main transport builds `https://ksharda.me/unluckysevens/msg?payload=<encodedEnvelope>` (`MessagesExtension/Sources/Presentation/TranscriptTransportSupport.swift`). The public host is owned by the developer; transport decoding remains query-based so pre-TestFlight development bubbles using the former host still decode.
 - A temporary standalone diagnostic probe was also switched to `https://unluckysevens.app/probe?...` for the same reason during validation; the key durable rule is the contract, not the existence of the probe.
 - Custom schemes are banned anywhere we assign to `MSMessage.url`. If a future surface needs a custom scheme for deep linking, that belongs on `UIApplication.open(_:)` or `UISceneDelegate.scene(_:openURLContexts:)` — not on `MSMessage.url`.
 

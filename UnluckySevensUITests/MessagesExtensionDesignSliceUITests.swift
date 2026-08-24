@@ -66,6 +66,9 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(messages.switches["uls.settings.skipAnimations"].firstMatch.exists)
         XCTAssertTrue(messages.staticTexts["Board"].firstMatch.exists)
         XCTAssertTrue(messages.staticTexts["Victory"].firstMatch.exists)
+        let privacyPolicy = messages.descendants(matching: .any)["uls.settings.privacyPolicy"].firstMatch
+        XCTAssertTrue(privacyPolicy.exists)
+        XCTAssertTrue(privacyPolicy.label.contains("Privacy Policy"))
         messages.buttons["Done"].firstMatch.tap()
 
         openLobbyTutorial()

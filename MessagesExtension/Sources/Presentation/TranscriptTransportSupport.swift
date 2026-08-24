@@ -117,8 +117,8 @@ enum TranscriptTransportSupport {
         var components = URLComponents()
         // MSMessage.url requires http/https; custom schemes are stripped on the wire.
         components.scheme = "https"
-        components.host = "unluckysevens.app"
-        components.path = "/msg"
+        components.host = AppWebLinks.messageHost
+        components.path = AppWebLinks.messagePath
         components.queryItems = [URLQueryItem(name: "payload", value: encodedEnvelope)]
 
         guard let url = components.url else {

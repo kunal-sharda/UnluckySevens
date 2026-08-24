@@ -27,6 +27,8 @@ struct AppSettingsView: View {
                             currentGameSection
                             divider
                             rulesRow
+                            divider
+                            privacyPolicyRow
                         }
                         .padding(16)
                     }
@@ -130,6 +132,30 @@ struct AppSettingsView: View {
             .contentShape(Rectangle())
         }
         .accessibilityIdentifier("uls.settings.showRules")
+    }
+
+    private var privacyPolicyRow: some View {
+        Link(destination: AppWebLinks.privacyPolicyURL) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Privacy Policy")
+                        .font(GameTheme.headingFont)
+                        .foregroundStyle(GameTheme.surface)
+                    Text("How Unlucky Sevens handles your data")
+                        .font(GameTheme.metaFont)
+                        .foregroundStyle(GameTheme.surface.opacity(0.72))
+                }
+                Spacer()
+                Image(systemName: "arrow.up.right")
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(GameTheme.surface.opacity(0.58))
+            }
+            .frame(minHeight: 60)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
+        }
+        .accessibilityHint("Opens in your browser")
+        .accessibilityIdentifier("uls.settings.privacyPolicy")
     }
 
     private func settingsSection<Content: View>(

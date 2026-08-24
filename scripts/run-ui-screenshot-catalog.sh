@@ -111,13 +111,13 @@ if [[ -n "$CONTENT_SIZE" ]]; then
   ORIGINAL_CONTENT_SIZE="$(xcrun simctl ui "$DEVICE_ID" content_size)"
   xcrun simctl ui "$DEVICE_ID" content_size "$CONTENT_SIZE"
 fi
-xcrun simctl uninstall "$DEVICE_ID" com.unluckysevens.app >/dev/null 2>&1 || true
+xcrun simctl uninstall "$DEVICE_ID" me.ksharda.games.unluckysevens >/dev/null 2>&1 || true
 xcrun simctl install "$DEVICE_ID" "$APP_PATH"
 xcrun simctl terminate "$DEVICE_ID" com.apple.MobileSMS >/dev/null 2>&1 || true
 xcrun simctl launch "$DEVICE_ID" com.apple.MobileSMS >/dev/null
 sleep 2
 xcrun simctl terminate "$DEVICE_ID" com.apple.MobileSMS >/dev/null 2>&1 || true
-INSTALLED_APP_PATH="$(xcrun simctl get_app_container "$DEVICE_ID" com.unluckysevens.app app)"
+INSTALLED_APP_PATH="$(xcrun simctl get_app_container "$DEVICE_ID" me.ksharda.games.unluckysevens app)"
 BUILT_EXTENSION="$APP_PATH/PlugIns/MessagesExtension.appex/MessagesExtension"
 INSTALLED_EXTENSION="$INSTALLED_APP_PATH/PlugIns/MessagesExtension.appex/MessagesExtension"
 BUILT_HASH="$(shasum -a 256 "$BUILT_EXTENSION" | awk '{print $1}')"

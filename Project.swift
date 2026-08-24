@@ -4,7 +4,7 @@ import ProjectDescription
 let localSigningXcconfigPath = "Config/LocalSigning.xcconfig"
 let appIconSettings: SettingsDictionary = [
     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
-    "CURRENT_PROJECT_VERSION": "7",
+    "CURRENT_PROJECT_VERSION": "8",
     "MARKETING_VERSION": "1.0",
     // A standalone Messages container has no executable entry point for
     // Xcode's debug-dylib trampoline.
@@ -12,7 +12,7 @@ let appIconSettings: SettingsDictionary = [
 ]
 let messagesExtensionIconSettings: SettingsDictionary = [
     "ASSETCATALOG_COMPILER_APPICON_NAME": "iMessage App Icon",
-    "CURRENT_PROJECT_VERSION": "7",
+    "CURRENT_PROJECT_VERSION": "8",
     "MARKETING_VERSION": "1.0",
 ]
 let messagesExtensionSettings: Settings = {
@@ -75,7 +75,7 @@ let project = Project(
             name: "UnluckySevensApp",
             destinations: .iOS,
             product: .app,
-            bundleId: "com.unluckysevens.app",
+            bundleId: "me.ksharda.games.unluckysevens",
             deploymentTargets: .iOS("17.0"),
             infoPlist: .extendingDefault(
                 with: [
@@ -97,7 +97,7 @@ let project = Project(
             name: "MessagesExtensionSupport",
             destinations: .iOS,
             product: .staticFramework,
-            bundleId: "com.unluckysevens.app.messagesextension.support",
+            bundleId: "me.ksharda.games.unluckysevens.messagesextension.support",
             deploymentTargets: .iOS("17.0"),
             infoPlist: .default,
             sources: .sourceFilesList(globs: [
@@ -121,7 +121,7 @@ let project = Project(
             name: "MessagesExtension",
             destinations: .iOS,
             product: .messagesExtension,
-            bundleId: "com.unluckysevens.app.messagesextension",
+            bundleId: "me.ksharda.games.unluckysevens.messagesextension",
             deploymentTargets: .iOS("17.0"),
             infoPlist: .extendingDefault(
                 with: [
@@ -153,7 +153,7 @@ let project = Project(
             name: "MessagesExtensionTests",
             destinations: .iOS,
             product: .unitTests,
-            bundleId: "com.unluckysevens.app.messagesextension.tests",
+            bundleId: "me.ksharda.games.unluckysevens.messagesextension.tests",
             deploymentTargets: .iOS("17.0"),
             infoPlist: .default,
             sources: ["MessagesExtension/Tests/**"],
@@ -168,7 +168,7 @@ let project = Project(
             name: "UnluckySevensUITests",
             destinations: .iOS,
             product: .uiTests,
-            bundleId: "com.unluckysevens.app.uitests",
+            bundleId: "me.ksharda.games.unluckysevens.uitests",
             deploymentTargets: .iOS("17.0"),
             infoPlist: .default,
             sources: ["UnluckySevensUITests/**"],

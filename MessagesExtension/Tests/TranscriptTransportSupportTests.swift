@@ -25,8 +25,8 @@ final class TranscriptTransportSupportTests: XCTestCase {
         let builtURL = try XCTUnwrap(URL(string: builtMessage.urlString))
         XCTAssertEqual(payloadQuery, encodedEnvelope)
         XCTAssertEqual(builtURL.scheme, "https")
-        XCTAssertEqual(builtURL.host, "unluckysevens.app")
-        XCTAssertEqual(builtURL.path, "/msg")
+        XCTAssertEqual(builtURL.host, "ksharda.me")
+        XCTAssertEqual(builtURL.path, "/unluckysevens/msg")
         XCTAssertEqual(builtMessage.payloadLength, encodedEnvelope.count)
         XCTAssertEqual(builtMessage.sessionPolicy, .state(gameId: "game-1"))
         XCTAssertEqual(builtMessage.summaryText, "Alex built a road.")
@@ -54,7 +54,7 @@ final class TranscriptTransportSupportTests: XCTestCase {
     }
 
     func testDecodePayloadReadsURLQuery() {
-        let url = URL(string: "https://unluckysevens.app/msg?payload=url-payload")
+        let url = URL(string: "https://ksharda.me/unluckysevens/msg?payload=url-payload")
 
         let decoded = TranscriptTransportSupport.decodePayload(from: url)
 
@@ -62,9 +62,18 @@ final class TranscriptTransportSupportTests: XCTestCase {
         XCTAssertEqual(decoded?.source, .url)
     }
 
+    func testDecodePayloadPreservesPreTestFlightLegacyHostCompatibility() {
+        let url = URL(string: "https://unluckysevens.app/msg?payload=legacy-payload")
+
+        let decoded = TranscriptTransportSupport.decodePayload(from: url)
+
+        XCTAssertEqual(decoded?.payload, "legacy-payload")
+        XCTAssertEqual(decoded?.source, .url)
+    }
+
     func testDecodePayloadReturnsNilWithoutURLPayload() {
         XCTAssertNil(TranscriptTransportSupport.decodePayload(from: nil))
-        XCTAssertNil(TranscriptTransportSupport.decodePayload(from: URL(string: "https://unluckysevens.app/msg")))
+        XCTAssertNil(TranscriptTransportSupport.decodePayload(from: URL(string: "https://ksharda.me/unluckysevens/msg")))
     }
 
     func testPreferredStateSessionUsesSelectedBubbleSessionForMatchingGame() {
@@ -99,7 +108,7 @@ final class TranscriptTransportSupportTests: XCTestCase {
 
     func testSelectionSnapshotReportsURLDecodeSource() throws {
         let message = MSMessage(session: MSSession())
-        message.url = URL(string: "https://unluckysevens.app/msg?payload=state-payload")
+        message.url = URL(string: "https://ksharda.me/unluckysevens/msg?payload=state-payload")
 
         let snapshot = TranscriptTransportSupport.selectionSnapshot(for: message)
 
