@@ -126,6 +126,11 @@ public final class MessagesExtensionHostRuntime {
         selectionWatch.cancel()
     }
 
+    public func willResignActive() {
+        cancelSelectionPolling()
+        viewModel.endFreshLobbyActivation()
+    }
+
     public func beginHostTransition() {
         hostLayoutStore.beginTransition()
     }

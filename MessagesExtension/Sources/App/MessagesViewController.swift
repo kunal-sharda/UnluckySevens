@@ -62,7 +62,7 @@ final class MessagesViewController: MSMessagesAppViewController {
 
     override func willResignActive(with conversation: MSConversation) {
         super.willResignActive(with: conversation)
-        runtime.cancelSelectionPolling()
+        runtime.willResignActive()
     }
 
     override func viewDidDisappear(_ animated: Bool) {

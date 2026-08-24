@@ -1,3 +1,4 @@
+@_spi(MessagesHost) import MessagesExtensionSupport
 import UIKit
 
 @MainActor
@@ -13,6 +14,12 @@ final class MessagesHostResizeShield: NSObject, UIGestureRecognizerDelegate {
         captureRecognizer.cancelsTouchesInView = false
         captureRecognizer.delaysTouchesBegan = false
         captureRecognizer.delaysTouchesEnded = false
+        captureRecognizer.shouldPreventGesture = { [weak self] gestureRecognizer in
+            MessagesHostResizeGesturePolicy.shouldPrevent(
+                protectedView: self?.protectedView,
+                gestureRecognizer: gestureRecognizer
+            )
+        }
     }
 
     func attach(to view: UIView, topExclusionHeight: CGFloat) {
@@ -76,6 +83,7 @@ private final class HostBoundaryDragGestureRecognizer: UIGestureRecognizer {
     private let movementThreshold: CGFloat = 2
     private var trackedTouches: [ObjectIdentifier: UITouch] = [:]
     private var initialLocations: [ObjectIdentifier: CGPoint] = [:]
+    var shouldPreventGesture: ((UIGestureRecognizer) -> Bool)?
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
         guard let view else {
@@ -166,6 +174,6 @@ private final class HostBoundaryDragGestureRecognizer: UIGestureRecognizer {
     }
 
     override func canPrevent(_ preventedGestureRecognizer: UIGestureRecognizer) -> Bool {
-        false
+        shouldPreventGesture?(preventedGestureRecognizer) ?? false
     }
 }

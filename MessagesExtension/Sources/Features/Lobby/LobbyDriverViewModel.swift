@@ -975,6 +975,10 @@ final class LobbyDriverViewModel: ObservableObject {
         onRequestExpanded?()
     }
 
+    func endFreshLobbyActivation() {
+        compactFreshLaunchState.endActivation()
+    }
+
     func inviteNewGame() {
         guard !isSendingInvite else { return }
         guard let actor = localParticipantIdentifier() else {
