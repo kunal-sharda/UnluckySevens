@@ -88,6 +88,8 @@ For simulator smoke steps and manual QA, use [docs/quality/qa.md](docs/quality/q
 
 ## Key Docs
 
+- [GitHub Issues](https://github.com/kunal-sharda/UnluckySevens/issues): discrete beta feedback, bugs, enhancements, test gaps, and actionable debt
+- [docs/exec-plans/PLANS.md](docs/exec-plans/PLANS.md): when work graduates from a ticket into a resumable or release-sensitive ExecPlan
 - [ARCHITECTURE.md](ARCHITECTURE.md): system architecture, state-first runtime model, and code ownership
 - [docs/decisions.md](docs/decisions.md): locked product and architecture decisions
 - [docs/product-specs/mvp-contract.md](docs/product-specs/mvp-contract.md): current MVP promise and scope

@@ -2,6 +2,18 @@
 
 ExecPlans are the live plan and execution log for work that is too large, risky, or stateful to keep only in chat.
 
+## Work Tracking Model
+
+Unlucky Sevens uses a proportional hierarchy:
+
+- GitHub Issues own discrete bugs, enhancements, test gaps, and actionable tech debt.
+- GitHub milestones own the scoped set of issues intended for a beta or production release.
+- ExecPlans own orchestration when work is broad, risky, release-sensitive, spans multiple issues, or must remain resumable across sessions.
+
+An issue may be implemented directly when its acceptance boundary is contained. If investigation reveals cross-cutting scope, architecture or protocol risk, ambiguous product direction, migration sequencing, or release coordination, create or attach an ExecPlan and link the issue. The issue remains the task-status record; the ExecPlan records shared constraints, sequencing, decisions, discoveries, and evidence without copying the issue backlog.
+
+This hierarchy does not reduce validation. Every change still follows [QA](../quality/qa.md); an issue-sized change uses proportionate evidence, while qualifying work uses the ExecPlan verification contract and completion gate.
+
 ## When To Use One
 
 Write an ExecPlan when work is any of the following:
@@ -16,11 +28,15 @@ Write an ExecPlan when work is any of the following:
 
 Small edits, isolated bug fixes, and obvious single-file changes do not need an ExecPlan.
 
+Do not create an ExecPlan merely because a GitHub Issue exists. Do not keep release scope only in an ExecPlan when the milestone and its linked issues can express it clearly.
+
 ## Before Starting
 
+- Check the relevant GitHub Issue and milestone for the requested task and release scope when they exist.
 - Check `docs/exec-plans/active/` for a relevant active plan.
 - If one exists, read it first and use it as the working spec.
 - If none exists and the work qualifies, create a new active plan.
+- Link qualifying ExecPlans to their coordinating issue or milestone, and link constituent issues back to the plan when practical.
 - Identify which owner docs may need updates before making broad edits.
 
 ## Active Plan Requirements
@@ -113,6 +129,8 @@ Only `pass` and justified `not-applicable` constraint statuses are terminal. Eve
 
 ## Planning Surfaces
 
+- GitHub Issues: discrete actionable work and task status.
+- GitHub milestones: release scope and issue-level progress.
 - `docs/exec-plans/active/*.md`: live execution truth for in-flight work.
 - `docs/exec-plans/completed/*.md`: historical records only.
 - `docs/exec-plans/roadmap.md`: future sequencing after the current active phase.
@@ -124,6 +142,8 @@ Completed plans should be short closeout records. Backfilled historical plans ar
 ## No Duplication
 
 ExecPlans should not become a second source of truth for gameplay rules, architecture, or QA. Link the owner docs instead.
+
+GitHub Issues are also not durable product or architecture specifications. They should link the relevant owner docs and state only the problem, acceptance boundary, local context, and validation needed for the task.
 
 Owner docs:
 

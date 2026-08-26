@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a reproducible product, reliability, or regression problem.
+title: "[Bug]: "
+body:
+  - type: textarea
+    id: observed
+    attributes:
+      label: What happened?
+      description: Describe the visible problem and where it occurred.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Include the conversation state, device, build, player role, and steps when known.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      options:
+        - Match or state is unrecoverable
+        - Joining, continuing, or completing a match is blocked
+        - Meaningful reliability or UX problem
+        - Minor polish problem
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance boundary
+      description: State the smallest observable outcome that would close this bug.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation and links
+      description: Note required tests/device proof and link relevant owner docs, issues, or ExecPlans. Do not copy durable product or architecture rules here.
+

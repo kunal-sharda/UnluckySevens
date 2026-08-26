@@ -1,5 +1,7 @@
 # Tech Debt Tracker
 
+This file is the durable index of structural debt and its rationale. GitHub Issues own actionable implementation status for Unlucky Sevens; when an entry is scheduled, create or link one issue rather than copying its history into an ExecPlan. Existing entries may be migrated incrementally during backlog reconciliation so the tracker does not generate duplicate issues.
+
 Track only durable debt that is worth revisiting. Do not use this file for scratch tasks or ephemeral cleanup notes.
 
 Use [roadmap.md](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/roadmap.md) for sequencing. Use this file for debt that should survive the current phase even if the exact implementation plan is not active yet.

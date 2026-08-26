@@ -4,6 +4,8 @@ This file is the coarse sequencing surface for work after the current closeout. 
 
 Use the tracked planning surfaces this way:
 
+- use GitHub Issues for discrete bugs, enhancements, test gaps, and actionable tech debt
+- use GitHub milestones for beta and production release scope
 - use `docs/exec-plans/active/` for live execution state
 - use `docs/exec-plans/completed/` for historical reconstructions
 - use this file for future phase sequencing
@@ -11,16 +13,13 @@ Use the tracked planning surfaces this way:
 
 ## Current Position
 
-### Phase 14 — Active
+### First TestFlight Beta — Launched
 
-- Active plan: [Phase 14 Plan](/Users/kunalsharda/Documents/Code/UnluckySevens/docs/exec-plans/active/phase-14-ui-design-bubble-polish-and-trust-surfaces.md)
-- Current slice:
-  - transcript previews, language, Settings, Rules, Tutorial, forced discard, and the masked-robber identity are closed
-  - the approved invitation lobby is production-wired; the final UI cohesion plan owns the remaining dead compiled presentation cleanup, repeatable screenshot runner, and fresh iPhone/iPad approval
-  - responsive host adaptation still needs both real-iPad entry-path checks and owner approval
-  - [First Friends TestFlight Release](active/first-friends-testflight-release.md) now owns the release-critical real-device, multiplayer, archive, App Store Connect, external-review, invitation, and installed-beta gate after UI closure
+- Build `1.0 (8)` completed Beta App Review and is available in TestFlight.
+- New beta feedback should enter through GitHub Issues and be assigned to the next beta milestone rather than extending the launched release plan.
+- The [Hybrid Work Tracking Harness](completed/hybrid-work-tracking-harness.md) is complete; a separate bounded reconciliation will archive superseded active plans and convert only genuine remaining work into deduplicated issues.
 
-The immediate sequence is recovery/end-state Pass 1, one combined UI-polish approval pass, then full productization and the Internal TestFlight gate. Structural cleanup follows unless release evidence forces a different priority.
+The immediate sequence is beta-feedback triage, active-plan reconciliation, and the next milestone selected from confirmed issues. Structural cleanup follows unless beta evidence forces a different priority.
 
 ## Sequenced Next Phases
 

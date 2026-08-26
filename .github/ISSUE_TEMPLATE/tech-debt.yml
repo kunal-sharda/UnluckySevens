@@ -1,0 +1,38 @@
+name: Tech debt
+description: Track an actionable structural, test, performance, or maintainability liability.
+title: "[Tech Debt]: "
+body:
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and impact
+      description: Describe the concrete maintenance, reliability, performance, or delivery cost.
+    validations:
+      required: true
+  - type: textarea
+    id: trigger
+    attributes:
+      label: Trigger or urgency
+      description: Explain why this should be addressed now or what future condition should activate it.
+    validations:
+      required: true
+  - type: textarea
+    id: direction
+    attributes:
+      label: Proposed direction
+      description: Give a bounded direction without turning the issue into a duplicate architecture document.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance and validation
+      description: State the structural outcome, preserved behavior, and proof required to close the debt.
+    validations:
+      required: true
+  - type: textarea
+    id: links
+    attributes:
+      label: Tracker and owner-doc links
+      description: Link the TD entry, related issues, owner docs, and any qualifying ExecPlan.
+

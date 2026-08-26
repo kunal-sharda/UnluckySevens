@@ -50,6 +50,8 @@ Use this order when reasoning about the repo:
 
 Use [docs/exec-plans/PLANS.md](docs/exec-plans/PLANS.md) for work that is multi-step, risky, spans multiple files, or needs to be resumable without chat memory.
 
+Use GitHub Issues as the default queue for discrete bugs, enhancements, test gaps, and actionable tech debt. Use GitHub milestones to define beta and production release scope. ExecPlans coordinate qualifying multi-issue, high-risk, release-sensitive, or resumable work; they link issues instead of duplicating issue status. A ticket-sized change still follows the validation matrix in [QA](docs/quality/qa.md), and discovering broader risk promotes the work into a linked ExecPlan.
+
 Before starting multi-step work, check `docs/exec-plans/active/` for a relevant active ExecPlan. If one exists, use it as the working spec and keep it updated.
 
 Work qualifies for a verification contract when it is multi-step, risky, explicitly constrained, or changes architecture, protocol, product behavior, or UI/UX. Every active plan declares a `lightweight`, `standard`, or `release-critical` profile. A fresh constraint-auditor review is mandatory for standard and release-critical plans and optional for lightweight plans; specialist reviews are risk-routed. Pending, failed, blocked, or unverified constraints in the selected plan prohibit its completion claim. Pending work in an unrelated active plan is an audit notice, not a blocker.
@@ -68,6 +70,7 @@ Keep each fact in its owner doc and link rather than restating it:
 - [docs/decisions.md](docs/decisions.md) owns locked decisions that should not drift silently.
 - [docs/product-specs/mvp-contract.md](docs/product-specs/mvp-contract.md) and [docs/product-specs/ui-flows.md](docs/product-specs/ui-flows.md) own product scope, player-facing behavior, and flow intent.
 - `docs/exec-plans/active/` owns current execution state, temporary findings, validation deltas, and remaining work for active multi-step slices.
+- GitHub Issues own discrete task status, while GitHub milestones own release membership. Neither replaces current product, architecture, decision, design, or QA owner docs.
 - [README.md](README.md) is a human entrypoint and should link to owner docs instead of duplicating detailed status, workflow, or validation rules.
 - `docs/design/` may be referenced from tracked docs only when the referenced design artifacts are intended to be durable repo artifacts. Otherwise, mark them as local scratch and do not make tracked docs depend on them.
 - Durable binary references are default-denied. They require explicit user approval, a manifest entry, and the repository budget checks; iterative candidates belong in ignored `docs/design/workbench/` and are deleted when the decision closes.

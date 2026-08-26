@@ -1,0 +1,31 @@
+name: Enhancement
+description: Propose a contained player-facing or developer-facing improvement.
+title: "[Enhancement]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: Describe the need without assuming a particular implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe what should become easier, clearer, or more valuable.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance boundary
+      description: List the player-visible or developer-visible conditions that define done.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope, validation, and links
+      description: Note explicit non-goals, required evidence, and relevant owner docs or ExecPlans. Promote broad or ambiguous work into a linked ExecPlan.
+

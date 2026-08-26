@@ -10,6 +10,7 @@ Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/road
 ## [Unreleased]
 
 ### Changed
+- Work tracking now uses GitHub Issues for discrete bugs, enhancements, test gaps, and actionable debt; GitHub milestones define release scope; ExecPlans are reserved for qualifying multi-issue, risky, release-sensitive, or resumable orchestration. Reusable harness skills describe the same proportional model without prescribing a tracker vendor.
 - Saved-game recovery is replaced by a read-only Player Record with a tabletop-styled Catan score sheet, game-derived honors, and exact-player-group standings/history. Gameplay now resumes only from a real Messages bubble, and resignation/draw/host-end actions require the current game's bound session.
 - Maintainability forgiveness split Core transition internals by rules domain, moved compact-state encoding to Transport, made selection polling lifecycle-cancellable, isolated recovery and DEBUG diagnostics/fixtures, precomputed board layout geometry, and compiled extension implementation once through a static support module shared by the shipping target and tests—without changing gameplay, protocol schema, host resize policy, or UI.
 - Core economy consumers now share `CoreBuildCostsV1` for every road, settlement, city, and development-card purchase cost, while the standard board topology and render geometry reuse one lazy cached geometry without changing public APIs or deterministic outputs.
