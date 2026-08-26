@@ -1,5 +1,7 @@
 # Game Information and Lifecycle Polish
 
+> Closed 2026-08-26 as superseded product direction. Player Record is now read-only, gameplay resumes from a real Messages bubble, and lifecycle actions belong to the current bubble-bound game's Game Information panel. The pending proof for the retired Your Games composition is not current work.
+
 > Superseded 2026-08-23 for current product behavior: the completed Players/Your Games checkpoint remains historical evidence, but production now uses a read-only Player Record and keeps lifecycle actions on the current bubble-bound game's Game Information panel. See `first-friends-testflight-release.md` TFR-017/019/020.
 
 ## Purpose and Outcome

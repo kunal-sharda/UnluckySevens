@@ -61,7 +61,7 @@ The app should not sound like:
 
 ## Tutorial Copy Worksheet
 
-This is the consolidated 2026-08-07 proposal for owner review. It does not yet describe production copy. The approval and implementation boundary is tracked in [Tutorial Language Redraft](../exec-plans/active/tutorial-language-redraft.md).
+This is the consolidated 2026-08-07 proposal retained as historical editing evidence. The approved copy shipped and its terminal implementation record is [Tutorial Language Redraft](../exec-plans/completed/tutorial-language-redraft.md); current behavior belongs to the product and design owner docs.
 
 - **Title** names the lesson in the progress label, VoiceOver heading, and large-text guide.
 - **Visible coach mark** is the primary tutorial. It must carry every essential rule or action because most players will never see the accessible guide.

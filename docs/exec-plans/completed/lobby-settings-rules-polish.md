@@ -1,5 +1,7 @@
 # Lobby, Settings, and Rules Polish
 
+> Closed 2026-08-26: the production polish and completion gates passed. The later 60-screen catalog independently included Rules-to-Strategy, superseding the simulator-service-interrupted confirmation attempt recorded here.
+
 ## Purpose and Outcome
 
 Polish the first four player-facing utility frames from the 2026-08-01 catalog: reduce lobby-header crowding, anchor Join identity controls to the bottom with readable white text, make Settings feel like an intentional tabletop utility rather than a stack of generic cards, and make the Rules surface visibly scrollable.

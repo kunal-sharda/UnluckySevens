@@ -1,5 +1,7 @@
 # Tutorial Language Redraft
 
+> Closed 2026-08-26 using later proof: the owner-approved copy remained in production, and subsequent paired canonical catalogs exercised navigation plus all sixteen lessons without the clipping or missing-guidance failure this plan left pending.
+
 ## Purpose and Outcome
 
 Rewrite the full sixteen-step tutorial in a conversational teaching voice whose visible coach marks carry every rule or action a sighted player needs. Record the complete proposal in the app-language audit, pause for owner approval, and only then synchronize the approved copy into production and verify all tutorial screens.

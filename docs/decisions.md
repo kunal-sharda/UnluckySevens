@@ -3,7 +3,7 @@
 This file records **locked product + architecture decisions** for the MVP.  
 If a change is desired, update this file **first**, then update code/tests.
 
-**Last updated:** 2026-08-23
+**Last updated:** 2026-08-26
 
 ---
 
@@ -43,7 +43,7 @@ If a change is desired, update this file **first**, then update code/tests.
 - Resignation does not end the game. A resigned player remains in canonical history, their pieces remain inert blockers, their hand returns to the bank, their development cards retire, and setup/turn/production/trade/vote/award/win logic excludes them.
 - Any active player may propose a draw and automatically approves it. Every remaining active player must approve; one rejection clears the vote and play continues. There is no timeout.
 - The original inviter remains host authority even after resigning and may end the game unilaterally. The host UI offers a draw first when none has been attempted, but retains `End Game Anyway`. An agreed draw or host end declares no winner; ordinary 10+ VP victory remains unchanged.
-- Pre-TestFlight legacy join/setup/current-player transcript intents are intentionally unsupported in the app runtime. The compatibility boundary starts with TestFlight builds, not earlier dev-era transcripts.
+- Pre-TestFlight legacy join/setup/current-player transcript intents are intentionally unsupported in the app runtime. Build `1.0 (8)`, the first distributed TestFlight beta, is the compatibility boundary; earlier development transcripts are not supported.
 
 ---
 

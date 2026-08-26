@@ -1,5 +1,7 @@
 # Full Player Screen Catalog Rerun - 2026-08-02
 
+> Closed 2026-08-26 as superseded evidence: this dated rerun honestly retained its four-point Trade checkpoint failure. Later same-source canonical catalogs and the current production Trade geometry assertion cover stable board framing, so the old failed run is not live work and does not create a separate backlog item.
+
 ## Purpose and Outcome
 
 Rerun every canonical player-facing Messages screen from newly generated and explicitly installed builds after the lobby, Settings, Rules, Hand-count, Games, typography, robber-flow, Build-choice, lifecycle-overlay, and victory-copy refinements. Produce a fresh screenshot directory, contact sheet, and rendered PDF from the current worktree capture run.

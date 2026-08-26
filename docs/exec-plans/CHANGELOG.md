@@ -1,211 +1,41 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-Use `docs/exec-plans/active/` for live execution state and `docs/exec-plans/roadmap.md` for future sequencing. This file is the compact phase history, not the source of current implementation status.
+This is compact retrospective history, not live execution state. GitHub milestones and Issues own current release scope and tasks.
 
 ## [Unreleased]
 
 ### Changed
-- Work tracking now uses GitHub Issues for discrete bugs, enhancements, test gaps, and actionable debt; GitHub milestones define release scope; ExecPlans are reserved for qualifying multi-issue, risky, release-sensitive, or resumable orchestration. Reusable harness skills describe the same proportional model without prescribing a tracker vendor.
-- Saved-game recovery is replaced by a read-only Player Record with a tabletop-styled Catan score sheet, game-derived honors, and exact-player-group standings/history. Gameplay now resumes only from a real Messages bubble, and resignation/draw/host-end actions require the current game's bound session.
-- Maintainability forgiveness split Core transition internals by rules domain, moved compact-state encoding to Transport, made selection polling lifecycle-cancellable, isolated recovery and DEBUG diagnostics/fixtures, precomputed board layout geometry, and compiled extension implementation once through a static support module shared by the shipping target and tests—without changing gameplay, protocol schema, host resize policy, or UI.
-- Core economy consumers now share `CoreBuildCostsV1` for every road, settlement, city, and development-card purchase cost, while the standard board topology and render geometry reuse one lazy cached geometry without changing public APIs or deterministic outputs.
-- Recovery and terminal lifecycle Pass 1 adds non-terminal inactive-player resignation, unanimous draw voting, host-only neutral end, ordinary victory results, validated deterministic snapshot recovery, a versioned Active/Finished local ledger, conversation-compatible publication controls, unchanged-state resend, a dedicated Games destination, accurate resignation/host confirmations, neutral final-score copy, and New Game without automatic archive or send.
-- The approved Physical Props trade family now routes in production: card-native Give/Get stages, centered recipient selection, complete paged maritime exchanges with explicit confirmation, physical live/pending states, and Tutorial reuse preserve the mounted board, canonical Hand geometry, and existing trade semantics.
-- The approved Start-of-Turn Physical Props ritual now routes in production for the active local player’s normal pre-roll state, preserving the mounted board while offering executable owned Dev Cards and a Core-result-decorating dice transition with skip, explicit continuation, and Reduce Motion behavior.
-- The updated Solo Sorta Harness is now reconciled locally: finished harness migrations moved to completed history, active checkpoint plans may explicitly own ignored workbench evidence while approval is pending, and unowned design residue remains a harness-audit failure.
-- ExecPlans now separate validation profiles from `explore`, `checkpointed`, and `direct` delivery postures; the compact template keeps current intent and proof while moving judgment-heavy slices into focused child plans with explicit approval gates.
-- ExecPlan completion now uses locked `lightweight`, `standard`, or `release-critical` validation profiles: selected-plan constraints and reviews remain hard, unfinished sibling plans are audit notices, and exhaustive practical validation is reserved for the release gate.
-- Pre-TestFlight cleanup replaced the Messages transport action draft DTO path with `TurnActionDraft`, which wraps core reducer intents with actor and state-anchor metadata before publishing canonical `STATE`.
-- Transcript bubble publication now treats `MSMessageTemplateLayout.image` as an optional readability layer while keeping caption, summary text, and URL payload as the reliable transport surface; join and name-update lobby bubbles remain text-only.
-- Bubble visuals now use concise per-action graphics instead of full board thumbnails, keeping the board inside the expanded game surface where it remains readable.
-- Local generation now produces a standalone Messages-only app bundle by keeping the app target resource-only and patching Tuist's generated product type to `com.apple.product-type.application.messages`.
-- Expanded gameplay now has a first tabletop visual pass: dark felt shell, compact command card, SpriteKit board with cream rim/deep-teal water and terrain details, and a physical lower tray for resource cards plus the dev deck.
-- SpriteKit board terrain now uses saved default-theme texture sprites from the asset catalog instead of procedural resource fills and detail marks, with true-upscaled/clipped enlarged resource stamps and a small runtime tile overfill so neighboring hexes read connected while live tokens, roads, structures, ports, and highlights stay rendered above the tile art.
-- Repo workflow docs now make `bash ./scripts/gen.sh` the canonical agent generation path, keep Xcode GUI out of agent validation, remove the redundant `gen-local.sh`/`gen.sh --open` generation paths, and add `scripts/check-doc-freshness.sh` plus Make-owned `doc-freshness`/`build`/`practical-gate` targets used by CI and local validation to classify doc-freshness tiers so active plans, design notes, and historical evidence do not become competing sources of truth.
 
-### Removed
-- Removed dead board freeze/manual-reload reconstruction plumbing while preserving the live mounted board, camera state, viewport settling, and custom Messages resize shield.
-- Removed `ULS_Transport.TurnIntentV1`, transport resource/dev-card action draft helpers, obsolete action-draft transport tests, and the unused summary-payload mirror length field.
-- Removed the unused `BoardTiles` terrain imagesets and uncolored `merchant_ship` catalog asset after source, catalog, and bundle-reference audits; the active tutorial validity, validation circuit-breaker, lobby tutorial-entry, and robber physical-flow plans were archived with their historical evidence.
+- Adopted proportional work tracking: GitHub Issues own discrete work, milestones own release scope, and ExecPlans are reserved for broad, risky, release-sensitive, or resumable orchestration.
+- Reconciled the post-launch documentation backlog, archived terminal and superseded plans, and moved confirmed Beta 1.1 follow-up into deduplicated issues.
 
-### Added
-- Pre-TestFlight transcript bubbles can attach presentation-only images: a deterministic programmatic lobby invite graphic for the first invite, and action-card graphics for setup, turn, and game-over `STATE` publishes.
-- Temporary generated `7` app icon assets for the standalone Messages app bundle.
-- Extension-scoped `iMessage App Icon.stickersiconset` assets so the standalone Messages app drawer uses the temporary `7` icon.
-- DEBUG-only single-device UX Lab fixtures and overlay for visual audit, one-device dummy-player playthroughs, and simple non-human dummy autoplay across lobby, setup, turn, forced-flow, trade, and game-over states without sending Messages bubbles.
-- XCUITest design-slice harness that drives Messages to the Unlucky Sevens extension and stores invite-slice plus UX Lab screenshots as test attachments.
-- Clean setup gameplay screenshot harness path that loads the setup fixture and hides DEBUG UX Lab chrome before capture.
-- Numbered terrain and wood studies informed the integrated board assets, then were deleted as non-durable iteration history; current visual direction lives in `DESIGN.md` and production assets live under `MessagesExtension/Resources`.
-- `scripts/check-doc-freshness.sh`, `make doc-freshness`, `make build`, and `make practical-gate` as lightweight automation guardrails for owner-doc updates before build/validation.
-- Simulator-first UI sprint workflow documented, with the browser mirror kept as an explicit backup lane and the design-slice harness hardened for Messages app drawer label differences.
-- First invite surface visual reset with a tabletop invitation direction: green felt/table background, ivory paper invite card, compact setup chips, RSVP-style name field, and `Send Invite` CTA.
-- Stage 0.A bootstrap scaffolding for `Tuist/`, `App/`, `MessagesExtension/`, `Packages/`, and `scripts/`.
-- Stage 0.A developer scripts: `scripts/gen.sh` and `scripts/clean.sh`.
-- Stage 0.A repository baseline files: `.gitignore`, `README.md`, and `Makefile`.
-- Stage 0.B Tuist manifests (`Tuist.swift`, `Workspace.swift`, `Project.swift`) for iOS 17+ app and Messages extension generation.
-- Stage 0.B minimal Messages extension view controller showing the centered label `Unlucky Sevens — Stage 0`.
-- Stage 0.B SwiftPM stub libraries (`ULS_CoreGame`, `ULS_Transport`) with one baseline unit test each.
-- Stage 0.C Hello Bubble loop: Messages extension can send a debug bubble and decode selected bubble payload fields.
-- Stage 0.C transport debug payload codec (`DebugPayload`, base64url encode/decode) implemented in `ULS_Transport`.
-- Stage 0.C transport tests added for roundtrip, invalid base64url handling, and payload size sanity.
-- Stage 0.C.1 observability hardening in Messages extension: explicit send/selection/decode status, lifecycle retry polling for selected message reads, and richer transcript bubble metadata.
-- Stage 0.C.1 transport regression test for unsupported payload version decode handling.
-- Stage 0.C.2 Simulator fallback: when `selectedMessage.url` is missing, decode attempts now fall back to payload embedded in message `summaryText`.
-- Stage 0.C.2 terminology cleanup: user-facing `nonce` renamed to `debugId` with backward-compatible decoding for legacy payloads.
-- Stage 1.1 Transport v1: added `EnvelopeV1` (`STATE`/`INTENT`) with reusable base64url JSON encode/decode APIs.
-- Stage 1.1 added `TransportError` (`emptyPayload`, `invalidBase64URL`, `invalidJSON`, `unsupportedVersion`) and encoded size helpers.
-- Stage 1.1 added transport unit tests for envelope roundtrip, invalid decode cases, and encoded size sanity.
-- Stage 1.2 CoreGame v1 kernel: added `CoreGameStateV1`, `PhaseV1`, deterministic canonical SHA-256 state hashing, and `rehashed()` support.
-- Stage 1.2 added transition validator `validateTransition(from:to:actor:)` with strict rev/prevHash/actor/roster/gameId/stateHash checks.
-- Stage 1.2 added CoreGame tests for golden hash, valid transition, and per-rule transition validation failures.
-- Stage 1.3 Lobby flow UI stub: added SwiftUI lobby driver in `MessagesExtension` with Invite, Join, Record Join, Start Game, and Clear Pending Joins actions.
-- Stage 1.3 added `JoinIntentV1` transport payload model for anchored `INTENT(join)` messages.
-- Stage 1.3 updated CoreGame v1 state with `seed` and lobby-to-setup transition handling that permits roster/seed changes only for Start.
-- Stage 1.3 added and updated Transport and CoreGame tests for join intent roundtrip, seed-aware hashing, and start-transition validation rules.
-- Stage 2.1 added deterministic SplitMix64 RNG (`DeterministicRNG`) with deterministic d6 and 2d6 helpers.
-- Stage 2.1 added domain-separated seed derivation (`SeedDomain`, `SeedDeriver`) for board, dice, dev deck, and robber streams.
-- Stage 2.1 extended `CoreGameStateV1` with persisted `diceRngState` and included it in canonical state hashing.
-- Stage 2.1 updated lobby Start flow to initialize `diceRngState` from the derived dice domain seed.
-- Stage 2.1 added CoreGame test coverage for RNG golden sequence, seed derivation golden vectors, dice state hashing, and transition behavior.
-- Stage 2.2 added `BoardGraphV1` board topology model types (`TileV1`, `EdgeV1`, `PortV1`, `PortKindV1`) with typed IDs and adjacency helper APIs.
-- Stage 2.2 added deterministic `StandardBoardTopologyV1.standard()` generation for standard Catan geometry (19 tiles, 54 nodes, 72 edges, 9 ports, robber placeholder).
-- Stage 2.2 added canonical-frame port placement over perimeter-derived frame slots with deterministic edge selection.
-- Stage 2.2 added board graph test coverage for topology counts, ID validity, node degrees, edge/tile adjacency rules, and port constraints.
-- Stage 2.3 added deterministic board setup models (`BoardRulesV1`, `BoardSetupV1`) with canonical SHA-256 `boardHash`.
-- Stage 2.3 added strategy-based board generation (`randomV1`, `noRedAdjacentV1`) and Start integration to persist board rules/setup in `CoreGameStateV1`.
-- Stage 2.3 added CoreGame validation rules that restrict board and board-rule changes to lobby->setup Start transitions only.
-- Stage 2.3 added Messages lobby driver board strategy selection plus text-only Board Debug output for decoded state messages.
-- Stage 2.3 added CoreGame test coverage for board generation goldens/distributions and board transition invariants.
-- Stage 2.3 follow-up: canonical STATE messages now reuse a per-game `MSSession` while INTENT messages use fresh sessions.
-- Stage 2.3 follow-up: removed payload mirroring into `summaryText`; extension now decodes only from message URL payloads.
-- Stage 2.3 follow-up: transition validation now rejects mismatched `BoardSetupV1.boardHash` values.
-- Stage 2.3 follow-up: strengthened random board strategy test to assert unconstrained generation can produce adjacent 6/8 tiles.
-- Stage 3.1 added setup state machine models (`SetupStateV1`, `SetupStepV1`, `PlayerSetupPlacementsV1`) and deterministic snake-order initialization helpers.
-- Stage 3.1 added a pure setup reducer (`apply(intent:to:actor:)`) for settlement/road sequencing and setup completion to turn phase.
-- Stage 3.1 added setup placement transport payload model (`SetupPlacementIntentV1`) for anchored setup INTENT bubbles.
-- Stage 3.1 updated lobby Start flow to initialize `setupState` and added setup debug intent buttons (`Place Settlement`, `Place Road`) in Messages UI.
-- Stage 3.1 added CoreGame and Transport test coverage for setup sequencing/validation and setup intent roundtrips.
-- Stage 3.2 setup placement legality: settlement distance rule and setup-road adjacency to the just-placed settlement.
-- Stage 3.2 setup placement legality now validates node/edge bounds and enforces occupied node/edge rejection from setup placements.
-- Stage 3.2 added runtime-topology CoreGame tests for distance, adjacency, and occupancy legality during setup.
-- Stage 3.2.1 added `placeSetupPair` as an additive setup placement INTENT payload in `ULS_Transport`.
-- Stage 3.2.1 added atomic setup pair reducer handling in `ULS_CoreGame` by reusing settlement/road legality helpers in one transition.
-- Stage 3.2.1 added pair roundtrip transport test and CoreGame pair behavior tests (success path, bad adjacency, wrong-step rejection).
-- Stage 3.2.1 added a debug setup UI action in Messages extension: `Place Pair (node 0, edge 0)`.
-- Stage 3.3 added `ResourceHandV1` and `resourcesByPlayer` to canonical core game state hashing.
-- Stage 3.3 setup reducer now grants starting resources after successful `road2` completion from each player's `settlement2` adjacency (excluding desert and robber tile).
-- Stage 3.3 added setup starting-resource unit coverage for deterministic payout timing and correctness.
-- Stage 3.3 follow-up: `validateTransition` now enforces deterministic `resourcesByPlayer` transitions, including zeroed resources on Start and setup second-road payouts only.
-- Stage 3.3 follow-up: `CoreGameStateV1` now normalizes `resourcesByPlayer` to roster keys with zero defaults.
-- Stage 3.3 follow-up: setup and validation paths now reuse cached standard topology instances instead of rebuilding per action.
-- Stage 4.1 added turn sequencing state models (`TurnStepV1`, `DiceRollV1`, `TurnStateV1`) and persisted `turnState` in canonical core state hashing.
-- Stage 4.1 added turn reducer support for deterministic `rollDice` and `endTurn` intents with current-player actor gating.
-- Stage 4.1 added transport payload model `TurnIntentV1` and intent envelope roundtrip tests for `rollDice` and `endTurn`.
-- Stage 4.1 updated Messages lobby driver with turn debug fields and `Roll Dice` / `End Turn` intent buttons for turn-phase states.
-- Stage 4.2 added deterministic non-7 production payout on `rollDice` using persisted board occupancy (settlements/cities), with robber blocking and per-resource bank depletion semantics (all-or-nothing when supply is insufficient).
-- Stage 4.2 introduced canonical state fields for bank and board occupancy (`bankResources`, `settlementsByNode`, `citiesByNode`, `roadsByEdge`) and updated setup-to-turn carryover plus transition validation to gate expected economy and ownership deltas.
-- Stage 4.2 expanded debug driver state readouts with secrecy-safe hand visibility (`local full hand`, `opponent hand size only`) and bank resource counts.
-- Stage 4.2 added focused unit coverage for payout path, robber block path, and bank depletion skip behavior.
-- Stage 4.3 added roll-7 subflow in turn reducer: deterministic discard requirements (`floor(hand/2)` for players with `>7`), staged discard submissions, and gated robber movement before returning to `afterRoll`.
-- Stage 4.3 extended turn intent transport with strict kind-based payloads for `submitDiscard` and `moveRobber`, plus roundtrip and invalid decode coverage.
-- Stage 4.3 updated Messages debug-driver turn controls/readouts with `Submit Discard` and `Move Robber` actions, pending discard requirement/progress visibility, and robber readiness state.
-- Stage 4.3 added focused CoreGame tests for roll-7 requirement calculation, discard player eligibility, discard completion gating, and robber move precondition enforcement.
-- Stage 4.4 added deterministic robber-steal flow: robber move now computes adjacent eligible victims, auto-skips when none exist, and gates turn progress through `needsRobberSteal` when victims are present.
-- Stage 4.4 introduced persisted robber RNG state (`robberRngState`) in canonical core state hashing and used it to deterministically choose stolen resources on victim selection.
-- Stage 4.4 extended turn intent transport and UI with `selectStealVictim` payloads and debug buttons (`Steal From <player>`) plus victim-list readouts.
-- Stage 4.4 added focused tests for no-victim auto-skip, deterministic steal outcome/state progression, and actor gating for steal selection.
-- Stage 5.1 added turn-phase build actions (`buildRoad`, `buildSettlement`, `buildCity`) with resource costs, piece-limit checks, occupancy/distance validation, and connectivity gating.
-- Stage 5.1 extended transition validation and economy checks to accept legal build ownership deltas and enforce expected cost-to-bank/resource conservation.
-- Stage 5.1 extended transport and debug-driver controls for build intents, including build payload roundtrips and remaining-piece readouts in MessagesExtension.
-- Stage 5.1 added focused tests for legal and illegal builds, cost and bank invariants, and non-mutating failure behavior.
-- Stage 6.1 added canonical turn trade state (`activeTradeOffer`, `pendingTradeAccepts`) with deterministic offer hashing, one-active-offer gating, and end-turn expiry and cleanup.
-- Stage 6.1 extended turn intent transport with `proposeTrade` and `acceptTrade` payloads plus strict kind-based decode validation and roundtrip coverage.
-- Stage 6.1 updated Messages debug-driver controls and readouts with `Propose Trade` / `Accept Trade` actions and active-offer/pending-accept status.
-- Stage 6.1 added focused CoreGame tests for propose actor gating, accept anchor mismatch rejection, one-offer constraint, and end-turn expiry invariants.
-- Stage 6.2 added atomic trade execution in the turn reducer (`executeTrade`) with offer/accept anchor checks, current-player commit gating, and no-partial-mutation failure behavior.
-- Stage 6.2 extended turn intent transport and UI with `executeTrade` payload and button support plus execution-target selection from pending accepts.
-- Stage 6.2 added focused CoreGame tests for successful invariant-preserving transfer, insufficient-resource rejection, and expired-offer rejection.
-- Stage 7.1 added deterministic development deck modeling (`DevCardV1`) with domain-seeded Fisher-Yates shuffle and deterministic top-draw helper APIs.
-- Stage 7.1 persisted development deck state in canonical `CoreGameStateV1` hashing and initialized deck order from master seed on game start.
-- Stage 7.1 updated Messages debug-driver state readouts with remaining development-deck count and added deterministic deck sequence and hash continuity tests.
-- Stage 7.2 added persistent dev-card ownership state (`devCardsByPlayer`, `newDevCardsByPlayer`, revealed VP, per-turn dev action flag, and knights played) to canonical game hashing and turn transitions.
-- Stage 7.2 implemented deterministic turn intents for `buyDevCard` plus `play` flows for Knight, Monopoly, Year of Plenty, Road Building, and VP reveal, including same-turn purchase restrictions (VP reveal exception).
-- Stage 7.2 extended transition validation to permit Knight robber-tile movement and Road Building two-road ownership updates while preserving deterministic economy and actor invariants.
-- Stage 7.2 added transport `buyDevCard` and `playDevCard(kind+payload)` intent schemas with strict decoding and new roundtrip and invalid decode coverage.
-- Stage 7.2 updated Messages debug-driver controls and readouts with `Buy Dev Card`, per-card play buttons, and secrecy-safe dev-card visibility summaries (local detail, opponent counts).
-- Stage 7.2 added focused CoreGame tests for timing restrictions, each dev-card effect, and deterministic fixed-seed action replay.
-- Stage 7.3 added deterministic award-state persistence in canonical hashing (`largestArmyOwner/size`, `longestRoadOwner/length`) and turn-transition recomputation hooks.
-- Stage 7.3 implemented Largest Army (>=3 knights) and Longest Road (>=5 roads, opponent-intersection blocking) award resolution with tie-retention for current owners and deterministic transfer behavior.
-- Stage 7.3 extended transition validation with strict deterministic award recomputation checks and illegal award mutation rejection.
-- Stage 7.3 added debug-driver readouts for current Largest Army and Longest Road owners and sizes in MessagesExtension.
-- Stage 7.3 added focused CoreGame tests for threshold acquisition, tie and transfer behavior, and deterministic award recomputation across identical action sequences.
-- Stage 8.1 added maritime trading intent and action support with deterministic best-ratio selection from owned ports (2:1 specific, then 3:1 generic, else 4:1).
-- Stage 8.1 extended transition economy validation to recognize legal maritime bank and player transfers without broadening other turn-phase mutation allowances.
-- Stage 8.1 updated Messages debug-driver controls and readouts with a `Maritime Trade` action and an effective-ratio preview for the current player.
-- Stage 8.1 added focused tests for ratio selection, insufficient-resource and bank rejection, and no-mutation failure invariants.
-- Stage 8.2 added deterministic VP utilities (`victoryPoints` and `victoryPointsByPlayer`) and canonical game-over winner metadata (`winnerPlayer`, `winningVictoryPoints`) in core state hashing.
-- Stage 8.2 updated turn reducer win gating to transition to `phase = gameOver` only for the active player’s own post-roll action when VP reaches 10+, and to reject further gameplay intents after game over.
-- Stage 8.2 extended transition validation to enforce legal game-over transitions (winner correctness, VP threshold, actor-turn gating) while preserving award, ownership, and economy checks for turn-to-gameOver moves.
-- Stage 8.2 updated Messages debug-driver readouts with per-player VP totals and game-over winner status, plus focused tests for win gating, post-game rejection, and non-current-player >=10 behavior.
-- Stage 9.1 added deterministic audit state (`auditLog`, `lastTurnRecap`) to canonical game hashing and reducer transitions, with one canonical audit entry appended per turn intent.
-- Stage 9.1 added deterministic last-turn recap derivation from the audit stream and surfaced recap data in Messages debug-driver readouts.
-- Stage 9.1 extended transition validation with strict audit append, actor, rev, and action checks plus recap consistency enforcement.
-- Stage 9.1 added focused CoreGame tests for audit determinism across identical sequences, recap correctness, and tampered-audit invariant rejection.
-- Phase UI hardening added `ScriptedFullMatchesV1Tests` with four deterministic multi-player scripted match scenarios (setup-to-win, road/city, dev/army, trade/maritime) plus replay-hash invariant coverage.
-- Phase UI hardening updated the Messages debug harness to use sticky Active Context state with explicit `Reload Selected Bubble` and `Clear Context` controls, staleness warning, context-source metadata, and in-memory debug logs.
-- Phase UI hardening added local `Acting As` simulation from the active roster, reasoned button disabling, and debug apply-as-state actions for selected setup and turn intent bubbles.
-- Phase UI hardening extended transcript and debug plumbing with optional single-session intent threading and short `summaryText` labels for STATE and INTENT bubbles without leaking secret hand composition.
-- Phase UI hardening upgraded regression coverage to fully legal setup-to-gameOver simulations (no synthetic VP injection) with five seeded multi-player policy-driven matches, including a deterministic non-`A` winner path.
-- Phase UI hardening added live in-turn violation probes (actor mismatch, step gating, bad trade anchor) and asserts transition validation catches tampered post-reducer state.
-- Phase UI hardening added invariant coverage for resource-bank conservation, dev deck and card conservation, piece bounds, and deterministic replay for representative full-match seeds.
-- Phase UI hardening added two additional seeded randomized full-match regressions with dev-card pressure: a 3-player dev-race scenario and a 4-player mixed economy scenario (dev/trade/maritime), each with deterministic replay assertions.
-- Phase UI hardening added transport regression coverage for a large canonical `STATE` envelope budget and roundtrip decode.
-- Phase UI hardening added a minimal GitHub Actions `CI` workflow for the then-current practical build/test subset on `pull_request` and `push` to `master` and `main`.
-- Phase UI hardening added shared `ULS_CoreGame` view and query helpers for legal default actions and viewer-scoped secrecy-safe projections, with `MessagesExtension` consuming those helpers.
-- Phase UI hardening added root `PLANS.md` to define the repo's ExecPlan format for active and completed work.
-- Phase UI hardening backfilled completed ExecPlans for phases 0 through 9 and the post-phase-9 UI hardening pass under `docs/exec-plans/completed/`.
-- Phase UI hardening added exec-plan support docs: `docs/exec-plans/active/README.md` and `docs/exec-plans/tech-debt-tracker.md`.
-- Phase UI hardening added product docs: `docs/product-specs/mvp-contract.md`, `docs/product-specs/ui-flows.md`, `docs/product-specs/deferred-prd-items.md`, and a verbatim markdown PRD copy.
-- Phase UI hardening added architecture and quality docs: `ARCHITECTURE.md`, `docs/quality/audits/2026-03-engine-readiness.md`, and `docs/quality/qa.md`.
-- Phase 10.1 and 10.2 shell scaffolding: `MessagesExtension` now has app, feature, presentation, component, board, and debug structure, a parallel `MessagesRootView`, warm tabletop theme tokens, compact shell placeholders, and a new `MessagesExtensionTests` target for root-route and shell-status logic.
-- Phase 10.3 presentation extraction: `GameShellView` now renders from a unified `GameScreenModel`, shell-derived state moved into pure `Presentation` builders and types, and `MessagesExtensionTests` now cover the screen-model builder.
-- Phase 10.4 mode system: `GameShellView` now uses explicit shell modes backed by `GameMode`, `GameModeAvailability`, and `GameModeResolver`, with new MessagesExtension tests covering forced-mode normalization, build cycling, and dock-mode toggling.
-- Phase 10.5 shell components: the game shell now uses a tactile board placeholder, a persistent bottom tray that unifies the hand and primary actions, and an inline mode-driven host for deferred trade/dev/discard messaging while keeping the debug HUD reachable but secondary.
-- Phase 10.6 phase-end hardening: the debug tools now live behind a compact dedicated trigger and `DebugPanelView`, keeping development access easy without competing with the product shell’s primary action area.
-- Phase 11.1 board layout contract and scene bridge: `ULS_CoreGame` now exports additive deterministic render geometry, `MessagesExtension` builds a pure `GameBoardRenderModel` from canonical state, and the shell board container can render the first SpriteKit board scene instead of placeholder art when state-backed board data is available.
-- Phase 11.2 board rendering and piece layers: the SpriteKit board now renders tactile ports, roads, settlements, cities, stronger number tokens, and a clearer robber marker, with deterministic player-color styling keyed to canonical roster order.
-- Phase 11.3 camera, pan/zoom, and hit-testing: the board now supports clamped pan and magnification gestures, typed `tile/node/edge` hit-target callbacks, and shell-visible selected-target feedback, with hit-testing stabilized for short edges through projection-based endpoint handling.
-- Phase 11.4 mode-driven highlights and selection plumbing: the board now renders legal node/edge/tile emphasis from additive core query sets for setup, build, robber-move, and robber-victim modes, while the shell normalizes board selection to the active legal target set instead of keeping stale or mode-invalid taps alive.
-- Phase 11.5 snapshot rendering and bubble preparation: the board stack now produces deterministic off-screen bubble and transcript preview images through `GameBoardSnapshotRenderer`, with variant sizing normalized so captured SpriteKit output preserves the intended logical image dimensions.
-- Phase 12 planning: added an active ExecPlan for gameplay flows, including lobby join/start UX hardening, setup placement UX, turn loop UX, robber UX, trade UX, dev-card UX, and a real-device signoff pass.
-- Phase 12.1 lobby join and host start UX: the lobby now renders through a product shell, join actions auto-send instead of requiring a second manual send step, and host start derives the visible joined roster without relying on debug-only bookkeeping as the primary flow.
-- Phase 12.2 setup placement UX: setup guidance, legal setup highlights, and board-tap setup publication now let the current player place settlements and roads from the product UI instead of the debug apply path.
-- Phase 12.3 core turn loop and build/buy actions: the action dock now publishes roll, buy-dev-card, and end-turn state transitions directly, build modes draft canonical road/settlement/city intents from legal board taps, and MessagesExtension tests cover the new turn interaction resolver.
-- Phase 12.4 robber and discard UX: pending discards now surface through a product discard panel that either publishes canonical state or sends a discard intent depending on whose turn it is, robber movement and victim selection are driven from board taps and compact victim actions, and the shell header now calls out forced discard/robber steps explicitly.
-- Phase 12.5 trade UX: the compact trade modal now suggests player-trade and maritime-trade actions for the current player, non-current players can send accept intents, the current player can apply a selected accept bubble and execute with accepted players, and pending trade status stays visible in the shell.
-- Phase 12.6 dev-card UX: the shell now routes dev-card actions through a compact product panel, legal buy/play actions draft default-driven canonical dev-card transitions, and new MessagesExtension tests cover the dev-card interaction resolver plus panel-model builder seams.
-- Phase 12.7 flow hardening and real-device pass: the extension now requests expanded presentation on open, product authority is locked to `local Messages participant ∩ joined game roster`, host start blocks until the derived lobby shows at least two players, board base and overlay updates are split so selection churn no longer tears down the full scene, setup-road taps near the just-placed settlement resolve the intended legal edge, selection polling self-cancels on stable selection, and transport/debug diagnostics stop firing on the gameplay hot path. A temporary one-line `summaryText` payload mirror plus short-lived sender-side cached-state recovery keep phase-12 gameplay end-to-end on device while the long-term transcript redesign is deferred to phase 13.
-- Phase 12.7 lobby authority fixes: join intents are now authored from `activeConversation.localParticipantIdentifier` instead of the debug impersonation fallback, lobby membership and `canJoin` gating derive from the real local participant, and the host cannot start a one-player game by mistake.
-- Phase 12.8 full-game product cohesion: deterministic per-game player aliases replace raw participant identifiers in the shell, the turn header is trimmed to ownership plus dice state, idle board taps no longer highlight arbitrary targets, `Buy Dev` moves under `Build`, Knight/Monopoly/Year of Plenty/Road Building now run as explicit staged choice flows, and Victory Point cards stay hidden as inventory unless revealing them would immediately win.
-- Phase 12.8 board-first shell consolidation: the default screen is now `Header + Board + Handle Band + Dock` with the persistent hand, bank, and player strips removed, `Hand`/`Bank`/`Players` live behind a shared lower-shelf pull-tab, `Build` and `Play Dev` reuse the same overlay shelf surface, `Trade` lives in the `Hand` shelf instead of the dock, and the shell is locked to a `12% / 70% / 18%` layout contract (with the dock region split into a `6%` handle band and `12%` dock row) enforced in code and `GameShellLayoutMetricsTests`.
-- Phase 12.8 utility cleanup: `Hand`, `Bank`, and `Players` are now content-only and non-scroll in the normal case, the bank reuses the hand chip geometry, `Trade` appears as a full-width row inside the hand shelf when legal, and the dock button layout keeps `End Turn` visible on iPad. Lower-rail content is capped with bounded phone/iPad metrics so utility shelves do not stretch to full host width.
-- Phase 12.8b board interaction and resize hardening: board pan/pinch/tap now run through a dedicated `BoardSceneHostView` `SKView` wrapper instead of the SwiftUI gesture overlay, interactive Messages-host drags freeze the shell against a captured `GameShellFreezeOverlayView` snapshot with a watchdog so hostile resize sequences cannot strand the UI, a shell-level `GameShellDragShieldView` keeps board/shelf/dock drags inside the game so only the top grabber strip can hand off to Messages, setup and build placements use selection-first confirm semantics, utility shelves auto-collapse when the visible host is too short to fit a usable body, and the board keeps one committed world reference size while host drags only change the viewport.
-- Phase 12.8 audit artifacts: added `docs/quality/audits/2026-04-12-render-performance.md` (board/shell render-path amplification findings F1–F21) and `docs/quality/audits/2026-04-13-transport-reliability.md` (seven-phase `MSMessage.url` reliability plan). Both are now tracked as `TD-007` and `TD-008` in `docs/exec-plans/tech-debt-tracker.md` and linked from the relevant phase-13 and phase-15 roadmap entries.
+## [1.0 (8) TestFlight Beta] - 2026-08-26
 
-### Changed
-- Pre-TestFlight docs cleanup moved the ExecPlan contract to `docs/exec-plans/PLANS.md`, moved this changelog to `docs/exec-plans/CHANGELOG.md`, and slimmed `README.md`, `AGENTS.md`, and the ExecPlan rules into separate reference roles.
-- `README.md` is now the tracked human-facing repo entrypoint; `AGENTS.md` is local-only for agents.
-- `README.md` is slimmed to onboarding and stable commands, carries the minimal tracked repo contract for humans, and now links directly to the architecture, QA, and product-spec owner docs.
-- CoreGame test organization now separates fast package tests (`ULS_CoreGameTests`) from deterministic full-match evals (`ULS_CoreGameEvals`).
-- Phase 11 board geometry follow-up: render geometry now uses a regular hex basis and the board layout derives tile radius from the actual center-to-corner distance, keeping visible tiles aligned with the node and edge lattice.
-- Phase 12 docs follow-up: the tracked docs now reflect that stages 12.1 through 12.7 are landed, with stage 12.8 product cohesion plus real-device signoff as the remaining active gameplay-flow slice.
-- Docs upkeep follow-up: the tracked docs now explicitly require stage-end owner-doc updates, and README/QA wording reflects that the product shell is primary while phase 12 remains in late hardening plus the required hardware pass.
+### Released
 
-### Removed
-- Redundant `docs/quality/golden-principles.md` reference surface; its core rules are owned by `ARCHITECTURE.md`, `docs/decisions.md`, `README.md`, and `AGENTS.md`.
-- Separate `docs/index.md` and split `docs/architecture/*` tracked entrypoints; the repo now uses `README.md` as the tracked entrypoint and root `ARCHITECTURE.md` as the single architecture document.
+- Build `1.0 (8)` completed TestFlight Beta App Review and launched to the First Friends external-testing group under `me.ksharda.games.unluckysevens`.
+- Established Build `1.0 (8)` as the first supported transcript compatibility boundary; pre-TestFlight development bubbles remain unsupported.
+- Published the privacy policy, TestFlight metadata, export-compliance answers, and Data Not Collected declaration; the distributed binary exposes its privacy link in Settings.
+
+### Product
+
+- Shipped standard 3–4 player Catan through the iMessage timeline: lobby, setup, turn play, building, Trade, robber/discard, Dev Cards, awards, resignation, draw, host end, and victory.
+- Replaced unsafe saved-game continuation with a read-only Player Record. Gameplay and lifecycle publication resume only from a real game bubble with a bound Messages session.
+- Shipped the tabletop visual system, canonical SpriteKit board, Physical Props interactions, responsive Messages-host layout, sixteen-lesson tutorial, accessible controls, and bubble-specific public previews.
+
+### Reliability and Maintainability
+
+- Kept Core authoritative for rules, determinism, validation, secrecy-safe queries, costs, and topology; kept Transport authoritative for message encoding and compatibility.
+- Isolated extension responsibilities, shared one compiled support module between shipping code and tests, made selection polling lifecycle-cancellable, and separated production projection from DEBUG diagnostics.
+- Removed superseded UI branches, unused board assets, dead reconstruction paths, and redundant cost/topology construction without changing gameplay or protocol fields.
+
+### Validation
+
+- The frozen candidate passed the release mechanical lane, deterministic full-match and victory coverage, signed archive validation, and clean iPhone/iPad installation and smoke checks.
+- Installed-TestFlight multi-device edge observations intentionally deferred at launch are tracked in [GitHub issue #8](https://github.com/kunal-sharda/UnluckySevens/issues/8), not represented as completed proof.
+
+## Pre-Beta Foundation - 2026-03 through 2026-08
+
+- Built the pure `ULS_CoreGame` and `ULS_Transport` packages, canonical state hashing, standard board generation, complete reducer/query coverage, deterministic scripted matches, and the Messages extension host.
+- Added canonical generation, package/workspace tests, XCUITest/UX Lab catalogs, device runbooks, evidence retention rules, completion contracts, and release gates.
+- Iterated the product and design through phases 0–14. Detailed decisions, rejected directions, commands, and evidence remain in [completed ExecPlans](completed/) and dated [quality audits](../quality/audits/).

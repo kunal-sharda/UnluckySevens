@@ -1,5 +1,7 @@
 # Single-Device Gameplay Action Harness
 
+> Closed 2026-08-26: all contracted single-device action journeys, recovery proof, current-source catalog, fresh constraint audit, and standard completion gate passed. Multi-device and installed-TestFlight coverage was intentionally excluded and now lives in [GitHub issue #8](https://github.com/kunal-sharda/UnluckySevens/issues/8).
+
 > Scope amendment 2026-08-23: saved-record Open/Resend/archive/lifecycle journeys are retired with Your Games. Any resumed recovery-catalog work must instead prove Player Record is read-only, gameplay resumes from a real bubble, and current-game lifecycle actions remain session-bound; historical retry evidence below is unchanged.
 
 ## Purpose and Outcome

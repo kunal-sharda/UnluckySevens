@@ -1,5 +1,7 @@
 # Phase 14 — UI Design, Bubble Polish, and Trust Surfaces
 
+> Closed 2026-08-26: the parent phase landed through its completed child plans and subsequent release work. The old unresolved invitation comparison was superseded by the production invite flow shipped in Build `1.0 (8)` and its focused publication/rollback tests.
+
 > 2026-07-23 resolution: P14-004's overstated nested Trade visual coverage was corrected and explicitly approved through [Physical Trade Surface Correction](../completed/physical-trade-surface-correction.md). Earlier rejected Trade evidence remains invalid.
 
 ## Purpose and Outcome

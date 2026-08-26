@@ -400,13 +400,13 @@ Additional requirements:
 - Only the narrow top grabber region may hand dragging back to Messages; board and shelf gestures remain local elsewhere.
 - Wide but vertically short hosts use the compact lower-surface layout instead of clipping phone or iPad assumptions.
 - The lower visual region retains at least 12 points of total host-edge clearance after counting the system bottom safe area; only the missing clearance is added.
-- Real-device iPad proof remains required before responsive adaptation is considered fully verified.
+- Broader distributed-build iPhone/iPad and two-account observations remain Beta 1.1 test coverage rather than a pre-launch blocker.
 
 ## Known Contract Gaps
 
 | ID | Type | Current mismatch | Required disposition |
 | --- | --- | --- | --- |
-| UI-GAP-003 | Pending proof | Responsive host logic exists and has focused tests, but connected-iPad visual approval remains pending. | Complete both real-iPad entry-path checks before calling the adaptation verified. |
+| UI-GAP-003 | Test gap | Responsive host logic, focused tests, paired simulator catalogs, and the Build 8 device smoke pass; broader distributed-build entry and gameplay coverage remains useful. | Complete the post-launch matrix in [GitHub issue #8](https://github.com/kunal-sharda/UnluckySevens/issues/8). |
 
 ## Evidence Anchors
 
@@ -418,4 +418,4 @@ Material behavior is currently exercised by:
 - board resize/layout tests and installed Messages-host UI journeys;
 - the full seventeen-state tutorial replay: navigation veil plus sixteen lessons.
 
-These tests prove current implementation behavior. Judgment requirements and pending real-device proof remain governed by the active ExecPlans and owner checkpoints.
+These tests prove current implementation behavior. Remaining beta observations and defects are governed by the [Beta 1.1 milestone](https://github.com/kunal-sharda/UnluckySevens/milestone/1); qualifying cross-cutting work may add a linked ExecPlan.

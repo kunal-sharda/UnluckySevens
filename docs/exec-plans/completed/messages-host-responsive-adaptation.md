@@ -1,5 +1,7 @@
 # Messages Host Responsive Adaptation
 
+> Closed 2026-08-26 after release acceptance. The responsive implementation, paired simulator catalogs, current geometry contracts, and Build 8 iPhone/iPad smoke passed. Broader installed-TestFlight and multi-device observations remain useful beta coverage and are tracked in [GitHub issue #8](https://github.com/kunal-sharda/UnluckySevens/issues/8), not as an active pre-release checkpoint.
+
 ## Purpose and Outcome
 
 Make the existing Messages surfaces respond correctly to the actual host bounds supplied by iPhone and iPadOS, including the distinct widths observed when entering from the app drawer and from a transcript bubble. The system-owned host frame may differ; product content must fill, reflow, and remain legible without treating device identity as a layout input.

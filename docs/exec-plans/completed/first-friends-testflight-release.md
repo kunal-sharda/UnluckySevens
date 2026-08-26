@@ -1,5 +1,7 @@
 # First Friends TestFlight Release
 
+> Closed 2026-08-26: Build `1.0 (8)` completed Beta App Review and launched in TestFlight. The exhaustive mechanical release lane, signed iPhone/iPad archive smoke, privacy/configuration work, and owner-authorized launch passed. Unperformed installed-TestFlight and multi-device observations were accepted as post-launch beta work rather than retroactively marked complete; they are tracked in [GitHub issue #8](https://github.com/kunal-sharda/UnluckySevens/issues/8).
+
 ## Purpose and Outcome
 
 Ship the first externally installable Unlucky Sevens beta to a small invited group through TestFlight. Success means the final UI branch is legacy-free and reproducibly verified, the signed Release build passes the repository gate and real-device multiplayer matrix, Apple processes the exact archived build without unresolved errors, invited friends can install it, and a two-account installed-TestFlight smoke proves the Messages extension still works outside the development install path.
