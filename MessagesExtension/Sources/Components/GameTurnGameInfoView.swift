@@ -6,10 +6,15 @@ struct GameTurnGameInfoView: View {
     static let boardClearanceHeight: CGFloat = 1
 
     let model: GameInfoModel
+    var canClaimVictory: Bool = false
+    var onClaimVictory: () -> Void = {}
+    var canResendUpdate: Bool = false
+    var onResendUpdate: () -> Void = {}
     let canProposeDraw: Bool
     let canVoteOnDraw: Bool
     let canResign: Bool
     let canHostEnd: Bool
+    let lifecycleUnavailableMessage: String?
     let shouldOfferDrawBeforeHostEnd: Bool
     let onPlayerRecordTap: () -> Void
     let onProposeDraw: () -> Void
@@ -61,7 +66,7 @@ struct GameTurnGameInfoView: View {
 
                         Spacer(minLength: 0)
 
-                        if canProposeDraw || canVoteOnDraw || canResign || canHostEnd {
+                        if canResendUpdate || canClaimVictory || canProposeDraw || canVoteOnDraw || canResign || canHostEnd || lifecycleUnavailableMessage != nil {
                             lifecycleMenu
                         }
 
@@ -133,20 +138,33 @@ struct GameTurnGameInfoView: View {
 
     private var lifecycleMenu: some View {
         Menu {
-            if canVoteOnDraw {
-                Button("Agree to Draw", systemImage: "hand.thumbsup") { onVoteOnDraw(true) }
-                Button("Decline Draw", systemImage: "hand.thumbsdown") { onVoteOnDraw(false) }
-            } else if canProposeDraw {
-                Button("Propose Draw", systemImage: "hand.raised", action: onProposeDraw)
+            if canResendUpdate {
+                Button("Resend Game Update", systemImage: "arrow.clockwise", action: onResendUpdate)
+                    .accessibilityIdentifier("uls.gameInfo.resendUpdate")
             }
-            if canResign {
-                Button("Resign", systemImage: "figure.walk.departure", role: .destructive) {
-                    pendingConfirmation = .resign
+            if canClaimVictory {
+                Button("Declare Victory", systemImage: "trophy", action: onClaimVictory)
+                    .accessibilityIdentifier("uls.gameInfo.claimVictory")
+            }
+            if !canClaimVictory {
+                if let lifecycleUnavailableMessage {
+                    Text(lifecycleUnavailableMessage)
                 }
-            }
-            if canHostEnd {
-                Button("End Game", systemImage: "xmark.octagon", role: .destructive) {
-                    pendingConfirmation = .hostEnd
+                if canVoteOnDraw {
+                    Button("Agree to Draw", systemImage: "hand.thumbsup") { onVoteOnDraw(true) }
+                    Button("Decline Draw", systemImage: "hand.thumbsdown") { onVoteOnDraw(false) }
+                } else if canProposeDraw {
+                    Button("Propose Draw", systemImage: "hand.raised", action: onProposeDraw)
+                }
+                if canResign {
+                    Button("Resign", systemImage: "figure.walk.departure", role: .destructive) {
+                        pendingConfirmation = .resign
+                    }
+                }
+                if canHostEnd {
+                    Button("End Game", systemImage: "xmark.octagon", role: .destructive) {
+                        pendingConfirmation = .hostEnd
+                    }
                 }
             }
         } label: {

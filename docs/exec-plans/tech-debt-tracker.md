@@ -7,7 +7,8 @@ This is the durable rationale index for structural debt. GitHub Issues own actio
 ### TD-001 — Messages host-boundary regression coverage
 
 - Risk: transcript selection, reopen lifecycle, session identity, and payload-carrier behavior can regress while engine and simulator tests remain green.
-- Direction: deterministic simulator coverage plus an operator-assisted connected-device diagnostics lane.
+- Additional identity risk: Apple participant UUIDs are device-scoped, so existing whole-roster comparisons against `MSConversation` remote identifiers—including `isCompatibleWithActiveConversation(_:)` and exact-participant Player Record matching—may reject valid cross-device rosters. Local actor lookup is not equivalent because each device authors its own local actor identifier.
+- Direction: deterministic simulator coverage plus an operator-assisted connected-device diagnostics lane; separately prove or replace remote-participant roster matching without treating device-scoped UUIDs as stable wire identity.
 - Owner: [GitHub issue #2](https://github.com/kunal-sharda/UnluckySevens/issues/2)
 
 ### TD-002 — Production board visual assertions are shallow
@@ -34,18 +35,13 @@ This is the durable rationale index for structural debt. GitHub Issues own actio
 - Direction: deterministic resolution or serialized authority without changing responder semantics or secrecy.
 - Owner: [GitHub issue #6](https://github.com/kunal-sharda/UnluckySevens/issues/6)
 
-### TD-010 — State publication retains a fresh-session fallback
-
-- Risk: when neither a selected same-game session nor cached session exists, a fresh `MSSession` can fragment transcript presentation if the path remains reachable.
-- Direction: map reachable callers, remove an unreachable fallback, or prove the intended restart behavior on two accounts.
-- Owner: [GitHub issue #7](https://github.com/kunal-sharda/UnluckySevens/issues/7)
-
 ## Resolved Index
 
 | ID | Resolution | Date |
 | --- | --- | --- |
 | TD-003 | Extension responsibilities isolated behind focused host, feature, presentation, recovery, and DEBUG seams | 2026-08-21 |
 | TD-004 | Shipping extension and tests share one compiled support module | 2026-08-21 |
+| TD-010 | Removed the unused fresh-session state helper; production `.state(gameId:)` resolution uses only the selected same-game or cached session and otherwise fails closed | 2026-08-28 |
 | TD-011 | Core build costs have one production definition | 2026-08-21 |
 | TD-012 | Terminal plans and stale flow narration reconciled | 2026-07-25 |
 | TD-013 | Superseded standalone UI types removed | 2026-08-10 |
@@ -54,3 +50,7 @@ This is the durable rationale index for structural debt. GitHub Issues own actio
 | TD-016 | Superseded board-art assets removed | 2026-08-21 |
 
 Detailed implementation evidence remains in git history, completed ExecPlans, architecture, and the linked source/tests. Reopen a resolved item only with new evidence and a new or reactivated GitHub issue.
+
+### Deferred — fully unattended second physical Messages device
+
+Owner decision 2026-09-28: beyond Beta 1.1 and #49. Current supported automation is the home iPad plus remote-human phone checkpoints. Revisit when a second controllable device with an independent iMessage account is available and unattended operation materially saves work. Preserve installation identity, provenance, consent for actual sends and bounded recovery. This deferral does not waive three-/four-account product verification with friends. Execution entrypoint: [Beta testing plan](active/testing-streams-implementation.md).

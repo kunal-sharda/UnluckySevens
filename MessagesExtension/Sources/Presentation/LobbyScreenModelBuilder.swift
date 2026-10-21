@@ -79,6 +79,10 @@ enum LobbyScreenModelBuilder {
             title = "You're In"
             subtitle = "Waiting for \(displayName(host, state: state)) to start."
             helperText = ""
+        } else if state.roster.count >= 4 {
+            title = "Lobby Full"
+            subtitle = "This table already has four players."
+            helperText = "Ask the host to send a new invite for another game."
         } else {
             title = "Join the Table"
             subtitle = "\(displayName(host, state: state)) invited you to play Unlucky Sevens."

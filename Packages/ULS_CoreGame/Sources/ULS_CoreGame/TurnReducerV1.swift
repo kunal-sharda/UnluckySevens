@@ -117,20 +117,24 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         guard offer.offerHash == offerHash else {
             throw CoreGameError.tradeOfferAnchorMismatch
         }
-        guard canTradeRespond(player: acceptingPlayer, offer: offer) else {
-            throw CoreGameError.tradeAcceptPlayerInvalid
-        }
-        guard existingTradeResponse(for: acceptingPlayer) == nil else {
+        switch state.tradeAcceptEligibility(for: acceptingPlayer) {
+        case .eligible:
+            break
+        case .responderAlreadyResponded:
             throw CoreGameError.tradeAcceptAlreadySubmitted
+        case .offerNoLongerFunded, .responderInsufficientResources:
+            throw CoreGameError.tradeExecutionInsufficientResources
+        case .responderInvalid, .responderNotTargeted:
+            throw CoreGameError.tradeAcceptPlayerInvalid
+        case .turnUnavailable:
+            throw CoreGameError.turnStepMismatch
+        case .offerMissing:
+            throw CoreGameError.tradeOfferMissing
         }
 
         let proposer = state.currentPlayer
         let proposerHand = state.resourcesByPlayer[proposer] ?? .zero
         let acceptorHand = state.resourcesByPlayer[acceptingPlayer] ?? .zero
-        guard TurnRulesPrimitivesV1.canAfford(hand: proposerHand, cost: offer.give), TurnRulesPrimitivesV1.canAfford(hand: acceptorHand, cost: offer.receive) else {
-            throw CoreGameError.tradeExecutionInsufficientResources
-        }
-
         var updatedResourcesByPlayer = state.resourcesByPlayer
         updatedResourcesByPlayer[proposer] = TurnRulesPrimitivesV1.addHands(
             TurnRulesPrimitivesV1.subtractHands(proposerHand, offer.give),
@@ -163,6 +167,15 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
             tradeResponses: .some(responses),
             intent: intent
         )
+    }
+
+    // Old active snapshots remain untouched on decode. An explicit action by the
+    // winning player publishes one terminal successor before any further gameplay.
+    if victoryTotalIncludingHiddenCards(for: state.currentPlayer, in: state) >= 10 {
+        guard actor == state.currentPlayer else { throw CoreGameError.gameAlreadyOver }
+        if intent != .revealVictoryPoint {
+            return try apply(intent: .revealVictoryPoint, to: state, actor: actor)
+        }
     }
 
     switch intent {
@@ -1000,39 +1013,16 @@ public func apply(intent: TurnIntentV1, to state: CoreGameStateV1, actor: String
         )
 
     case .revealVictoryPoint:
-        guard turnState.step.allowsDevCardPlay else {
-            throw CoreGameError.turnStepMismatch
-        }
-        guard state.canRevealVictoryPoint(for: state.currentPlayer) else {
+        guard victoryTotalIncludingHiddenCards(for: state.currentPlayer, in: state) >= 10 else {
             throw CoreGameError.victoryPointRevealNotWinning
         }
-
-        let player = state.currentPlayer
-        var devCardsByPlayer = state.devCardsByPlayer
-        var newDevCardsByPlayer = state.newDevCardsByPlayer
-        let playable = devCardsByPlayer[player] ?? .zero
-        let newlyBought = newDevCardsByPlayer[player] ?? .zero
-        if playable.victoryPoint > 0 {
-            devCardsByPlayer[player] = playable.subtractingOne(card: .victoryPoint)
-        } else if newlyBought.victoryPoint > 0 {
-            newDevCardsByPlayer[player] = newlyBought.subtractingOne(card: .victoryPoint)
-        } else {
-            throw CoreGameError.devCardNotOwned
-        }
-
-        var revealed = state.revealedVictoryPointsByPlayer
-        revealed[player, default: 0] += 1
-
         return nextTurnState(
             from: state,
-            currentPlayer: player,
+            currentPlayer: state.currentPlayer,
             diceRngState: state.diceRngState,
             robberRngState: state.robberRngState,
             board: state.board,
-            turnState: turnState,
-            devCardsByPlayer: devCardsByPlayer,
-            newDevCardsByPlayer: newDevCardsByPlayer,
-            revealedVictoryPointsByPlayer: revealed
+            turnState: turnState
         )
 
     case .endTurn:
@@ -1150,8 +1140,8 @@ private func baseNextTurnState(
     let withAwards = stateByApplyingAwards(provisional, awards: awards)
     let withAudit = stateByAppendingAuditEntry(from: state, to: withAwards, actor: actor, intent: intent)
     if shouldTransitionToGameOver(from: state, to: withAudit) {
-        let winner = state.currentPlayer
-        let winningPoints = victoryPoints(for: winner, in: withAudit)
+        let winner = withAudit.currentPlayer
+        let winningPoints = victoryTotalIncludingHiddenCards(for: winner, in: withAudit)
         return stateByApplyingGameOver(withAudit, winner: winner, winningPoints: winningPoints).rehashed()
     }
     return withAudit.rehashed()
@@ -1203,23 +1193,27 @@ private func stateByApplyingAwards(_ state: CoreGameStateV1, awards: AwardStateV
 }
 
 private func shouldTransitionToGameOver(from previous: CoreGameStateV1, to candidate: CoreGameStateV1) -> Bool {
-    guard
-        previous.phase == .turn,
-        candidate.phase == .turn,
-        previous.currentPlayer == candidate.currentPlayer,
-        previous.turnState?.step == .afterRoll
-    else {
-        return false
-    }
-    return victoryPoints(for: previous.currentPlayer, in: candidate) >= 10
+    previous.phase == .turn && candidate.phase == .turn
+        && candidate.isActivePlayer(candidate.currentPlayer)
+        && victoryTotalIncludingHiddenCards(for: candidate.currentPlayer, in: candidate) >= 10
 }
 
-private func stateByApplyingGameOver(
+func stateByApplyingGameOver(
     _ state: CoreGameStateV1,
     winner: String,
     winningPoints: Int
 ) -> CoreGameStateV1 {
-    CoreGameStateV1(
+    var playable = state.devCardsByPlayer
+    var newlyBought = state.newDevCardsByPlayer
+    var revealed = state.revealedVictoryPointsByPlayer
+    let oldCount = playable[winner]?.victoryPoint ?? 0
+    let newCount = newlyBought[winner]?.victoryPoint ?? 0
+    if oldCount > 0 { playable[winner] = playable[winner]?.adding(-oldCount, card: .victoryPoint) }
+    if newCount > 0 { newlyBought[winner] = newlyBought[winner]?.adding(-newCount, card: .victoryPoint) }
+    if oldCount + newCount > 0 { revealed[winner, default: 0] += oldCount + newCount }
+    var scores = victoryPointsByPlayer(in: state)
+    scores[winner] = winningPoints
+    return CoreGameStateV1(
         gameId: state.gameId,
         rev: state.rev,
         prevHash: state.prevHash,
@@ -1234,9 +1228,9 @@ private func stateByApplyingGameOver(
         resourcesByPlayer: state.resourcesByPlayer,
         bankResources: state.bankResources,
         devDeck: state.devDeck,
-        devCardsByPlayer: state.devCardsByPlayer,
-        newDevCardsByPlayer: state.newDevCardsByPlayer,
-        revealedVictoryPointsByPlayer: state.revealedVictoryPointsByPlayer,
+        devCardsByPlayer: playable,
+        newDevCardsByPlayer: newlyBought,
+        revealedVictoryPointsByPlayer: revealed,
         devCardActionPlayedThisTurn: state.devCardActionPlayedThisTurn,
         knightsPlayedByPlayer: state.knightsPlayedByPlayer,
         largestArmyOwner: state.largestArmyOwner,
@@ -1248,7 +1242,7 @@ private func stateByApplyingGameOver(
         gameResult: GameResultV1(
             reason: .victory,
             winnerPlayers: [winner],
-            finalScoresByPlayer: victoryPointsByPlayer(in: state)
+            finalScoresByPlayer: scores
         ),
         resignedPlayers: state.resignedPlayers,
         drawVote: nil,

@@ -119,7 +119,12 @@ struct MessagesRootView: View {
                             AppSettingsView(
                                 preferences: appPreferences,
                                 summary: GameSettingsSummary(boardStrategy: viewModel.boardStrategy),
-                                onDismiss: dismissUtility
+                                onDismiss: dismissUtility,
+                                loadReliabilityReport: viewModel.reliabilityReportData,
+                                clearReliabilityReports: viewModel.clearReliabilityReports,
+                                canResendUpdate: viewModel.canResendCurrentGameUpdate(),
+                                onResendUpdate: viewModel.resendCurrentGameUpdate,
+                                reliabilityStorageUnavailable: { viewModel.reliabilityStorageUnavailable }
                             )
                             .transition(.opacity)
                             .zIndex(20)

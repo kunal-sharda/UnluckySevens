@@ -124,6 +124,87 @@ final class TranscriptStateSelectionTests: XCTestCase {
         XCTAssertEqual(siblingThenFirst[first.gameId]?.stateHash, expectedHash)
     }
 
+    func testRecordingConvergesOnCanonicalAcceptBranchInEitherObservationOrder() throws {
+        let branches = try makeCompetingTradeAcceptBranches()
+        var winnerFirstContexts = [branches.winner.gameId: branches.context]
+        var loserFirstContexts = [branches.winner.gameId: branches.context]
+
+        let winnerThenLoser = TranscriptStateSelection.recording(
+            branches.losingDescendant,
+            in: [branches.winner.gameId: branches.winner],
+            convergenceContextsByGameId: &winnerFirstContexts
+        )
+        let loserThenWinner = TranscriptStateSelection.recording(
+            branches.winner,
+            in: [branches.losingDescendant.gameId: branches.losingDescendant],
+            convergenceContextsByGameId: &loserFirstContexts
+        )
+
+        XCTAssertEqual(winnerThenLoser[branches.winner.gameId], branches.winner)
+        XCTAssertEqual(loserThenWinner[branches.winner.gameId], branches.winner)
+    }
+
+    func testRecordingRetainsDirectClaimUntilCompetingAcceptArrives() throws {
+        let branches = try makeCompetingTradeAcceptBranches()
+        var contexts: [String: CanonicalStateConvergenceContextV1] = [:]
+        var states: [String: CoreGameStateV1] = [:]
+
+        states = TranscriptStateSelection.recording(
+            branches.loser,
+            in: states,
+            convergenceContextsByGameId: &contexts
+        )
+        states = TranscriptStateSelection.recording(
+            branches.losingDescendant,
+            in: states,
+            convergenceContextsByGameId: &contexts
+        )
+        states = TranscriptStateSelection.recording(
+            branches.winner,
+            in: states,
+            convergenceContextsByGameId: &contexts
+        )
+
+        XCTAssertEqual(states[branches.winner.gameId], branches.winner)
+        XCTAssertEqual(contexts[branches.winner.gameId]?.tradeAcceptanceClaims.count, 2)
+    }
+
+    func testResolveActivatesCanonicalAcceptBranchOverLaterLosingDescendant() throws {
+        let branches = try makeCompetingTradeAcceptBranches()
+
+        let result = TranscriptStateSelection.resolve(
+            decodedState: branches.winner,
+            latestKnownStatesByGameId: [branches.winner.gameId: branches.winner],
+            activeState: branches.losingDescendant,
+            activeSource: .latestKnownState,
+            source: .url,
+            trigger: .didReceive,
+            convergenceContext: branches.context
+        )
+
+        XCTAssertEqual(result.preferredState, branches.winner)
+        XCTAssertTrue(result.shouldActivate)
+        XCTAssertTrue(result.shouldShowLatestUpdateNotice)
+    }
+
+    func testResolveRedirectsLosingDescendantBubbleToCanonicalAcceptBranch() throws {
+        let branches = try makeCompetingTradeAcceptBranches()
+
+        let result = TranscriptStateSelection.resolve(
+            decodedState: branches.losingDescendant,
+            latestKnownStatesByGameId: [branches.winner.gameId: branches.winner],
+            activeState: branches.winner,
+            activeSource: .selectedBubble,
+            source: .url,
+            trigger: .didSelect,
+            convergenceContext: branches.context
+        )
+
+        XCTAssertEqual(result.preferredState, branches.winner)
+        XCTAssertTrue(result.redirectedToLatestKnown)
+        XCTAssertFalse(result.shouldActivate)
+    }
+
     func testRecordingRejectsInvalidCanonicalHash() {
         let valid = makeTurnState(rev: 2)
         let invalid = CoreGameStateV1(

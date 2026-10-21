@@ -3,6 +3,7 @@ import SwiftUI
 struct GameEndResultRailView: View {
     let model: GameEndScreenModel
     let onNewGame: () -> Void
+    var onSettings: (() -> Void)? = nil
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -12,7 +13,8 @@ struct GameEndResultRailView: View {
                 ScrollView(.vertical) {
                     GameEndResultContentView(
                         model: model,
-                        onNewGame: onNewGame
+                        onNewGame: onNewGame,
+                        onSettings: onSettings
                     )
                 }
                 .scrollIndicators(.hidden)
@@ -20,7 +22,8 @@ struct GameEndResultRailView: View {
             } else {
                 GameEndResultContentView(
                     model: model,
-                    onNewGame: onNewGame
+                    onNewGame: onNewGame,
+                        onSettings: onSettings
                 )
             }
         }

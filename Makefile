@@ -5,6 +5,20 @@ DOC_FRESHNESS_FLAGS ?=
 TEST_SIMULATOR_DESTINATION ?= platform=iOS Simulator,name=iPhone 17,OS=latest
 FEATURE ?= smoke
 
+# Physical driver and manual evidence commands require explicit configuration.
+.PHONY: test-home test-physical-help manual-device-evidence-help
+HOME_DEVICE_CONFIG ?= output/physical-messages/home.json
+
+# Read-only hardware check. Does not build, install, open Messages or send.
+test-home:
+	python3 ./scripts/run-physical-messages.py --config "$(HOME_DEVICE_CONFIG)" --step preflight --execute
+
+test-physical-help:
+	python3 ./scripts/run-physical-messages.py --help
+
+manual-device-evidence-help:
+	python3 ./scripts/manual-device-evidence.py --help
+
 gen:
 	./scripts/gen.sh
 

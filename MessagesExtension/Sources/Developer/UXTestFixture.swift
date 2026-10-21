@@ -81,6 +81,8 @@ struct UXTestFixture: Equatable, Identifiable {
 }
 
 enum UXTestFixtures {
+    static let launchFixtureIDDefaultsKey = "uls.debug.launchFixtureID"
+    static let launchActorIDDefaultsKey = "uls.debug.launchActorID"
     static let host = "host"
     static let alice = "alice"
     static let ben = "ben"
@@ -93,6 +95,7 @@ enum UXTestFixtures {
         setupHandoff,
         turnNeedsRoll,
         turnAfterRoll,
+        drawVote,
         endTurnAction,
         waitingOnAlice,
         waitingOnDiscard,
@@ -116,6 +119,7 @@ enum UXTestFixtures {
     static let setupRoadPlacementID = "setup-road-placement"
     static let setupHandoffID = "setup-handoff"
     static let turnNeedsRollID = "turn-needs-roll"
+    static let drawVoteID = "draw-vote"
     static let endTurnActionID = "end-turn-action"
     static let tradeOfferID = "trade-offer"
     static let multiTypeTradeOfferID = "multi-type-trade-offer"
@@ -369,6 +373,14 @@ enum UXTestFixtures {
                 lastRoll: DiceRollV1(d1: 3, d2: 5)
             )
         )
+    )
+
+    private static let drawVote = UXTestFixture(
+        id: drawVoteID,
+        title: "Draw vote",
+        detail: "Active draw proposal awaiting another player's vote.",
+        defaultActorID: alice,
+        state: makeDrawVoteState()
     )
 
     private static let endTurnAction = UXTestFixture(
@@ -804,6 +816,26 @@ enum UXTestFixtures {
             roadsByEdge: [:],
             setupState: initializeSetupState(roster: roster)
         )
+    }
+
+    private static func makeDrawVoteState() -> CoreGameStateV1 {
+        let state = makeTurnFixture(
+            rev: 9,
+            currentPlayer: host,
+            turnState: TurnStateV1(
+                step: .afterRoll,
+                lastRoll: DiceRollV1(d1: 3, d2: 5)
+            )
+        )
+        do {
+            return try apply(
+                intent: .proposeDraw(anchoredTo: state),
+                to: state,
+                actor: host
+            )
+        } catch {
+            preconditionFailure("Unable to build draw-vote fixture: \(error)")
+        }
     }
 
     private static func reidentified(

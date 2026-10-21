@@ -39,6 +39,18 @@ enum TranscriptBubbleCopyBuilder {
         )
     }
 
+    static func lobbyReconciled(to state: CoreGameStateV1, admittedPlayers: [String]) -> TranscriptBubbleCopy {
+        let names = admittedPlayers.map { displayName(for: $0, in: state) }
+        let joinedCopy = names.count == 1
+            ? "\(names[0]) joined the table."
+            : "\(names.joined(separator: " and ")) joined the table."
+        return titled(
+            "Lobby Updated",
+            summary: "\(joinedCopy) \(state.roster.count) players are ready.",
+            visual: lobbyVisual(for: state)
+        )
+    }
+
     static func lobbyRename(
         from _: CoreGameStateV1,
         to: CoreGameStateV1,
@@ -231,6 +243,9 @@ enum TranscriptBubbleCopyBuilder {
         resultingState state: CoreGameStateV1,
         actor: String
     ) -> TranscriptBubbleCopy {
+        if state.phase == .gameOver, state.gameResult?.reason == .victory {
+            return turnIntent(.revealVictoryPoint, actor: actor, resultingState: state)
+        }
         let actorName = displayName(for: actor, in: state)
         return boardTitled(
             "\(actorName) Resigned",
@@ -244,6 +259,9 @@ enum TranscriptBubbleCopyBuilder {
         resultingState state: CoreGameStateV1,
         actor: String
     ) -> TranscriptBubbleCopy {
+        if state.phase == .gameOver, state.gameResult?.reason == .victory {
+            return turnIntent(.revealVictoryPoint, actor: actor, resultingState: state)
+        }
         let actorName = displayName(for: actor, in: state)
         return boardTitled(
             "Draw Proposed",
@@ -258,6 +276,9 @@ enum TranscriptBubbleCopyBuilder {
         actor: String,
         approved: Bool
     ) -> TranscriptBubbleCopy {
+        if state.phase == .gameOver, state.gameResult?.reason == .victory {
+            return turnIntent(.revealVictoryPoint, actor: actor, resultingState: state)
+        }
         let actorName = displayName(for: actor, in: state)
         if state.phase == .gameOver {
             return titled(
@@ -287,6 +308,9 @@ enum TranscriptBubbleCopyBuilder {
         resultingState state: CoreGameStateV1,
         actor: String
     ) -> TranscriptBubbleCopy {
+        if state.phase == .gameOver, state.gameResult?.reason == .victory {
+            return turnIntent(.revealVictoryPoint, actor: actor, resultingState: state)
+        }
         let actorName = displayName(for: actor, in: state)
         return titled(
             "Game Ended",

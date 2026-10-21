@@ -10,7 +10,7 @@ For non-trivial work, do these before finalizing:
 2. Use the simulator/XCUITest/UX Lab harnesses from [docs/quality/qa.md](docs/quality/qa.md) for UI validation; manual simulator driving is a temporary fallback only.
 3. Check `docs/exec-plans/active/` before multi-step work and keep the active plan updated while the work is in flight.
 4. Lock both the validation profile and delivery posture before implementation. For checkpointed work, stop at the declared approval gate; pending approval blocks productionization, fresh review, and the completion gate.
-5. Use `make completion-gate PLAN=<path>` for profile-aware final validation. Reserve `make release-gate PLAN=<path>` and `make practical-gate` for release-critical work.
+5. Use `make completion-gate PLAN=<path>` for profile-aware final validation. Reserve `make release-gate PLAN=<path>` and `make practical-gate` for release-critical work. Diagnostic TestFlight candidates follow the scoped standard candidate contract in [QA](docs/quality/qa.md#diagnostic-testflight-candidate-versus-milestone-release); final milestone/public acceptance remains release-critical.
 6. End with a doc-freshness note that says which owner docs changed, which were intentionally unaffected, and what validation was or was not run.
 7. For qualifying work, keep a verification contract in the active ExecPlan and run `make completion-gate PLAN=<path>` before using the word complete.
 8. Lock the exact proof set before implementation and obey the validation circuit breaker in [docs/quality/qa.md](docs/quality/qa.md). Validation may expand scope only for a demonstrated production defect or a sourced contract gap; harness instability must stop and be reported after the retry budget.
@@ -39,6 +39,7 @@ Use this order when reasoning about the repo:
 
 ## Agent Workflow Rules
 
+- After each major implementation block or bug fix, run its scoped validation, commit the coherent change, and push it to the current work branch. Milestone 1 work uses `milestone-1`; do not push milestone implementation directly to `master`. Report any commit or push failure, and preserve unfinished work without claiming it is validated.
 - Do not open Xcode as part of agent validation or visual review. Use command-line builds, simulator commands, and the checked-in harnesses.
 - Do not run `tuist generate` directly for validation. Run `bash ./scripts/gen.sh`, which performs the repo-specific no-open generation and generated-project patching required for the standalone Messages package.
 - Before any `xcodebuild -workspace UnluckySevens.xcworkspace ...` validation, run `bash ./scripts/gen.sh` in the same slice unless the current command sequence already did so.

@@ -2,8 +2,8 @@ enum PlayerFacingErrorCopy {
     static func message(for rawMessage: String) -> String {
         let message = rawMessage.lowercased()
 
-        if message.contains("at least two players") {
-            return "At least two players need to join before you can start."
+        if message.contains("three or four players") || message.contains("at least two players") {
+            return "Three or four players are required before the host can start."
         }
         if message.contains("enter a new name") {
             return "Enter a different display name before saving."

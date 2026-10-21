@@ -2,6 +2,112 @@
 
 This guide owns real-device, manual simulator, and host-stability procedures. Use [QA](qa.md) to select the required lane and [constraint verification](constraint-verification.md) to record evidence and completion status.
 
+## Streaming Patch Test Routes
+
+Use two routes with separate verdicts for each candidate. The runner below orchestrates local checks and records operator-assisted hardware evidence. It does not schedule jobs. Existing catalogs and locked retry budgets remain governed by [QA](qa.md).
+
+| Route | Setup | Available execution | What a pass establishes |
+| --- | --- | --- | --- |
+| One-device | Mac/simulator; optionally the home iPad | Existing Core/Transport tests and simulator XCUITest catalogs; automated configured iPad probe/invite/inspect/reopen; manual other physical checks | Deterministic rules and local UI/wiring; physical host behavior only for checks actually performed on the iPad |
+| Two-device | Home iPad plus a second iPad/iPhone on a different iMessage Apple account | Operator-assisted real Messages journey; second device may be remote via TestFlight | Observed sender-to-recipient delivery/open/reply and state agreement for the exact tested journey |
+
+### Route 1: One-device validation
+
+1. Identify the candidate commit plus local changes, configuration, version/build, and intended ticket scope. Do not assume installed Build 1.0 (8) contains later local fixes.
+2. Run the focused Core/Transport checks selected by QA and the relevant `make test-quick FEATURE=<feature>` simulator route. `make test-full` remains a simulator lane, not a physical iPad or multiplayer verdict.
+3. When the home iPad is available, install the identified candidate through the existing connected-device pipeline for development testing, or install the distributed candidate through TestFlight. On that device, check applicable production entry, layout, controls, and reopen behavior. Use the proven physical driver below for its bounded probe/invite/inspect/reopen steps; other hardware journeys remain manual until automated.
+4. Use valid existing states or supported DEBUG fixtures for local gameplay scenarios. Simulated actors or seeded multiplayer states do not establish real remote delivery, nor authorize starting a standard game with an unsupported player count. DEBUG UX Lab routes cannot be assumed available in TestFlight.
+5. Record one-device pass/fail and mark required cross-account checks pending. Continue independent development while waiting for a second participant; do not close delivery/convergence constraints from this route alone.
+
+### Route 2: Two-device Messages validation
+
+1. Confirm the two devices use distinct iMessage Apple accounts and can exchange real Messages in a dedicated test conversation. Different hardware models or physical locations are not required.
+2. Verify the intended candidate is installed on both devices. Record each version/build, OS, configuration/distribution source, and anonymous account role. A development install must not be mislabeled as installed-TestFlight evidence; mixed-build tests are explicit compatibility cases.
+3. Run the initial bounded smoke: A publishes an invite; B observes and opens the actual bubble, joins; A observes and reopens the resulting update; compare game/revision and roster using available privacy-safe evidence. This lobby check does not require or authorize starting a two-player standard match.
+4. Extend only to the ticket's approved journey: valid-game trade response, session reopen, resign/draw, or recovery. Record sender handoff and recipient receipt/open separately. Missing or unavailable diagnostics remain unverified, not inferred from a screenshot.
+5. For a remote phone/iPad, the user performs its taps manually and shares the result; TestFlight distributes builds but does not provide remote control. The home side uses the bounded physical driver below; other actions remain manual. Both devices need internet for the live exchange, not the same Wi-Fi or a USB connection to each other.
+6. With both devices local and available to the Mac, a future scoped XCUITest feasibility slice may automate invite/join/reopen. Pairing, trust, signing, Developer Mode, device locks, system prompts, and coordination must be tested before unattended runs are claimed. Current simulator scripts are not a drop-in physical-device runner.
+7. Record an independent two-device verdict and link exact evidence to #2/#7/#11/#15/#43 and #8 as applicable. Do not overwrite one-device results or reuse another build's proof without establishing applicability.
+
+### Start at home
+
+```bash
+make test-home
+```
+
+This runs only a bounded installed-app query for the configured home device, using private `output/physical-messages/home.json`. Override with `HOME_DEVICE_CONFIG=<private-path>` if needed. It never builds, installs, opens Messages or sends. A pass confirms device/app query availability and records installed version/build; it does not prove the device is unlocked, UI-ready, correctly signed for a new install, on the intended candidate, or installed through TestFlight. Inspect the private report before choosing the next step.
+
+Then use the existing physical driver below: probe once for a new candidate, explicitly authorized invite, human phone receive/join, inspect, exact host reopen. Continuations preserve the installed game. Compare independently saved reports with the [report tool](reliability-reports.md#offline-comparison). The phone is a human checkpoint, not an automated device. Fully unattended second-device work is deferred; all three-/four-account product checks remain required later with friends.
+
+### Executable route commands
+
+Existing local tests remain `make test-quick FEATURE=smoke`, `make test-full`, and `make practical-gate`, selected by QA. There is no separate one-device wrapper. The physical driver below does not add gameplay coverage to these suites.
+
+#### Physical driver: first hardware proof
+
+`scripts/run-physical-messages.py` implements `probe` (open the exact conversation, hide DEBUG chrome without loading fixtures, and require a ready production invite control), `invite` (tap that control once), `inspect` (capture visible game-link labels without tapping), and `reopen` (select an exact joined-game bubble after a human phone join). Physical probe, invite, and a remote-human joined-bubble host reopen have passing development-build evidence, including one cold-reopen repeat with identical home game/revision/hash. Repeated unattended runs and installed-TestFlight automation remain separate unproven capabilities.
+
+Create a private JSON file under ignored `output/physical-messages/` with these four strings:
+
+```json
+{
+  "device": "EXACT-PHYSICAL-DEVICE-UDID",
+  "team": "DEVELOPMENT-TEAM-ID",
+  "conversation_row": "Exact dedicated conversation row text",
+  "conversation_header": "Exact dedicated conversation header button label"
+}
+```
+
+Use a dedicated test contact/conversation whose displayed header is unique; do not reuse a display name shared by personal contacts. These selectors must be observed on the device. The driver can open an exact visible row or accept an already-open matching header. Unexpected navigation, app entries still hidden after the bounded menu search, ambiguous selectors, onboarding, and disabled controls stop the test for inspection. It does not scroll through arbitrary chats or tap fallback coordinates. Configure the player's display name beforehand if required by the production lobby.
+
+```bash
+# Read-only device/app query; no build, install or UI action.
+python3 scripts/run-physical-messages.py --config output/physical-messages/home.json --step preflight --execute
+# Preview only; no device actions.
+python3 scripts/run-physical-messages.py --config output/physical-messages/home.json --step probe
+# Install the development candidate on ONLY the configured device, then probe.
+python3 scripts/run-physical-messages.py --config output/physical-messages/home.json --step probe --execute --allow-development-install
+# After the probe is proven, authorize one invite to the dedicated test contact.
+python3 scripts/run-physical-messages.py --config output/physical-messages/home.json --step invite --execute --allow-development-install --allow-send
+```
+
+The physical device must be paired, trusted, available and unlocked, with Developer Mode/signing ready. The development install can replace TestFlight. The runner performs read-only preflight first, uses canonical project generation, builds the UI runner, installs to the explicit device, restarts Messages to avoid retaining its old extension panel, and runs one selected XCTest serially without automatic retries. An exclusive runner lock prevents two physical runs overlapping. Keep other repo builds/tests stopped during execution.
+
+Private logs, built app identity/hash, xcresult, summary and screenshots live under `output/physical-messages/`. Zero/skipped/wrong tests cannot produce success. `probe-passed` proves only the observed local UI checkpoint. `invite-control-tapped` does not prove send completion or remote receipt; both receipt and canonical agreement remain explicitly unverified. Inspect failure evidence before a bounded retry. No two-player standard match is started.
+
+On iPad, the probe first dismisses a leftover single app-menu popover through its exact unique dismissal control before checking the conversation header. It can then search for the exact game entry with at most three upward swipes inside a unique app-menu popover collection. It never scrolls the transcript or conversation list to find an app. Missing or ambiguous menu structure stops the probe. This bounded drawer correction has passing physical probe evidence.
+
+After the invite, wait for the human phone participant to confirm receipt/open/join. Run `--step inspect --resume-invite output/physical-messages/INVITE-RUN --remote-joined --execute --allow-development-install` with the same config to capture visible game-link labels without selecting one. Resume with the full observed accessibility link label (including its image suffix):
+
+```bash
+python3 scripts/run-physical-messages.py --config output/physical-messages/home.json --step reopen --resume-invite output/physical-messages/INVITE-RUN --join-bubble-label 'EXACT JOINED-BUBBLE ACCESSIBILITY LABEL' --remote-joined --execute --allow-development-install
+```
+
+When inspected screenshots show multiple visible links with the same label, explicitly supply `--join-bubble-occurrence N --join-bubble-count C` (one-based top-to-bottom position and exact visible count). The default remains one unique visible match. Selection requires the expected count and non-overlapping vertical frames and captures the screen before tapping. A changed/ambiguous layout stops; there is no automatic latest-message fallback.
+
+Continuation rejects failed invite predecessors, a different home device, a missing or changed retained invite executable, changed installation identity, missing operator confirmation, and ambiguous/missing bubble selectors. Legacy invite reports without installation identity require a fresh invite. Probe/invite install the game once and record its installation URL/version/build and extension hash. Inspect/reopen preserve that game installation, verify the recorded identity and retained executable hash, and install only the newly compiled test runner. All steps use xctestrun destination-artifact mode to prevent implicit game reinstallation. This matters because Apple documents participant identifier changes when the containing app is removed/reinstalled. It does not resend or start a game. A passing home reopen must restore the inviter as host (`Waiting for Players`, no `Join Game`) and records decoded lobby game/revision/phase/hash and a screenshot; phone evidence remains operator-observed and cross-device canonical equality remains unverified without phone diagnostics. Version/build matching alone does not prove source or distribution equivalence, especially against an older TestFlight phone build. Second-device automation and unattended repeatability are deferred beyond #49 and Beta 1.1; the supported home-side flow retains explicit human phone checkpoints.
+
+#### Manual evidence collection
+
+The earlier recorder is retained as `scripts/manual-device-evidence.py`; it never drives devices. Its existing sessions remain readable under `output/testing-streams/`.
+
+```bash
+python3 scripts/manual-device-evidence.py two --version 1.0 --build 8 --source 673813f --mode remote-testflight --separate-accounts
+python3 scripts/manual-device-evidence.py report --session output/testing-streams/SESSION
+python3 scripts/manual-device-evidence.py preflight --device DEVICE_ID
+```
+
+Use the actual candidate identity; Build 8 above is only the previously shipped example. Follow generated `instructions.md` and observation templates for the manual invite/receive/join/reopen journey. Supply separate account confirmation, actual version/build and OS, and retained evidence. Missing canonical diagnostics remain null/pending. The remote-TestFlight mode requires both observations from TestFlight. Reports are operator evidence, not automated cross-device proof. Old generated instructions mentioning `testing-streams.py` should use `manual-device-evidence.py` instead; retained evidence files need no migration.
+
+Focused tooling checks: `python3 -m unittest discover -s scripts/tests -p 'test_physical_messages.py'` and the equivalent `test_manual_device_evidence.py`. These test runner behavior, not the game or hardware UI.
+
+### Remaining concurrency and distribution boundaries
+
+- #4 concurrent joins needs host plus two guests; #6 competing accepts needs proposer plus two recipients. Both require three real player accounts/devices for their contracted end-to-end proof. Two-device testing and synthetic branch injection are useful but cannot replace that evidence.
+- Local validation can progress independently. A candidate may be offered for explicitly scoped diagnostic playtesting, but pending remote proof cannot be described as a verified multiplayer fix or satisfy a required release gate.
+- Physical automation is not implemented by defining these routes. #2 owns host automation/coverage work; #8 owns integrated TestFlight evidence; #44 owns reusable release-available diagnostics. Do not duplicate those tasks with a second test program.
+- Some older checklists below retain retired Games/recovery UI and historical player-count assumptions. They are not current product authority. For new route scripts, resolve actions against current UI-flow/decision docs and the selected active plan; do not restore retired controls or weaken current player-count rules to make a historical checklist pass.
+
 ## Real Device Lane
 
 Use real devices as the source of truth for Messages-hosted behavior. Simulator remains the fast build and layout loop, but transcript state, bubble selection, context persistence, and general extension stability should be verified on hardware.
@@ -82,6 +188,25 @@ Run this after phase-13 stability work or when explicitly validating Messages ho
 5. Select an older bubble after a newer one exists and record whether the host keeps you on stale context, upgrades to the latest known state, or fails to recover.
 6. If the selected bubble is stale or unrelated but the game is known locally, use Games from the invitation/loading card or current-game top bar and confirm the shell restores the latest known canonical state for the intended game.
 7. Force-close and relaunch Messages, then record whether the selected game bubble re-establishes context and Player Record remains read-only.
+
+For host-boundary issue closure, retain one operator report for both devices and record these fields at each select, receive, reopen, and relaunch checkpoint:
+
+- device/account role and the participant identity shown by the game;
+- selected game ID and revision, payload source (`URL` is expected), and whether the message/session are present;
+- lifecycle trigger (`didSelect`, `didReceive`, reopen, or relaunch) and resulting active-context source;
+- whether the update replaces/collapses into the same game thread or starts a separate transcript chain;
+- any private recovery guidance shown when the selected bubble/session cannot authorize publication.
+
+Then exercise the current game's **Players and game information** → **Current game actions** route rather than Player Record:
+
+1. During setup, confirm the host and non-host can open Propose Draw and Resign; confirm only the original host can open End Game.
+2. Cancel Resign and host End Game once each and confirm no canonical revision is published.
+3. Propose a draw, then confirm the other active account can Agree and Decline from the live vote state.
+4. Publish one resignation and confirm the transcript receipt says play continues and the next legal setup/turn actor remains playable.
+5. Exercise the host draw-first guard, then publish End Game Anyway and confirm the neutral terminal receipt/result has no winner.
+6. Close/reopen the latest bubble after each published action and confirm the same game session remains the transcript chain.
+
+Screenshots may document the player-facing route, but the report must also record the selected/recovered game revision and same-session transcript observation. Simulator UX Lab proof does not substitute for these hardware checks.
 
 ### Real Device Turn-Taking Smoke
 
@@ -216,9 +341,9 @@ Run this after any change to product authority, board responsiveness, or setup-r
 
 ## Remaining High-Value Gaps
 
-- no automated transcript-level Messages UI checks yet
+- simulator transcript/UI harnesses exist; automated cross-account physical Messages proof is not established
 - bubble image assertions are still size/non-empty checks rather than golden image diffs
-- no automated real-device lane; hardware validation is still manual
+- bounded iPad probe/invite/inspect/reopen automation exists; broader physical gameplay and remote phone taps remain manual
 
 ## Manual Simulator Runbook
 
@@ -324,3 +449,15 @@ These were the highest-signal device checks from the host-stability phase. Reuse
    - whether a newer bubble existed
    - whether the active-games chip was available
    - screenshots of the visible shell state
+
+## Beta 1.1 repair candidate: human checks
+
+Use one identified candidate on every participant. The two-device checks use the USB iPad plus the independently signed-in phone; friends are only needed for competing multi-person actions. Preserve the installation between steps.
+
+1. Invite from iPad, join on phone, reopen the original host bubble, and start. Reopen an older bubble after a subsequent move; compare the latest revision and digest in independently exported reports.
+2. Make a normal move and confirm it on the other device. Use Game Information → Resend Game Update (or Settings during lobby/setup/game over) and confirm the same revision, digest, resources and dice; no second move should occur. During a known local-send failure, verify the local canonical game does not advance, then retry the original action. Do not infer a local send error simply by disconnecting Wi-Fi: Messages may queue successfully or use cellular.
+3. Repeat the reported win: five settlements + Largest Army + one VP, buy two VP cards to reach ten. The second purchase should end immediately with ten points; both devices should show the same winner after opening the update. In an existing already-winning saved game, use Declare Victory; opening alone should not publish anything.
+4. Offer a funded trade to the other player; accept, decline and counter in separate scenarios. Reopen the original offer after resolution; it must not transfer resources twice or revive a closed offer. Check button availability and messages against each player's resources.
+5. In one friend session, test simultaneous joins and competing accepts from the same offer in both arrival orders, then reopen on all participants and compare reports. Four-player play already works per the owner; retain affected regression evidence and finish a match on the candidate rather than rebuilding the feature.
+
+Export each device's report with its operator role and candidate details. Compare with the existing report CLI. Local unit/UI results cannot substitute for independent-account receipt, actual physical export or TestFlight install/update evidence. Keep those issue acceptance items open until observed.

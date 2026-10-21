@@ -25,6 +25,7 @@ Quick UI features:
   build       Setup placement plus road, settlement, and city builds
   robber      Seven/discard, robber move, and victim selection
   dev-cards   Purchase plus all four playable Development Cards
+  beta-repairs  Victory, legacy win claim, and unchanged-state resend
   guardrails  Cancellation, decline, and waiting-player protections
   recovery    Relaunch, archive/restore, resignation, and recovered games
   match       Setup and production-wired victory bookends
@@ -47,6 +48,7 @@ case "$MODE" in
       build) run_gameplay_catalog "ui-gameplay-quick-build-catalog-iphone.txt" ;;
       robber) run_gameplay_catalog "ui-gameplay-quick-robber-catalog-iphone.txt" ;;
       dev-cards) run_gameplay_catalog "ui-gameplay-quick-dev-cards-catalog-iphone.txt" ;;
+      beta-repairs) run_visual_catalog "ui-screenshot-catalog-victory.txt" ;;
       guardrails) run_gameplay_catalog "ui-gameplay-guardrail-catalog-iphone.txt" ;;
       recovery) run_gameplay_catalog "ui-gameplay-recovery-catalog-iphone.txt" ;;
       match) run_gameplay_catalog "ui-gameplay-complete-match-catalog-iphone.txt" ;;

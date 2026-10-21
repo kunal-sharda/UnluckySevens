@@ -12,7 +12,7 @@ Every active ExecPlan declares exactly one profile with a rationale:
 
 - `lightweight` for narrow, low-risk work with a small targeted contract.
 - `standard` for normal meaningful implementation and any product, UI/UX, architecture, protocol, or behavior work.
-- `release-critical` for releases, handoffs, broad migrations, and high-blast-radius changes.
+- `release-critical` for milestone/public releases and handoffs, broad migrations, and high-blast-radius changes. A diagnostic TestFlight candidate uses the owner-approved standard candidate contract in [QA](qa.md#diagnostic-testflight-candidate-versus-milestone-release); it must not claim final milestone acceptance.
 
 Profiles control the baseline breadth of mechanical checks. They do not remove constraints, downgrade evidence classes, or excuse an uninspected UI artifact. Use `standard` when uncertain. Profile changes are dated plan decisions; lowering a profile requires a fresh constraint-auditor verdict.
 

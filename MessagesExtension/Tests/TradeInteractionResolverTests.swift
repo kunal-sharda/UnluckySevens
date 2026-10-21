@@ -44,7 +44,7 @@ final class TradeInteractionResolverTests: XCTestCase {
         )
         let state = makeState(
             currentPlayer: "A",
-            resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(brick: 1)],
+            resourcesByPlayer: ["A": ResourceHandV1(wood: 1), "B": ResourceHandV1(brick: 1)],
             activeTradeOffer: offer
         )
 
@@ -74,7 +74,7 @@ final class TradeInteractionResolverTests: XCTestCase {
         )
         let state = makeState(
             currentPlayer: "A",
-            resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(brick: 1)],
+            resourcesByPlayer: ["A": ResourceHandV1(wood: 1), "B": ResourceHandV1(brick: 1)],
             activeTradeOffer: offer
         )
 
@@ -141,7 +141,7 @@ final class TradeInteractionResolverTests: XCTestCase {
         )
         let state = makeState(
             currentPlayer: "A",
-            resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(brick: 1)],
+            resourcesByPlayer: ["A": ResourceHandV1(wood: 1), "B": ResourceHandV1(brick: 1)],
             activeTradeOffer: offer
         )
 
@@ -151,6 +151,128 @@ final class TradeInteractionResolverTests: XCTestCase {
         )
 
         XCTAssertNil(intent)
+    }
+
+    func testDraftAcceptTradeIntentRequiresProposerToStillFundPublishedOffer() {
+        let offer = TradeOfferV1(
+            offerHash: "offer-1",
+            proposer: "A",
+            give: ResourceHandV1(wood: 1),
+            receive: ResourceHandV1(brick: 1),
+            recipients: ["B"],
+            createdRev: 8
+        )
+        let state = makeState(
+            currentPlayer: "A",
+            resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(brick: 1)],
+            activeTradeOffer: offer
+        )
+
+        XCTAssertEqual(
+            TradeAcceptEligibilityResolver.resolve(state: state, actingAs: "B"),
+            .offerNoLongerFunded
+        )
+        XCTAssertNil(
+            TradeInteractionResolver.draftAcceptTradeIntent(state: state, actingAs: "B")
+        )
+    }
+
+    func testAcceptEligibilityDiagnosticsContainNoHandsCountsOrActorIdentity() {
+        let offer = TradeOfferV1(
+            offerHash: "private-offer-hash",
+            proposer: "A",
+            give: ResourceHandV1(wood: 7),
+            receive: ResourceHandV1(brick: 9),
+            recipients: ["B"],
+            createdRev: 8
+        )
+        let state = makeState(
+            currentPlayer: "A",
+            resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(brick: 8)],
+            activeTradeOffer: offer
+        )
+
+        #if DEBUG
+        let value = TradeAcceptEligibilityResolver.diagnostic(
+            state: state,
+            actingAs: "B"
+        ).diagnosticValue
+
+        XCTAssertEqual(value, "reason=offerNoLongerFunded;rev=7;offer=present;actor=known")
+        XCTAssertFalse(value.contains("private-offer-hash"))
+        XCTAssertFalse(value.contains("A"))
+        XCTAssertFalse(value.contains("B"))
+        XCTAssertFalse(value.contains("7 wood"))
+        XCTAssertFalse(value.contains("8 brick"))
+        #endif
+    }
+
+    func testAcceptEligibilityReasonsAgreeWithIntentAvailability() {
+        let offer = TradeOfferV1(
+            offerHash: "offer-1",
+            proposer: "A",
+            give: ResourceHandV1(wood: 1),
+            receive: ResourceHandV1(brick: 1),
+            recipients: ["B"],
+            createdRev: 8
+        )
+        let eligible = makeState(
+            currentPlayer: "A",
+            resourcesByPlayer: ["A": ResourceHandV1(wood: 1), "B": ResourceHandV1(brick: 1), "C": .zero],
+            activeTradeOffer: offer
+        )
+        let alreadyResponded = makeState(
+            currentPlayer: "A",
+            resourcesByPlayer: ["A": ResourceHandV1(wood: 1), "B": ResourceHandV1(brick: 1)],
+            activeTradeOffer: offer,
+            tradeResponses: [
+                TradeResponseV1(
+                    respondingPlayer: "B",
+                    offerHash: offer.offerHash,
+                    kind: .decline,
+                    respondedAtRev: 9
+                )
+            ]
+        )
+        let cases: [(CoreGameStateV1?, String?, TradeAcceptEligibilityReason)] = [
+            (nil, "B", .stateUnavailable),
+            (eligible, nil, .actorUnavailable),
+            (makeState(
+                currentPlayer: "A",
+                resourcesByPlayer: ["A": ResourceHandV1(wood: 1), "B": ResourceHandV1(brick: 1)],
+                activeTradeOffer: offer,
+                turnStep: .needsRoll
+            ), "B", .turnUnavailable),
+            (makeState(
+                currentPlayer: "A",
+                resourcesByPlayer: ["A": ResourceHandV1(wood: 1), "B": ResourceHandV1(brick: 1)]
+            ), "B", .offerMissing),
+            (eligible, "A", .responderInvalid),
+            (eligible, "C", .responderNotTargeted),
+            (alreadyResponded, "B", .responderAlreadyResponded),
+            (makeState(
+                currentPlayer: "A",
+                resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(brick: 1)],
+                activeTradeOffer: offer
+            ), "B", .offerNoLongerFunded),
+            (makeState(
+                currentPlayer: "A",
+                resourcesByPlayer: ["A": ResourceHandV1(wood: 1), "B": .zero],
+                activeTradeOffer: offer
+            ), "B", .responderInsufficientResources),
+            (eligible, "B", .eligible),
+        ]
+
+        for (state, actor, expectedReason) in cases {
+            XCTAssertEqual(
+                TradeAcceptEligibilityResolver.resolve(state: state, actingAs: actor),
+                expectedReason
+            )
+            XCTAssertEqual(
+                TradeInteractionResolver.draftAcceptTradeIntent(state: state, actingAs: actor) != nil,
+                expectedReason == .eligible
+            )
+        }
     }
 
     func testDraftMaritimeTradeIntentForOwnedPort() throws {
@@ -201,7 +323,8 @@ final class TradeInteractionResolverTests: XCTestCase {
         currentPlayer: String,
         resourcesByPlayer: [String: ResourceHandV1],
         activeTradeOffer: TradeOfferV1? = nil,
-        tradeResponses: [TradeResponseV1] = []
+        tradeResponses: [TradeResponseV1] = [],
+        turnStep: TurnStepV1 = .afterRoll
     ) -> CoreGameStateV1 {
         CoreGameStateV1(
             gameId: "trade-resolver",
@@ -217,7 +340,10 @@ final class TradeInteractionResolverTests: XCTestCase {
             resourcesByPlayer: resourcesByPlayer,
             activeTradeOffer: activeTradeOffer,
             tradeResponses: tradeResponses,
-            turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 4))
+            turnState: TurnStateV1(
+                step: turnStep,
+                lastRoll: turnStep == .needsRoll ? nil : DiceRollV1(d1: 3, d2: 4)
+            )
         ).rehashed()
     }
 }

@@ -34,11 +34,10 @@ final class TurnDevCardsV1Tests: XCTestCase {
         )
 
         let bought = try apply(intent: .buyDevCard, to: state, actor: "A")
-        let revealed = try apply(intent: .revealVictoryPoint, to: bought, actor: "A")
-
-        XCTAssertEqual(revealed.revealedVictoryPointsByPlayer["A"], 10)
-        XCTAssertEqual(revealed.newDevCardsByPlayer["A"]?.victoryPoint, 0)
-        XCTAssertNoThrow(try validateTransition(from: bought, to: revealed, actor: "A"))
+        XCTAssertEqual(bought.phase, .gameOver)
+        XCTAssertEqual(bought.revealedVictoryPointsByPlayer["A"], 10)
+        XCTAssertEqual(bought.newDevCardsByPlayer["A"]?.victoryPoint, 0)
+        XCTAssertNoThrow(try validateTransition(from: state, to: bought, actor: "A"))
     }
 
     func testKnightMovesRobberStealsDeterministicallyAndBlocksSecondDevPlay() throws {
@@ -85,7 +84,7 @@ final class TurnDevCardsV1Tests: XCTestCase {
         XCTAssertEqual(rolled.turnState?.step, .afterRoll)
     }
 
-    func testRevealVictoryPointCanHappenBeforeRollingAfterSameTurnDevCardPlay() throws {
+    func testAlreadyWinningStateEndsBeforeAnotherDevCardCanBePlayed() throws {
         let state = makeState(
             resourcesByPlayer: [
                 "A": ResourceHandV1(),
@@ -113,13 +112,13 @@ final class TurnDevCardsV1Tests: XCTestCase {
             to: state,
             actor: "A"
         )
-        XCTAssertTrue(playedKnight.devCardActionPlayedThisTurn)
-
-        let revealed = try apply(intent: .revealVictoryPoint, to: playedKnight, actor: "A")
-
-        XCTAssertEqual(revealed.revealedVictoryPointsByPlayer["A"], 10)
-        XCTAssertEqual(revealed.newDevCardsByPlayer["A"]?.victoryPoint, 0)
-        XCTAssertTrue(revealed.devCardActionPlayedThisTurn)
+        XCTAssertEqual(playedKnight.phase, .gameOver)
+        XCTAssertFalse(playedKnight.devCardActionPlayedThisTurn)
+        XCTAssertEqual(playedKnight.devCardsByPlayer["A"]?.knight, 1)
+        XCTAssertEqual(playedKnight.revealedVictoryPointsByPlayer["A"], 10)
+        XCTAssertEqual(playedKnight.newDevCardsByPlayer["A"]?.victoryPoint, 0)
+        XCTAssertEqual(playedKnight.robberRngState, state.robberRngState)
+        XCTAssertNoThrow(try validateTransition(from: state, to: playedKnight, actor: "A"))
     }
 
     func testRevealVictoryPointRequiresWinningThreshold() throws {

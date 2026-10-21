@@ -1,0 +1,2 @@
+# Bounded reliability report preview/export-cancel/clear proof.
+testReliabilityReportPreviewAndCancel

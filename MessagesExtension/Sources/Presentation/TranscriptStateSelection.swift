@@ -36,17 +36,37 @@ enum TranscriptStateSelection {
         _ state: CoreGameStateV1,
         in latestKnownStatesByGameId: [String: CoreGameStateV1]
     ) -> [String: CoreGameStateV1] {
+        var contexts: [String: CanonicalStateConvergenceContextV1] = [:]
+        return recording(
+            state,
+            in: latestKnownStatesByGameId,
+            convergenceContextsByGameId: &contexts
+        )
+    }
+
+    static func recording(
+        _ state: CoreGameStateV1,
+        in latestKnownStatesByGameId: [String: CoreGameStateV1],
+        convergenceContextsByGameId: inout [String: CanonicalStateConvergenceContextV1]
+    ) -> [String: CoreGameStateV1] {
         guard (try? validateCanonicalSnapshot(state)) != nil else {
             return latestKnownStatesByGameId
         }
         var updatedStates = latestKnownStatesByGameId
 
         guard let existing = updatedStates[state.gameId] else {
+            var context = convergenceContextsByGameId[state.gameId] ?? .init()
+            context.observe(state)
+            convergenceContextsByGameId[state.gameId] = context
             updatedStates[state.gameId] = state
             return updatedStates
         }
 
-        if state.rev > existing.rev || (state.rev == existing.rev && state.stateHash > existing.stateHash) {
+        var context = convergenceContextsByGameId[state.gameId] ?? .init()
+        context.observe(existing)
+        context.observe(state)
+        convergenceContextsByGameId[state.gameId] = context
+        if CanonicalStatePreferenceV1.prefers(state, over: existing, context: context) {
             updatedStates[state.gameId] = state
         }
 
@@ -66,13 +86,20 @@ enum TranscriptStateSelection {
         activeState: CoreGameStateV1?,
         activeSource: TranscriptActiveContextSource?,
         source: TranscriptPayloadSource,
-        trigger: TranscriptSelectionTrigger
+        trigger: TranscriptSelectionTrigger,
+        convergenceContext: CanonicalStateConvergenceContextV1 = .init()
     ) -> TranscriptStateSelectionResult {
         let preferredState = latestKnownState(
             for: decodedState.gameId,
             in: latestKnownStatesByGameId
         ) ?? decodedState
-        let redirectedToLatestKnown = preferredState.rev > decodedState.rev
+        let redirectedToLatestKnown =
+            preferredState.stateHash != decodedState.stateHash
+            && CanonicalStatePreferenceV1.prefers(
+                preferredState,
+                over: decodedState,
+                context: convergenceContext
+            )
         let wasAlreadyOnPreferredState =
             activeState?.gameId == preferredState.gameId
             && activeState?.rev == preferredState.rev
@@ -83,7 +110,11 @@ enum TranscriptStateSelection {
             shouldShowLatestUpdateNotice = trigger != .selectionPoll || !wasAlreadyOnPreferredState
         } else if let activeState,
                   activeState.gameId == preferredState.gameId,
-                  preferredState.rev > activeState.rev {
+                  CanonicalStatePreferenceV1.prefers(
+                      preferredState,
+                      over: activeState,
+                      context: convergenceContext
+                  ) {
             shouldShowLatestUpdateNotice = true
         } else {
             shouldShowLatestUpdateNotice = false
@@ -96,7 +127,8 @@ enum TranscriptStateSelection {
                 decodedState: decodedState,
                 activeState: activeState,
                 activeSource: activeSource,
-                source: source
+                source: source,
+                convergenceContext: convergenceContext
             ),
             selectionStatus: redirectedToLatestKnown
                 ? "Opened latest game rev\(preferredState.rev) via \(source.label)"
@@ -111,7 +143,8 @@ enum TranscriptStateSelection {
         decodedState: CoreGameStateV1,
         activeState: CoreGameStateV1?,
         activeSource: TranscriptActiveContextSource?,
-        source: TranscriptPayloadSource
+        source: TranscriptPayloadSource,
+        convergenceContext: CanonicalStateConvergenceContextV1
     ) -> Bool {
         guard let activeState else {
             return true
@@ -121,11 +154,11 @@ enum TranscriptStateSelection {
             return true
         }
 
-        if preferredState.rev > activeState.rev {
-            return true
-        }
-
-        if preferredState.rev == activeState.rev, preferredState.stateHash != activeState.stateHash {
+        if CanonicalStatePreferenceV1.prefers(
+            preferredState,
+            over: activeState,
+            context: convergenceContext
+        ) {
             return true
         }
 

@@ -3,7 +3,7 @@
 This file records **locked product + architecture decisions** for the MVP.  
 If a change is desired, update this file **first**, then update code/tests.
 
-**Last updated:** 2026-08-26
+**Last updated:** 2026-08-28
 
 ---
 
@@ -35,6 +35,12 @@ If a change is desired, update this file **first**, then update code/tests.
 - The lobby is part of the canonical game timeline:
   - invite/start/join all progress through canonical lobby `STATE` updates on the game session
   - joining is not a detached draft flow or side intent in fresh publishes
+  - independently valid sibling joins are retained as local evidence and reconciled by a Core-produced host publication before Start; local evidence never becomes a visible roster by itself
+  - the selected lobby lineage defines the accepted genesis for reconciliation; with existing local lobby history, receiving clients require a reconciliation to reproduce exactly from known parent/claims. Owner-approved 2026-10-21: an empty local history may bootstrap a canonically validated lobby snapshot directly from a Messages bubble, because older same-session bubbles may be replaced. This is cooperative snapshot trust, not authenticated sender or independently proven reconciliation. Later receipts retain strict parent/claim validation; out-of-order candidates are bounded and quarantined until their evidence arrives
+  - host authority is enforced by cooperative fixed-client authoring, not cryptographic sender authentication; device-scoped Messages participant UUIDs cannot be compared with actor strings authored on another device
+  - reconciliation retains canonical members and fills remaining seats through four by descending claim-state-hash priority; excluded guests see `Lobby Full`
+  - Start locks exactly the visible canonical roster, requires 3–4 players, and closes the lobby against joins the host had not yet observed
+  - fixed-host convergence is required; old-host mixed-version convergence is not guaranteed and does not justify a transport migration
 - During active gameplay, the **current player** publishes canonical `STATE` for normal turn actions.
 - Non-current players:
   - can view the game and their own hand
@@ -58,7 +64,8 @@ If a change is desired, update this file **first**, then update code/tests.
 - `acceptTrade` is the only trade-resolution intent. There is no separate `executeTrade` or current-player commit step.
 - Player-trade offers may target any non-empty subset of opponents.
 - Non-targeted players may still inspect the live offer read-only in the group thread and shell.
-- The first applied **Accept** from a targeted player resolves the trade atomically and closes the offer.
+- The first applied **Accept** on one canonical branch from a targeted player resolves the trade atomically and closes the offer.
+- If multiple responders concurrently publish valid sibling Accept states from the same base revision and offer, every upgraded client that observes both direct Accept snapshots retains device-local contention evidence and deterministically prefers one responder branch using the lexicographically greatest SHA-256 contention key derived from `(gameId, acceptedAtRev, responderActorID)`. That evidence keeps the winning lineage ahead of later descendants of losing sibling branches. Audit actor/revision alone is insufficient evidence; unrelated lineages retain normal revision/hash ordering. Physical message-arrival order is not authoritative, and mixed-version or missing-evidence convergence is not guaranteed.
 - If every targeted player **Declines**, the offer closes without a trade.
 - **Counter** responses stay visible to the current player but do not auto-execute the original offer.
 - Trade offers **expire at end of the current player’s turn.**
@@ -146,3 +153,13 @@ Current transition rule:
 - Gameplay has one canonical Physical Props shell across setup, start turn, ordinary turns, forced actions, waiting, trades, and terminal play. Retired lower trays, shelves, alternate headers, embedded board racks, and shell-level resize snapshots are not fallback routes; host resizing preserves the live canonical composition. Messages layout is container-responsive and state-static: the controller publishes one settled usable-canvas snapshot after a genuine host transition, while internal routes never change its revision. The board and ocean fit as one canonical-aspect viewport using a single uniform scale from that settled region; temporary surfaces may overlay it but must not trigger a new fit or stretch either axis.
 - Local victory leads with `Victory!` and the concise winning score (`10 points` in the standard fixture). Decisive summaries use `secured the victory`; Road and Knight award wins are named as `Gaining Longest Road` and `Gaining Largest Army` with canonical casing.
 - Robber victim guidance explicitly tells the player to select an adjacent settlement beside the robber; this visible instruction does not change Core-owned victim eligibility.
+
+## 2026-09-28 — Diagnostic candidates and available-device testing
+
+Owner authorizes diagnostic TestFlight candidates before full Beta 1.1 acceptance. QA owns the bounded pre-upload contract; final milestone/public readiness retains release-critical proof. One shared testing/delivery plan coordinates evidence across tickets. #49 targets the automated home iPad plus a remote human phone; a second automated device is deferred, not a Beta 1.1 blocker. Friends provide required three-/four-account validation after candidate distribution. This changes workflow and distribution staging, not game rules, transport, privacy, or final product acceptance.
+
+## 2026-09-29 — Beta 1.1 victory correction and safe resend
+
+- User authorized fixing the milestone bugs, including #50. Own-turn victory counts all owned VP cards immediately, including purchased cards, and reveals the winner's VP cards together. Existing winning snapshots require an explicit action; no migration rewrites transcript state.
+- No wire fields change, but corrected transition semantics require everyone in the candidate session to update. Old clients may reject corrected victory transitions.
+- #43 publishes local state only after successful Messages handoff. Explicit Resend Game Update reuses the canonical snapshot and bound session; it never reapplies gameplay. Delivery remains independently verified on the other account.

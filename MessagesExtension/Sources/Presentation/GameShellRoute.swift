@@ -5,6 +5,19 @@ enum GameTradeOverlayRoute: Equatable {
     case playerDraft(GameTradeDraft)
     case maritime
     case liveOffer
+
+    func reconciled(hasTradePanel: Bool, hasOffer: Bool, draftContextChanged: Bool) -> GameTradeOverlayRoute? {
+        guard hasTradePanel else { return nil }
+        switch self {
+        case .playerDraft where draftContextChanged:
+            return hasOffer ? .liveOffer : .chooser
+        case .liveOffer where !hasOffer:
+            return .chooser
+        default:
+            return self
+        }
+    }
+
 }
 
 struct GameTradeDraft: Equatable {

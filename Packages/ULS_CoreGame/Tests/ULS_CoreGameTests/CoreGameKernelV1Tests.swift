@@ -97,13 +97,13 @@ final class CoreGameKernelV1Tests: XCTestCase {
         XCTAssertNoThrow(try validateTransition(from: from, to: to, actor: from.currentPlayer))
     }
 
-    func testValidStartTransitionAllowsRosterSeedBoardRulesAndBoardChange() {
+    func testValidStartTransitionAllowsSeedBoardRulesAndBoardChangeForCanonicalRoster() {
         let from = CoreGameStateV1(
             gameId: "game-123",
             rev: 0,
             prevHash: nil,
             stateHash: "",
-            roster: ["alice"],
+            roster: ["alice", "bob", "carol"],
             currentPlayer: "alice",
             phase: .lobby,
             seed: nil,
@@ -117,13 +117,13 @@ final class CoreGameKernelV1Tests: XCTestCase {
             boardSeed: SeedDeriver(masterSeed: 12345).seed(for: .board),
             rules: boardRules
         )
-        let setupState = initializeSetupState(roster: ["alice", "bob", "carol"])
+        let setupState = initializeSetupState(roster: from.roster)
         let to = CoreGameStateV1(
             gameId: from.gameId,
             rev: 1,
             prevHash: from.stateHash,
             stateHash: "",
-            roster: ["alice", "bob", "carol"],
+            roster: from.roster,
             currentPlayer: "alice",
             phase: .setup,
             seed: 12345,
@@ -134,6 +134,42 @@ final class CoreGameKernelV1Tests: XCTestCase {
         ).rehashed()
 
         XCTAssertNoThrow(try validateTransition(from: from, to: to, actor: "alice"))
+    }
+
+    func testStartRejectsOneTwoAndFivePlayerRosters() {
+        for playerCount in [1, 2, 5] {
+            let roster = (0..<playerCount).map { "player-\($0)" }
+            let from = CoreGameStateV1(
+                gameId: "invalid-start-\(playerCount)",
+                rev: 0,
+                prevHash: nil,
+                stateHash: "",
+                roster: roster,
+                currentPlayer: roster[0],
+                phase: .lobby,
+                seed: nil,
+                diceRngState: nil
+            ).rehashed()
+            let to = CoreGameStateV1(
+                gameId: from.gameId,
+                rev: 1,
+                prevHash: from.stateHash,
+                stateHash: "",
+                roster: roster,
+                currentPlayer: roster[0],
+                phase: .setup,
+                seed: 1,
+                diceRngState: 2,
+                setupState: initializeSetupState(roster: roster)
+            ).rehashed()
+
+            XCTAssertThrowsError(
+                try validateTransition(from: from, to: to, actor: roster[0]),
+                "Expected \(playerCount)-player Start to fail"
+            ) { error in
+                XCTAssertEqual(error as? CoreGameError, .lobbyPlayerLimitInvalid)
+            }
+        }
     }
 
     func testTransitionAllowsDiceRngStateChangeOutsideStart() {
@@ -343,7 +379,7 @@ final class CoreGameKernelV1Tests: XCTestCase {
             rev: 0,
             prevHash: nil,
             stateHash: "",
-            roster: ["alice"],
+            roster: ["alice", "bob", "carol"],
             currentPlayer: "alice",
             phase: .lobby,
             seed: nil,
@@ -357,13 +393,13 @@ final class CoreGameKernelV1Tests: XCTestCase {
             boardSeed: SeedDeriver(masterSeed: 12345).seed(for: .board),
             rules: boardRules
         )
-        let setupState = initializeSetupState(roster: ["alice", "bob"])
+        let setupState = initializeSetupState(roster: from.roster)
         let to = CoreGameStateV1(
             gameId: from.gameId,
             rev: 1,
             prevHash: from.stateHash,
             stateHash: "",
-            roster: ["alice", "bob"],
+            roster: from.roster,
             currentPlayer: "alice",
             phase: .setup,
             seed: 12345,
@@ -371,6 +407,7 @@ final class CoreGameKernelV1Tests: XCTestCase {
             resourcesByPlayer: [
                 "alice": ResourceHandV1(wood: 1),
                 "bob": .zero,
+                "carol": .zero,
             ],
             boardRules: boardRules,
             board: board,

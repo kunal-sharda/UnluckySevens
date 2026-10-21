@@ -165,6 +165,15 @@ final class DevCardInteractionResolverTests: XCTestCase {
         XCTAssertEqual(winningIntent?.intent, .revealVictoryPoint)
     }
 
+    func testLegacyVictoryDraftWorksDuringForcedStepWithoutHiddenCards() throws {
+        let state = makeState(resourcesByPlayer: ["A": .zero, "B": .zero],
+                              revealedVictoryPointsByPlayer: ["A": 10],
+                              turnState: TurnStateV1(step: .needsRobberMove, lastRoll: nil))
+        let draft = try XCTUnwrap(DevCardInteractionResolver.draftRevealVictoryPointIntent(state: state, actingAs: "A"))
+        XCTAssertEqual(try apply(intent: draft.intent, to: state, actor: draft.actor).phase, .gameOver)
+        XCTAssertNil(DevCardInteractionResolver.draftRevealVictoryPointIntent(state: state, actingAs: "B"))
+    }
+
     private func makeState(
         resourcesByPlayer: [String: ResourceHandV1],
         devCardsByPlayer: [String: DevCardInventoryV1] = [:],

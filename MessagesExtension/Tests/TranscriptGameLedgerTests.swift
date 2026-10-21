@@ -121,6 +121,87 @@ final class TranscriptGameLedgerTests: XCTestCase {
             store.latestState(for: "game-1")?.stateHash,
             max(first.stateHash, sibling.stateHash)
         )
+        XCTAssertEqual(Set(store.lobbyStates(for: "game-1").map(\.stateHash)), [first.stateHash, sibling.stateHash])
+    }
+
+    func testReopenRetainsEveryLobbyBranchAsReconciliationEvidence() {
+        let userDefaults = makeUserDefaults()
+        let store = TranscriptGameLedgerStore(userDefaults: userDefaults)
+        let root = makeLobbyState(gameId: "branches", rev: 0, roster: ["host"])
+        let alice = makeJoinedLobbyState(parent: root, actor: "alice")
+        let ben = makeJoinedLobbyState(parent: root, actor: "ben")
+
+        store.record(state: root, payload: try! encode(root))
+        store.record(state: alice, payload: try! encode(alice))
+        store.record(state: ben, payload: try! encode(ben))
+
+        let reopened = TranscriptGameLedgerStore(userDefaults: userDefaults)
+        XCTAssertEqual(
+            Set(reopened.lobbyStates(for: root.gameId).map(\.stateHash)),
+            [root.stateHash, alice.stateHash, ben.stateHash]
+        )
+    }
+
+    func testStartedStateClearsEvidenceAndLateLobbyStateCannotRestoreIt() {
+        let userDefaults = makeUserDefaults()
+        let store = TranscriptGameLedgerStore(userDefaults: userDefaults)
+        let root = makeLobbyState(gameId: "closed-lobby", rev: 0, roster: ["host"])
+        let alice = makeJoinedLobbyState(parent: root, actor: "alice")
+        let lobby = makeJoinedLobbyState(parent: alice, actor: "ben")
+        store.record(state: root, payload: try! encode(root))
+        store.record(state: alice, payload: try! encode(alice))
+        store.record(state: lobby, payload: try! encode(lobby))
+        let started = CoreGameStateV1(
+            gameId: lobby.gameId,
+            rev: lobby.rev + 1,
+            prevHash: lobby.stateHash,
+            stateHash: "",
+            roster: lobby.roster,
+            currentPlayer: "host",
+            phase: .setup,
+            seed: 1,
+            diceRngState: 2,
+            resourcesByPlayer: lobby.resourcesByPlayer,
+            setupState: initializeSetupState(roster: lobby.roster)
+        ).rehashed()
+
+        store.record(state: started, payload: try! encode(started))
+        let lateHigherRevisionLobby = makeLobbyState(
+            gameId: lobby.gameId,
+            rev: started.rev + 100,
+            roster: ["host", "late-a", "late-b", "late-c"]
+        )
+        store.record(
+            state: lateHigherRevisionLobby,
+            payload: try! encode(lateHigherRevisionLobby)
+        )
+
+        XCTAssertTrue(store.lobbyStates(for: lobby.gameId).isEmpty)
+        XCTAssertEqual(store.latestState(for: lobby.gameId), started)
+    }
+
+    func testRecordPersistsCanonicalAcceptBranchOverLaterLosingDescendant() throws {
+        let userDefaults = makeUserDefaults()
+        let store = TranscriptGameLedgerStore(userDefaults: userDefaults)
+        let branches = try makeCompetingTradeAcceptBranches()
+
+        store.record(state: branches.loser, payload: try encode(branches.loser))
+        store.record(state: branches.losingDescendant, payload: try encode(branches.losingDescendant))
+        store.record(state: branches.winner, payload: try encode(branches.winner))
+        XCTAssertEqual(store.latestState(for: branches.winner.gameId), branches.winner)
+        XCTAssertEqual(
+            store.bootstrapSnapshot()
+                .convergenceContextsByGameId[branches.winner.gameId]?
+                .tradeAcceptanceClaims.count,
+            2
+        )
+
+        let restartedStore = TranscriptGameLedgerStore(userDefaults: userDefaults)
+        restartedStore.record(
+            state: branches.losingDescendant,
+            payload: try encode(branches.losingDescendant)
+        )
+        XCTAssertEqual(restartedStore.latestState(for: branches.winner.gameId), branches.winner)
     }
 
     func testArchiveRemovesStateAndClearsLastActiveGame() {
@@ -182,6 +263,7 @@ final class TranscriptGameLedgerTests: XCTestCase {
         XCTAssertNotNil(migrated.latestStateData)
         XCTAssertNil(migrated.latestStatePayload)
         XCTAssertEqual(migrated.observedJoiners, ["guest"])
+        XCTAssertEqual(Set(migrated.lobbyStateDataByHash.keys), [state.stateHash])
     }
 
     func testRecordRejectsInvalidCanonicalSnapshot() throws {
@@ -283,6 +365,25 @@ final class TranscriptGameLedgerTests: XCTestCase {
             resourcesByPlayer: Dictionary(uniqueKeysWithValues: roster.map { ($0, .zero) }),
             boardRules: nil,
             board: nil
+        ).rehashed()
+    }
+
+    private func makeJoinedLobbyState(
+        parent: CoreGameStateV1,
+        actor: String
+    ) -> CoreGameStateV1 {
+        let roster = parent.roster + [actor]
+        return CoreGameStateV1(
+            gameId: parent.gameId,
+            rev: parent.rev + 1,
+            prevHash: parent.stateHash,
+            stateHash: "",
+            roster: roster,
+            currentPlayer: parent.currentPlayer,
+            phase: .lobby,
+            seed: nil,
+            diceRngState: nil,
+            resourcesByPlayer: Dictionary(uniqueKeysWithValues: roster.map { ($0, .zero) })
         ).rehashed()
     }
 

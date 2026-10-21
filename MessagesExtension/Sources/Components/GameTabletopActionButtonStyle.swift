@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct GameTabletopActionButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
     enum Emphasis: Equatable {
         case primary
         case secondary
@@ -8,6 +9,7 @@ struct GameTabletopActionButtonStyle: ButtonStyle {
     }
 
     let emphasis: Emphasis
+    var solidBackground = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -18,17 +20,24 @@ struct GameTabletopActionButtonStyle: ButtonStyle {
                     ? Color.red
                     : GamePhysicalTurnPalette.primaryText
             )
+            .opacity(solidBackground && !isEnabled ? 0.56 : 1)
             .frame(maxWidth: .infinity, minHeight: 44)
             .contentShape(Rectangle())
             .background {
                 RoundedRectangle(cornerRadius: 7)
-                    .fill(GamePhysicalTurnPalette.nameTileFill.opacity(0.28))
+                    .fill(GamePhysicalTurnPalette.nameTileFill.opacity(solidBackground ? 1 : 0.28))
+                    .overlay {
+                        if solidBackground && configuration.isPressed {
+                            RoundedRectangle(cornerRadius: 7)
+                                .fill(.black.opacity(0.20))
+                        }
+                    }
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 7)
                     .stroke(borderColor, lineWidth: emphasis == .primary ? 1.5 : 1)
             }
-            .opacity(configuration.isPressed ? 0.72 : 1)
+            .opacity(!solidBackground && configuration.isPressed ? 0.72 : 1)
     }
 
     private var borderColor: Color {

@@ -11,6 +11,7 @@ let appIconSettings: SettingsDictionary = [
     "ENABLE_DEBUG_DYLIB": "NO",
 ]
 let messagesExtensionIconSettings: SettingsDictionary = [
+    "ULS_RELIABILITY_CANDIDATE": "unfrozen",
     "ASSETCATALOG_COMPILER_APPICON_NAME": "iMessage App Icon",
     "CURRENT_PROJECT_VERSION": "8",
     "MARKETING_VERSION": "1.0",
@@ -128,6 +129,7 @@ let project = Project(
                     "CFBundleDisplayName": .string("Unlucky Sevens"),
                     "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
                     "CFBundleVersion": .string("$(CURRENT_PROJECT_VERSION)"),
+                    "ULSReliabilityCandidate": .string("$(ULS_RELIABILITY_CANDIDATE)"),
                     "NSExtension": .dictionary([
                         "NSExtensionPointIdentifier": .string("com.apple.message-payload-provider"),
                         "NSExtensionPrincipalClass": .string(

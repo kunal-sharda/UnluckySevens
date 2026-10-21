@@ -9,6 +9,30 @@ This is a living document. Update it whenever UI scope, Messages behavior, valid
 - [Single-device UX Lab](ux-lab.md): fixture coverage, screenshot controls, limitations, and simulator capture workflow.
 - [Device and simulator runbooks](device-runbooks.md): real-device checklists, manual simulator lanes, and host-stability regression checks.
 
+## One-Device and Two-Device Routing
+
+For streaming patches, distinguish existing package/simulator tests (`make test-quick`, `make test-full`, `make practical-gate`) from physical hardware testing. The [device runbook](device-runbooks.md#executable-route-commands) documents the physical probe/invite driver with passing development-device evidence, a remote-human joined-bubble continuation with passing host-reopen hardware evidence, and an explicitly manual evidence recorder. The redundant `test-one-device` wrapper was removed; no gameplay coverage was lost. The remote phone still responds manually; fully unattended second-device automation is deferred beyond Beta 1.1. #49 targets automated home-side steps with explicit remote-human checkpoints.
+
+Select only the evidence required by the change and its locked plan; these routes do not add both lanes to every patch or waive a required lane. Three-account concurrency, exact-build provenance, installed-TestFlight evidence, existing completion gates, and retry budgets remain unchanged. Both streams are evidence routes, not scheduled background tasks.
+
+## Diagnostic TestFlight candidate versus milestone release
+
+Owner-approved revision, 2026-09-28: a diagnostic beta may be distributed to collect evidence for open bugs. It does not need every milestone ticket, three-/four-account scenario, completed match or second automated device to pass before testers can install it. Use the shared [Beta 1.1 testing and delivery plan](../exec-plans/active/testing-streams-implementation.md).
+
+**Before a diagnostic candidate upload**, lock the candidate scope and use a standard/direct candidate contract containing:
+
+1. Exact frozen source and unique app build, included fixes, known failures, affected test list and candidate-specific test instructions. Do not label a dirty build as a clean commit; later milestone work is excluded unless deliberately included.
+2. Passing focused tests for changed behavior and the standard completion gate. Reuse applicable evidence; do not rerun unrelated catalogs or every child plan. A demonstrated regression affecting safe installation, data integrity, privacy or the intended diagnostic journey remains a blocker.
+3. Explicit Release archive/package inspection: app/extension identities, version/build/candidate metadata, signing/provisioning, required privacy manifest, encryption declaration and absence of DEBUG fixture controls. An unsigned build alone is not distribution proof.
+4. A local launch/open smoke for the candidate's intended entry and changed diagnostics path, plus reviewed export contents/error behavior when diagnostics changed. Existing unchanged-path evidence can be reused with an applicability rationale. Actual installed-TestFlight receipt/export checks occur after distribution.
+5. Accurate privacy disclosures/policy link, explicit user-initiated diagnostic sharing, known-issue/test notes, intended tester group, and a recorded recovery plan (retain prior build, stop further distribution if the candidate breaks the smoke). Do not promise an automatic downgrade or restored iMessage identity after reinstall.
+
+Finish this candidate contract before claiming ready to upload. Unrelated blocked child contracts remain notices; they do not block a diagnostic candidate. App Store processing/review and tester installation still need observed confirmation after upload. A diagnostic candidate can include the join/trade fixes with physical acceptance explicitly pending.
+
+**After distribution**, verify phone update/install and run the shared two-device smoke and independent report comparison. Friends supply the three-/four-account and full-match evidence. Failed product checks remain open and drive fixes in another candidate. Candidate distribution is not closure of #2/#4/#6/#8/#11/#15/#43/#44/#47/#49.
+
+**Before milestone completion or public release**, retain release-critical validation, integrated candidate/device coverage and issue-specific acceptance. Run `make release-gate PLAN=<release-critical-plan>` and the contracted real-device matrix. No required final product/privacy check is deleted by distributing an earlier diagnostic build.
+
 ## Practical Gate
 
 The practical gate is the exhaustive release-sized lane for the current MVP engine baseline:
@@ -36,7 +60,7 @@ Normal ExecPlan completion uses its declared validation profile:
 make completion-gate PLAN=docs/exec-plans/active/<plan>.md
 ```
 
-Use `make release-gate PLAN=<release-critical-plan>` for release or handoff claims. GitHub Actions runs the doc-freshness gate against the PR base, Swift package tests, and the `make build` MessagesExtension lane in `.github/workflows/ci.yml`. The full local practical gate remains `make practical-gate`.
+Use `make release-gate PLAN=<release-critical-plan>` for milestone-ready or public release/handoff claims. Diagnostic TestFlight candidates use the bounded route below. GitHub Actions runs the doc-freshness gate against the PR base, Swift package tests, and the `make build` MessagesExtension lane in `.github/workflows/ci.yml`. The full local practical gate remains `make practical-gate`.
 
 Before freezing a TestFlight candidate, build the explicit Release configuration for `generic/platform=iOS` and inspect the packaged app and extension rather than inferring distribution readiness from Debug. Record the marketing version/build, bundle IDs, minimum OS, SDK/Xcode, team, signing disposition, and exact commit. The packaged product must contain every required `PrivacyInfo.xcprivacy` entry, an accurate `ITSAppUsesNonExemptEncryption` value, and no DEBUG UX Lab identifiers. Privacy-policy metadata and an easily accessible in-app policy link remain release blockers even when the binary builds successfully.
 
@@ -66,7 +90,11 @@ For player-facing visual work, show the user the representative inspected result
 
 Before any canonical Messages screenshot lane, shut down every simulator, boot only the target device, uninstall `me.ksharda.games.unluckysevens`, install the freshly built `UnluckySevensApp.app`, and restart Messages before `test-without-building`. Installing over a running prior host is not valid evidence because Messages and XCTest can retain extension or accessibility state. The test action refreshes the runner but does not guarantee replacement of the installed host app; record and compare the built and installed `MessagesExtension` executable hashes.
 
-For the repeatable full UI catalog, run `bash ./scripts/run-ui-screenshot-catalog.sh iphone`, then `bash ./scripts/run-ui-screenshot-catalog.sh ipad`. The runner canonically regenerates, builds the app and UI-test runner into one pinned DerivedData root, installs that exact app, restarts Messages so the host discovers the extension, verifies the built and installed extension hashes, and runs each catalog route in its own XCTest process. Its timestamped local evidence directory contains the run manifest, per-route result bundles, exported attachments, and direct simulator stills. A failed route stops the lane; follow the retry budget and circuit breaker below rather than silently continuing.
+For the repeatable full UI catalog, run `bash ./scripts/run-ui-screenshot-catalog.sh iphone`, then `bash ./scripts/run-ui-screenshot-catalog.sh ipad`. The runner canonically regenerates, builds the app and UI-test runner into one pinned DerivedData root, installs that exact app, restarts Messages so the host discovers the extension, verifies the built and installed extension hashes, and runs each catalog route in its own XCTest process. Its timestamped local evidence directory contains the run manifest, per-route result bundles, exported attachments, and direct simulator stills. Drawer selection must use the current extension’s full accessibility identifier, not the display name: obsolete and current bundle identifiers can coexist under “Unlucky Sevens.” A matching installed binary hash does not prove the harness opened that bundle. A failed route stops the lane; follow the retry budget and circuit breaker below rather than silently continuing.
+
+Catalog launch fixtures must survive the first fresh-lobby host activation. The DEBUG-only launch-default guard preserves an explicitly configured fixture; ordinary drawer launches without that default still clear game context.
+
+The screenshot catalog shuts down the target simulator between routes and edits the extension-container preferences plist while stopped, verifies fixture/actor values, then boots. Do not use `simctl spawn ... killall`: iOS runtimes do not provide that executable, and ignoring its failure leaves the previous extension alive. Each route retains its injected preferences alongside its test log for diagnosis.
 
 Recovery journeys that terminate and relaunch Messages must hide DEBUG UX Lab chrome before persistence assertions without reseeding canonical fixtures. The DEBUG hidden-state preference survives extension-process reconstruction, and the existing 44-point Show UX Lab control restores authoring chrome when needed. Do not tap production controls through an expanded UX Lab panel or treat post-relaunch overlay discovery as product recovery proof.
 
@@ -123,6 +151,8 @@ make test-quick FEATURE=trade
 make test-full
 ```
 
+`make test-quick FEATURE=beta-repairs` runs the focused victory/legacy-claim/resend catalog. It includes terminal Settings access and verifies that resending preserves the canonical snapshot. It is local fixture proof, not delivery proof; the active plan owns the current retry budget.
+
 `test-quick` defaults to the three-route `smoke` slice and accepts `trade`, `build`, `robber`, `dev-cards`, `guardrails`, `recovery`, `match`, `tutorial`, `trade-previews`, `host`, `roll`, or `gameplay`. `trade-previews` is the bounded visual lane for the tutorial Give/Get, tutorial recipients, engine-derived Bank/Port quote, integrated pending strip, incoming offer variants, and outgoing pending offer. Every feature still uses the canonical cold lifecycle, isolated XCTest processes, matching build/install hashes, and retained evidence. `test-full` is the complete single-iPhone lane: all production-control gameplay actions, guardrails, recovery, complete-match bookends, and the full visual catalog. It intentionally does not claim iPad, physical-device, multiplayer, signing, archive, or TestFlight proof; those remain release-gate work.
 
 Each selection still inherits the cold lifecycle, isolated-process rule, and diagnostic-first initial-plus-ten retry ceiling. For attempt 2 or later, set `UI_SCREENSHOT_ATTEMPT_NUMBER`, `UI_SCREENSHOT_RETRY_DIAGNOSIS`, and `UI_SCREENSHOT_RETRY_CORRECTION`; the runner rejects undocumented or out-of-budget reruns. If an XCTest navigation surface such as Player Record is not observable, inspect the retained failure bundle and fix its state transition before rerunning; do not use repeated taps or a prior passing catalog as fresh proof.
@@ -167,10 +197,16 @@ Validation profile controls the breadth of the final mechanical gate. Delivery p
 
 - `lightweight`: run the targeted check named by the contract plus doc freshness. Use only for narrow, low-risk work.
 - `standard`: run `make build` as the baseline, then the focused package, simulator, XCUITest, or device checks required by the changed surface. Core and transport changes need their affected Swift package tests. Messages UI changes need the relevant UX Lab/XCUITest journey and actual artifact inspection; a build alone does not prove them.
-- `release-critical`: run `make release-gate PLAN=<plan>`, the relevant real-device checklists, and at least one two-device end-to-end smoke pass before a UI-ready or TestFlight handoff claim.
+- `release-critical`: run `make release-gate PLAN=<plan>`, the relevant real-device checklists, and at least one two-device end-to-end smoke pass before milestone-ready or public release/handoff claims. Diagnostic TestFlight distribution follows the scoped candidate route above; it does not claim milestone readiness.
 
 For visual work, use the [Single-Device UX Lab](ux-lab.md) and repeatable `MessagesExtensionDesignSliceUITests` captures. For lobby, transcript, recovery, turn-taking, and shell changes, select the matching simulator and real-device runbooks in [device runbooks](device-runbooks.md). Record the exact commands, journeys, and inspected artifacts in the plan contract.
 
 For checkpointed visual work, build only the minimum honest DEBUG comparison needed for the declared approval gate. Use real components and fixture data, show at most three representative states per round, and default to two screenshot-feedback rounds. While approval is pending, do not productionize nested states, run automatic fresh reviews, or run the completion gate. A rejected baseline or pre-existing production screenshot does not count as an approved comparison round. After approval, productionize once, run focused observable evidence, and route the final product/UX review once unless the user asks for advisory input earlier.
 
 Durable lessons and detailed runbooks continue in the linked guides above; keep this file as the short validation index.
+
+## Reliability diagnostic model tests
+
+The #44 in-memory foundation is covered by `MessagesExtensionTests/ReliabilityDiagnosticBufferTests` (schema allowlist, per-game export isolation, count/age/size limits, clock rollback, coalescing and clear). Run through the generated workspace's focused extension-test lane. The companion `MessagesExtensionTests/ReliabilityDiagnosticStoreTests` exercises real temporary-directory persistence, reopen, single-game export, backup exclusion, expiry/rollback, malformed/oversized input, count/size bounds, clear and write failure. Run both focused suites for storage changes. Those suites prove buffer/storage behavior only. `ReliabilityReportTests` additionally covers immutable export bytes, candidate-bound persistence, state correlation, whole-report bounds and storage failure. Production collection, report UI and real sender-to-recipient evidence have distinct checks under #44; none is implied by a storage-test pass.
+
+Reliability collection/report proof uses the focused suites and single UI route in [reliability reports](reliability-reports.md). Report comparison is offline evidence checking, not device control or delivery attestation; unknown candidate metadata and synthetic/missing selection evidence cannot pass.

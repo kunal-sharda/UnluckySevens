@@ -9,17 +9,17 @@ struct GameTradeResponderActionRow: View {
     var body: some View {
         HStack(spacing: GameTheme.inlineSpacing) {
             Button("Accept", action: onAccept)
-                .buttonStyle(GameTabletopActionButtonStyle(emphasis: .primary))
+                .buttonStyle(GameTabletopActionButtonStyle(emphasis: .primary, solidBackground: true))
                 .disabled(!actions.canAccept)
                 .accessibilityHint("Accepts this trade offer")
 
             Button("Decline", action: onDecline)
-                .buttonStyle(GameTabletopActionButtonStyle(emphasis: .secondary))
+                .buttonStyle(GameTabletopActionButtonStyle(emphasis: .secondary, solidBackground: true))
                 .disabled(!actions.canDecline)
                 .accessibilityHint("Declines this trade offer")
 
             Button("Counter", action: onCounter)
-                .buttonStyle(GameTabletopActionButtonStyle(emphasis: .secondary))
+                .buttonStyle(GameTabletopActionButtonStyle(emphasis: .secondary, solidBackground: true))
                 .disabled(!actions.canCounter)
                 .accessibilityHint("Creates a counteroffer")
         }

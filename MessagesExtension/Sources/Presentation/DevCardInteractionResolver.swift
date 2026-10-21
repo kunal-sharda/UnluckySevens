@@ -169,7 +169,6 @@ enum DevCardInteractionResolver {
         guard
             let state,
             state.phase == .turn,
-            state.turnState?.step.allowsDevCardPlay == true,
             let actingAs,
             actingAs == state.currentPlayer,
             state.canRevealVictoryPoint(for: actingAs)

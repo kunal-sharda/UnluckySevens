@@ -13,7 +13,7 @@ enum LobbyMembershipResolver {
             return false
         }
 
-        return !state.roster.contains(localParticipant)
+        return state.roster.count < 4 && !state.roster.contains(localParticipant)
     }
 
     static func canStart(
@@ -29,7 +29,7 @@ enum LobbyMembershipResolver {
             return false
         }
 
-        return state.roster.count >= 2
+        return (3 ... 4).contains(state.roster.count)
     }
 
     static func joinedLobbyState(
@@ -41,6 +41,7 @@ enum LobbyMembershipResolver {
             let state,
             state.phase == .lobby,
             let localParticipant,
+            state.roster.count < 4,
             !state.roster.contains(localParticipant)
         else {
             return nil

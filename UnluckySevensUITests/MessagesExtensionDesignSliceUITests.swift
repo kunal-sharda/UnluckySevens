@@ -45,6 +45,64 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Approved Unlucky Sevens Messages drawer icon")
     }
 
+    func testReliabilityReportPreviewAndCancel() throws {
+        openUnluckySevensExtension()
+        openUXLabPanel()
+        activateUXLabNestedQuickState(title: "Ready", identifier: "uls.uxLab.cleanShot.lobbyReady")
+        XCTAssertTrue(messages.staticTexts["Ready to Start"].firstMatch.waitForExistence(timeout: 8))
+        let gameSettings = messages.buttons.matching(NSPredicate(
+            format: "identifier == %@ AND label == %@",
+            "uls.lobby.tableSurface", "Game Settings, Standard rules, Balanced board, 10 points"
+        ))
+        XCTAssertEqual(gameSettings.count, 1)
+        XCTAssertTrue(gameSettings.firstMatch.isHittable)
+        gameSettings.firstMatch.tap()
+        let settings = messages.descendants(matching: .any)["uls.settings.surface"].firstMatch
+        XCTAssertTrue(settings.waitForExistence(timeout: 4))
+        let entry = messages.buttons["uls.settings.reliability"].firstMatch
+        for _ in 0..<3 where !entry.isHittable {
+            settings.scrollViews.firstMatch.swipeUp()
+        }
+        XCTAssertTrue(entry.isHittable)
+        entry.tap()
+        let report = messages.descendants(matching: .any)["uls.reliability.surface"].firstMatch
+        XCTAssertTrue(report.waitForExistence(timeout: 5))
+        let hierarchy = XCTAttachment(string: messages.debugDescription)
+        hierarchy.name = "Reliability report hierarchy"
+        hierarchy.lifetime = .keepAlways
+        add(hierarchy)
+        let export = messages.buttons["uls.reliability.export"].firstMatch
+        for _ in 0..<3 where !export.isHittable {
+            report.swipeUp()
+        }
+        XCTAssertTrue(export.isHittable)
+        XCTAssertTrue(messages.staticTexts["uls.reliability.preview"].firstMatch.exists)
+        attachScreenshot(named: "Reliability Report - Preview")
+        export.tap()
+        let pickerBar = messages.navigationBars["FullDocumentManagerViewControllerNavigationBar"].firstMatch
+        XCTAssertTrue(pickerBar.waitForExistence(timeout: 5), "Expected the system file export picker.")
+        // The host's stale Cancel AX element overlaps the remote picker's More
+        // button. Dismiss the visible picker sheet by its navigation-bar frame.
+        pickerBar.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.05))
+            .press(forDuration: 0.1, thenDragTo: messages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)))
+        XCTAssertTrue(pickerBar.waitForNonExistence(timeout: 5), "Cancel must dismiss the file picker without saving.")
+        XCTAssertTrue(report.waitForExistence(timeout: 5))
+        let clear = messages.buttons["uls.reliability.clear"].firstMatch
+        for _ in 0..<5 where !clear.isHittable {
+            report.swipeUp()
+        }
+        XCTAssertTrue(clear.isHittable)
+        attachScreenshot(named: "Reliability Report - Contents")
+        clear.tap()
+        let confirmation = messages.sheets.buttons["Clear Local Reports"].firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        XCTAssertTrue(confirmation.isHittable)
+        confirmation.tap()
+        XCTAssertTrue(confirmation.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(messages.staticTexts["uls.reliability.empty"].firstMatch.waitForExistence(timeout: 4))
+        attachScreenshot(named: "Reliability Report - Cleared")
+    }
+
     func testCaptureProductionLobbyEntryAndUtilities() throws {
         openUnluckySevensExtension()
 
@@ -1308,6 +1366,24 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         restore.tap()
     }
 
+    private func openCurrentGameLifecycleMenu() -> XCUIElement {
+        let gameInfo = turnElement(
+            identifier: "",
+            labels: ["Players and game information", "Game information"]
+        )
+        XCTAssertTrue(gameInfo.waitForExistence(timeout: 8))
+        gameInfo.tap()
+
+        let gameInfoSurface = messages.descendants(matching: .any)["uls.turn.gameInfo"].firstMatch
+        XCTAssertTrue(gameInfoSurface.waitForExistence(timeout: 4))
+        let lifecycleMenu = messages.buttons["uls.gameInfo.lifecycleActions"].firstMatch
+        XCTAssertTrue(
+            lifecycleMenu.waitForExistence(timeout: 4),
+            "Current Game Information must keep lifecycle actions discoverable."
+        )
+        return lifecycleMenu
+    }
+
     private func activateDirectCleanState(identifier: String, label: String) {
         let button = firstExistingElement(
             [
@@ -2241,8 +2317,73 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             messages.descendants(matching: .any)["uls.endScreen"].firstMatch
                 .waitForExistence(timeout: 6)
         )
+        let settings = messages.buttons["uls.endScreen.settings"].firstMatch
+        XCTAssertTrue(settings.waitForExistence(timeout: 4))
+        settings.tap()
+        let resend = messages.buttons["uls.settings.resendUpdate"].firstMatch
+        XCTAssertTrue(resend.waitForExistence(timeout: 4))
+        resend.tap()
+        messages.buttons["Done"].firstMatch.tap()
+        let resent = waitForGameplayActionEvidence(containing: "status=Resent game update", timeout: 6)
+        XCTAssertEqual(evidenceField("hash", in: resent), evidenceField("hash", in: after))
+        XCTAssertEqual(evidenceField("rev", in: resent), evidenceField("rev", in: after))
+        XCTAssertEqual(evidenceField("winner", in: resent), "host")
+        attachGameplayActionEvidence(name: "Resend Winning Snapshot", before: after, after: resent)
         attachGameplayActionEvidence(name: "Reveal Winning Victory Point", before: before, after: after)
         attachScreenshot(named: "Complete Match - Winning Action")
+    }
+
+    func testResendGameUpdatePreservesCanonicalState() throws {
+        openUnluckySevensExtension()
+        loadDirectGameplayActionFixture(identifier: "uls.uxLab.cleanShot.endTurnAction.direct",
+                                        label: "Clean end turn action")
+        let before = gameplayActionEvidenceValue()
+        let menu = openCurrentGameLifecycleMenu()
+        menu.tap()
+        let resend = messages.buttons["Resend Game Update"].firstMatch
+        XCTAssertTrue(resend.waitForExistence(timeout: 4))
+        resend.tap()
+        let after = waitForGameplayActionEvidence(containing: "status=Resent game update", timeout: 6)
+        // Everything before the presentation status is canonical game evidence.
+        XCTAssertEqual(before.components(separatedBy: "status=").first,
+                       after.components(separatedBy: "status=").first)
+        XCTAssertTrue(after.contains("rawError=-"), after)
+        attachGameplayActionEvidence(name: "Resend Same Snapshot", before: before, after: after)
+        attachScreenshot(named: "Game Information - Resend Update")
+    }
+
+    func testLegacyWinningGameCanDeclareVictoryFromGameInformation() throws {
+        openUnluckySevensExtension()
+        loadDirectGameplayActionFixture(
+            identifier: "uls.uxLab.cleanShot.victoryAction.direct",
+            label: "Clean victory action"
+        )
+        let before = waitForGameplayActionEvidence(
+            containing: "status=UX Lab loaded Victory action",
+            timeout: 6
+        )
+        XCTAssertTrue(before.contains("phase=turn"), before)
+        XCTAssertTrue(before.contains("winner=-"), before)
+
+        let menu = openCurrentGameLifecycleMenu()
+        menu.tap()
+        let declare = messages.buttons["Declare Victory"].firstMatch
+        XCTAssertTrue(declare.waitForExistence(timeout: 4))
+        declare.tap()
+
+        let after = waitForGameplayActionEvidenceChange(from: before, timeout: 8)
+        XCTAssertTrue(after.contains("rev=18"), after)
+        XCTAssertTrue(after.contains("phase=gameOver"), after)
+        XCTAssertTrue(after.contains("winner=host"), after)
+        XCTAssertTrue(after.contains("winningVP=10"), after)
+        XCTAssertTrue(after.contains("status=Published victory-point reveal"), after)
+        XCTAssertTrue(after.contains("rawError=-"), after)
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.endScreen"].firstMatch
+                .waitForExistence(timeout: 6)
+        )
+        attachGameplayActionEvidence(name: "Reveal Winning Victory Point", before: before, after: after)
+        attachScreenshot(named: "Legacy Winning Game - Declared Victory")
     }
 
     func testSettleStartOfTurnDiceBowlForDirectStill() throws {
@@ -3106,8 +3247,82 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Unlucky Sevens - public draw pile purchase")
     }
 
+    func testCurrentGameLifecycleActionsAreDiscoverableForHostDuringSetup() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Setup placement")
+
+        let lifecycleMenu = openCurrentGameLifecycleMenu()
+        lifecycleMenu.tap()
+        XCTAssertTrue(messages.buttons["Propose Draw"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.buttons["Resign"].firstMatch.exists)
+        XCTAssertTrue(messages.buttons["End Game"].firstMatch.exists)
+        attachScreenshot(named: "Game Information - Setup Host Lifecycle Actions")
+    }
+
+    func testCurrentGameLifecycleActionsAreDiscoverableForNonHostDuringTurn() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Turn after roll")
+
+        let lifecycleMenu = openCurrentGameLifecycleMenu()
+        lifecycleMenu.tap()
+        XCTAssertTrue(messages.buttons["Propose Draw"].firstMatch.waitForExistence(timeout: 4))
+        let resign = messages.buttons["Resign"].firstMatch
+        XCTAssertTrue(resign.exists)
+        XCTAssertFalse(messages.buttons["End Game"].firstMatch.exists)
+        resign.tap()
+
+        let confirmation = messages.descendants(matching: .any)[
+            "uls.games.lifecycleConfirmation"
+        ].firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.buttons["uls.games.confirmResign"].firstMatch.exists)
+        attachScreenshot(named: "Game Information - Non-Host Resign Confirmation")
+
+        messages.buttons["uls.games.keepPlaying"].firstMatch.tap()
+        XCTAssertTrue(confirmation.waitForNonExistence(timeout: 4))
+        XCTAssertTrue(
+            messages.descendants(matching: .any)["uls.turn.gameInfo"]
+                .firstMatch.waitForExistence(timeout: 4)
+        )
+    }
+
+    func testCurrentGameLifecycleDrawVoteRemainsInCurrentGame() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Draw vote")
+
+        let lifecycleMenu = openCurrentGameLifecycleMenu()
+        lifecycleMenu.tap()
+        XCTAssertTrue(messages.buttons["Agree to Draw"].firstMatch.waitForExistence(timeout: 4))
+        let declineDraw = messages.buttons["Decline Draw"].firstMatch
+        XCTAssertTrue(declineDraw.exists)
+        XCTAssertFalse(messages.buttons["Propose Draw"].firstMatch.exists)
+        attachScreenshot(named: "Game Information - Draw Vote Actions")
+        declineDraw.tap()
+    }
+
+    func testCurrentGameHostEndRemainsInCurrentGame() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Turn after roll")
+
+        let lifecycleMenu = openCurrentGameLifecycleMenu()
+        lifecycleMenu.tap()
+        let endGame = messages.buttons["End Game"].firstMatch
+        XCTAssertTrue(endGame.waitForExistence(timeout: 4))
+        endGame.tap()
+
+        let confirmation = messages.descendants(matching: .any)[
+            "uls.games.lifecycleConfirmation"
+        ].firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.buttons["uls.games.proposeDraw"].firstMatch.exists)
+        XCTAssertTrue(messages.buttons["uls.games.endAnyway"].firstMatch.exists)
+        attachScreenshot(named: "Game Information - Host Draw-First Confirmation")
+        messages.buttons["uls.games.keepPlaying"].firstMatch.tap()
+        XCTAssertTrue(confirmation.waitForNonExistence(timeout: 4))
+    }
+
     func testCaptureCityTargetAndGameInfoRegression() throws {
-        try XCTSkipIf(true, "Game Information proof must be recaptured for Player Record and current-game lifecycle controls.")
+        try XCTSkipIf(true, "Legacy combined city-target regression is superseded by focused gameplay and lifecycle journeys.")
         openUnluckySevensExtension()
         waitForUXLabChrome()
         activateUXLabQuickState(
@@ -4489,6 +4704,19 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         ]
 
         for label in knownConversationLabels {
+            let conversation = messages.collectionViews["ConversationList"].cells
+                .containing(.staticText, identifier: label).firstMatch
+            if conversation.waitForExistence(timeout: 2) {
+                // Messages exposes nested cells; the outer cell can swallow a synthesized tap.
+                // Target the observed participant label inside the matched conversation.
+                let participant = conversation.staticTexts[label].firstMatch
+                XCTAssertTrue(participant.waitForExistence(timeout: 2))
+                participant.tap()
+                XCTAssertTrue(messages.buttons["add"].firstMatch.waitForExistence(timeout: 5),
+                              "Expected the selected conversation to open before app drawer navigation.")
+                return
+            }
+
             let text = messages.staticTexts[label].firstMatch
             if text.waitForExistence(timeout: 2) {
                 text.tap()
@@ -4590,9 +4818,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             if waitForUnluckySevensSurface(timeout: 1) {
                 return
             }
-            let appsDrawer = messages.collectionViews
-                .containing(.staticText, identifier: "Stickers")
-                .firstMatch
+            let appsDrawer = messages.popovers.collectionViews.firstMatch
             XCTAssertTrue(
                 appsDrawer.waitForExistence(timeout: 3),
                 "Expected the complete Messages apps drawer collection."
@@ -4601,9 +4827,9 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             for _ in 0..<8 {
                 let appRow = firstExistingElement(
                     [
-                        messages.staticTexts["Unlucky Sevens"].firstMatch,
-                        messages.buttons["Unlucky Sevens"].firstMatch,
-                        messages.descendants(matching: .any)["Unlucky Sevens"].firstMatch,
+                        messages.cells[
+                            "com.apple.messages.MSMessageExtensionBalloonPlugin:0000000000:me.ksharda.games.unluckysevens.messagesextension"
+                        ].firstMatch,
                     ],
                     timeout: 1
                 )
@@ -4786,6 +5012,20 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(
             panel.waitForNonExistence(timeout: 4),
             "UX Lab must stop intercepting production controls after Messages relaunch."
+        )
+    }
+
+    private func assertLaunchFixtureLoaded(title: String) {
+        let evidence = messages.descendants(matching: .any)[
+            "uls.gameplay.actionEvidence"
+        ].firstMatch
+        XCTAssertTrue(
+            evidence.waitForExistence(timeout: 8),
+            "Expected DEBUG gameplay evidence for the launch-time fixture contract."
+        )
+        XCTAssertTrue(
+            String(describing: evidence.value).contains("status=UX Lab loaded \(title)"),
+            "Expected launch-time fixture '\(title)' before inspecting production lifecycle UI."
         )
     }
 

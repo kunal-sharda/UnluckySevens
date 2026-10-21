@@ -17,6 +17,21 @@ final class TranscriptBubbleCopyTests: XCTestCase {
         XCTAssertEqual(model.participants.last?.displayName, "Kunal")
     }
 
+    func testLobbyReconciliationNamesAllAdmittedPlayers() {
+        let state = makeLobbyState(
+            roster: ["host", "alice", "ben"],
+            customNames: ["alice": "Alice", "ben": "Ben"]
+        )
+
+        let copy = TranscriptBubbleCopyBuilder.lobbyReconciled(
+            to: state,
+            admittedPlayers: ["alice", "ben"]
+        )
+
+        XCTAssertEqual(copy.caption, "Unlucky Sevens: Lobby Updated")
+        XCTAssertEqual(copy.summary, "Alice and Ben joined the table. 3 players are ready.")
+    }
+
     func testLobbyVisualsTrackCurrentRosterAndNames() {
         let state = makeLobbyState(roster: ["host", "guest"], customNames: ["guest": "Kunal"])
 
@@ -90,6 +105,22 @@ final class TranscriptBubbleCopyTests: XCTestCase {
         }
         XCTAssertEqual(visual.winnerTitle, "Avery won")
         XCTAssertTrue(visual.scoreLine.contains("Avery"))
+    }
+
+    func testLifecycleReceiptsShowVictoryWhenActionEndsWinningGame() {
+        let state = makeTurnState(currentPlayer: "A", customNames: ["A": "Avery"],
+                                  phase: .gameOver, winnerPlayer: "A",
+                                  winningVictoryPoints: 10, turnState: nil)
+        let copies = [
+            TranscriptBubbleCopyBuilder.resignation(resultingState: state, actor: "B"),
+            TranscriptBubbleCopyBuilder.drawProposed(resultingState: state, actor: "A"),
+            TranscriptBubbleCopyBuilder.drawVote(resultingState: state, actor: "A", approved: true),
+            TranscriptBubbleCopyBuilder.hostEnded(resultingState: state, actor: "A"),
+        ]
+        for copy in copies {
+            XCTAssertEqual(copy.caption, "Unlucky Sevens: Avery Wins")
+            guard case .gameOver = copy.visual else { return XCTFail("Expected victory visual") }
+        }
     }
 
     func testResignationReceiptSaysPlayContinues() throws {

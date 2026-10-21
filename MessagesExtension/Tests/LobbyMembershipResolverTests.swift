@@ -120,6 +120,26 @@ final class LobbyMembershipResolverTests: XCTestCase {
         }
     }
 
+    func testFullLobbyCannotAcceptAnotherPlayer() {
+        let state = makeLobbyState(
+            roster: ["host", "alice", "ben", "casey"],
+            customNames: [:]
+        )
+
+        XCTAssertFalse(
+            LobbyMembershipResolver.canJoin(
+                state: state,
+                localParticipant: "excluded"
+            )
+        )
+        XCTAssertNil(
+            LobbyMembershipResolver.joinedLobbyState(
+                state: state,
+                localParticipant: "excluded"
+            )
+        )
+    }
+
     private func makeLobbyState(
         roster: [String],
         customNames: [String: String]

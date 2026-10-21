@@ -310,20 +310,8 @@ public extension CoreGameStateV1 {
     }
 
     func canRevealVictoryPoint(for actor: String, winningGoal: Int = 10) -> Bool {
-        guard
-            phase == .turn,
-            turnState?.step.allowsDevCardPlay == true,
-            currentPlayer == actor
-        else {
-            return false
-        }
-
-        let hiddenVictoryPoints = (devCardsByPlayer[actor] ?? .zero).victoryPoint + (newDevCardsByPlayer[actor] ?? .zero).victoryPoint
-        guard hiddenVictoryPoints > 0 else {
-            return false
-        }
-
-        return victoryPoints(for: actor, in: self) + hiddenVictoryPoints >= winningGoal
+        phase == .turn && currentPlayer == actor && isActivePlayer(actor)
+            && victoryTotalIncludingHiddenCards(for: actor, in: self) >= winningGoal
     }
 
     func firstLegalRoadEdge(for player: String) -> EdgeID? {

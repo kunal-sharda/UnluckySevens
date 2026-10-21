@@ -61,6 +61,11 @@ public func apply(
         throw CoreGameError.actorMismatch
     }
 
+    if state.phase == .turn, victoryTotalIncludingHiddenCards(for: state.currentPlayer, in: state) >= 10 {
+        guard actor == state.currentPlayer else { throw CoreGameError.gameAlreadyOver }
+        return try apply(intent: TurnIntentV1.revealVictoryPoint, to: state, actor: actor)
+    }
+
     switch intent {
     case .resign:
         guard state.isActivePlayer(actor), state.activePlayers.count > 1 else {
@@ -134,7 +139,7 @@ private func stateByApplyingResignation(
         turnState: progression.turnState
     )
     let awards = recomputeAwards(from: state, for: provisional)
-    return copiedState(
+    let updated = copiedState(
         provisional,
         advanceRevision: false,
         largestArmyOwner: awards.largestArmyOwner,
@@ -142,6 +147,11 @@ private func stateByApplyingResignation(
         longestRoadOwner: awards.longestRoadOwner,
         longestRoadLength: awards.longestRoadLength
     ).rehashed()
+    if updated.phase == .turn, victoryTotalIncludingHiddenCards(for: updated.currentPlayer, in: updated) >= 10 {
+        return stateByApplyingGameOver(updated, winner: updated.currentPlayer,
+                                      winningPoints: victoryTotalIncludingHiddenCards(for: updated.currentPlayer, in: updated)).rehashed()
+    }
+    return updated
 }
 
 private func stateByProposingDraw(

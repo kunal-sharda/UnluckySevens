@@ -86,26 +86,6 @@ enum TranscriptTransportError: LocalizedError {
 }
 
 enum TranscriptTransportSupport {
-    static func preferredStateSession(
-        gameId: String,
-        selectedMessage: MSMessage?,
-        selectedGameId: String?,
-        cachedSession: MSSession?
-    ) -> MSSession {
-        if
-            selectedGameId == gameId,
-            let selectedSession = selectedMessage?.session
-        {
-            return selectedSession
-        }
-
-        if let cachedSession {
-            return cachedSession
-        }
-
-        return MSSession()
-    }
-
     static func buildMessage(
         encodedEnvelope: String,
         caption: String,
@@ -187,6 +167,24 @@ enum TranscriptTransportSupport {
             sessionPresence: sessionStatus,
             decodeSource: decodedPayload?.source.label ?? "-"
         )
+    }
+
+    static func hostBoundaryDiagnostic(
+        trigger: TranscriptSelectionTrigger,
+        message: MSMessage?,
+        localParticipantIdentifier: String?
+    ) -> String {
+        let snapshot = selectionSnapshot(for: message)
+        return [
+            "trigger=\(trigger.label)",
+            "participant=\(localParticipantIdentifier == nil ? "missing" : "known")",
+            "message=\(snapshot.messagePresence)",
+            "url=\(snapshot.urlPresence)",
+            "payload=\(snapshot.payloadQueryPresence)",
+            "payloadLength=\(snapshot.payloadLength)",
+            "session=\(snapshot.sessionPresence)",
+            "source=\(snapshot.decodeSource)",
+        ].joined(separator: ";")
     }
 
     private static func payloadQueryValue(from url: URL?) -> String? {

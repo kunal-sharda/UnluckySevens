@@ -120,6 +120,10 @@ enum GameTradePanelModelBuilder {
             }
 
         let responderActions: GameTradeResponderActions?
+        let acceptEligibility = TradeAcceptEligibilityResolver.resolve(
+            state: state,
+            actingAs: actingAs
+        )
         if
             let actingAs,
             actingAs != state.currentPlayer,
@@ -127,7 +131,7 @@ enum GameTradePanelModelBuilder {
             responseByPlayer[actingAs] == nil
         {
             responderActions = GameTradeResponderActions(
-                canAccept: canAfford(hand: state.resourcesByPlayer[actingAs] ?? .zero, cost: offer.receive),
+                canAccept: acceptEligibility == .eligible,
                 canDecline: true,
                 canCounter: true
             )
@@ -155,8 +159,10 @@ enum GameTradePanelModelBuilder {
                 case .counter:
                     message = "You sent a counteroffer back to \(proposerDisplay)."
                 }
-            } else if responderActions?.canAccept == false {
+            } else if acceptEligibility == .responderInsufficientResources {
                 message = "You don't have the cards to accept. Decline or counter instead."
+            } else if responderActions?.canAccept == false {
+                message = "This offer is no longer available to accept. Decline or counter instead."
             } else {
                 message = ""
             }
@@ -222,14 +228,6 @@ enum GameTradePanelModelBuilder {
         handChips(from: hand)
             .map { "\($0.count) \($0.shortLabel.lowercased())" }
             .joined(separator: ", ")
-    }
-
-    private static func canAfford(hand: ResourceHandV1, cost: ResourceHandV1) -> Bool {
-        hand.wood >= cost.wood
-            && hand.brick >= cost.brick
-            && hand.sheep >= cost.sheep
-            && hand.wheat >= cost.wheat
-            && hand.ore >= cost.ore
     }
 
     private static func handChips(from hand: ResourceHandV1) -> [GameHandChip] {

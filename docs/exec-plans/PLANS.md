@@ -60,7 +60,7 @@ Use one of these profiles:
 
 - `lightweight`: a narrow, low-risk change with an obvious acceptance boundary. Keep the contract small and use targeted evidence. A fresh constraint auditor is optional.
 - `standard`: the default for meaningful implementation, product, UI/UX, architecture, or behavior work. Use targeted tests and every observable or judgment review triggered by the change. A fresh constraint auditor is required.
-- `release-critical`: a release, handoff, broad migration, or other high-blast-radius slice. It includes the standard evidence discipline plus the exhaustive practical gate. A fresh constraint auditor is required.
+- `release-critical`: a milestone/public release or handoff, broad migration, or other high-blast-radius slice. Owner-approved diagnostic TestFlight candidates use the scoped standard candidate contract in [QA](../quality/qa.md#diagnostic-testflight-candidate-versus-milestone-release); this does not claim milestone readiness. It includes the standard evidence discipline plus the exhaustive practical gate. A fresh constraint auditor is required.
 
 The profile chooses the baseline breadth of mechanical validation; it never waives a stated constraint or substitutes a build for observable or judgment evidence. Lock it before implementation. Record a later profile change as a dated decision; lowering a standard or release-critical profile also requires fresh constraint-auditor agreement.
 

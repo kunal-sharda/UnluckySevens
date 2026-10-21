@@ -1,28 +1,13 @@
 # Roadmap
 
-This file is the coarse sequencing surface. GitHub Issues own discrete work, the [Beta 1.1 milestone](https://github.com/kunal-sharda/UnluckySevens/milestone/1) owns current release scope, and ExecPlans are reserved for broad or risky orchestration.
+GitHub milestones own release membership. The [marketable release plan](active/marketable-release-plan.md) owns ordering/decisions; the [outcome backlog](backlog-outcomes.md) maps every original requirement to one authoritative owner.
 
-## Now — Beta 1.1 Feedback and Proof
+- **Beta 1.1:** reliable invite/continue/trade/finish, field bugs #43/#47 and diagnostics. Local fixes still need distributed proof; #2 now includes former #7 session coverage.
+- **Beta 1.2:** understandable actions/costs/cards, seats/public scores/accessibility, common learning/reference and controls tour.
+- **Beta 1.3:** pacing/short games/1v1 decision and delivery track. Kept distinct; pre-public inclusion is to be resolved explicitly, not assumed excluded from the revised broader plan.
+- **Pre-public — Expanded player experience:** restored beginner learning, profiles/history hardening, identity/account continuity, feedback, usage analytics, subscriptions/privacy, recap, trade convenience, sound/variant decisions and measured performance. Backend/rules/UI decisions remain gates; membership does not choose them.
+- **Public 1.0:** final assembly and release-critical proof of the chosen pre-public scope, accurate positioning/disclosures, then separate owner publication approval. No launch date.
 
-- Triage tester feedback into reproducible issues; do not extend the completed first-beta plan.
-- Complete the [post-launch TestFlight device and multiplayer matrix](https://github.com/kunal-sharda/UnluckySevens/issues/8), including the deferred victory-screen observation.
-- Fix confirmed player-facing beta defects before structural work when their impact is higher.
+No later exceptions have been selected. Independent settled lanes can proceed in parallel, with shared infrastructure owned once, serialized validation and unchanged hardware/approval requirements. The earlier blanket 22-ticket deferral is superseded. Six tracking consolidations remove queue duplication without canceling or declaring features delivered; all mappings are in the outcome backlog. Diagnostics foundation preserved; this revision includes no new product implementation.
 
-## Next — Reliability and Test Coverage
-
-- [Messages host-boundary regression coverage](https://github.com/kunal-sharda/UnluckySevens/issues/2)
-- [Production board and bubble visual assertions](https://github.com/kunal-sharda/UnluckySevens/issues/3)
-- [Concurrent lobby-join convergence](https://github.com/kunal-sharda/UnluckySevens/issues/4)
-- [Fresh-session publication fallback](https://github.com/kunal-sharda/UnluckySevens/issues/7)
-
-Promote an issue into a linked ExecPlan only if investigation reveals cross-cutting architecture, protocol, migration, or release coordination.
-
-## Later — Measured Structural Work
-
-- [Profile remaining board and shell render amplification](https://github.com/kunal-sharda/UnluckySevens/issues/5); optimize only demonstrated hot paths.
-- [Define deterministic simultaneous Trade acceptance](https://github.com/kunal-sharda/UnluckySevens/issues/6) if beta evidence or release priority activates it.
-- Revisit deferred product ideas only after beta evidence justifies them; [deferred PRD items](../product-specs/deferred-prd-items.md) remain intentionally out of scope.
-
-## Update Rule
-
-Keep only `Now / Next / Later` sequencing here. Issue status belongs in GitHub, durable structural rationale belongs in the [tech-debt tracker](tech-debt-tracker.md), and execution evidence belongs in a qualifying active ExecPlan.
+2026-09-28: Beta 1.1 now uses one [testing and candidate delivery plan](active/testing-streams-implementation.md). Diagnostic TestFlight distribution precedes final multiplayer/milestone acceptance under the scoped QA contract. Home-side automation plus remote-human checkpoints is the supported target; unattended second-device automation is deferred.

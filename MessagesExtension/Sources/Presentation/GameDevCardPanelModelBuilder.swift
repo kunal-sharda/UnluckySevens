@@ -343,7 +343,7 @@ enum GameDevCardPanelModelBuilder {
         return GameDevCardAction(
             kind: .revealVictoryPoint,
             title: "Reveal Victory Point",
-            detail: "Reveal one hidden Victory Point now because this reveal reaches the win goal.",
+            detail: "Reveal your winning Victory Point cards and end the game.",
             systemImage: "star.circle.fill"
         )
     }
@@ -357,7 +357,7 @@ enum GameDevCardPanelModelBuilder {
     ) -> String {
         if state.devCardActionPlayedThisTurn {
             if playActions.contains(where: { $0.kind == .revealVictoryPoint }) {
-                return "You can still reveal a winning Victory Point card."
+                return "You can declare victory with your winning Victory Point cards."
             }
             return "You've played a development card this turn."
         }

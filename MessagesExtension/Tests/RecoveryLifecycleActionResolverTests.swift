@@ -83,6 +83,40 @@ final class GameLifecycleActionResolverTests: XCTestCase {
         }
     }
 
+    func testAvailabilityRequiresBubbleBoundCompatibleConversationForEveryLegalAction() throws {
+        let base = makeTurnState()
+        let proposed = try ULS_CoreGame.apply(
+            intent: .proposeDraw(anchoredTo: base),
+            to: base,
+            actor: "A"
+        )
+        let cases: [(GameLifecycleAction, CoreGameStateV1, String)] = [
+            (.resign, base, "B"),
+            (.proposeDraw, base, "B"),
+            (.voteOnDraw(approve: true), proposed, "B"),
+            (.hostEnd, base, "A"),
+        ]
+
+        for (action, state, actor) in cases {
+            XCTAssertTrue(
+                GameLifecycleActionResolver.isAvailable(
+                    action: action,
+                    state: state,
+                    actor: actor,
+                    hasCompatibleActiveConversation: true
+                )
+            )
+            XCTAssertFalse(
+                GameLifecycleActionResolver.isAvailable(
+                    action: action,
+                    state: state,
+                    actor: actor,
+                    hasCompatibleActiveConversation: false
+                )
+            )
+        }
+    }
+
     func testDrawOfferPromptOnlyAppearsBeforeAnyDrawAttempt() throws {
         let state = makeTurnState()
         let proposed = try ULS_CoreGame.apply(

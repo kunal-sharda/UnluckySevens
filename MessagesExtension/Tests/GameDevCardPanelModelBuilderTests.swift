@@ -145,7 +145,7 @@ final class GameDevCardPanelModelBuilderTests: XCTestCase {
         )
 
         XCTAssertEqual(panel.playActions.map(\.kind), [.revealVictoryPoint])
-        XCTAssertEqual(panel.message, "You can still reveal a winning Victory Point card.")
+        XCTAssertEqual(panel.message, "You can declare victory with your winning Victory Point cards.")
     }
 
     func testMonopolyStageRequiresExplicitResourceSelection() throws {

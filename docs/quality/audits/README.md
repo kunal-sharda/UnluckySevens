@@ -4,6 +4,7 @@ This directory stores dated audit evidence. Audits are useful for reconstruction
 
 ## Current Readiness Audits
 
+- [2026-08-28 Color-Blind Accessibility Audit](./2026-08-28-color-blind-accessibility.md): static accessibility findings and the bounded remediation/proof plan for issue #22.
 - [2026-04-27 Pre-TestFlight Repo Cleanup Audit](./2026-04-27-pre-testflight-repo-cleanup-audit.md): current repo cleanup and legacy-support cutoff.
 - [2026-04-26 Pre-TestFlight Basic Feature Audit](./2026-04-26-pre-testflight-basic-feature-audit.md): current basic feature polish audit.
 

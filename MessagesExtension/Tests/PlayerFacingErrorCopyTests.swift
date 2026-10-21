@@ -2,6 +2,15 @@ import XCTest
 @testable import MessagesExtensionSupport
 
 final class PlayerFacingErrorCopyTests: XCTestCase {
+    func testStandardPlayerCountUsesCurrentThreeToFourPlayerContract() {
+        XCTAssertEqual(
+            PlayerFacingErrorCopy.message(
+                for: "Standard games require three or four players before starting."
+            ),
+            "Three or four players are required before the host can start."
+        )
+    }
+
     func testKnownFailuresReceiveSpecificRecoveryCopy() {
         XCTAssertEqual(
             PlayerFacingErrorCopy.message(for: "Invite failed: network unavailable"),

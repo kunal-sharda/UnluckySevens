@@ -54,14 +54,9 @@ enum TradeInteractionResolver {
     ) -> TurnActionDraft? {
         guard
             let state,
-            state.phase == .turn,
-            state.turnState?.step == .afterRoll,
             let offer = state.activeTradeOffer,
             let actingAs,
-            actingAs != state.currentPlayer,
-            offer.recipients.contains(actingAs),
-            !state.tradeResponses.contains(where: { $0.respondingPlayer == actingAs && $0.offerHash == offer.offerHash }),
-            canAfford(hand: state.resourcesByPlayer[actingAs] ?? .zero, cost: offer.receive)
+            TradeAcceptEligibilityResolver.resolve(state: state, actingAs: actingAs) == .eligible
         else {
             return nil
         }
@@ -128,11 +123,4 @@ enum TradeInteractionResolver {
         )
     }
 
-    private static func canAfford(hand: ResourceHandV1, cost: ResourceHandV1) -> Bool {
-        hand.wood >= cost.wood
-            && hand.brick >= cost.brick
-            && hand.sheep >= cost.sheep
-            && hand.wheat >= cost.wheat
-            && hand.ore >= cost.ore
-    }
 }

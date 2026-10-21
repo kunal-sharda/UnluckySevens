@@ -51,7 +51,7 @@ These are the most important UI requirements:
 | Before first invite | One obvious Send Invite action, preferred-name field, read-only game settings, and Tutorial | Sends the initial lobby `STATE`, then dismisses to Messages |
 | Guest opens invite | Current roster, open seats, name field, and Join | Join publishes immediately; no second manual send step |
 | Joined player reopens | Canonical roster and editable local display name | Rename publishes an updated lobby `STATE` |
-| Host reopens lobby | Canonical roster and Start Game when valid | Start locks the roster and publishes the setup state |
+| Host reopens lobby | Canonical roster and Start Game at 3–4 players when no observed join is unresolved | Reconciliation publishes first when needed; Start locks the visible roster and publishes setup |
 | Host views its just-sent message locally | Informational waiting state | Does not become a second start authority |
 
 Additional requirements:
@@ -63,7 +63,10 @@ Additional requirements:
 - Reopening a real lobby bubble shows the normal roster/start surface even when only the host has joined.
 - New games default to the seeded balanced board strategy that avoids adjacent `6` and `8` tokens.
 - Every lobby state exposes explicit Game Settings and Tutorial rows directly. A compact chart control opens the read-only Player Record without crowding the lobby identity bar.
-- The canonical publication chain is one invite `STATE`, joined/renamed lobby `STATE` updates, then one host-published start `STATE`.
+- The canonical publication chain is one invite `STATE`, joined/renamed lobby `STATE` updates, any required host-published reconciliation `STATE`, then one host-published start `STATE`.
+- Concurrent sibling joins are retained as validated local evidence until the original inviter publishes one canonical union. Evidence does not appear in the roster or feed Start directly.
+- Existing canonical players retain their seats. Remaining seats through the four-player limit use deterministic descending claim-state-hash priority; an excluded guest sees `Lobby Full` and cannot join that lobby again.
+- Start requires exactly 3–4 canonical players. It wins over joins the host had not observed when setup was published; setup never rolls back into the lobby.
 
 ### Presentation Direction
 
@@ -246,6 +249,7 @@ Player Trade requirements:
 - The first applied Accept resolves and closes the offer.
 - The offer closes after every targeted player declines.
 - Non-targeted players may inspect the public offer but cannot respond.
+- Accept availability comes from the same Core-owned eligibility query used by execution. If either side can no longer fund the published exchange, Accept is disabled; guidance may identify the local responder's own shortage but must not expose another player's hand or resource counts.
 
 ### Maritime / Bank Flow
 
@@ -377,14 +381,15 @@ Additional requirements:
 - In-progress records explicitly direct the player to open the game’s Messages bubble. Gameplay and lifecycle publication never begin from a ledger snapshot.
 - The device keeps active observations and the eight most recently updated Finished games.
 - Selecting an older bubble resolves to the latest known revision for that game and communicates that redirection.
-- Equal-revision valid siblings resolve to the lexicographically greatest state hash so selection is order-independent.
+- Valid siblings normally resolve by revision then lexicographically greatest state hash. After a client observes both direct same-parent, same-offer trade Accept siblings, it retains local Core-validated contention evidence and resolves to the deterministic responder branch; that winning lineage stays preferred over later losing descendants independently of observation order. Unrelated Accept-looking audit lineages never receive this override.
 - Missing, malformed, unsupported, integrity-failed, and corrupt local states fail closed.
 
 ### Resignation and terminal states
 
-- Ordinary victory ends at 10 or more canonical VP and rejects later gameplay actions.
+- Ordinary victory ends immediately at 10 or more total VP on the player’s own turn, including all hidden VP cards and newly purchased VP cards. Only the winner’s cards are revealed; later gameplay actions are rejected. An existing winning game offers Declare Victory in Game Information, including before rolling or during a forced step.
 - A local victory leads with `Victory!` and the concise winning score (`10 points` in the standard fixture). The decisive summary says the city, settlement, or Victory Point `secured the victory`; award-winning actions use `Gaining Longest Road` or `Gaining Largest Army` with canonical casing.
 - Any active joined player can resign during setup or turn from the current game's Game Information panel after a centered tabletop confirmation with explicit `Keep Playing` and destructive `Resign` actions, provided at least one active player remains and that exact game has a bound Messages session.
+- Current Game Information keeps its lifecycle menu discoverable when the selected state cannot publish. Instead of hiding the capability, the menu gives private recovery guidance to reopen that game's Messages bubble, explains unidentified-player read-only state, or accurately reports that no lifecycle action is currently legal.
 - Resignation is non-terminal. The player stays in roster/history; their pieces remain inert blockers, their hand returns to the bank, development cards retire, and all active rules skip them. Existing players continue from the next legal setup slot or turn.
 - Any active player can propose a draw. The proposer automatically approves; every remaining active player must approve. Rejection clears the proposal and play continues, with no timeout.
 - The original inviter remains host even after resigning and can end unilaterally. A centered tabletop confirmation leads with `Propose Draw` when no draw has been attempted while retaining destructive `End Game Anyway` and an explicit `Keep Playing` action.
@@ -419,3 +424,17 @@ Material behavior is currently exercised by:
 - the full seventeen-state tutorial replay: navigation veil plus sixteen lessons.
 
 These tests prove current implementation behavior. Remaining beta observations and defects are governed by the [Beta 1.1 milestone](https://github.com/kunal-sharda/UnluckySevens/milestone/1); qualifying cross-cutting work may add a linked ExecPlan.
+
+### Reliability report utility
+
+Settings offers Reliability Report for the currently open game in lobby and gameplay. The view explains bounded local collection and exclusions, previews the exact frozen JSON, and offers explicit system file export. Closing/canceling sends nothing. Clear Local Reports requires confirmation and clears diagnostic history for all local games without altering canonical state or exported files; unavailable storage/deletion is disclosed. No report is available without an open game. No automatic upload or account is required. See [report scope and operator procedure](../quality/reliability-reports.md).
+
+### Retrying a game update
+
+Settings (including lobby, setup and game over) and Game Information offer Resend Game Update when a validated game and its bound Messages session are available in the compatible conversation. This republishes the same latest known state; it does not repeat a move. A failed local send leaves canonical gameplay unchanged so the original action can be retried. A successful local handoff is not a delivery receipt from the other phone.
+
+An open trade/counter draft resets when its canonical state or visible hand changes. Selected draft quantities are local choices, never actual holdings; replacement offers require a fresh counter draft.
+
+### Fresh-device lobby entry
+
+A player may open the latest lobby bubble on a device with no local history and see its canonically validated roster, then join through the normal control. They do not need to locate replaced older Messages bubbles. With existing lobby history, concurrent-join unions still require matching parent/claim evidence; receipts arriving ahead of that evidence wait locally and are retried when it arrives. This does not authenticate a sender or recover identity after a device change.

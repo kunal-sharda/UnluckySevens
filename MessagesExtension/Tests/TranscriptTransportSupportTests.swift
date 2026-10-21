@@ -76,36 +76,6 @@ final class TranscriptTransportSupportTests: XCTestCase {
         XCTAssertNil(TranscriptTransportSupport.decodePayload(from: URL(string: "https://ksharda.me/unluckysevens/msg")))
     }
 
-    func testPreferredStateSessionUsesSelectedBubbleSessionForMatchingGame() {
-        let selectedSession = MSSession()
-        let cachedSession = MSSession()
-        let selectedMessage = MSMessage(session: selectedSession)
-
-        let resolvedSession = TranscriptTransportSupport.preferredStateSession(
-            gameId: "game-1",
-            selectedMessage: selectedMessage,
-            selectedGameId: "game-1",
-            cachedSession: cachedSession
-        )
-
-        XCTAssertEqual(resolvedSession, selectedSession)
-    }
-
-    func testPreferredStateSessionFallsBackToCachedSessionWhenSelectedGameDoesNotMatch() {
-        let selectedSession = MSSession()
-        let cachedSession = MSSession()
-        let selectedMessage = MSMessage(session: selectedSession)
-
-        let resolvedSession = TranscriptTransportSupport.preferredStateSession(
-            gameId: "game-1",
-            selectedMessage: selectedMessage,
-            selectedGameId: "game-2",
-            cachedSession: cachedSession
-        )
-
-        XCTAssertEqual(resolvedSession, cachedSession)
-    }
-
     func testSelectionSnapshotReportsURLDecodeSource() throws {
         let message = MSMessage(session: MSSession())
         message.url = URL(string: "https://ksharda.me/unluckysevens/msg?payload=state-payload")
@@ -115,6 +85,38 @@ final class TranscriptTransportSupportTests: XCTestCase {
         XCTAssertEqual(snapshot.messagePresence, "present")
         XCTAssertEqual(snapshot.payloadQueryPresence, "present")
         XCTAssertEqual(snapshot.payloadLength, "13")
+        XCTAssertEqual(snapshot.sessionPresence, "present")
         XCTAssertEqual(snapshot.decodeSource, TranscriptPayloadSource.url.label)
+    }
+
+    func testSelectionSnapshotReportsEveryMissingHostBoundaryField() {
+        let snapshot = TranscriptTransportSupport.selectionSnapshot(for: nil)
+
+        XCTAssertEqual(snapshot.messagePresence, "missing")
+        XCTAssertEqual(snapshot.urlPresence, "missing")
+        XCTAssertEqual(snapshot.urlString, "-")
+        XCTAssertEqual(snapshot.payloadQueryPresence, "missing")
+        XCTAssertEqual(snapshot.payloadLength, "-")
+        XCTAssertEqual(snapshot.summaryText, "-")
+        XCTAssertEqual(snapshot.layoutCaption, "-")
+        XCTAssertEqual(snapshot.sessionPresence, "missing")
+        XCTAssertEqual(snapshot.decodeSource, "-")
+    }
+
+    func testHostBoundaryDiagnosticCapturesLifecycleSessionPayloadAndIdentity() {
+        let message = MSMessage(session: MSSession())
+        message.url = URL(string: "https://ksharda.me/unluckysevens/msg?payload=state-payload")
+
+        let diagnostic = TranscriptTransportSupport.hostBoundaryDiagnostic(
+            trigger: .didSelect,
+            message: message,
+            localParticipantIdentifier: "participant-a"
+        )
+
+        XCTAssertEqual(
+            diagnostic,
+            "trigger=didSelect;participant=known;message=present;url=present;payload=present;payloadLength=13;session=present;source=URL"
+        )
+        XCTAssertFalse(diagnostic.contains("participant-a"))
     }
 }

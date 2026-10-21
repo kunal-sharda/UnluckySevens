@@ -3,7 +3,7 @@ import ULS_CoreGame
 @_spi(CompactState) import ULS_Transport
 
 struct TranscriptGameLedgerEntry: Codable, Equatable {
-    static let currentSchemaVersion = 3
+    static let currentSchemaVersion = 5
 
     let schemaVersion: Int
     let gameId: String
@@ -13,6 +13,8 @@ struct TranscriptGameLedgerEntry: Codable, Equatable {
     var latestStateHash: String?
     var localActor: String?
     var observedJoiners: [String]
+    var lobbyStateDataByHash: [String: Data]
+    var convergenceContext: CanonicalStateConvergenceContextV1
     var updatedAt: TimeInterval
 
     init(
@@ -24,6 +26,8 @@ struct TranscriptGameLedgerEntry: Codable, Equatable {
         latestStateHash: String? = nil,
         localActor: String? = nil,
         observedJoiners: [String] = [],
+        lobbyStateDataByHash: [String: Data] = [:],
+        convergenceContext: CanonicalStateConvergenceContextV1 = .init(),
         updatedAt: TimeInterval = Date.now.timeIntervalSince1970
     ) {
         self.schemaVersion = schemaVersion
@@ -34,6 +38,8 @@ struct TranscriptGameLedgerEntry: Codable, Equatable {
         self.latestStateHash = latestStateHash
         self.localActor = localActor
         self.observedJoiners = observedJoiners
+        self.lobbyStateDataByHash = lobbyStateDataByHash
+        self.convergenceContext = convergenceContext
         self.updatedAt = updatedAt
     }
 
@@ -46,6 +52,8 @@ struct TranscriptGameLedgerEntry: Codable, Equatable {
         case latestStateHash
         case localActor
         case observedJoiners
+        case lobbyStateDataByHash
+        case convergenceContext
         case updatedAt
     }
 
@@ -59,12 +67,21 @@ struct TranscriptGameLedgerEntry: Codable, Equatable {
         latestStateHash = try values.decodeIfPresent(String.self, forKey: .latestStateHash)
         localActor = try values.decodeIfPresent(String.self, forKey: .localActor)
         observedJoiners = try values.decodeIfPresent([String].self, forKey: .observedJoiners) ?? []
+        lobbyStateDataByHash = try values.decodeIfPresent(
+            [String: Data].self,
+            forKey: .lobbyStateDataByHash
+        ) ?? [:]
+        convergenceContext = try values.decodeIfPresent(
+            CanonicalStateConvergenceContextV1.self,
+            forKey: .convergenceContext
+        ) ?? .init()
         updatedAt = try values.decodeIfPresent(TimeInterval.self, forKey: .updatedAt) ?? 0
     }
 }
 
 struct TranscriptGameLedgerSnapshot {
     let latestKnownStatesByGameId: [String: CoreGameStateV1]
+    let convergenceContextsByGameId: [String: CanonicalStateConvergenceContextV1]
     let lastActiveGameId: String?
 }
 
@@ -85,6 +102,7 @@ struct TranscriptGameLedgerStore {
     private let indexKey = "uls.gameLedger.index"
     private let lastActiveGameIdKey = "uls.gameLedger.lastActiveGameId"
     private let finishedGameRetentionLimit = 8
+    private let lobbyEvidenceRetentionLimit = 64
 
     init(userDefaults: UserDefaults) {
         self.userDefaults = userDefaults
@@ -94,16 +112,19 @@ struct TranscriptGameLedgerStore {
         repairIndexAndPruneFinishedGames()
         let gameIds = indexedGameIds()
         var latestKnownStatesByGameId: [String: CoreGameStateV1] = [:]
+        var convergenceContextsByGameId: [String: CanonicalStateConvergenceContextV1] = [:]
 
         for gameId in gameIds {
             if let state = latestState(for: gameId) {
                 latestKnownStatesByGameId[gameId] = state
+                convergenceContextsByGameId[gameId] = entry(for: gameId)?.convergenceContext ?? .init()
             }
         }
 
         let activeGameId = lastActiveGameId()
         return TranscriptGameLedgerSnapshot(
             latestKnownStatesByGameId: latestKnownStatesByGameId,
+            convergenceContextsByGameId: convergenceContextsByGameId,
             lastActiveGameId: activeGameId.flatMap {
                 latestKnownStatesByGameId[$0] == nil ? nil : $0
             }
@@ -183,35 +204,74 @@ struct TranscriptGameLedgerStore {
         entry(for: gameId)?.observedJoiners ?? []
     }
 
+    func lobbyStates(for gameId: String) -> [CoreGameStateV1] {
+        guard let entry = entry(for: gameId) else {
+            return []
+        }
+        return entry.lobbyStateDataByHash.values
+            .compactMap { try? JSONDecoder().decode(CoreGameStateV1.self, from: $0) }
+            .filter { state in
+                state.gameId == gameId
+                    && state.phase == .lobby
+                    && (try? validateCanonicalSnapshot(state)) != nil
+            }
+            .sorted { lhs, rhs in
+                if lhs.rev != rhs.rev {
+                    return lhs.rev < rhs.rev
+                }
+                return lhs.stateHash < rhs.stateHash
+            }
+    }
+
     func record(state: CoreGameStateV1, payload _: String, localActor: String? = nil) {
         guard (try? validateCanonicalSnapshot(state)) != nil else {
             return
         }
 
-        if let existingState = latestState(for: state.gameId) {
-            guard shouldReplace(existingState, with: state) else {
-                if
-                    let localActor,
-                    existingState.roster.contains(localActor),
-                    var existingEntry = entry(for: state.gameId),
-                    existingEntry.localActor != localActor
-                {
-                    existingEntry.localActor = localActor
-                    save(existingEntry)
-                }
-                return
-            }
+        let existingState = latestState(for: state.gameId)
+        // Start is a causal close barrier. Once any canonical non-lobby state
+        // is persisted, no later lobby snapshot may replace it or recreate
+        // reconciliation evidence, regardless of revision or hash ordering.
+        if let existingState, existingState.phase != .lobby, state.phase == .lobby {
+            return
         }
         var updatedEntry = entry(for: state.gameId) ?? TranscriptGameLedgerEntry(gameId: state.gameId)
-
-        updatedEntry = migratedEntry(updatedEntry, state: state)
+        var convergenceContext = updatedEntry.convergenceContext
+        if let existingState {
+            convergenceContext.observe(existingState)
+        }
+        convergenceContext.observe(state)
+        updatedEntry.convergenceContext = convergenceContext
+        if
+            state.phase == .lobby,
+            existingState?.phase == .lobby || existingState == nil,
+            let data = try? JSONEncoder().encode(state)
+        {
+            updatedEntry.lobbyStateDataByHash[state.stateHash] = data
+            updatedEntry.lobbyStateDataByHash = boundedLobbyEvidence(
+                updatedEntry.lobbyStateDataByHash
+            )
+            updatedEntry.observedJoiners = orderedUnion(
+                updatedEntry.observedJoiners,
+                state.roster.dropFirst()
+            )
+        } else if state.phase != .lobby {
+            updatedEntry.lobbyStateDataByHash = [:]
+            updatedEntry.observedJoiners = []
+        }
         if let localActor, state.roster.contains(localActor) {
             updatedEntry.localActor = localActor
         }
-        updatedEntry.observedJoiners = orderedUnion(
-            updatedEntry.observedJoiners,
-            state.roster.dropFirst()
-        )
+
+        if let existingState {
+            guard shouldReplace(existingState, with: state, context: convergenceContext) else {
+                updatedEntry.updatedAt = Date.now.timeIntervalSince1970
+                save(updatedEntry)
+                return
+            }
+        }
+
+        updatedEntry = migratedEntry(updatedEntry, state: state)
         updatedEntry.updatedAt = Date.now.timeIntervalSince1970
         save(updatedEntry)
         pruneFinishedGames()
@@ -268,7 +328,12 @@ struct TranscriptGameLedgerStore {
         _ entry: TranscriptGameLedgerEntry,
         state: CoreGameStateV1
     ) -> TranscriptGameLedgerEntry {
-        TranscriptGameLedgerEntry(
+        var lobbyStateDataByHash = entry.lobbyStateDataByHash
+        if state.phase == .lobby, let data = try? JSONEncoder().encode(state) {
+            lobbyStateDataByHash[state.stateHash] = data
+            lobbyStateDataByHash = boundedLobbyEvidence(lobbyStateDataByHash)
+        }
+        return TranscriptGameLedgerEntry(
             gameId: entry.gameId,
             latestStateData: try? JSONEncoder().encode(state),
             latestStateRev: state.rev,
@@ -277,18 +342,42 @@ struct TranscriptGameLedgerStore {
                 state.roster.contains($0) ? $0 : nil
             },
             observedJoiners: entry.observedJoiners,
+            lobbyStateDataByHash: lobbyStateDataByHash,
+            convergenceContext: entry.convergenceContext,
             updatedAt: entry.updatedAt
+        )
+    }
+
+    private func boundedLobbyEvidence(_ evidence: [String: Data]) -> [String: Data] {
+        guard evidence.count > lobbyEvidenceRetentionLimit else {
+            return evidence
+        }
+        let ordered = evidence.compactMap { hash, data -> (String, Data, CoreGameStateV1)? in
+            guard let state = try? JSONDecoder().decode(CoreGameStateV1.self, from: data) else {
+                return nil
+            }
+            return (hash, data, state)
+        }
+        .sorted { lhs, rhs in
+            if (lhs.2.rev == 0) != (rhs.2.rev == 0) {
+                return lhs.2.rev == 0
+            }
+            if lhs.2.rev != rhs.2.rev {
+                return lhs.2.rev > rhs.2.rev
+            }
+            return lhs.0 > rhs.0
+        }
+        return Dictionary(
+            uniqueKeysWithValues: ordered.prefix(lobbyEvidenceRetentionLimit).map { ($0.0, $0.1) }
         )
     }
 
     private func shouldReplace(
         _ existingState: CoreGameStateV1,
-        with state: CoreGameStateV1
+        with state: CoreGameStateV1,
+        context: CanonicalStateConvergenceContextV1
     ) -> Bool {
-        if state.rev != existingState.rev {
-            return state.rev > existingState.rev
-        }
-        return state.stateHash > existingState.stateHash
+        CanonicalStatePreferenceV1.prefers(state, over: existingState, context: context)
     }
 
     private func entry(for gameId: String) -> TranscriptGameLedgerEntry? {

@@ -133,6 +133,31 @@ final class LobbyScreenModelBuilderTests: XCTestCase {
         XCTAssertNil(model.startButton)
     }
 
+    func testBuildForExcludedGuestShowsLobbyFullGuidance() {
+        let state = makeLobbyState(
+            roster: ["host", "alice", "ben", "casey"],
+            currentPlayer: "host",
+            rev: 3
+        )
+
+        let model = LobbyScreenModelBuilder.build(
+            context: LobbyScreenContext(
+                selectedState: state,
+                localActor: "excluded",
+                activeContextSource: "selectedBubble",
+                staleWarning: "-",
+                lastError: "-",
+                canInvite: true,
+                canJoin: false,
+                canStartGame: false
+            )
+        )
+
+        XCTAssertEqual(model.title, "Lobby Full")
+        XCTAssertEqual(model.subtitle, "This table already has four players.")
+        XCTAssertNil(model.joinButton)
+    }
+
     func testBuildForJoinedLobbyShowsNameEditorAndCustomDisplayName() {
         let host = "host-player"
         let guest = "guest-player"

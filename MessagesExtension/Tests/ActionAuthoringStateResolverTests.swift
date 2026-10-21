@@ -61,6 +61,22 @@ final class ActionAuthoringStateResolverTests: XCTestCase {
         XCTAssertFalse(resolution.prefersRecoveredState)
     }
 
+    func testResolveAuthorsFromCanonicalAcceptBranchInsteadOfLaterLosingDescendant() throws {
+        let branches = try makeCompetingTradeAcceptBranches()
+
+        let resolution = ActionAuthoringStateResolver.resolve(
+            gameId: branches.winner.gameId,
+            selectedState: branches.losingDescendant,
+            latestKnownStatesByGameId: [branches.winner.gameId: branches.winner],
+            localLedgerState: branches.losingDescendant,
+            convergenceContext: branches.context
+        )
+
+        XCTAssertEqual(resolution.state, branches.winner)
+        XCTAssertEqual(resolution.source, .latestKnownState)
+        XCTAssertTrue(resolution.prefersRecoveredState)
+    }
+
     func testResolveFallsBackToLocalLedgerState() {
         let localLedgerState = makeTurnState(rev: 3, currentPlayer: "guest-player")
 

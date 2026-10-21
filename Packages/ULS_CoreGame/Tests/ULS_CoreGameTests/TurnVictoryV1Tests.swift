@@ -4,6 +4,32 @@ import XCTest
 final class TurnVictoryV1Tests: XCTestCase {
     private let topology = StandardBoardTopologyV1.standard()
 
+    func testTwoVPPurchasesWinAtTenWithHiddenOrRevealedExistingCard() throws {
+        for existingRevealed in [false, true] {
+            let state = makeState(
+                currentPlayer: "A",
+                devCardsByPlayer: ["A": DevCardInventoryV1(victoryPoint: existingRevealed ? 0 : 1)],
+                revealedVictoryPointsByPlayer: ["A": existingRevealed ? 1 : 0],
+                settlementsByNode: [0: "A", 3: "A", 6: "A", 9: "A", 12: "A"],
+                resourcesByPlayer: ["A": ResourceHandV1(sheep: 2, wheat: 2, ore: 2), "B": .zero],
+                devDeck: [.victoryPoint, .victoryPoint],
+                knightsPlayedByPlayer: ["A": 3], largestArmyOwner: "A", largestArmySize: 3,
+                devCardActionPlayedThisTurn: true
+            )
+            let nine = try apply(intent: .buyDevCard, to: state, actor: "A")
+            XCTAssertEqual(nine.phase, .turn)
+            XCTAssertEqual(nine.revealedVictoryPointsByPlayer["A"], existingRevealed ? 1 : 0)
+            XCTAssertNoThrow(try validateTransition(from: state, to: nine, actor: "A"))
+            let ten = try apply(intent: .buyDevCard, to: nine, actor: "A")
+            XCTAssertEqual(ten.phase, .gameOver)
+            XCTAssertEqual(ten.winnerPlayer, "A")
+            XCTAssertEqual(ten.winningVictoryPoints, 10)
+            XCTAssertEqual(ten.revealedVictoryPointsByPlayer["A"], 3)
+            XCTAssertEqual(ten.gameResult?.finalScoresByPlayer["A"], 10)
+            XCTAssertNoThrow(try validateTransition(from: nine, to: ten, actor: "A"))
+        }
+    }
+
     func testRevealVictoryPointTransitionsToGameOverAtTen() throws {
         let state = makeState(
             currentPlayer: "A",
@@ -38,24 +64,15 @@ final class TurnVictoryV1Tests: XCTestCase {
             citiesByNode: [1: "A", 2: "A", 3: "A", 4: "A"]
         )
 
-        let firstReveal = try apply(intent: .revealVictoryPoint, to: state, actor: "A")
-
-        XCTAssertEqual(firstReveal.phase, .turn)
-        XCTAssertEqual(firstReveal.revealedVictoryPointsByPlayer["A"], 1)
-        XCTAssertEqual(victoryPoints(for: "A", in: firstReveal), 9)
-        XCTAssertEqual(firstReveal.devCardsByPlayer["A"]?.victoryPoint, 0)
-        XCTAssertEqual(firstReveal.newDevCardsByPlayer["A"]?.victoryPoint, 1)
-        XCTAssertEqual(firstReveal.auditLog.last?.action, .revealVictoryPoint)
-
-        let secondReveal = try apply(intent: .revealVictoryPoint, to: firstReveal, actor: "A")
-
-        XCTAssertEqual(secondReveal.phase, .gameOver)
-        XCTAssertEqual(secondReveal.winnerPlayer, "A")
-        XCTAssertEqual(secondReveal.winningVictoryPoints, 10)
-        XCTAssertEqual(secondReveal.revealedVictoryPointsByPlayer["A"], 2)
-        XCTAssertEqual(secondReveal.newDevCardsByPlayer["A"]?.victoryPoint, 0)
-        XCTAssertNil(secondReveal.turnState)
-        XCTAssertNoThrow(try validateTransition(from: firstReveal, to: secondReveal, actor: "A"))
+        let won = try apply(intent: .revealVictoryPoint, to: state, actor: "A")
+        XCTAssertEqual(won.phase, .gameOver)
+        XCTAssertEqual(won.winnerPlayer, "A")
+        XCTAssertEqual(won.winningVictoryPoints, 10)
+        XCTAssertEqual(won.revealedVictoryPointsByPlayer["A"], 2)
+        XCTAssertEqual(won.devCardsByPlayer["A"]?.victoryPoint, 0)
+        XCTAssertEqual(won.newDevCardsByPlayer["A"]?.victoryPoint, 0)
+        XCTAssertEqual(won.auditLog.last?.action, .revealVictoryPoint)
+        XCTAssertNoThrow(try validateTransition(from: state, to: won, actor: "A"))
     }
 
     func testRevealVictoryPointStillRequiresHiddenTotalToReachWinningThreshold() throws {
@@ -86,11 +103,76 @@ final class TurnVictoryV1Tests: XCTestCase {
 
         let ended = try apply(intent: .endTurn, to: state, actor: "A")
 
-        XCTAssertEqual(ended.phase, .turn)
+        XCTAssertEqual(ended.phase, .gameOver)
         XCTAssertEqual(ended.currentPlayer, "B")
-        XCTAssertNil(ended.winnerPlayer)
-        XCTAssertEqual(ended.winningVictoryPoints, 0)
+        XCTAssertEqual(ended.winnerPlayer, "B")
+        XCTAssertEqual(ended.winningVictoryPoints, 10)
         XCTAssertNoThrow(try validateTransition(from: state, to: ended, actor: "A"))
+    }
+
+    func testLegacyWinningSnapshotPublishesVictoryBeforeRollingWithoutChangingInput() throws {
+        let state = makeState(currentPlayer: "A", turnState: .init(step: .needsRoll, lastRoll: nil),
+                              devCardsByPlayer: ["A": .init(victoryPoint: 2), "B": .init(victoryPoint: 1)],
+                              citiesByNode: [1: "A", 2: "A", 3: "A", 4: "A"])
+        let snapshot = state
+        XCTAssertEqual(victoryPoints(for: "A", in: state), 8)
+        let won = try apply(intent: .rollDice, to: state, actor: "A")
+        XCTAssertEqual(state, snapshot)
+        XCTAssertEqual(won.phase, .gameOver)
+        XCTAssertEqual(won.diceRngState, state.diceRngState)
+        XCTAssertEqual(won.resourcesByPlayer, state.resourcesByPlayer)
+        XCTAssertEqual(won.devCardsByPlayer["B"], state.devCardsByPlayer["B"])
+        XCTAssertEqual(won.revealedVictoryPointsByPlayer["B"], state.revealedVictoryPointsByPlayer["B"])
+        XCTAssertEqual(won.gameResult?.finalScoresByPlayer["B"], 0)
+        XCTAssertNoThrow(try validateTransition(from: state, to: won, actor: "A"))
+    }
+
+    func testKnightAwardWinsBeforeRollAndRevealsHiddenVP() throws {
+        let state = makeState(currentPlayer: "A", turnState: .init(step: .needsRoll, lastRoll: nil),
+                              devCardsByPlayer: ["A": .init(knight: 1, victoryPoint: 1)],
+                              settlementsByNode: [0: "A"], citiesByNode: [1: "A", 2: "A", 3: "A"],
+                              knightsPlayedByPlayer: ["A": 2])
+        let won = try apply(intent: .playKnight(tileID: 0, victimPlayer: nil), to: state, actor: "A")
+        XCTAssertEqual(won.phase, .gameOver)
+        XCTAssertEqual(won.largestArmyOwner, "A")
+        XCTAssertEqual(won.winningVictoryPoints, 10)
+        XCTAssertTrue(won.devCardActionPlayedThisTurn)
+        XCTAssertNoThrow(try validateTransition(from: state, to: won, actor: "A"))
+    }
+
+    func testResignationHandoffRecognizesNextPlayersWinningTotal() throws {
+        let state = makeState(currentPlayer: "A", devCardsByPlayer: ["B": .init(victoryPoint: 2)],
+                              citiesByNode: [1: "B", 2: "B", 3: "B", 4: "B"])
+        let won = try apply(intent: GameLifecycleIntentV1.resign(anchoredTo: state), to: state, actor: "A")
+        XCTAssertEqual(won.phase, .gameOver)
+        XCTAssertEqual(won.winnerPlayer, "B")
+        XCTAssertEqual(won.winningVictoryPoints, 10)
+        XCTAssertNoThrow(try validateTransition(from: state, to: won, actor: "A"))
+    }
+
+    func testLegacyWinCanBeClaimedDuringForcedStepAndWithPublicPointsOnly() throws {
+        let state = makeState(currentPlayer: "A", turnState: .init(step: .needsRobberMove, lastRoll: .init(d1: 3, d2: 4)),
+                              revealedVictoryPointsByPlayer: ["A": 2],
+                              citiesByNode: [1: "A", 2: "A", 3: "A", 4: "A"])
+        XCTAssertTrue(state.canRevealVictoryPoint(for: "A"))
+        XCTAssertFalse(state.canRevealVictoryPoint(for: "B"))
+        let won = try apply(intent: .revealVictoryPoint, to: state, actor: "A")
+        XCTAssertEqual(won.phase, .gameOver)
+        XCTAssertEqual(won.board, state.board)
+        XCTAssertNoThrow(try validateTransition(from: state, to: won, actor: "A"))
+    }
+
+    func testWinningTransitionRejectsRehashedTamperingAndWrongActor() throws {
+        let state = makeState(currentPlayer: "A", devCardsByPlayer: ["A": .init(victoryPoint: 2)],
+                              citiesByNode: [1: "A", 2: "A", 3: "A", 4: "A"])
+        let won = try apply(intent: .revealVictoryPoint, to: state, actor: "A")
+        XCTAssertThrowsError(try validateTransition(from: state, to: won, actor: "B"))
+        for field in ["winningVictoryPoints", "seed", "diceRngState"] {
+            var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(won)) as? [String: Any])
+            object[field] = 999
+            let forged = try JSONDecoder().decode(CoreGameStateV1.self, from: JSONSerialization.data(withJSONObject: object)).rehashed()
+            XCTAssertThrowsError(try validateTransition(from: state, to: forged, actor: "A"), field)
+        }
     }
 
     func testGameplayIntentRejectedAfterGameOverWithNoMutation() {
@@ -122,7 +204,13 @@ final class TurnVictoryV1Tests: XCTestCase {
         settlementsByNode: [NodeID: String] = [:],
         citiesByNode: [NodeID: String] = [:],
         winnerPlayer: String? = nil,
-        winningVictoryPoints: Int = 0
+        winningVictoryPoints: Int = 0,
+        resourcesByPlayer: [String: ResourceHandV1] = ["A": .zero, "B": .zero],
+        devDeck: [DevCardV1] = [],
+        knightsPlayedByPlayer: [String: Int] = [:],
+        largestArmyOwner: String? = nil,
+        largestArmySize: Int = 0,
+        devCardActionPlayedThisTurn: Bool = false
     ) -> CoreGameStateV1 {
         let board = BoardSetupV1(
             resourcesByTile: [.wood] + Array(repeating: .desert, count: 18),
@@ -144,14 +232,16 @@ final class TurnVictoryV1Tests: XCTestCase {
             seed: 11,
             diceRngState: 22,
             robberRngState: 33,
-            resourcesByPlayer: [
-                "A": .zero,
-                "B": .zero,
-            ],
+            resourcesByPlayer: resourcesByPlayer,
             bankResources: .standardBank,
+            devDeck: devDeck,
             devCardsByPlayer: devCardsByPlayer,
             newDevCardsByPlayer: newDevCardsByPlayer,
             revealedVictoryPointsByPlayer: revealedVictoryPointsByPlayer,
+            devCardActionPlayedThisTurn: devCardActionPlayedThisTurn,
+            knightsPlayedByPlayer: knightsPlayedByPlayer,
+            largestArmyOwner: largestArmyOwner,
+            largestArmySize: largestArmySize,
             winnerPlayer: winnerPlayer,
             winningVictoryPoints: winningVictoryPoints,
             settlementsByNode: settlementsByNode,

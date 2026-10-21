@@ -3,6 +3,7 @@ import SwiftUI
 struct AppSettingsView: View {
     private enum Destination: Hashable {
         case rules
+        case reliability
     }
 
     @State private var path: [Destination] = []
@@ -10,6 +11,11 @@ struct AppSettingsView: View {
     @Bindable var preferences: AppPreferences
     let summary: GameSettingsSummary
     let onDismiss: () -> Void
+    var loadReliabilityReport: () -> Data? = { nil }
+    var clearReliabilityReports: () -> Bool = { false }
+    var canResendUpdate: Bool = false
+    var onResendUpdate: () -> Void = {}
+    var reliabilityStorageUnavailable: () -> Bool = { false }
 
     var body: some View {
         ZStack {
@@ -25,8 +31,24 @@ struct AppSettingsView: View {
                             skipAnimationsRow
                             divider
                             currentGameSection
+                            if canResendUpdate {
+                                divider
+                                Button("Resend Game Update", systemImage: "arrow.clockwise", action: onResendUpdate)
+                                    .font(GameTheme.headingFont)
+                                    .foregroundStyle(GameTheme.surface)
+                                    .frame(minHeight: 60)
+                                    .accessibilityIdentifier("uls.settings.resendUpdate")
+                            }
                             divider
                             rulesRow
+                            divider
+                            NavigationLink(value: Destination.reliability) {
+                                Label("Reliability Report", systemImage: "doc.text.magnifyingglass")
+                                    .font(GameTheme.headingFont)
+                                    .foregroundStyle(GameTheme.surface)
+                                    .frame(minHeight: 60)
+                            }
+                            .accessibilityIdentifier("uls.settings.reliability")
                             divider
                             privacyPolicyRow
                         }
@@ -37,6 +59,12 @@ struct AppSettingsView: View {
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: Destination.self) { destination in
                     switch destination {
+                    case .reliability:
+                        ReliabilityReportView(
+                            load: loadReliabilityReport,
+                            clear: clearReliabilityReports,
+                            storageUnavailable: reliabilityStorageUnavailable
+                        )
                     case .rules:
                         GameRulesReferenceView {
                             showsStrategy = true

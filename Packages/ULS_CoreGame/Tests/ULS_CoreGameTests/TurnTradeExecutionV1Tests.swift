@@ -47,6 +47,27 @@ final class TurnTradeExecutionV1Tests: XCTestCase {
         }
     }
 
+    func testAcceptTradeRejectsWhenProposerNoLongerFundsPublishedOffer() {
+        let state = makeStateWithOffer(
+            proposerHand: .zero,
+            acceptorHand: ResourceHandV1(brick: 1),
+            offerGive: ResourceHandV1(wood: 1),
+            offerReceive: ResourceHandV1(brick: 1)
+        )
+        let offerHash = state.activeTradeOffer?.offerHash ?? "missing"
+
+        XCTAssertEqual(state.tradeAcceptEligibility(for: "B"), .offerNoLongerFunded)
+        XCTAssertThrowsError(
+            try apply(
+                intent: .acceptTrade(acceptingPlayer: "B", offerHash: offerHash),
+                to: state,
+                actor: "B"
+            )
+        ) { error in
+            XCTAssertEqual(error as? CoreGameError, .tradeExecutionInsufficientResources)
+        }
+    }
+
     func testAcceptTradeRejectsWhenOfferExpired() {
         let state = CoreGameStateV1(
             gameId: "game-trade-exec-expired",

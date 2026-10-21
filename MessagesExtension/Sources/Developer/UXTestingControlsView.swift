@@ -61,6 +61,22 @@ struct UXTestingControlsView: View {
                     )
                 }
                 .accessibilityIdentifier("uls.uxLab.cleanShot.lobbyReady")
+
+                Button("Turn Guest", systemImage: "person.fill") {
+                    activateCleanFixture(
+                        id: UXTestFixtures.defaultFixtureID,
+                        actingAs: UXTestFixtures.alice
+                    )
+                }
+                .accessibilityIdentifier("uls.uxLab.cleanShot.lifecycleTurnGuest")
+
+                Button("Draw Vote Guest", systemImage: "hand.thumbsup.fill") {
+                    activateCleanFixture(
+                        id: UXTestFixtures.drawVoteID,
+                        actingAs: UXTestFixtures.alice
+                    )
+                }
+                .accessibilityIdentifier("uls.uxLab.cleanShot.lifecycleDrawVoteGuest")
             }
             .accessibilityIdentifier("uls.uxLab.lobbyStates")
 

@@ -4,6 +4,8 @@ Unlucky Sevens is an iMessage-first implementation of standard Catan for 3-4 pla
 
 ## Current Status
 
+Release ordering and current scope: [streaming patches toward public release](docs/exec-plans/active/marketable-release-plan.md).
+
 - Build `1.0 (8)` completed Beta App Review and launched as the first external TestFlight beta.
 - Confirmed follow-up is tracked in the [Beta 1.1 milestone](https://github.com/kunal-sharda/UnluckySevens/milestone/1); discrete feedback belongs in GitHub Issues.
 - The engine and transport packages are covered by Swift package tests; Messages extension validation uses the command-line Xcode and device lanes in [QA](docs/quality/qa.md).
@@ -57,6 +59,8 @@ That flow regenerates the workspace, builds the standalone iMessage app bundle, 
 
 If device signing is not configured in Xcode, fill in your local team ID in the untracked file `Config/LocalSigning.xcconfig` first.
 
+Use `make test-quick FEATURE=smoke` for existing simulator tests. The [physical-device driver and manual evidence instructions](docs/quality/device-runbooks.md#executable-route-commands) distinguish hardware work from simulator coverage; development-device probe/invite and remote-human join/host-reopen hardware proof are recorded; cross-device canonical agreement and fully automated multiplayer verification remain pending under #49.
+
 ## Test Commands
 
 ```bash
@@ -101,3 +105,5 @@ For simulator smoke steps and manual QA, use [docs/quality/qa.md](docs/quality/q
 - [docs/exec-plans/roadmap.md](docs/exec-plans/roadmap.md): future sequencing
 - [docs/exec-plans/CHANGELOG.md](docs/exec-plans/CHANGELOG.md): compact phase history
 - [docs/exec-plans/tech-debt-tracker.md](docs/exec-plans/tech-debt-tracker.md): durable follow-up debt
+
+For home testing, run `make test-home` (read-only configured iPad/app preflight), then follow the [physical driver steps](docs/quality/device-runbooks.md#start-at-home). The [shared Beta 1.1 testing plan](docs/exec-plans/active/testing-streams-implementation.md) coordinates home automation, human phone checkpoints and candidate distribution. [Diagnostic TestFlight gates](docs/quality/qa.md#diagnostic-testflight-candidate-versus-milestone-release) are distinct from final milestone acceptance.

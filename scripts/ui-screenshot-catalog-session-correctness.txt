@@ -1,0 +1,4 @@
+testCurrentGameLifecycleActionsAreDiscoverableForHostDuringSetup|setup-placement|host
+testCurrentGameLifecycleActionsAreDiscoverableForNonHostDuringTurn|turn-after-roll|alice
+testCurrentGameLifecycleDrawVoteRemainsInCurrentGame|draw-vote|alice
+testCurrentGameHostEndRemainsInCurrentGame|turn-after-roll|host

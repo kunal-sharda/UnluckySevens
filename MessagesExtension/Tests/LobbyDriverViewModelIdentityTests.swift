@@ -37,12 +37,16 @@ final class LobbyDriverViewModelIdentityTests: XCTestCase {
             rev: 2,
             prevHash: "hash-1",
             stateHash: "",
-            roster: ["host-player", "guest-player"],
+            roster: ["host-player", "guest-player", "third-player"],
             currentPlayer: "host-player",
             phase: .lobby,
             seed: nil,
             diceRngState: nil,
-            resourcesByPlayer: ["host-player": .zero, "guest-player": .zero],
+            resourcesByPlayer: [
+                "host-player": .zero,
+                "guest-player": .zero,
+                "third-player": .zero,
+            ],
             boardRules: nil,
             board: nil
         ).rehashed()

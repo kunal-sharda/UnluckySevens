@@ -36,7 +36,7 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
         )
         let state = makeState(
             currentPlayer: "A",
-            resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(brick: 1)],
+            resourcesByPlayer: ["A": ResourceHandV1(wood: 1), "B": ResourceHandV1(brick: 1)],
             activeTradeOffer: offer
         )
 
@@ -132,7 +132,7 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
         )
         let state = makeState(
             currentPlayer: "A",
-            resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(brick: 1)],
+            resourcesByPlayer: ["A": ResourceHandV1(wood: 1), "B": ResourceHandV1(brick: 1)],
             activeTradeOffer: offer
         )
 
@@ -149,11 +149,106 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
         XCTAssertEqual(panel.message, "You don't have the cards to accept. Decline or counter instead.")
     }
 
+    func testBuildActiveOfferWhenProposerNoLongerFundsGiveDisablesAcceptWithGenericGuidance() throws {
+        let offer = TradeOfferV1(
+            offerHash: "offer-1",
+            proposer: "A",
+            give: ResourceHandV1(wood: 1),
+            receive: ResourceHandV1(brick: 1),
+            recipients: ["B"],
+            createdRev: 8
+        )
+        let state = makeState(
+            currentPlayer: "A",
+            resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(brick: 1)],
+            activeTradeOffer: offer
+        )
+
+        let panel = try XCTUnwrap(
+            GameTradePanelModelBuilder.build(state: state, actingAs: "B")
+        )
+
+        XCTAssertEqual(panel.responderActions?.canAccept, false)
+        XCTAssertEqual(panel.responderActions?.canDecline, true)
+        XCTAssertEqual(panel.responderActions?.canCounter, true)
+        XCTAssertEqual(panel.message, "This offer is no longer available to accept. Decline or counter instead.")
+        XCTAssertNil(
+            TradeInteractionResolver.draftAcceptTradeIntent(state: state, actingAs: "B")
+        )
+    }
+
+    func testPanelAcceptAvailabilityAgreesWithEligibilityAcrossAllReasons() {
+        let offer = TradeOfferV1(
+            offerHash: "offer-1",
+            proposer: "A",
+            give: ResourceHandV1(wood: 1),
+            receive: ResourceHandV1(brick: 1),
+            recipients: ["B"],
+            createdRev: 8
+        )
+        let eligible = makeState(
+            currentPlayer: "A",
+            resourcesByPlayer: ["A": ResourceHandV1(wood: 1), "B": ResourceHandV1(brick: 1), "C": .zero],
+            activeTradeOffer: offer
+        )
+        let alreadyResponded = makeState(
+            currentPlayer: "A",
+            resourcesByPlayer: ["A": ResourceHandV1(wood: 1), "B": ResourceHandV1(brick: 1)],
+            activeTradeOffer: offer,
+            tradeResponses: [
+                TradeResponseV1(
+                    respondingPlayer: "B",
+                    offerHash: offer.offerHash,
+                    kind: .decline,
+                    respondedAtRev: 9
+                )
+            ]
+        )
+        let cases: [(CoreGameStateV1?, String?)] = [
+            (nil, "B"),
+            (eligible, nil),
+            (makeState(
+                currentPlayer: "A",
+                resourcesByPlayer: ["A": ResourceHandV1(wood: 1), "B": ResourceHandV1(brick: 1)],
+                activeTradeOffer: offer,
+                turnStep: .needsRoll
+            ), "B"),
+            (makeState(
+                currentPlayer: "A",
+                resourcesByPlayer: ["A": ResourceHandV1(wood: 1), "B": ResourceHandV1(brick: 1)]
+            ), "B"),
+            (eligible, "A"),
+            (eligible, "C"),
+            (alreadyResponded, "B"),
+            (makeState(
+                currentPlayer: "A",
+                resourcesByPlayer: ["A": .zero, "B": ResourceHandV1(brick: 1)],
+                activeTradeOffer: offer
+            ), "B"),
+            (makeState(
+                currentPlayer: "A",
+                resourcesByPlayer: ["A": ResourceHandV1(wood: 1), "B": .zero],
+                activeTradeOffer: offer
+            ), "B"),
+            (eligible, "B"),
+        ]
+
+        for (state, actor) in cases {
+            let reason = TradeAcceptEligibilityResolver.resolve(state: state, actingAs: actor)
+            let panel = GameTradePanelModelBuilder.build(state: state, actingAs: actor)
+            XCTAssertEqual(
+                panel?.responderActions?.canAccept == true,
+                reason == .eligible
+            )
+        }
+    }
+
     private func makeState(
         currentPlayer: String,
         resourcesByPlayer: [String: ResourceHandV1],
         activeTradeOffer: TradeOfferV1? = nil,
-        tradeResponses: [TradeResponseV1] = []
+        tradeResponses: [TradeResponseV1] = [],
+        turnStep: TurnStepV1 = .afterRoll
     ) -> CoreGameStateV1 {
         CoreGameStateV1(
             gameId: "trade-panel",
@@ -169,7 +264,10 @@ final class GameTradePanelModelBuilderTests: XCTestCase {
             resourcesByPlayer: resourcesByPlayer,
             activeTradeOffer: activeTradeOffer,
             tradeResponses: tradeResponses,
-            turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 4))
+            turnState: TurnStateV1(
+                step: turnStep,
+                lastRoll: turnStep == .needsRoll ? nil : DiceRollV1(d1: 3, d2: 4)
+            )
         ).rehashed()
     }
 }

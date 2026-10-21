@@ -28,7 +28,8 @@ enum ActionAuthoringStateResolver {
         gameId: String?,
         selectedState: CoreGameStateV1?,
         latestKnownStatesByGameId: [String: CoreGameStateV1],
-        localLedgerState: CoreGameStateV1?
+        localLedgerState: CoreGameStateV1?,
+        convergenceContext: CanonicalStateConvergenceContextV1 = .init()
     ) -> ActionAuthoringStateResolution {
         let resolvedGameId = gameId ?? selectedState?.gameId ?? localLedgerState?.gameId
         guard let resolvedGameId else {
@@ -62,11 +63,19 @@ enum ActionAuthoringStateResolver {
         }
 
         let preferred = candidates.max { lhs, rhs in
-            if lhs.state.rev != rhs.state.rev {
-                return lhs.state.rev < rhs.state.rev
+            if CanonicalStatePreferenceV1.prefers(
+                lhs.state,
+                over: rhs.state,
+                context: convergenceContext
+            ) {
+                return false
             }
-            if lhs.state.stateHash != rhs.state.stateHash {
-                return lhs.state.stateHash < rhs.state.stateHash
+            if CanonicalStatePreferenceV1.prefers(
+                rhs.state,
+                over: lhs.state,
+                context: convergenceContext
+            ) {
+                return true
             }
             return lhs.source.priority < rhs.source.priority
         }

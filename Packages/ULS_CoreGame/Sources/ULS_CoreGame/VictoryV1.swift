@@ -16,3 +16,10 @@ public func victoryPointsByPlayer(in state: CoreGameStateV1) -> [String: Int] {
     }
     return result
 }
+
+/// Private rules evaluation only; public standings continue using victoryPoints.
+func victoryTotalIncludingHiddenCards(for player: String, in state: CoreGameStateV1) -> Int {
+    victoryPoints(for: player, in: state)
+        + (state.devCardsByPlayer[player]?.victoryPoint ?? 0)
+        + (state.newDevCardsByPlayer[player]?.victoryPoint ?? 0)
+}

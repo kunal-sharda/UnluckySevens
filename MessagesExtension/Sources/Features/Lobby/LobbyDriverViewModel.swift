@@ -20,6 +20,9 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published private var compactFreshLaunchState = CompactFreshLaunchState()
     @Published var lobbyDisplayNameDraft: String = ""
     @Published private(set) var isSendingInvite = false
+    @Published private(set) var isReconcilingLobby = false
+    @Published private(set) var isSendingGameUpdate = false
+    private var statePublicationTransaction = StatePublicationTransaction()
 
     private let boardStrategyKey = "uls.boardStrategy"
     private let userDefaults: UserDefaults
@@ -27,6 +30,7 @@ final class LobbyDriverViewModel: ObservableObject {
     private let lobbyDisplayNamePreferenceStore: LobbyDisplayNamePreferenceStore
     private let allowsLocalLedgerStateRecovery = true
     private let tutorialActorID: String?
+    private var reliabilityDiagnostics: ReliabilityDiagnostics?
 
     private weak var activeConversation: MSConversation?
     private var invitePublicationHostContext = InvitePublicationHostContext()
@@ -36,6 +40,7 @@ final class LobbyDriverViewModel: ObservableObject {
     private var selectedState: CoreGameStateV1?
     private var selectionStatus: String = "No message selected"
     private var latestKnownStatesByGameId: [String: CoreGameStateV1] = [:]
+    private var convergenceContextsByGameId: [String: CanonicalStateConvergenceContextV1] = [:]
     private var activeSource: ActiveContextSource?
     private var stateSessionsByGameId: [String: MSSession] = [:]
     private var invitePublicationTransaction = InvitePublicationTransaction()
@@ -47,6 +52,9 @@ final class LobbyDriverViewModel: ObservableObject {
     private var cachedDevCardPanelModelValue: GameDevCardPanelModel??
     private var cachedBankTrayModelKey: BankTrayModelCacheKey?
     private var cachedBankTrayModelValue: GameBankTrayModel?
+    private var lobbyReconciliationPublication = LobbyReconciliationPublicationTransaction()
+    private var pendingLobbyReceipts: [PendingLobbyReceipt] = []
+    private var isDrainingLobbyReceipts = false
 
     var compactFreshLaunchToken: Int? {
         compactFreshLaunchState.visibleToken
@@ -64,6 +72,8 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published private(set) var uxTestingInitialGameRoute: GameShellRoute = .none
     @Published private(set) var uxTestingForcesCityTargets: Bool = false
     @Published private(set) var uxTestingLastRawError: String = "-"
+    var localParticipantForTesting: String?
+    var stateHandoffForTesting: ((@escaping (Result<Void, Error>) -> Void) -> Void)?
     private var uxTestingAutoplayIsRunning = false
     private static let uxTestingChromeHiddenKey = "uls.debug.uxTestingChromeHidden"
     #endif
@@ -71,9 +81,11 @@ final class LobbyDriverViewModel: ObservableObject {
     init(
         userDefaults: UserDefaults = .standard,
         tutorialState: CoreGameStateV1? = nil,
-        tutorialActorID: String? = nil
+        tutorialActorID: String? = nil,
+        reliabilityDiagnostics: ReliabilityDiagnostics? = nil
     ) {
         self.userDefaults = userDefaults
+        self.reliabilityDiagnostics = reliabilityDiagnostics
         self.tutorialActorID = tutorialActorID
         #if DEBUG
         uxTestingChromeHiddenForScreenshot = userDefaults.bool(
@@ -91,12 +103,22 @@ final class LobbyDriverViewModel: ObservableObject {
         lobbyDisplayNameDraft = lobbyDisplayNamePreferenceStore.load() ?? ""
         let ledgerSnapshot = gameLedgerStore.bootstrapSnapshot()
         latestKnownStatesByGameId = ledgerSnapshot.latestKnownStatesByGameId
+        convergenceContextsByGameId = ledgerSnapshot.convergenceContextsByGameId
         refreshRecoveredGames()
 
         if let tutorialState {
             selectedState = tutorialState
             activeSource = .tutorial
             render(state: tutorialState, source: .local)
+        } else {
+            #if DEBUG
+            if let fixtureID = userDefaults.string(forKey: UXTestFixtures.launchFixtureIDDefaultsKey) {
+                activateCleanUXTestingFixture(
+                    id: fixtureID,
+                    actingAs: userDefaults.string(forKey: UXTestFixtures.launchActorIDDefaultsKey)
+                )
+            }
+            #endif
         }
     }
 
@@ -860,13 +882,23 @@ final class LobbyDriverViewModel: ObservableObject {
         guard
             let state = selectedState,
             state.phase == .turn,
-            state.turnState?.step.allowsDevCardPlay == true,
             let actor = localActorIdentifier(),
             actor == state.currentPlayer
         else {
             return false
         }
         return state.canRevealVictoryPoint(for: actor)
+    }
+
+    func canClaimVictoryInCurrentGame() -> Bool {
+        canPublishVictoryPointRevealState && selectedState.map {
+            hasBoundSession(for: $0.gameId) && isCompatibleWithActiveConversation($0)
+        } == true
+    }
+
+    func claimVictoryInCurrentGame() {
+        guard canClaimVictoryInCurrentGame() else { return }
+        _ = handleDevCardAction(.revealVictoryPoint)
     }
 
     private var canPublishEndTurnState: Bool {
@@ -882,9 +914,23 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     var canStartGame: Bool {
-        LobbyMembershipResolver.canStart(
+        let isBaseEligible = LobbyMembershipResolver.canStart(
             state: selectedState,
             localParticipant: localParticipantIdentifier()
+        )
+        guard let selectedState else {
+            return false
+        }
+        let hasUnresolvedFrontier = LobbyReconciliationPublicationResolver.pendingResolution(
+            state: selectedState,
+            localParticipant: localParticipantIdentifier(),
+            hasBoundSession: hasBoundSession(for: selectedState.gameId),
+            observedStates: gameLedgerStore.lobbyStates(for: selectedState.gameId)
+        ) != nil
+        return LobbyReconciliationStartGate.allowsStart(
+            isBaseEligible: isBaseEligible,
+            isPublicationInFlight: isReconcilingLobby,
+            hasUnresolvedFrontier: hasUnresolvedFrontier
         )
     }
 
@@ -951,6 +997,7 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     func clearActiveContext() {
+        pendingLobbyReceipts.removeAll()
         selectedState = nil
         activeSource = nil
         activeContextSource = "-"
@@ -974,6 +1021,14 @@ final class LobbyDriverViewModel: ObservableObject {
         if conversationChanged {
             compactFreshLaunchState.endActivation()
         }
+        #if DEBUG
+        // Catalog launch fixtures are installed before the host's first activation.
+        // Preserve only explicitly configured fixtures; ordinary drawer entry still resets.
+        if uxTestingIsActive, userDefaults.string(forKey: UXTestFixtures.launchFixtureIDDefaultsKey) != nil {
+            onRequestExpanded?()
+            return
+        }
+        #endif
         guard compactFreshLaunchState.begin() else { return }
         invalidateInvitePublication()
         prepareNewGame()
@@ -997,6 +1052,11 @@ final class LobbyDriverViewModel: ObservableObject {
         )
         if conversationChanged {
             invalidateInvitePublication()
+            statePublicationTransaction.invalidate()
+            lobbyReconciliationPublication.invalidate()
+            isReconcilingLobby = false
+            pendingLobbyReceipts.removeAll()
+            isSendingGameUpdate = false
         }
         activeConversation = conversation
         return conversationChanged
@@ -1008,7 +1068,7 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     func inviteNewGame() {
-        guard !invitePublicationTransaction.isSending else { return }
+        guard !invitePublicationTransaction.isSending, !isSendingGameUpdate, !isReconcilingLobby else { return }
         guard let actor = localParticipantIdentifier() else {
             setLastError("Missing local participant identifier.")
             return
@@ -1044,7 +1104,7 @@ final class LobbyDriverViewModel: ObservableObject {
                 envelope,
                 bubbleCopy: TranscriptBubbleCopyBuilder.invite(for: state),
                 sessionPolicy: .newState(gameId: state.gameId),
-                sessionOverride: provisionalSession
+                sessionOverride: provisionalSession, diagnosticAction: .invite
             ) { [weak self] result in
                 self?.completeInvitePublication(
                     attempt: attempt,
@@ -1113,6 +1173,14 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     func publishLobbyJoinState() {
+        let diagnosticAnchor = selectedState
+        var preparedAction = false
+        defer {
+            if !preparedAction {
+                recordReliability(state: diagnosticAnchor, boundary: .eligibility, outcome: .rejected, action: .join)
+            }
+        }
+
         guard let state = selectedState else {
             setLastError("Select a lobby STATE first.")
             return
@@ -1138,19 +1206,18 @@ final class LobbyDriverViewModel: ObservableObject {
             return
         }
 
+        preparedAction = true
         do {
             try validateTransition(from: state, to: joinedState, actor: actor)
             let payload = try jsonString(from: joinedState)
             let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
-            try sendEnvelope(
+            try sendStateUpdate(
                 envelope,
                 bubbleCopy: TranscriptBubbleCopyBuilder.lobbyJoin(to: joinedState, joiningPlayer: actor),
-                sessionPolicy: .state(gameId: joinedState.gameId)
+                state: joinedState,
+                successStatus: "Joined lobby", diagnosticAction: .join
             )
             persistPreferredLobbyDisplayNameIfPresent(preferredDisplayName)
-            setActiveContext(joinedState, source: .lastSentState)
-            selectionStatus = "Joined lobby rev\(joinedState.rev)"
-            setLastError(nil)
         } catch {
             setLastError("Join failed: \(error.localizedDescription)")
         }
@@ -1187,7 +1254,7 @@ final class LobbyDriverViewModel: ObservableObject {
             try validateTransition(from: state, to: renamedState, actor: actor)
             let payload = try jsonString(from: renamedState)
             let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
-            try sendEnvelope(
+            try sendStateUpdate(
                 envelope,
                 bubbleCopy: TranscriptBubbleCopyBuilder.lobbyRename(
                     from: state,
@@ -1195,18 +1262,24 @@ final class LobbyDriverViewModel: ObservableObject {
                     player: actor,
                     previousDisplayName: previousDisplayName
                 ),
-                sessionPolicy: .state(gameId: renamedState.gameId)
+                state: renamedState,
+                successStatus: "Saved name in lobby"
             )
             persistPreferredLobbyDisplayNameIfPresent(preferredDisplayName)
-            setActiveContext(renamedState, source: .lastSentState)
-            selectionStatus = "Saved name in lobby rev\(renamedState.rev)"
-            setLastError(nil)
         } catch {
             setLastError("Name update failed: \(error.localizedDescription)")
         }
     }
 
     func startGame() {
+        let diagnosticAnchor = selectedState
+        var preparedAction = false
+        defer {
+            if !preparedAction {
+                recordReliability(state: diagnosticAnchor, boundary: .eligibility, outcome: .rejected, action: .setup)
+            }
+        }
+
         guard let fromState = selectedState else {
             setLastError("Select the latest lobby STATE first.")
             return
@@ -1227,10 +1300,20 @@ final class LobbyDriverViewModel: ObservableObject {
             return
         }
 
+        guard !isReconcilingLobby else {
+            setLastError("Lobby update is still being sent. Wait for the roster to refresh before starting.")
+            return
+        }
+
+        if publishLobbyReconciliationIfNeeded(from: fromState) {
+            setLastError("Lobby update is being sent. Review the roster, then start again.")
+            return
+        }
+
         let finalRoster = fromState.roster
 
-        guard finalRoster.count >= 2 else {
-            setLastError("At least two players must be in the lobby before starting.")
+        guard (3 ... 4).contains(finalRoster.count) else {
+            setLastError("Standard games require three or four players before starting.")
             return
         }
 
@@ -1269,20 +1352,21 @@ final class LobbyDriverViewModel: ObservableObject {
             setupState: setupState
         ).rehashed()
 
+        preparedAction = true
         do {
             try validateTransition(from: fromState, to: toState, actor: inviter)
             let payload = try jsonString(from: toState)
             let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
-            try sendEnvelope(
+            try sendStateUpdate(
                 envelope,
                 bubbleCopy: TranscriptBubbleCopyBuilder.startGame(from: fromState, to: toState),
-                sessionPolicy: .state(gameId: toState.gameId)
+                state: toState,
+                successStatus: "Start sent: setup", diagnosticAction: .setup,
+                onAccepted: { [weak self] in
+                    self?.gameLedgerStore.clearObservedJoiners(for: toState.gameId)
+                    self?.refreshRecoveredGames()
+                }
             )
-            gameLedgerStore.clearObservedJoiners(for: toState.gameId)
-            refreshRecoveredGames()
-            setActiveContext(toState, source: .lastSentState)
-            selectionStatus = "Start sent: setup rev\(toState.rev)"
-            setLastError(nil)
         } catch {
             setLastError("Start failed: \(error.localizedDescription)")
         }
@@ -1290,6 +1374,14 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func publishSetupState(for target: GameBoardTarget) -> Bool {
+        let diagnosticAnchor = selectedState
+        var preparedAction = false
+        defer {
+            if !preparedAction {
+                recordReliability(state: diagnosticAnchor, boundary: .eligibility, outcome: .rejected, action: .setup)
+            }
+        }
+
         let resolution = actionAuthoringStateResolution()
         guard let fromState = resolution.state else {
             setLastError("No Active Context — tap a STATE bubble.")
@@ -1311,6 +1403,8 @@ final class LobbyDriverViewModel: ObservableObject {
             return false
         }
 
+        preparedAction = true
+
         do {
             try applyAndPublishSetupIntent(
                 setupIntent,
@@ -1327,9 +1421,20 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func publishTurnState(for actionKind: GameActionDockItem.Kind) -> Bool {
+        let diagnosticAnchor = selectedState
+        var preparedAction = false
+        defer {
+            if !preparedAction {
+                recordReliability(state: diagnosticAnchor, boundary: .eligibility, outcome: .rejected,
+                                  action: .dock(actionKind))
+            }
+        }
+
         guard let draft = immediateTurnIntent(for: actionKind) else {
             return false
         }
+
+        preparedAction = true
 
         do {
             try applyAndPublishTurnIntent(draft, successStatus: successStatus(for: draft.intent))
@@ -1342,6 +1447,7 @@ final class LobbyDriverViewModel: ObservableObject {
 
     func publishDiceRoll() -> GameDiceRollResult? {
         guard let draft = immediateTurnIntent(for: .roll) else {
+            recordReliability(state: selectedState, boundary: .eligibility, outcome: .rejected, action: .roll)
             return nil
         }
 
@@ -1387,6 +1493,15 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func publishTurnState(for target: GameBoardTarget, mode: GameMode) -> Bool {
+        let diagnosticAnchor = selectedState
+        var preparedAction = false
+        defer {
+            if !preparedAction {
+                recordReliability(state: diagnosticAnchor, boundary: .eligibility, outcome: .rejected,
+                                  action: mode == .robberMove || mode == .robberVictim ? .robber : .build)
+            }
+        }
+
         let resolution = actionAuthoringStateResolution()
         let authoringState = resolution.state
         let draft: TurnActionDraft?
@@ -1426,6 +1541,8 @@ final class LobbyDriverViewModel: ObservableObject {
         }
         activateAuthoringStateIfNeeded(resolution)
 
+        preparedAction = true
+
         do {
             try applyAndPublishTurnIntent(draft, successStatus: successStatus(for: draft.intent))
             return true
@@ -1437,6 +1554,14 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func handleDiscardFlowAction(discarded: ResourceHandV1) -> Bool {
+        let diagnosticAnchor = selectedState
+        var preparedAction = false
+        defer {
+            if !preparedAction {
+                recordReliability(state: diagnosticAnchor, boundary: .eligibility, outcome: .rejected, action: .discard)
+            }
+        }
+
         let resolution = actionAuthoringStateResolution()
         guard let state = resolution.state else {
             setLastError("No Active Context — tap a STATE bubble.")
@@ -1458,6 +1583,8 @@ final class LobbyDriverViewModel: ObservableObject {
             return false
         }
 
+        preparedAction = true
+
         do {
             try applyAndPublishTurnIntent(draft, successStatus: successStatus(for: draft.intent))
             return true
@@ -1473,6 +1600,14 @@ final class LobbyDriverViewModel: ObservableObject {
         receive: ResourceHandV1,
         targetPlayers: [String]
     ) -> Bool {
+        let diagnosticAnchor = selectedState
+        var preparedAction = false
+        defer {
+            if !preparedAction {
+                recordReliability(state: diagnosticAnchor, boundary: .eligibility, outcome: .rejected, action: .trade)
+            }
+        }
+
         let resolution = actionAuthoringStateResolution()
         guard let draft = TradeInteractionResolver.draftTradeOfferIntent(
             state: resolution.state,
@@ -1486,6 +1621,8 @@ final class LobbyDriverViewModel: ObservableObject {
         }
         activateAuthoringStateIfNeeded(resolution)
 
+        preparedAction = true
+
         do {
             try applyAndPublishTurnIntent(draft, successStatus: "Published trade offer")
             return true
@@ -1497,6 +1634,14 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func publishMaritimeTrade(give: ResourceHandV1, receive: ResourceHandV1) -> Bool {
+        let diagnosticAnchor = selectedState
+        var preparedAction = false
+        defer {
+            if !preparedAction {
+                recordReliability(state: diagnosticAnchor, boundary: .eligibility, outcome: .rejected, action: .trade)
+            }
+        }
+
         let resolution = actionAuthoringStateResolution()
         guard let draft = TradeInteractionResolver.draftMaritimeTradeIntent(
             state: resolution.state,
@@ -1509,6 +1654,8 @@ final class LobbyDriverViewModel: ObservableObject {
         }
         activateAuthoringStateIfNeeded(resolution)
 
+        preparedAction = true
+
         do {
             try applyAndPublishTurnIntent(draft, successStatus: "Published maritime trade")
             return true
@@ -1520,15 +1667,33 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func sendAcceptTradeResponse() -> Bool {
+        let diagnosticAnchor = selectedState
+        var preparedAction = false
+        defer {
+            if !preparedAction {
+                recordReliability(state: diagnosticAnchor, boundary: .eligibility, outcome: .rejected, action: .trade)
+            }
+        }
+
         let resolution = actionAuthoringStateResolution()
+        let actingAs = localActorIdentifier(for: resolution.state)
         guard let draft = TradeInteractionResolver.draftAcceptTradeIntent(
             state: resolution.state,
-            actingAs: localActorIdentifier(for: resolution.state)
+            actingAs: actingAs
         ) else {
+            #if DEBUG
+            let diagnostic = TradeAcceptEligibilityResolver.diagnostic(
+                state: resolution.state,
+                actingAs: actingAs
+            )
+            print("[Unlucky Sevens] Trade accept rejected \(diagnostic.diagnosticValue)")
+            #endif
             setLastError("No legal trade accept is available.")
             return false
         }
         activateAuthoringStateIfNeeded(resolution)
+
+        preparedAction = true
 
         do {
             try publishTradeResponse(draft)
@@ -1541,6 +1706,14 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func sendDeclineTradeResponse() -> Bool {
+        let diagnosticAnchor = selectedState
+        var preparedAction = false
+        defer {
+            if !preparedAction {
+                recordReliability(state: diagnosticAnchor, boundary: .eligibility, outcome: .rejected, action: .trade)
+            }
+        }
+
         let resolution = actionAuthoringStateResolution()
         guard let draft = TradeInteractionResolver.draftDeclineTradeIntent(
             state: resolution.state,
@@ -1550,6 +1723,8 @@ final class LobbyDriverViewModel: ObservableObject {
             return false
         }
         activateAuthoringStateIfNeeded(resolution)
+
+        preparedAction = true
 
         do {
             try publishTradeResponse(draft)
@@ -1562,6 +1737,14 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func sendCounterTradeResponse(give: ResourceHandV1, receive: ResourceHandV1) -> Bool {
+        let diagnosticAnchor = selectedState
+        var preparedAction = false
+        defer {
+            if !preparedAction {
+                recordReliability(state: diagnosticAnchor, boundary: .eligibility, outcome: .rejected, action: .trade)
+            }
+        }
+
         let resolution = actionAuthoringStateResolution()
         guard let draft = TradeInteractionResolver.draftCounterTradeIntent(
             state: resolution.state,
@@ -1574,6 +1757,8 @@ final class LobbyDriverViewModel: ObservableObject {
         }
         activateAuthoringStateIfNeeded(resolution)
 
+        preparedAction = true
+
         do {
             try publishTradeResponse(draft)
             return true
@@ -1585,6 +1770,14 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func handleDevCardAction(_ action: GameDevCardActionKind) -> Bool {
+        let diagnosticAnchor = selectedState
+        var preparedAction = false
+        defer {
+            if !preparedAction {
+                recordReliability(state: diagnosticAnchor, boundary: .eligibility, outcome: .rejected, action: .developmentCard)
+            }
+        }
+
         switch action {
         case .buyDevCard:
             let resolution = actionAuthoringStateResolution()
@@ -1596,6 +1789,7 @@ final class LobbyDriverViewModel: ObservableObject {
                 return false
             }
             activateAuthoringStateIfNeeded(resolution)
+            preparedAction = true
             do {
                 try applyAndPublishTurnIntent(draft, successStatus: "Published dev-card purchase")
                 return true
@@ -1613,6 +1807,7 @@ final class LobbyDriverViewModel: ObservableObject {
                 return false
             }
             activateAuthoringStateIfNeeded(resolution)
+            preparedAction = true
             do {
                 try applyAndPublishTurnIntent(draft, successStatus: "Published victory-point reveal")
                 return true
@@ -1628,6 +1823,14 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func publishDevCardDraft(_ draft: GameDevCardDraft) -> Bool {
+        let diagnosticAnchor = selectedState
+        var preparedAction = false
+        defer {
+            if !preparedAction {
+                recordReliability(state: diagnosticAnchor, boundary: .eligibility, outcome: .rejected, action: .developmentCard)
+            }
+        }
+
         let resolution = actionAuthoringStateResolution()
         let authoringState = resolution.state
         let authoringActor = localActorIdentifier(for: authoringState)
@@ -1690,6 +1893,8 @@ final class LobbyDriverViewModel: ObservableObject {
         }
         activateAuthoringStateIfNeeded(resolution)
 
+        preparedAction = true
+
         do {
             try applyAndPublishTurnIntent(draftAction, successStatus: successStatus)
             return true
@@ -1701,6 +1906,14 @@ final class LobbyDriverViewModel: ObservableObject {
 
     @discardableResult
     func publishRobberVictimState(victimPlayer: String) -> Bool {
+        let diagnosticAnchor = selectedState
+        var preparedAction = false
+        defer {
+            if !preparedAction {
+                recordReliability(state: diagnosticAnchor, boundary: .eligibility, outcome: .rejected, action: .robber)
+            }
+        }
+
         let resolution = actionAuthoringStateResolution()
         guard let draft = TurnInteractionResolver.draftStealVictimIntent(
             state: resolution.state,
@@ -1711,6 +1924,8 @@ final class LobbyDriverViewModel: ObservableObject {
             return false
         }
         activateAuthoringStateIfNeeded(resolution)
+
+        preparedAction = true
 
         do {
             try applyAndPublishTurnIntent(draft, successStatus: successStatus(for: draft.intent))
@@ -1727,29 +1942,45 @@ final class LobbyDriverViewModel: ObservableObject {
         actor: String,
         successStatus: String
     ) throws {
-        let toState = try ULS_CoreGame.apply(intent: setupIntent, to: fromState, actor: actor)
-        try validateTransition(from: fromState, to: toState, actor: actor)
+        let toState: CoreGameStateV1
+        do {
+            toState = try ULS_CoreGame.apply(intent: setupIntent, to: fromState, actor: actor)
+            try validateTransition(from: fromState, to: toState, actor: actor)
+        } catch {
+            recordReliability(state: fromState, boundary: .eligibility, outcome: .rejected, action: .setup)
+            throw error
+        }
+        recordReliability(state: fromState, boundary: .eligibility, outcome: .accepted, action: .setup)
 
         let payload = try jsonString(from: toState)
         let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
-        try sendEnvelope(
+        try sendStateUpdate(
             envelope,
             bubbleCopy: TranscriptBubbleCopyBuilder.setupIntent(
                 setupIntent,
                 resultingState: toState,
                 actor: actor
             ),
-            sessionPolicy: .state(gameId: toState.gameId)
+            state: toState,
+            successStatus: successStatus, diagnosticAction: .setup
         )
-        setActiveContext(toState, source: .lastSentState)
-        selectionStatus = "\(successStatus) rev\(toState.rev)"
-        setLastError(nil)
     }
 
     private func decodeSelectedMessage(
         _ message: MSMessage?,
         trigger: TranscriptSelectionTrigger
     ) -> Bool {
+        #if DEBUG
+        print(
+            "[Unlucky Sevens] host-boundary "
+                + TranscriptTransportSupport.hostBoundaryDiagnostic(
+                    trigger: trigger,
+                    message: message,
+                    localParticipantIdentifier: localParticipantIdentifier()
+                )
+        )
+        #endif
+
         if
             trigger == .selectionPoll,
             let message,
@@ -1760,6 +1991,8 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         guard let message else {
+            recordReliability(state: selectedState, boundary: .stateSelection, outcome: .unavailable,
+                              trigger: trigger, sessionPresent: false)
             selectedTranscriptGameId = nil
             selectionStatus = "No message selected"
             if selectedState == nil {
@@ -1769,6 +2002,8 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         guard let encodedEnvelope = payloadValue(from: message) else {
+            recordReliability(state: selectedState, boundary: .stateSelection, outcome: .unavailable,
+                              trigger: trigger, sessionPresent: message.session != nil)
             selectedTranscriptGameId = nil
             selectionStatus = "Selected message has no transport payload"
             if selectedState == nil {
@@ -1790,6 +2025,8 @@ final class LobbyDriverViewModel: ObservableObject {
             setLastError(nil)
             return false
         } catch {
+            recordReliability(state: selectedState, boundary: .stateSelection, outcome: .failed,
+                              trigger: trigger, sessionPresent: message.session != nil)
             selectedTranscriptGameId = nil
             selectionStatus = "Failed to decode selected message"
             if selectedState == nil {
@@ -1814,6 +2051,25 @@ final class LobbyDriverViewModel: ObservableObject {
 
         let state = try decodePayload(CoreGameStateV1.self, from: payload)
         try validateCanonicalSnapshot(state)
+        if state.phase == .lobby {
+            // Setup is a causal close barrier, even after its old lobby evidence is pruned.
+            if let known = gameLedgerStore.latestState(for: state.gameId), known.phase != .lobby { return }
+            do {
+                _ = try LobbyPublicationReceiptValidator.validate(
+                    state: state,
+                    observedStates: gameLedgerStore.lobbyStates(for: state.gameId)
+                )
+            } catch {
+                pendingLobbyReceipts.removeAll { $0.state.stateHash == state.stateHash && $0.state.gameId == state.gameId }
+                pendingLobbyReceipts.append(.init(state: state, envelope: envelope, message: message, source: source))
+                if pendingLobbyReceipts.count > 32 { pendingLobbyReceipts.removeFirst() }
+                recordReliability(state: state, boundary: .stateSelection, outcome: .rejected,
+                                  trigger: trigger, sessionPresent: message.session != nil)
+                throw error
+            }
+        } else {
+            pendingLobbyReceipts.removeAll { $0.state.gameId == state.gameId }
+        }
         selectedTranscriptGameId = state.gameId
         let didReceiveDisposition = didReceiveDisposition(
             for: state.gameId,
@@ -1821,7 +2077,8 @@ final class LobbyDriverViewModel: ObservableObject {
         )
         latestKnownStatesByGameId = TranscriptStateSelection.recording(
             state,
-            in: latestKnownStatesByGameId
+            in: latestKnownStatesByGameId,
+            convergenceContextsByGameId: &convergenceContextsByGameId
         )
         gameLedgerStore.record(
             state: state,
@@ -1854,7 +2111,8 @@ final class LobbyDriverViewModel: ObservableObject {
             activeState: selectedState,
             activeSource: transcriptActiveSource,
             source: source,
-            trigger: trigger
+            trigger: trigger,
+            convergenceContext: convergenceContextsByGameId[state.gameId] ?? .init()
         )
 
         if
@@ -1870,6 +2128,13 @@ final class LobbyDriverViewModel: ObservableObject {
             setActiveContext(stateSelection.preferredState, source: activationSource)
         }
 
+        recordReliability(
+            state: state, boundary: .stateSelection,
+            outcome: selectedState?.gameId == state.gameId && selectedState?.stateHash == state.stateHash
+                ? .accepted : .observed,
+            trigger: trigger, sessionPresent: message.session != nil
+        )
+
         if didReceiveDisposition == .storeInLedgerOnly {
             selectionStatus = "Stored received game rev\(stateSelection.preferredState.rev) for another game"
         } else {
@@ -1877,12 +2142,34 @@ final class LobbyDriverViewModel: ObservableObject {
         }
 
         refreshStaleContextWarning()
+        if didReceiveDisposition == .applyToActiveContext {
+            _ = publishLobbyReconciliationIfNeeded(from: selectedState)
+        }
+        drainPendingLobbyReceipts()
+    }
+
+    private func drainPendingLobbyReceipts() {
+        guard !isDrainingLobbyReceipts else { return }
+        isDrainingLobbyReceipts = true
+        defer { isDrainingLobbyReceipts = false }
+        // Each successful pass removes one of at most 32 candidates. Invalid candidates
+        // remain quarantined; a later parent/claim can make them independently verifiable.
+        while let index = pendingLobbyReceipts.firstIndex(where: {
+            (try? LobbyPublicationReceiptValidator.validate(
+                state: $0.state, observedStates: gameLedgerStore.lobbyStates(for: $0.state.gameId)
+            )) != nil
+        }) {
+            let pending = pendingLobbyReceipts.remove(at: index)
+            try? apply(envelope: pending.envelope, message: pending.message,
+                       source: pending.source, trigger: .didReceive)
+        }
     }
 
     private func setActiveContext(_ state: CoreGameStateV1, source: ActiveContextSource) {
         latestKnownStatesByGameId = TranscriptStateSelection.recording(
             state,
-            in: latestKnownStatesByGameId
+            in: latestKnownStatesByGameId,
+            convergenceContextsByGameId: &convergenceContextsByGameId
         )
         selectedState = state
         activeSource = source
@@ -2003,6 +2290,25 @@ final class LobbyDriverViewModel: ObservableObject {
         currentGameActionIsAvailable(.hostEnd)
     }
 
+    func currentGameLifecycleUnavailableMessage() -> String? {
+        let state = selectedState
+        let actor = localActorIdentifier(for: state)
+        let hasAvailableAction = canProposeDrawInCurrentGame()
+            || canVoteOnDrawInCurrentGame()
+            || canResignCurrentGame()
+            || canHostEndCurrentGame()
+        let hasCompatibleActiveConversation = state.map {
+            hasBoundSession(for: $0.gameId) && isCompatibleWithActiveConversation($0)
+        } ?? false
+
+        return GameLifecycleMenuGuidance.message(
+            hasCurrentGame: state != nil,
+            hasLocalActor: actor != nil,
+            hasCompatibleActiveConversation: hasCompatibleActiveConversation,
+            hasAvailableAction: hasAvailableAction
+        )
+    }
+
     func shouldOfferDrawBeforeEndingCurrentGame() -> Bool {
         GameLifecycleActionResolver.shouldOfferDrawBeforeHostEnd(
             state: selectedState
@@ -2033,27 +2339,32 @@ final class LobbyDriverViewModel: ObservableObject {
             hasBoundSession(for: fromState.gameId),
             isCompatibleWithActiveConversation(fromState)
         else {
+            recordReliability(state: selectedState, boundary: .recovery, outcome: .unavailable, action: .lifecycle)
             setLastError("Open this game from its Messages bubble before taking that action.")
             return
         }
 
+        var preparedAction = false
         do {
             let draft = try GameLifecycleActionResolver.prepare(
                 action: action,
                 state: fromState,
                 actor: actor
             )
+            preparedAction = true
+            recordReliability(state: fromState, boundary: .eligibility, outcome: .accepted, action: .lifecycle)
             let payload = try jsonString(from: draft.resultingState)
             let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
-            try sendEnvelope(
+            try sendStateUpdate(
                 envelope,
                 bubbleCopy: receipt(draft.resultingState, actor),
-                sessionPolicy: .state(gameId: draft.resultingState.gameId)
+                state: draft.resultingState,
+                successStatus: successStatus, diagnosticAction: .lifecycle
             )
-            setActiveContext(draft.resultingState, source: .lastSentState)
-            selectionStatus = "\(successStatus) rev\(draft.resultingState.rev)"
-            setLastError(nil)
         } catch {
+            if !preparedAction {
+                recordReliability(state: selectedState, boundary: .eligibility, outcome: .rejected, action: .lifecycle)
+            }
             setLastError("Game action failed: \(error.localizedDescription)")
         }
     }
@@ -2142,7 +2453,8 @@ final class LobbyDriverViewModel: ObservableObject {
             gameId: resolvedGameId,
             selectedState: selectedState,
             latestKnownStatesByGameId: latestKnownStatesByGameId,
-            localLedgerState: resolvedGameId.flatMap(localLedgerStateForIntentContext(gameId:))
+            localLedgerState: resolvedGameId.flatMap(localLedgerStateForIntentContext(gameId:)),
+            convergenceContext: resolvedGameId.flatMap { convergenceContextsByGameId[$0] } ?? .init()
         )
     }
 
@@ -2259,57 +2571,176 @@ final class LobbyDriverViewModel: ObservableObject {
         TranscriptTransportSupport.decodePayload(from: message.url)
     }
 
+    func canResendCurrentGameUpdate() -> Bool {
+        guard !isSendingGameUpdate, !isSendingInvite, !isReconcilingLobby,
+              let state = actionAuthoringStateResolution().state,
+              localActorIdentifier(for: state) != nil else { return false }
+        return hasBoundSession(for: state.gameId) && isCompatibleWithActiveConversation(state)
+    }
+
+    func resendCurrentGameUpdate() {
+        guard canResendCurrentGameUpdate(), let state = actionAuthoringStateResolution().state else {
+            recordReliability(state: selectedState, boundary: .recovery, outcome: .unavailable, action: .recovery)
+            return
+        }
+        do {
+            try validateCanonicalSnapshot(state)
+            let payload = try jsonString(from: state)
+            // Republish the exact snapshot in its bound session. Never apply another turn intent.
+            try sendStateUpdate(
+                EnvelopeV1(kind: .state, body: .state(payload: payload)),
+                bubbleCopy: TranscriptBubbleCopy(caption: "Unlucky Sevens: Game Update",
+                                                summary: "Open to resume the latest shared game.", visual: .none),
+                state: state, successStatus: "Resent game update", diagnosticAction: .recovery
+            )
+        } catch { setLastError("Resend failed: \(error.localizedDescription)") }
+    }
+
+    func sendStateUpdate(
+        _ envelope: EnvelopeV1,
+        bubbleCopy: TranscriptBubbleCopy,
+        state: CoreGameStateV1,
+        successStatus: String,
+        diagnosticAction: ReliabilityDiagnosticBuffer.Action = .publication,
+        onAccepted: (() -> Void)? = nil
+    ) throws {
+        guard !isSendingGameUpdate, !isSendingInvite, !isReconcilingLobby else {
+            recordReliability(state: state, boundary: .localHandoff, outcome: .unavailable, action: diagnosticAction)
+            throw SendError.publicationInFlight
+        }
+        #if DEBUG
+        if uxTestingIsActive {
+            try sendEnvelope(envelope, bubbleCopy: bubbleCopy, sessionPolicy: .state(gameId: state.gameId), diagnosticAction: diagnosticAction)
+            onAccepted?()
+            setActiveContext(state, source: .lastSentState)
+            selectionStatus = "\(successStatus) rev\(state.rev)"
+            setLastError(nil)
+            return
+        }
+        #endif
+        guard let attempt = statePublicationTransaction.begin(state: state) else {
+            throw SendError.publicationInFlight
+        }
+        isSendingGameUpdate = true
+        selectionStatus = "Sending game update…"
+        setLastError(nil)
+        do {
+            try sendEnvelope(envelope, bubbleCopy: bubbleCopy, sessionPolicy: .state(gameId: state.gameId), diagnosticAction: diagnosticAction) { [weak self] result in
+                guard let self, self.statePublicationTransaction.attempt?.id == attempt.id else { return }
+                self.isSendingGameUpdate = false
+                defer {
+                    // Joins received while this send was pending were stored, but could not publish.
+                    if self.selectedState?.gameId == state.gameId {
+                        _ = self.publishLobbyReconciliationIfNeeded(from: self.selectedState)
+                    }
+                }
+                switch result {
+                case .failure(let error):
+                    _ = self.statePublicationTransaction.finish(id: attempt.id, accepted: false)
+                    if self.selectedState?.gameId == state.gameId {
+                        self.selectionStatus = "Update was not sent"
+                        self.setLastError("Publish failed: \(error.localizedDescription). This action was not committed; try it again.")
+                    }
+                case .success(let receipt):
+                    guard let committed = self.statePublicationTransaction.finish(id: attempt.id, accepted: true) else { return }
+                    if let record = receipt.localLedgerStateRecord { self.cacheLocalLedgerStateRecord(record) }
+                    self.latestKnownStatesByGameId = TranscriptStateSelection.recording(
+                        committed, in: self.latestKnownStatesByGameId,
+                        convergenceContextsByGameId: &self.convergenceContextsByGameId
+                    )
+                    onAccepted?()
+                    // A delayed callback must not reopen a different game or replace a newer received state.
+                    if self.selectedState?.gameId == committed.gameId,
+                       let preferred = self.latestKnownStatesByGameId[committed.gameId] {
+                        self.setActiveContext(preferred, source: .lastSentState)
+                        self.selectionStatus = "\(successStatus) rev\(committed.rev)"
+                        self.setLastError(nil)
+                    }
+                }
+            }
+        } catch {
+            _ = statePublicationTransaction.finish(id: attempt.id, accepted: false)
+            isSendingGameUpdate = false
+            throw error
+        }
+    }
+
     private func sendEnvelope(
         _ envelope: EnvelopeV1,
         bubbleCopy: TranscriptBubbleCopy,
         sessionPolicy: TranscriptSessionPolicy,
         postPublishEffect: PostPublishEffect = .none,
         sessionOverride: MSSession? = nil,
+        diagnosticAction: ReliabilityDiagnosticBuffer.Action = .publication,
         completion: ((Result<PublicationReceipt, Error>) -> Void)? = nil
     ) throws {
         #if DEBUG
+        if let handoff = stateHandoffForTesting, let completion {
+            let record = localLedgerStateRecord(from: envelope)
+            handoff { result in
+                completion(result.map { PublicationReceipt(session: MSSession(), localLedgerStateRecord: record) })
+            }
+            return
+        }
         if uxTestingIsActive {
-            try applyUXTestingEnvelope(envelope, bubbleCopy: bubbleCopy)
             if let completion {
                 completion(
                     .success(
                         PublicationReceipt(
                             session: sessionOverride ?? MSSession(),
-                            localLedgerStateRecord: nil
+                            localLedgerStateRecord: localLedgerStateRecord(from: envelope)
                         )
                     )
                 )
+            } else {
+                try applyUXTestingEnvelope(envelope, bubbleCopy: bubbleCopy)
             }
             return
         }
         #endif
 
+        let diagnosticState: CoreGameStateV1?
+        if case let .state(payload) = envelope.body {
+            diagnosticState = try? decodePayload(CoreGameStateV1.self, from: payload)
+        } else {
+            diagnosticState = nil
+        }
         guard let conversation = activeConversation else {
+            recordReliability(state: diagnosticState, boundary: .eligibility, outcome: .unavailable, action: diagnosticAction)
             throw SendError.noActiveConversation
         }
 
-        let encodedEnvelope = try encode(envelope)
-        let bubbleImage = TranscriptBubbleImageRenderer.render(visual: bubbleCopy.visual)
-        let publicationSession: MSSession
-        if let sessionOverride {
-            publicationSession = sessionOverride
-        } else {
-            publicationSession = try session(for: sessionPolicy)
-        }
-        let builtMessage = try TranscriptTransportSupport.buildMessage(
-            encodedEnvelope: encodedEnvelope,
-            caption: bubbleCopy.caption,
-            summaryLabel: bubbleCopy.summary,
-            image: bubbleImage,
-            session: publicationSession,
-            sessionPolicy: sessionPolicy
+        let prepared = try ReliabilityPublicationPreparation.run(
+            encode: {
+                let encoded = try encode(envelope)
+                return (encoded, TranscriptBubbleImageRenderer.render(visual: bubbleCopy.visual))
+            },
+            resolveSession: { try sessionOverride ?? session(for: sessionPolicy) },
+            buildMessage: { encoded, publicationSession in
+                try TranscriptTransportSupport.buildMessage(
+                    encodedEnvelope: encoded.0,
+                    caption: bubbleCopy.caption,
+                    summaryLabel: bubbleCopy.summary,
+                    image: encoded.1,
+                    session: publicationSession,
+                    sessionPolicy: sessionPolicy
+                )
+            },
+            record: { action, boundary, outcome, sessionPresent in
+                recordReliability(state: diagnosticState, boundary: boundary, outcome: outcome,
+                                  sessionPresent: sessionPresent, action: action == .recovery ? .recovery : diagnosticAction)
+            }
         )
+        let builtMessage = prepared.message
+        let publicationSession = prepared.session
         let localLedgerStateRecord = localLedgerStateRecord(from: envelope)
 
         publish(
             builtMessage.message,
             into: conversation,
             envelopeKind: envelope.kind,
+            diagnosticState: diagnosticState,
+            diagnosticAction: diagnosticAction,
             sessionPolicy: builtMessage.sessionPolicy,
             session: publicationSession,
             localLedgerStateRecord: localLedgerStateRecord,
@@ -2350,15 +2781,27 @@ final class LobbyDriverViewModel: ObservableObject {
         _ message: MSMessage,
         into conversation: MSConversation,
         envelopeKind _: EnvelopeV1.Kind,
+        diagnosticState: CoreGameStateV1?,
+        diagnosticAction: ReliabilityDiagnosticBuffer.Action,
         sessionPolicy _: TranscriptSessionPolicy,
         session: MSSession,
         localLedgerStateRecord: Data?,
         postPublishEffect: PostPublishEffect,
         completion: ((Result<PublicationReceipt, Error>) -> Void)?
     ) {
+        let diagnosticObservation = diagnosticState.flatMap {
+            ReliabilityDiagnostics.observation(
+                state: $0, actor: localParticipantIdentifier(), action: diagnosticAction,
+                boundary: .localHandoff, outcome: .observed, sessionPresent: true
+            )
+        }
         conversation.send(message) { [weak self] error in
             Task { @MainActor in
                 guard let self else { return }
+                if var observation = diagnosticObservation {
+                    observation.outcome = error == nil ? .accepted : .failed
+                    self.diagnostics.record(observation)
+                }
                 if let error {
                     if let completion {
                         completion(.failure(error))
@@ -2525,12 +2968,50 @@ final class LobbyDriverViewModel: ObservableObject {
 
     private func localParticipantIdentifier() -> String? {
         #if DEBUG
+        if let localParticipantForTesting { return localParticipantForTesting }
         if uxTestingIsActive {
             return uxTestingActorID
         }
         #endif
 
         return activeConversation?.localParticipantIdentifier.uuidString
+    }
+
+    private var diagnostics: ReliabilityDiagnostics {
+        if let reliabilityDiagnostics { return reliabilityDiagnostics }
+        let value = ReliabilityDiagnostics.production()
+        reliabilityDiagnostics = value
+        return value
+    }
+
+    func reliabilityReportData() -> Data? {
+        guard let gameID = currentGameId(), tutorialActorID == nil else { return nil }
+        return diagnostics.report(gameID: gameID)
+    }
+
+    var reliabilityStorageUnavailable: Bool { reliabilityDiagnostics?.storageUnavailable ?? false }
+
+    func clearReliabilityReports() -> Bool { diagnostics.clear() }
+
+    private func recordReliability(
+        state: CoreGameStateV1?,
+        boundary: ReliabilityDiagnosticBuffer.Boundary,
+        outcome: ReliabilityDiagnosticBuffer.Outcome,
+        trigger: TranscriptSelectionTrigger? = nil,
+        sessionPresent: Bool? = nil,
+        action: ReliabilityDiagnosticBuffer.Action? = nil
+    ) {
+        guard tutorialActorID == nil, let state else { return }
+        #if DEBUG
+        guard !uxTestingIsActive else { return }
+        #endif
+        diagnostics.record(
+            state: state, actor: localParticipantIdentifier(),
+            action: action ?? (boundary == .stateSelection ? .reopen : .publication),
+            boundary: boundary, outcome: outcome,
+            trigger: trigger.flatMap { ReliabilityDiagnosticBuffer.Trigger(rawValue: $0.rawValue) },
+            sessionPresent: sessionPresent
+        )
     }
 
     private func currentGameId() -> String? {
@@ -2540,6 +3021,139 @@ final class LobbyDriverViewModel: ObservableObject {
     private func rememberObservedJoiner(_ joiner: String, for gameId: String) {
         gameLedgerStore.recordJoin(actor: joiner, gameId: gameId)
         refreshRecoveredGames()
+    }
+
+    @discardableResult
+    func publishLobbyReconciliationIfNeeded(from state: CoreGameStateV1?) -> Bool {
+        guard !isSendingGameUpdate, !isSendingInvite else { return false }
+        guard !lobbyReconciliationPublication.isSending, let state else {
+            return false
+        }
+        guard let resolution = LobbyReconciliationPublicationResolver.pendingResolution(
+            state: state,
+            localParticipant: localParticipantIdentifier(),
+            hasBoundSession: hasBoundSession(for: state.gameId),
+            observedStates: gameLedgerStore.lobbyStates(for: state.gameId)
+        ), let reconciledState = resolution.state else {
+            return false
+        }
+
+        guard let attempt = lobbyReconciliationPublication.begin(
+            gameId: state.gameId,
+            anchorHash: state.stateHash,
+            targetHash: reconciledState.stateHash,
+            frontierDigest: resolution.frontierDigest
+        ) else {
+            return false
+        }
+        isReconcilingLobby = true
+
+        do {
+            let payload = try jsonString(from: reconciledState)
+            let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
+            selectionStatus = "Sending reconciled lobby rev\(reconciledState.rev)"
+            try sendEnvelope(
+                envelope,
+                bubbleCopy: TranscriptBubbleCopyBuilder.lobbyReconciled(
+                    to: reconciledState,
+                    admittedPlayers: resolution.admittedPlayers
+                ),
+                sessionPolicy: .state(gameId: reconciledState.gameId), diagnosticAction: .reconcile
+            ) { [weak self] result in
+                self?.completeLobbyReconciliationPublication(
+                    attempt: attempt,
+                    state: reconciledState,
+                    payload: payload,
+                    result: result
+                )
+            }
+            return true
+        } catch {
+            _ = lobbyReconciliationPublication.resolveSend(
+                attemptID: attempt.id,
+                outcome: .failed
+            )
+            isReconcilingLobby = false
+            setLastError("Lobby update failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    private func completeLobbyReconciliationPublication(
+        attempt: LobbyReconciliationPublicationAttempt,
+        state: CoreGameStateV1,
+        payload: String,
+        result: Result<PublicationReceipt, Error>
+    ) {
+        let outcome: LobbyReconciliationPublicationOutcome = switch result {
+        case .success:
+            .succeeded
+        case .failure:
+            .failed
+        }
+        let completion = lobbyReconciliationPublication.resolveSend(
+            attemptID: attempt.id,
+            outcome: outcome
+        )
+
+        switch (completion, result) {
+        case let (.verifyPersistence(sentAttempt), .success(receipt)):
+            guard
+                sentAttempt.gameId == state.gameId,
+                sentAttempt.targetHash == state.stateHash
+            else {
+                _ = lobbyReconciliationPublication.resolvePersistence(
+                    attemptID: sentAttempt.id,
+                    didPersist: false
+                )
+                isReconcilingLobby = false
+                return
+            }
+            if let localLedgerStateRecord = receipt.localLedgerStateRecord {
+                cacheLocalLedgerStateRecord(localLedgerStateRecord)
+            } else {
+                gameLedgerStore.record(
+                    state: state,
+                    payload: payload,
+                    localActor: localParticipantIdentifier()
+                )
+                refreshRecoveredGames()
+            }
+            let persisted = gameLedgerStore.latestState(for: state.gameId)
+            let didPersist = gameLedgerStore.lobbyStates(for: state.gameId).contains(state)
+                || persisted == state
+                || (persisted?.phase != .lobby && persisted != nil)
+            let persistenceCompletion = lobbyReconciliationPublication.resolvePersistence(
+                attemptID: sentAttempt.id,
+                didPersist: didPersist
+            )
+            isReconcilingLobby = false
+            guard case .commit = persistenceCompletion else {
+                guard selectedState?.gameId == state.gameId else { return }
+                setLastError("Lobby update was sent but could not be verified locally. Reopen the latest lobby bubble.")
+                return
+            }
+            latestKnownStatesByGameId = TranscriptStateSelection.recording(
+                persisted ?? state, in: latestKnownStatesByGameId,
+                convergenceContextsByGameId: &convergenceContextsByGameId
+            )
+            guard selectedState?.gameId == state.gameId,
+                  let preferred = latestKnownStatesByGameId[state.gameId] else { return }
+            setActiveContext(preferred, source: .lastSentState)
+            selectionStatus = "Reconciled lobby rev\(state.rev)"
+            setLastError(nil)
+            // A claim received during handoff must not leave Start disabled indefinitely.
+            _ = publishLobbyReconciliationIfNeeded(from: preferred)
+
+        case let (.retry(failed), .failure(error)):
+            isReconcilingLobby = false
+            guard failed.gameId == state.gameId, selectedState?.gameId == state.gameId else { return }
+            selectionStatus = "Lobby reconciliation is ready to retry"
+            setLastError("Lobby update failed: \(error.localizedDescription)")
+
+        case (.verifyPersistence, .failure), (.commit, _), (.retry, .success), (.ignore, _):
+            break
+        }
     }
 
     private func refreshRecoveredGames() {
@@ -2571,23 +3185,30 @@ final class LobbyDriverViewModel: ObservableObject {
             throw NSError(domain: "LobbyDriverViewModel", code: 3, userInfo: [NSLocalizedDescriptionKey: "Turn intent anchor does not match Active Context."])
         }
 
-        let toState = try ULS_CoreGame.apply(intent: draft.intent, to: fromState, actor: draft.actor)
-        try validateTransition(from: fromState, to: toState, actor: draft.actor)
+        let toState: CoreGameStateV1
+        do {
+            toState = try ULS_CoreGame.apply(intent: draft.intent, to: fromState, actor: draft.actor)
+            try validateTransition(from: fromState, to: toState, actor: draft.actor)
+        } catch {
+            recordReliability(state: fromState, boundary: .eligibility, outcome: .rejected,
+                              action: .turn(draft.intent))
+            throw error
+        }
+        recordReliability(state: fromState, boundary: .eligibility, outcome: .accepted,
+                          action: .turn(draft.intent))
 
         let payload = try jsonString(from: toState)
         let envelope = EnvelopeV1(kind: .state, body: .state(payload: payload))
-        try sendEnvelope(
+        try sendStateUpdate(
             envelope,
             bubbleCopy: TranscriptBubbleCopyBuilder.turnIntent(
                 draft.intent,
                 actor: draft.actor,
                 resultingState: toState
             ),
-            sessionPolicy: .state(gameId: toState.gameId)
+            state: toState,
+            successStatus: successStatus, diagnosticAction: ReliabilityDiagnosticBuffer.Action.turn(draft.intent)
         )
-        setActiveContext(toState, source: .lastSentState)
-        selectionStatus = "\(successStatus) rev\(toState.rev)"
-        setLastError(nil)
         return toState
     }
 
@@ -2834,6 +3455,7 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private enum SendError: LocalizedError {
+        case publicationInFlight
         case noActiveConversation
         case invalidJSONPayload
         case invalidIntentPayload
@@ -2841,6 +3463,8 @@ final class LobbyDriverViewModel: ObservableObject {
 
         var errorDescription: String? {
             switch self {
+            case .publicationInFlight:
+                return "Wait for the current game update to finish sending."
             case .noActiveConversation:
                 return "No active conversation."
             case .invalidJSONPayload:

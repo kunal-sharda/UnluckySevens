@@ -127,6 +127,26 @@ if [[ "$BUILT_HASH" != "$INSTALLED_HASH" ]]; then
   exit 65
 fi
 
+SIMULATOR_DATA_HOME="$(xcrun simctl getenv "$DEVICE_ID" HOME)"
+EXTENSION_DATA_CONTAINER=""
+for metadata in \
+  "$SIMULATOR_DATA_HOME"/Containers/Data/PluginKitPlugin/*/.com.apple.mobile_container_manager.metadata.plist
+do
+  [[ -f "$metadata" ]] || continue
+  METADATA_IDENTIFIER="$(
+    /usr/libexec/PlistBuddy -c 'Print :MCMMetadataIdentifier' "$metadata" 2>/dev/null || true
+  )"
+  if [[ "$METADATA_IDENTIFIER" == "me.ksharda.games.unluckysevens.messagesextension" ]]; then
+    EXTENSION_DATA_CONTAINER="$(dirname "$metadata")"
+    break
+  fi
+done
+if [[ -z "$EXTENSION_DATA_CONTAINER" ]]; then
+  echo "Unable to locate the installed Messages extension data container." >&2
+  exit 66
+fi
+EXTENSION_DEFAULTS_DOMAIN="$EXTENSION_DATA_CONTAINER/Library/Preferences/me.ksharda.games.unluckysevens.messagesextension"
+
 {
   printf 'profile=%s\n' "$PROFILE"
   printf 'device_name=%s\n' "$DEVICE_NAME"
@@ -136,6 +156,8 @@ fi
   printf 'catalog=%s\n' "$CATALOG"
   printf 'built_extension_sha256=%s\n' "$BUILT_HASH"
   printf 'installed_extension_sha256=%s\n' "$INSTALLED_HASH"
+  printf 'fixture_injection=offline-plugin-container-preferences\n'
+  printf 'route_reset=shutdown-target,write-and-verify-preferences,boot-target\n'
   printf 'started_at_utc=%s\n' "$RUN_STAMP"
   printf 'simulator_reset=shutdown-all,boot-target,uninstall-app,install-fresh,restart-messages\n'
   printf 'retry_policy=diagnostic-first\n'
@@ -155,7 +177,7 @@ START_AT="${UI_SCREENSHOT_START_AT:-}"
 HAS_STARTED=0
 [[ -z "$START_AT" ]] && HAS_STARTED=1
 
-while IFS= read -r TEST_NAME; do
+while IFS='|' read -r TEST_NAME FIXTURE_ID FIXTURE_ACTOR; do
   [[ -z "$TEST_NAME" || "$TEST_NAME" == \#* ]] && continue
   if [[ "$HAS_STARTED" -eq 0 ]]; then
     [[ "$TEST_NAME" == "$START_AT" ]] || continue
@@ -166,6 +188,32 @@ while IFS= read -r TEST_NAME; do
   TEST_LOG="$RESULT_ROOT/logs/$TEST_NAME.log"
   FAILURE_PATH="$RESULT_ROOT/failures/$TEST_NAME"
 
+  # iOS runtimes do not include killall. A successful shutdown guarantees that
+  # neither the extension nor its preferences daemon can retain the prior route.
+  xcrun simctl shutdown "$DEVICE_ID"
+  PREFERENCES_PATH="$EXTENSION_DEFAULTS_DOMAIN.plist"
+  mkdir -p "$(dirname "$PREFERENCES_PATH")"
+  if [[ ! -f "$PREFERENCES_PATH" ]]; then
+    plutil -create xml1 "$PREFERENCES_PATH"
+  fi
+  # Edit the stopped simulator's plist directly, avoiding the host defaults cache.
+  for KEY in uls.debug.launchFixtureID uls.debug.launchActorID; do
+    if /usr/libexec/PlistBuddy -c "Print :$KEY" "$PREFERENCES_PATH" >/dev/null 2>&1; then
+      /usr/libexec/PlistBuddy -c "Delete :$KEY" "$PREFERENCES_PATH"
+    fi
+  done
+  if [[ -n "${FIXTURE_ID:-}" ]]; then
+    /usr/libexec/PlistBuddy -c "Add :uls.debug.launchFixtureID string $FIXTURE_ID" "$PREFERENCES_PATH"
+    /usr/libexec/PlistBuddy -c "Add :uls.debug.launchActorID string ${FIXTURE_ACTOR:-host}" "$PREFERENCES_PATH"
+    [[ "$(/usr/libexec/PlistBuddy -c 'Print :uls.debug.launchFixtureID' "$PREFERENCES_PATH")" == "$FIXTURE_ID" ]]
+    [[ "$(/usr/libexec/PlistBuddy -c 'Print :uls.debug.launchActorID' "$PREFERENCES_PATH")" == "${FIXTURE_ACTOR:-host}" ]]
+    printf 'fixture.%s=%s actor=%s\n' \
+      "$TEST_NAME" "$FIXTURE_ID" "${FIXTURE_ACTOR:-host}" \
+      >> "$RESULT_ROOT/run-manifest.txt"
+  fi
+  cp "$PREFERENCES_PATH" "$RESULT_ROOT/logs/$TEST_NAME.launch-preferences.plist"
+  xcrun simctl boot "$DEVICE_ID"
+  xcrun simctl bootstatus "$DEVICE_ID" -b
   printf 'running=%s\n' "$TEST_NAME" | tee -a "$RESULT_ROOT/run-manifest.txt"
   VIDEO_PID=""
   if [[ "${UI_SCREENSHOT_RECORD_VIDEO:-0}" == "1" ]]; then

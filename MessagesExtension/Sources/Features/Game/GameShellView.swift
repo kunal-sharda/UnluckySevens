@@ -518,7 +518,8 @@ struct GameShellView: View {
                         if isPhysicalGameOver, let endScreen = screenModel.endScreen {
                             GameEndResultRailView(
                                 model: endScreen,
-                                onNewGame: viewModel.prepareNewGame
+                                onNewGame: viewModel.prepareNewGame,
+                                onSettings: onSettingsTap
                             )
                                 .frame(height: bottomTrayHeight)
                                 .frame(maxWidth: lowerRailWidth)
@@ -678,10 +679,15 @@ struct GameShellView: View {
 
                                 GameTurnGameInfoView(
                                     model: screenModel.gameInfo,
+                                    canClaimVictory: viewModel.canClaimVictoryInCurrentGame(),
+                                    onClaimVictory: viewModel.claimVictoryInCurrentGame,
+                                    canResendUpdate: viewModel.canResendCurrentGameUpdate(),
+                                    onResendUpdate: viewModel.resendCurrentGameUpdate,
                                     canProposeDraw: viewModel.canProposeDrawInCurrentGame(),
                                     canVoteOnDraw: viewModel.canVoteOnDrawInCurrentGame(),
                                     canResign: viewModel.canResignCurrentGame(),
                                     canHostEnd: viewModel.canHostEndCurrentGame(),
+                                    lifecycleUnavailableMessage: viewModel.currentGameLifecycleUnavailableMessage(),
                                     shouldOfferDrawBeforeHostEnd: viewModel.shouldOfferDrawBeforeEndingCurrentGame(),
                                     onPlayerRecordTap: onGamesTap,
                                     onProposeDraw: viewModel.proposeDrawInCurrentGame,
@@ -946,9 +952,12 @@ struct GameShellView: View {
             }
         }
         .onReceive(viewModel.$gameplayShellProjection.removeDuplicates()) { projection in
+            let draftContextChanged = shellProjection.gameId != projection.gameId
+                || shellProjection.stateHash != projection.stateHash
+                || shellProjection.gameScreenModel.handTray != projection.gameScreenModel.handTray
             shellProjection = projection
             synchronizeNormalTurnContext(with: projection)
-            synchronizeTradeOverlay(with: projection)
+            synchronizeTradeOverlay(with: projection, draftContextChanged: draftContextChanged)
             synchronizeDiscardDraft(with: projection.discardPanelModel)
         }
         .onChange(of: screenModel.modeAvailability) { _, availability in
@@ -1589,22 +1598,15 @@ struct GameShellView: View {
         )
     }
 
-    private func synchronizeTradeOverlay(with projection: GameShellProjection) {
-        guard case let .trade(route) = shellRoute else {
-            return
-        }
-
-        guard let tradePanelModel = projection.tradePanelModel else {
-            shellRoute = .none
-            return
-        }
-
-        switch route {
-        case .liveOffer where tradePanelModel.activeOffer == nil:
-            shellRoute = .trade(.chooser)
-        default:
-            break
-        }
+    private func synchronizeTradeOverlay(with projection: GameShellProjection, draftContextChanged: Bool) {
+        guard case let .trade(route) = shellRoute else { return }
+        let reconciled = route.reconciled(
+            hasTradePanel: projection.tradePanelModel != nil,
+            hasOffer: projection.tradePanelModel?.activeOffer != nil,
+            draftContextChanged: draftContextChanged
+        )
+        if reconciled != route { showsPhysicalTradeRecipients = false }
+        shellRoute = reconciled.map { .trade($0) } ?? .none
     }
 
     private func resolvedBoardHintBottomInset(

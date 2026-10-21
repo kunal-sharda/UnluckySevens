@@ -7,6 +7,7 @@ public enum CoreGameError: Error, Equatable {
     case prevHashMismatch
     case actorMismatch
     case rosterChanged
+    case lobbyPlayerLimitInvalid
     case playerDisplayNamesChanged
     case seedChanged
     case boardRulesChanged
@@ -97,6 +98,15 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
         throw CoreGameError.prevHashMismatch
     }
 
+    if to.phase == .gameOver, to.gameResult?.reason == .victory {
+        guard matchesWinningTurnTransition(from: from, to: to, actor: actor)
+                || matchesLifecycleTransition(from: from, to: to, actor: actor) else {
+            throw CoreGameError.victoryStateInvalid
+        }
+        try validateCanonicalSnapshot(to)
+        return
+    }
+
     if lifecycleStateChanged(from: from, to: to) {
         guard matchesLifecycleTransition(from: from, to: to, actor: actor) else {
             throw CoreGameError.gameResultInvalid
@@ -149,6 +159,11 @@ public func validateTransition(from: CoreGameStateV1, to: CoreGameStateV1, actor
     }
 
     let isStartTransition = from.phase == .lobby && to.phase == .setup
+    if isStartTransition {
+        guard (3 ... 4).contains(from.roster.count), to.roster == from.roster else {
+            throw CoreGameError.lobbyPlayerLimitInvalid
+        }
+    }
     if !isStartTransition {
         guard to.roster == from.roster else {
             throw CoreGameError.rosterChanged
@@ -383,7 +398,14 @@ private func validateLobbyTransitionIfNeeded(
         try validateLobbyRenameDisplayNames(from: from, to: to, actor: actor)
         transitionKind = .rename
     } else {
-        guard !from.roster.contains(actor), to.roster == from.roster + [actor] else {
+        guard
+            from.roster.count < 4,
+            !from.roster.contains(actor),
+            to.roster == from.roster + [actor]
+        else {
+            if from.roster.count >= 4 {
+                throw CoreGameError.lobbyPlayerLimitInvalid
+            }
             throw CoreGameError.rosterChanged
         }
         try validateLobbyJoinDisplayNames(from: from, to: to, actor: actor)

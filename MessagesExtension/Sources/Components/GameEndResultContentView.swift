@@ -3,6 +3,7 @@ import SwiftUI
 struct GameEndResultContentView: View {
     let model: GameEndScreenModel
     let onNewGame: () -> Void
+    var onSettings: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: GameTheme.inlineSpacing) {
@@ -12,13 +13,13 @@ struct GameEndResultContentView: View {
 
                     Spacer(minLength: GameTheme.inlineSpacing)
 
-                    GameEndNewGameButton(action: onNewGame)
+                    resultActions
                 }
 
                 VStack(alignment: .leading, spacing: GameTheme.chipSpacing) {
                     GameEndResultHeadingView()
 
-                    GameEndNewGameButton(action: onNewGame)
+                    resultActions
                 }
             }
 
@@ -32,4 +33,21 @@ struct GameEndResultContentView: View {
         .padding(.horizontal, GameTheme.compactPadding)
         .padding(.vertical, GameTheme.inlineSpacing)
     }
+
+    private var resultActions: some View {
+        HStack(spacing: GameTheme.inlineSpacing) {
+            GameEndNewGameButton(action: onNewGame)
+            if let onSettings {
+                Button("Settings", systemImage: "gearshape", action: onSettings)
+                    .labelStyle(.iconOnly)
+                    .font(.headline)
+                    .foregroundStyle(GamePhysicalTurnPalette.nameTileInk)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("uls.endScreen.settings")
+            }
+        }
+    }
+
 }
