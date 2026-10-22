@@ -25,19 +25,25 @@ Work on beta-1.2. Preserve concurrent supply-clarity edits. Only trade snapshot/
 <!-- verification-contract:start -->
 | ID | Class | Source | Acceptance | Verification | Evidence | Status | Rationale |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| TB-001 | observable | user clarification | Felt, actual full-strength artwork, repeated small quantities, exact counts below and named players fit bubble | three renderer fixtures and pixel inspection | report:round2-three-inspected-attachments | pass | Image itself is the shipped bubble asset |
-| TB-002 | mechanical | architecture/secrecy | Public offer only, unchanged caption/summary/protocol/in-game trade | focused copy tests and source review | report:17-tests-and-source-review | pass | No private hand counts |
-| TB-003 | mechanical | workflow | Owner docs current, validated commit pushed to beta-1.2 | gate and git evidence | report:doc-freshness-build-7d37a08-pushed | pass | Preserve concurrent supply work |
+| TB-001 | observable | user clarification | Felt, actual full-strength artwork, repeated small quantities, exact counts below and named players fit bubble | three renderer fixtures and pixel inspection | report:followup-render-pending | pending | Image itself is the shipped bubble asset |
+| TB-002 | mechanical | architecture/secrecy | Public offer only, unchanged caption/summary/protocol/in-game trade | focused copy tests and source review | report:followup-tests-pending | pending | No private hand counts |
+| TB-003 | mechanical | workflow | Owner docs current, validated commit pushed to beta-1.2 | gate and git evidence | report:followup-delivery-pending | pending | Preserve concurrent supply work |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
 | Reviewer | Required | Verdict | Evidence |
 | --- | --- | --- | --- |
-| constraint-auditor | yes | pass | report:readiness_auditor-final-trade-bubbles |
-| product-ux | yes | pass | report:readiness_auditor-three-render-inspection |
+| constraint-auditor | yes | pending | report:readiness_auditor-final-trade-bubbles |
+| product-ux | yes | pending | report:readiness_auditor-three-render-inspection |
 <!-- fresh-review:end -->
 
 ## Living Record
+
+Follow-up: user rejects redundant per-side totals and the name/status composition. Reopen standard/direct for a narrow refinement: per-resource quantities only; proposer once in header; recipient names once in footer; collapse identical waiting status into one shared line; improve card spacing. Preserve differing participant responses. Clarify whether "appeared out" means spread/fanned cards while proceeding with the unambiguous cleanup. Locked proof: same three production renderer cases plus copy tests, initial visual round and at most one correction round; fresh constraint/product review, scoped commit/push and standard gate. No in-game trade changes. Prior passing evidence remains historical until refreshed below.
+
+Refinement implementation: removed totals from both layouts; waiting recipient names join into one footer with a single awaiting-reply line, while differing responses remain individual. No answer to optional spread clarification after proceeding with independent cleanup; stated assumption of a gentle fan. Simple-exchange card maximum60 (previous52), shallow7-degree fan steps, wider spacing. Mixed3-type exchanges use a common38-point maximum on both sides to avoid inconsistent sizes. New mixed-response fixture preserves declined versus waiting evidence.
+
+Refinement proof: two rounds each17/17 tests pass; final /tmp/uls-trade-refine-round2.xcresult. Inspected three final PNGs in /tmp/uls-trade-refine-round2-images and retained copies under output/trade-bubbles-review/refined. No totals, full-strength art, no clipping/overlap; long recipient names fit the consolidated footer. No more visual rounds. DESIGN bubble paragraph updated; unrelated supply edits preserved.
 
 Root cause in existing receipt: it supplies count to GameTabletopPortraitCardView, which deliberately fades the artwork to16% behind overlaid numerals; the snapshot background uses sceneBackground (ocean). Fix at bubble call sites, preserving shared in-game card behavior. Existing receipt is only used by the trade snapshot (verify before edits).
 

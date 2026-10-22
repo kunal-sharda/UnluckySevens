@@ -37,23 +37,8 @@ struct GameTradeReceiptView: View {
                 .frame(maxWidth: .infinity)
             }
 
-            if !visual.participantStatuses.isEmpty {
-                HStack(spacing: 8) {
-                    ForEach(visual.participantStatuses) { status in
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(status.displayName)
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                                .lineLimit(1)
-                            Label(status.detailText, systemImage: statusSymbol(for: status.state))
-                                .lineLimit(1)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .font(.caption2)
-                        .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
-                    }
-                }
-            }
+            recipientFooter
+
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 16)
@@ -72,8 +57,13 @@ struct GameTradeReceiptView: View {
                 HStack(alignment: .top, spacing: 5) {
                     ForEach(chips) { chip in
                         VStack(spacing: 5) {
-                            TranscriptTradeCardStackView(chip: chip, availableWidth: groupWidth, assetBundle: assetBundle)
-                                .frame(height: 68, alignment: .bottom)
+                            TranscriptTradeCardStackView(
+                                chip: chip,
+                                availableWidth: groupWidth,
+                                assetBundle: assetBundle,
+                                maximumCardWidth: max(visual.offer.give.count, visual.offer.receive.count) == 3 ? 38 : 60
+                            )
+                                .frame(height: 82, alignment: .bottom)
                             Text(chips.count > 3 ? "\(chip.count)" : "\(chip.count) \(chip.shortLabel)")
                                 .font(.caption2.weight(.semibold))
                                 .monospacedDigit()
@@ -86,25 +76,16 @@ struct GameTradeReceiptView: View {
                 }
                 .frame(maxWidth: .infinity)
             }
-            .frame(height: 100)
-            let total = chips.reduce(0) { $0 + $1.count }
-            Text("\(total) \(total == 1 ? "card" : "cards")")
-                .font(.caption.weight(.bold))
-                .monospacedDigit()
-                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+            .frame(height: 112)
+
         }
         .frame(maxWidth: .infinity)
     }
 
     private func denseResourceRow(_ chips: [GameHandChip], title: String) -> some View {
-        let total = chips.reduce(0) { $0 + $1.count }
-        return HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.caption.weight(.semibold))
-                Text("\(total) \(total == 1 ? "card" : "cards")")
-                    .font(.caption2)
-                    .monospacedDigit()
-            }
+        HStack(spacing: 8) {
+            Text(title)
+                .font(.caption.weight(.semibold))
             .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
             .frame(width: 45, alignment: .leading)
             GeometryReader { geometry in
@@ -124,6 +105,43 @@ struct GameTradeReceiptView: View {
             }
         }
         .frame(height: 70)
+    }
+
+    @ViewBuilder
+    private var recipientFooter: some View {
+        let participants = visual.participantStatuses
+        if !participants.isEmpty && participants.allSatisfy({ $0.state == .waiting }) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("To " + participants.map(\.displayName).joined(separator: " · "))
+                    .font(participants.count == 1 ? .subheadline.weight(.semibold) : .caption.weight(.semibold))
+                    .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                    .lineLimit(2)
+                Text(participants.count == 1 ? "Awaiting reply" : "Awaiting replies")
+                    .font(.caption)
+                    .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
+            }
+        } else if participants.isEmpty {
+            Text(visual.recipientScopeLabel)
+                .font(.subheadline)
+                .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
+                .lineLimit(2)
+        } else {
+            HStack(alignment: .top, spacing: 8) {
+                ForEach(participants) { status in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(status.displayName)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                            .lineLimit(1)
+                        Label(status.detailText, systemImage: statusSymbol(for: status.state))
+                            .font(.caption2)
+                            .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
     }
 
     private func resourceDescription(_ chips: [GameHandChip]) -> String {
