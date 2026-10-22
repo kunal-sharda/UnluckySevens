@@ -6,7 +6,7 @@ struct TranscriptTradeSnapshotView: View {
 
     var body: some View {
         ZStack {
-            Color(uiColor: GameBoardPalette.sceneBackground)
+            GameTheme.felt
 
             GameTradeReceiptView(
                 visual: visual,
@@ -18,5 +18,7 @@ struct TranscriptTradeSnapshotView: View {
             height: TranscriptBubbleImageRenderer.imageSize.height
         )
         .environment(\.colorScheme, .dark)
+        // Fixed-size artwork; Messages owns scalable caption and summary text.
+        .environment(\.dynamicTypeSize, .large)
     }
 }

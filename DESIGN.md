@@ -74,6 +74,8 @@ The approved product identity is a cool-grey physical robber piece marked with a
 
 Collapsed Messages previews reuse production surfaces instead of introducing a parallel illustration system. Lobby updates render the actual four-seat table from the canonical roster; setup renders the actual board with number tokens withheld; turn play and game over render the actual current board. These images stay label-free because the Messages caption and summary own readable status.
 
+Active trade bubbles are a readable public offer, not decorative board art: dark game felt, full-strength production resource illustrations, SF quantity labels below the cards, named proposer and recipients, and per-side totals. Small exchanges show individual cards; large/mixed exchanges use bounded representative cards with exact printed quantities. Four or five resource types switch to full-width Gives/Wants rows to preserve illustration size. Never apply the in-game count-overlay fading treatment to trade bubble artwork. The fixed message image uses the standard text-size composition; Messages caption/summary remain the scalable accessible description. In-game trade controls and hidden hand counts are separate and unchanged.
+
 Previous numbered terrain and tree passes were experimentation, not durable product truth. They were removed after their final outputs were integrated. New experiments belong in ignored `docs/design/workbench/` and are deleted when the decision closes.
 
 ## Human Calibration
