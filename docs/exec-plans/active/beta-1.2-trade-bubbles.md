@@ -27,7 +27,7 @@ Work on beta-1.2. Preserve concurrent supply-clarity edits. Only trade snapshot/
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | TB-001 | observable | user clarification | Felt, actual full-strength artwork, repeated small quantities, exact counts below and named players fit bubble | three renderer fixtures and pixel inspection | report:round2-three-inspected-attachments | pass | Image itself is the shipped bubble asset |
 | TB-002 | mechanical | architecture/secrecy | Public offer only, unchanged caption/summary/protocol/in-game trade | focused copy tests and source review | report:17-tests-and-source-review | pass | No private hand counts |
-| TB-003 | mechanical | workflow | Owner docs current, validated commit pushed to beta-1.2 | gate and git evidence | report:pending | pending | Preserve concurrent supply work |
+| TB-003 | mechanical | workflow | Owner docs current, validated commit pushed to beta-1.2 | gate and git evidence | report:doc-freshness-build-7d37a08-pushed | pass | Preserve concurrent supply work |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
@@ -43,7 +43,7 @@ Root cause in existing receipt: it supplies count to GameTabletopPortraitCardVie
 
 ## Validation and Outcome
 
-In progress. DESIGN owns bubble presentation; other product/rules owners unchanged. Screenshots are local output, not durable binary references.
+Validated and delivered. DESIGN owns bubble presentation; other product/rules owners unchanged. Screenshots are local output, not durable binary references.
 
 Implementation: ocean replaced with GameTheme.felt; bubble card calls no longer pass count overlays, preserving full-strength illustrations. Small quantities show repeated cards up to3 where space permits; mixed offers print exact quantities below representative cards. Four/five-type offers use two full-width rows. Common card width52 versus previous34. Proposer and named participant responses retained; duplicate recipient header removed. Only transcript receipt calls changed; in-game card rendering and trade surfaces untouched.
 
@@ -52,3 +52,7 @@ Validation: canonical generation succeeded. Round1 and final round2 each passed1
 Other bubble audit: lobby reuses the actual seat table; ordinary turns use the canonical board. End-game overlays a score strip on the board image and is the next candidate for a conversation-size visual review; source inspection alone does not establish a defect. No other bubble redesigned. Lifecycle redesign remains outside this clarified trade slice.
 
 Fresh constraint/product-UX review passed source, public-only data, all3 pixels and17-test summary. Final singular/plural correction for dense1-card totals source-reviewed; three rendered fixture outputs unaffected. Standard simulator build before commit; gate and delivery evidence follow.
+
+Delivery: simulator build passed after final copy correction. Commit7d37a08 pushed to origin/beta-1.2; staged scope contains only the three bubble source files, renderer tests, this plan and the bubble-only DESIGN paragraph. Supply-clarity edits remain uncommitted and untouched. Initial combined git command failed on sandbox index permissions; separately permitted staging/commit succeeded. Final completion gate follows.
+
+Final standard completion gate passed: contract, harness audit, whitespace, doc freshness, canonical generation and simulator build. All TB constraints and required reviews pass. Local review images retained in ignored output/trade-bubbles-review/. Doc freshness: DESIGN and this ExecPlan updated; architecture, decisions, gameplay/product flows and QA contracts unchanged; no historical cleanup. No live message delivery or hardware acceptance claimed. Implementation7d37a08 is pushed; this evidence-only closeout is committed separately.
