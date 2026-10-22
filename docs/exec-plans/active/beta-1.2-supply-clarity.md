@@ -28,15 +28,15 @@ Locked proof: focused GamePublicPileLevelTests and existing GameTradePanelModelB
 | ID | Class | Source | Acceptance | Verification | Evidence | Status | Rationale |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | SUP-001 | mechanical | #51 | Coarse Bank thresholds, empty bar, no public stock numbers or Trade badges; hand/selection and rules unchanged | focused tests and source review | report:unit12-devbars; report:supply_review-final | pass | Presentation only |
-| SUP-002 | observable | #51 | Bank and Trade readable with clear meaning across mixed supply and accessible text | three focused catalog runs and inspected screenshots | report:iphone061322-ipad061617-accessibility062421 | pass | Real components in Messages |
+| SUP-002 | observable | #51 | Bank and Trade readable with clear meaning across mixed supply and accessible text | three focused catalog runs and inspected screenshots | report:plaque-accessibility063925-iphone064214-ipad064448 | pass | Real components in Messages |
 | SUP-003 | mechanical | repo workflow | Owner docs current and validation/push recorded | doc freshness and standard gate | report:owner-doc-source-review | pass | Gate is the final command after contract validation; no milestone closure |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
 | Reviewer | Required | Verdict | Evidence |
 | --- | --- | --- | --- |
-| constraint-auditor | yes | pass | report:supply_review-followup-final |
-| SwiftUI-accessibility | yes | pass | report:supply_review-followup-final |
+| constraint-auditor | yes | pass | report:supply_review-plaque-final |
+| SwiftUI-accessibility | yes | pass | report:supply_review-plaque-final |
 <!-- fresh-review:end -->
 
 ## Living Record
@@ -78,3 +78,17 @@ Follow-up accessibility attempt 2 passes in output/ui-screenshot-harness/2026102
 Final independent follow-up constraint and SwiftUI/accessibility review passes with no blocking findings: all nine final captures, matching installed/built manifests, unit12 and source/owner docs inspected. SUP-003 doc freshness/source review passes; standard completion gate and commit/push follow as final delivery actions.
 
 Follow-up standard completion gate passed, exit 0 (/tmp/uls-beta12-devbars-gate.log): selected contract, harness audit, whitespace, doc freshness, canonical generation and simulator build. Follow-up complete for simulator-scoped acceptance; no Beta 1.1 device or Beta 1.2 release acceptance implied. DESIGN.md/UI flows and this active plan updated; architecture, rules, protocol, QA owners and historical references intentionally unaffected. Authorized commit and push target beta-1.2.
+
+## Bank plaque correction
+
+Owner requests restoring wooden Bank plaque and consistent copy. Standard/direct, preserving existing composition: keep Bank name tile always; show separate “Approx. cards left” beside it only while supply is revealed. Lock proof: existing supply route on iPhone, iPad and accessibility-medium, maximum initial plus two diagnosed retries; inspect three states each, fresh constraint review, doc freshness and completion gate. VP question is read-only engine/test verification; no rule change authorized or needed unless evidence shows a defect.
+
+VP side investigation: TurnReducerV1 automatically checks the current player's total including hidden VP after actions, terminalizes at >=10, and reveals held plus newly bought VP. TurnVictoryV1Tests passed 11/11 (/tmp/uls-vp-check-r1.log), including purchase-to-ten, turn handoff and knight-award cases. Initial Swift command was sandbox-blocked before tests; authorized rerun passed. Legacy reveal action remains a compatibility path, not a required normal-game action. No engine/product rule changes needed.
+
+Plaque first iPhone route passed assertions but visual inspection rejected two-line explanation: inherited large text pushed cards into dice. Correction keeps explanation on one line with fitting, preserving the plaque. Explicitly set large for normal-size proof to avoid inherited simulator preference. In-flight accessibility attempt 1 uses earlier binary and is exploratory only. Final round: corrected iPhone/accessibility attempt 2 and iPad initial, no extra routes.
+
+Final plaque proof passes: accessibility-medium attempt 2 output/ui-screenshot-harness/20261022T063925Z-iphone; explicitly large iPhone attempt 2 20261022T064214Z-iphone; explicitly large iPad initial 20261022T064448Z-ipad. All three supply routes pass hidden/automatic/manual restoration assertions. Final single-line explanation keeps the wooden tile and clears the dice; no rule or public-count changes. Doc freshness and whitespace passed; final independent review and standard gate follow.
+
+Fresh constraint and SwiftUI/accessibility review passes final source/docs and all nine final captures with matching installed/build hashes. SUP-001/002 pass; SUP-003 doc review and freshness pass. Completion gate and delivery are final actions below.
+
+Plaque correction completion gate passed exit 0 (/tmp/uls-plaque-gate.log), including doc freshness, contract/harness checks, canonical generation and simulator build. Correction complete for scoped simulator acceptance. Owner docs DESIGN.md and UI flows updated; architecture, rules, protocol, QA and historical docs intentionally unchanged. Commit/push this coherent correction to beta-1.2; no device or milestone release claim.

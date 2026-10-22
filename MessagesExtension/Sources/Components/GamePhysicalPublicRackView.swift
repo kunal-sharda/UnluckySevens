@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct GamePhysicalPublicRackView: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .caption) private var bankLabelWidth: CGFloat = 42
     let bank: GameBankTrayModel
     let revealsBankCounts: Bool
     var isTradeShowingSupply = false
@@ -31,16 +31,17 @@ struct GamePhysicalPublicRackView: View {
                         }
                     }
 
-                    if revealsBankCounts {
-                        Text(dynamicTypeSize.isAccessibilitySize ? "Bank supply" : "Bank · Approx. cards left")
-                            .font(.caption)
-                            .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                            .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: 210)
-                    } else {
-                        GameTabletopNameTileView(title: "Bank", width: 42, isSelected: false)
+                    HStack(spacing: 6) {
+                        GameTabletopNameTileView(title: "Bank", width: bankLabelWidth, isSelected: false)
+                        if revealsBankCounts {
+                            Text("Approx. cards left")
+                                .font(.caption2)
+                                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.5)
+                        }
                     }
+                    .frame(maxWidth: 210)
                 }
                 .contentShape(Rectangle())
             }
