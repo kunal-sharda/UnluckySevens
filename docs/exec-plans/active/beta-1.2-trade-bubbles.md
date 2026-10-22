@@ -25,17 +25,17 @@ Use beta-1.2 and preserve concurrent supply-clarity changes. Only trade receipt,
 <!-- verification-contract:start -->
 | ID | Class | Source | Acceptance | Verification | Evidence | Status | Rationale |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| TB-001 | observable | user request | Felt/full art; visible small multiplicity; exact resource quantities; compact named recipients with individual responses; no clipping | three production renderer captures inspected | report:compact-round1-three-inspected-renders | pass | Renderer output is shipped artwork, not proof of remote receipt |
-| TB-002 | mechanical | architecture and user boundary | Public-only offer; unchanged caption/summary/protocol/in-game behavior; valid content-sized trade image through dispatcher | focused renderer/copy/gallery tests and source review | report:compact18-tests-source-review | pass | Board-family sizing unchanged |
-| TB-003 | mechanical | workflow | Tracking gaps repaired; owner docs current; scoped commit/push and standard gate | issue readback and gate/git evidence | report:issues52-53-and15-47-3-readback-doc-freshness-b545a42-pushed | pass | Preserve concurrent supply work |
-| TB-004 | judgment | user approved direction | Cards dominate; tight grouping; quiet sender/separator; readable consistent labels and compact response roster | fresh product-UX inspection of three renders | report:compact_bubble_review | pass | Advisory craft review does not replace user taste feedback |
+| TB-001 | observable | user request | Felt/full art; visible small multiplicity; exact resource quantities; compact named recipients with individual responses; no clipping | three production renderer captures inspected | report:fan-three-isolated-renders | pass | Renderer output is shipped artwork, not proof of remote receipt |
+| TB-002 | mechanical | architecture and user boundary | Public-only offer; unchanged caption/summary/protocol/in-game behavior; valid content-sized trade image through dispatcher | focused renderer/copy/gallery tests and source review | report:fan-isolated18-tests-source-review | pass | Board-family sizing unchanged |
+| TB-003 | mechanical | workflow | Tracking gaps repaired; owner docs current; scoped commit/push and standard gate | issue readback and gate/git evidence | report:issues52-53-and15-47-3-readback-doc-freshness-b545a42-pushed | pending | Preserve concurrent supply work |
+| TB-004 | judgment | user approved direction | Cards dominate; tight grouping; quiet sender/separator; readable consistent labels and compact response roster | fresh product-UX inspection of three renders | report:compact_bubble_review-fan-followup | pass | Advisory craft review does not replace user taste feedback |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
 | Reviewer | Required | Verdict | Evidence |
 | --- | --- | --- | --- |
-| constraint-auditor | yes | pass | report:compact_bubble_review-source-and-raw-evidence |
-| product-ux | yes | pass | report:compact_bubble_review-three-captures |
+| constraint-auditor | yes | pass | report:compact_bubble_review-fan-followup-source-and-raw-evidence |
+| product-ux | yes | pass | report:compact_bubble_review-fan-followup-three-captures |
 <!-- fresh-review:end -->
 
 ## Living Record
@@ -54,6 +54,10 @@ Use beta-1.2 and preserve concurrent supply-clarity changes. Only trade receipt,
 
 Two prior bounded visual passes established full-strength illustrated felt cards, removed aggregate totals and added three fixtures. Each final pass had17 passing tests and a passing completion gate; implementations and evidence commits are pushed. The user's subsequent slideshow criticism reopens composition. Independent Impeccable review identified fixed82/112-point empty regions, equal-width columns and dashboard-like response layout as causes. No further polish of the old layout is implied.
 
+## Current follow-up — 2026-10-21
+
+User authorizes fixing the remaining slide-like composition. Reopen standard/direct with the same18-test proof and three renderer captures, maximum two visual rounds; preserve public data and in-game controls. Remove Gives/Wants headings from the side-by-side exchange, gather mixed cards in shallow fans with art still identifiable, keep exact per-resource labels, and group recipients by identical response state/detail (each name once). Dense two-row offers keep directional labels for unambiguous reading. No new data/protocol. Previous passes below are historical and do not prove this new composition. Fresh constraint/product-UX review and completion gate follow scoped commit/push. Pre-roll map inspection is separately ticketed as [#54](https://github.com/kunal-sharda/UnluckySevens/issues/54) from the user's new report; not folded into bubble changes.
+
 ## Validation and Outcome
 
 Implementation: removed fixed82/112-point regions and equal-width columns. Shared card sizes and consistent count/name labels sit in intrinsic groups. Sender text is subordinate; mixed responses use compact inline rows. Trade height is content-sized; all other families retain fixed canvas. DESIGN bubble paragraph updated.
@@ -63,3 +67,9 @@ Round1 proof: canonical generation succeeded after an external-cache sandbox den
 Fresh constraint/product-UX review passes TB-001/002/004 after independently inspecting source, all three images and raw18-test results. TB-003 tracking readback and scoped commit/push are verified: b545a42 on origin/beta-1.2. Standard completion gate passed (exit0): selected contract, harness audit, whitespace, doc freshness, canonical generation and simulator build. All selected constraints/reviews pass. Doc freshness and whitespace checks pass. Architecture, rules, product-flow and QA owners remain unaffected; no hardware, distribution or final milestone acceptance claim.
 
 Doc freshness: DESIGN bubble contract and active trade/kickoff plans updated. Architecture, decisions, rules, product flow and QA contracts intentionally unchanged by this slice; no historical cleanup. Concurrent supply changes remain untouched. Issue52 remains open for user visual feedback, not a missing local implementation check. No live receipt, physical device or milestone-release claim.
+
+Fan follow-up validation: first run /tmp/uls-trade-fan-round1.xcresult was interrupted (16pass,2 signal-kill crashes). Process inspection confirmed the separate supply screenshot harness simultaneously targeting the same simulator. Do not use that bundle as final proof. Diagnosed retry1 uses a temporary isolated iPhone17/iOS26.5 simulator; no product-scope expansion.
+
+Isolated follow-up proof: /tmp/uls-trade-fan-isolated.xcresult passes18/18, zero failures/skips. Three final images inspected and retained at output/trade-bubbles-review/fan: larger shallow mixed fans, single-line exact resource labels, no side-by-side headings, shared Waiting response for Theo/Sam with distinct Maya Declined, full long names and all dense terms. No clipping or concealed resource illustrations. One visual round used; no correction round needed.
+
+Fresh follow-up constraint/product-UX review passes source, raw18-test result and all three final images. Doc freshness passed; temporary isolated simulator removed after validation. Final workflow check/commit/push follows.

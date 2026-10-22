@@ -12,7 +12,7 @@ struct GameTradeReceiptView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             (Text(visual.offer.proposerDisplay).fontWeight(.semibold) + Text(" offers"))
-                .font(.subheadline)
+                .font(.caption)
                 .foregroundStyle(GamePhysicalTurnPalette.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -23,12 +23,12 @@ struct GameTradeReceiptView: View {
                 }
             } else {
                 HStack(alignment: .center, spacing: 10) {
-                    resourceGroup(visual.offer.give, title: "Gives")
+                    resourceGroup(visual.offer.give)
                     Image(systemName: "arrow.right")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
                         .accessibilityHidden(true)
-                    resourceGroup(visual.offer.receive, title: "Wants")
+                    resourceGroup(visual.offer.receive)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -56,41 +56,33 @@ struct GameTradeReceiptView: View {
         }
         let count = max(1, visual.offer.give.count + visual.offer.receive.count)
         // Reserve the separator and inter-card gaps; both sides share card size.
-        return min(48, (296 - CGFloat(max(0, count - 2)) * 8) / CGFloat(count))
+        return min(56, (296 + CGFloat(max(0, count - 2)) * 6) / CGFloat(count))
     }
 
-    private func resourceGroup(_ chips: [GameHandChip], title: String) -> some View {
-        VStack(spacing: 6) {
-            Text(title)
-                .font(.caption2)
-                .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
-            HStack(alignment: .top, spacing: 8) {
-                ForEach(chips) { chip in
-                    VStack(spacing: 6) {
-                        TranscriptTradeCardStackView(
-                            chip: chip,
-                            cardWidth: cardWidth,
-                            showsIndividualCards: isSimple,
-                            assetBundle: assetBundle
-                        )
-                        resourceQuantity(chip)
-                    }
+    private func resourceGroup(_ chips: [GameHandChip]) -> some View {
+        HStack(alignment: .top, spacing: isSimple ? 8 : -6) {
+            ForEach(Array(chips.enumerated()), id: \.element.id) { index, chip in
+                VStack(spacing: 4) {
+                    TranscriptTradeCardStackView(
+                        chip: chip,
+                        cardWidth: cardWidth,
+                        showsIndividualCards: isSimple,
+                        assetBundle: assetBundle
+                    )
+                    .rotationEffect(.degrees(isSimple ? 0 : (Double(index) - Double(chips.count - 1) / 2) * 7))
+                    .padding(.vertical, isSimple ? 0 : 5)
+                    resourceQuantity(chip)
                 }
             }
         }
     }
 
     private func resourceQuantity(_ chip: GameHandChip) -> some View {
-        VStack(spacing: 1) {
-            Text("\(chip.count)")
-                .font(.subheadline.weight(.semibold))
-                .monospacedDigit()
-                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-            Text(chip.shortLabel)
-                .font(.caption2)
-                .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
-        }
-        .fixedSize()
+        (Text("\(chip.count)").fontWeight(.semibold) + Text(" " + chip.shortLabel))
+            .font(.caption2)
+            .monospacedDigit()
+            .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+            .fixedSize()
     }
 
     private func denseResourceRow(_ chips: [GameHandChip], title: String) -> some View {
@@ -117,32 +109,36 @@ struct GameTradeReceiptView: View {
     @ViewBuilder
     private var recipientRoster: some View {
         let participants = visual.participantStatuses
-        if !participants.isEmpty && participants.allSatisfy({ $0.state == .waiting }) {
-            VStack(alignment: .leading, spacing: 3) {
-                (Text("To ") + Text(participants.map(\.displayName).joined(separator: " · ")).fontWeight(.medium))
-                    .font(.caption)
-                    .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(participants.count == 1 ? "Awaiting reply" : "Awaiting replies")
-                    .font(.caption2)
-                    .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
-            }
-        } else if participants.isEmpty {
+        if participants.isEmpty {
             Text(visual.recipientScopeLabel)
                 .font(.caption)
                 .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
         } else {
             VStack(alignment: .leading, spacing: 4) {
-                ForEach(participants) { status in
-                    (Text(status.displayName).fontWeight(.medium)
-                        .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                     + Text(" · " + status.detailText)
-                        .foregroundStyle(GamePhysicalTurnPalette.secondaryText))
+                ForEach(responseGroups) { group in
+                    let names = participants.filter {
+                        $0.state == group.state && $0.detailText == group.detailText
+                    }.map(\.displayName).joined(separator: ", ")
+                    (Text(group.detailText + " · ")
+                        .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
+                     + Text(names).fontWeight(.medium)
+                        .foregroundStyle(GamePhysicalTurnPalette.primaryText))
                         .font(.caption)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+        }
+    }
+
+    // Preserve distinct response meanings, even if two states share a label.
+    // First appearance keeps the existing participant ordering stable.
+    private var responseGroups: [GameTradeParticipantStatus] {
+        visual.participantStatuses.enumerated().compactMap { index, participant in
+            let alreadyShown = visual.participantStatuses.prefix(index).contains {
+                $0.state == participant.state && $0.detailText == participant.detailText
+            }
+            return alreadyShown ? nil : participant
         }
     }
 
