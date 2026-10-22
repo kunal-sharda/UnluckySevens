@@ -27,7 +27,7 @@ Use beta-1.2 and preserve concurrent supply-clarity changes. Only trade receipt,
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | TB-001 | observable | user request | Felt/full art; visible small multiplicity; exact resource quantities; compact named recipients with individual responses; no clipping | three production renderer captures inspected | report:fan-three-isolated-renders | pass | Renderer output is shipped artwork, not proof of remote receipt |
 | TB-002 | mechanical | architecture and user boundary | Public-only offer; unchanged caption/summary/protocol/in-game behavior; valid content-sized trade image through dispatcher | focused renderer/copy/gallery tests and source review | report:fan-isolated18-tests-source-review | pass | Board-family sizing unchanged |
-| TB-003 | mechanical | workflow | Tracking gaps repaired; owner docs current; scoped commit/push and standard gate | issue readback and gate/git evidence | report:issues52-53-and15-47-3-readback-doc-freshness-b545a42-pushed | pending | Preserve concurrent supply work |
+| TB-003 | mechanical | workflow | Tracking gaps repaired; owner docs current; scoped commit/push and standard gate | issue readback and gate/git evidence | report:issue54-created-doc-freshness-dcf4407-pushed | pass | Preserve concurrent supply work |
 | TB-004 | judgment | user approved direction | Cards dominate; tight grouping; quiet sender/separator; readable consistent labels and compact response roster | fresh product-UX inspection of three renders | report:compact_bubble_review-fan-followup | pass | Advisory craft review does not replace user taste feedback |
 <!-- verification-contract:end -->
 
@@ -73,3 +73,5 @@ Fan follow-up validation: first run /tmp/uls-trade-fan-round1.xcresult was inter
 Isolated follow-up proof: /tmp/uls-trade-fan-isolated.xcresult passes18/18, zero failures/skips. Three final images inspected and retained at output/trade-bubbles-review/fan: larger shallow mixed fans, single-line exact resource labels, no side-by-side headings, shared Waiting response for Theo/Sam with distinct Maya Declined, full long names and all dense terms. No clipping or concealed resource illustrations. One visual round used; no correction round needed.
 
 Fresh follow-up constraint/product-UX review passes source, raw18-test result and all three final images. Doc freshness passed; temporary isolated simulator removed after validation. Final workflow check/commit/push follows.
+
+Follow-up implementation committed and pushed as dcf4407 on beta-1.2. All selected constraints and fresh reviews pass. Standard completion gate passed (exit0): contract, harness audit, whitespace, doc freshness, canonical generation and simulator build; local log /tmp/uls-trade-fan-completion.log. DESIGN and this plan own the changed facts; architecture, rules, product flows and QA contracts remain intentionally unchanged. No historical cleanup. Map inspection #54 remains tracked but unimplemented.
