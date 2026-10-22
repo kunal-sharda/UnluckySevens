@@ -1955,6 +1955,42 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachGameplayActionEvidence(name: "Maritime Trade", before: before, after: after)
     }
 
+    func testResourceSupplyLabelsInBankAndTrade() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Mixed Bank supply")
+        hideUXLabChromeWithoutChangingFixture()
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        XCTAssertTrue(board.waitForExistence(timeout: 8))
+        let frame = board.frame
+        let host = turnElement(identifier: "uls.tabletop.boardHost", labels: [])
+        let mount = boardMountIdentity(of: host)
+        let bank = messages.buttons["uls.tabletop.bankRack"].firstMatch
+        XCTAssertTrue(bank.waitForExistence(timeout: 8))
+        bank.tap()
+        let bankValue = String(describing: bank.value)
+        for expected in ["Wood: Bank supply High", "Brick: Bank supply Medium",
+                         "Sheep: Bank supply Low", "Wheat: Bank supply empty"] {
+            XCTAssertTrue(bankValue.contains(expected), bankValue)
+        }
+        attachScreenshot(named: "Supply - Bank levels")
+        turnElement(identifier: "uls.turnObject.trade", labels: ["Trade"]).tap()
+        messages.buttons["Player Trade"].firstMatch.tap()
+        for resource in ["wood", "brick", "sheep", "wheat"] {
+            let button = messages.buttons["uls.physicalTrade.get.\(resource).add"].firstMatch
+            XCTAssertTrue(button.waitForExistence(timeout: 4))
+            XCTAssertEqual(button.value as? String, "0 selected")
+        }
+        XCTAssertFalse(messages.buttons["uls.physicalTrade.get.wheat.add"].firstMatch.isEnabled)
+        let brick = messages.buttons["uls.physicalTrade.get.brick.add"].firstMatch
+        brick.tap()
+        XCTAssertEqual(brick.value as? String, "1 selected")
+        XCTAssertTrue(messages.buttons["uls.physicalTrade.give.wood.add"].firstMatch.value
+            .map { String(describing: $0).contains("available") } ?? false)
+        assertFrame(of: board, matches: frame, message: "Supply labels must not move the board.")
+        XCTAssertEqual(boardMountIdentity(of: host), mount)
+        attachScreenshot(named: "Supply - Trade selection")
+    }
+
     func testGameplayActionPlayerTradeOfferCommitsCanonicalState() throws {
         openUnluckySevensExtension()
         waitForUXLabChrome()

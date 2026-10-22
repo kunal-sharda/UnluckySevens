@@ -95,6 +95,7 @@ enum UXTestFixtures {
         setupHandoff,
         turnNeedsRoll,
         turnAfterRoll,
+        mixedBankSupply,
         drawVote,
         endTurnAction,
         waitingOnAlice,
@@ -372,6 +373,19 @@ enum UXTestFixtures {
                 step: .afterRoll,
                 lastRoll: DiceRollV1(d1: 3, d2: 5)
             )
+        )
+    )
+
+    private static let mixedBankSupply = UXTestFixture(
+        id: "mixed-bank-supply",
+        title: "Mixed Bank supply",
+        detail: "High, medium, low and exhausted resource supply.",
+        defaultActorID: host,
+        state: makeState(
+            rev: 9,
+            phase: .turn,
+            bankResources: ResourceHandV1(wood: 13, brick: 7, sheep: 1, wheat: 0, ore: 12),
+            turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 5))
         )
     )
 
@@ -740,6 +754,7 @@ enum UXTestFixtures {
         diceRngState: UInt64? = 9_002,
         robberRngState: UInt64? = 9_003,
         resourcesByPlayer: [String: ResourceHandV1] = defaultResources,
+        bankResources: ResourceHandV1 = fullBank,
         devCardsByPlayer: [String: DevCardInventoryV1] = defaultDevCardsByPlayer,
         newDevCardsByPlayer: [String: DevCardInventoryV1] = defaultNewDevCardsByPlayer,
         revealedVictoryPointsByPlayer: [String: Int] = [:],
@@ -775,7 +790,7 @@ enum UXTestFixtures {
             diceRngState: diceRngState,
             robberRngState: robberRngState,
             resourcesByPlayer: resourcesByPlayer,
-            bankResources: fullBank,
+            bankResources: bankResources,
             devDeck: devDeck,
             devCardsByPlayer: devCardsByPlayer,
             newDevCardsByPlayer: newDevCardsByPlayer,

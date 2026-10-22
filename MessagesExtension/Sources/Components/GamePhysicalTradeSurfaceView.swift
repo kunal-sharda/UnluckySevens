@@ -4,6 +4,7 @@ import ULS_CoreGame
 /// Physical Props presentation for the existing production trade routes.
 /// Draft ownership, legality, recipient semantics, and publication remain in `GameShellView`.
 struct GamePhysicalTradeSurfaceView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private static let resources: [ResourceV1] = [.wood, .brick, .sheep, .wheat, .ore]
 
     let route: GameTradeOverlayRoute
@@ -135,6 +136,7 @@ struct GamePhysicalTradeSurfaceView: View {
                 chips: bankChips.map { GameHandChip(resource: $0.resource, count: $0.count) },
                 selectedHand: draft.receive,
                 target: .tradeWant,
+                concealsStock: true,
                 onAdd: onAddWantResource,
                 onRemove: onRemoveWantResource
             )
@@ -185,10 +187,22 @@ struct GamePhysicalTradeSurfaceView: View {
         chips: [GameHandChip],
         selectedHand: ResourceHandV1,
         target: GameTutorialTarget,
+        concealsStock: Bool = false,
         onAdd: @escaping (ResourceV1) -> Void,
         onRemove: @escaping (ResourceV1) -> Void
     ) -> some View {
         VStack(spacing: 6) {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(spacing: 2) {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                    Text(selectedSummary(selectedHand))
+                        .font(.caption)
+                        .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
+                }
+                .frame(width: 274)
+            } else {
             ZStack {
                 Text(title)
                     .font(.headline)
@@ -204,6 +218,7 @@ struct GamePhysicalTradeSurfaceView: View {
                 }
             }
             .frame(width: 274)
+            }
 
             HStack(spacing: 6) {
                 ForEach(Self.resources, id: \.self) { resource in
@@ -214,6 +229,7 @@ struct GamePhysicalTradeSurfaceView: View {
                         selectedHand: selectedHand,
                         stageTitle: title,
                         identifier: identifier,
+                        concealsStock: concealsStock,
                         onAdd: onAdd,
                         onRemove: onRemove
                     )
@@ -231,6 +247,7 @@ struct GamePhysicalTradeSurfaceView: View {
         selectedHand: ResourceHandV1,
         stageTitle: String,
         identifier: String,
+        concealsStock: Bool,
         onAdd: @escaping (ResourceV1) -> Void,
         onRemove: @escaping (ResourceV1) -> Void
     ) -> some View {
@@ -262,8 +279,10 @@ struct GamePhysicalTradeSurfaceView: View {
                     }
                 }
                 .overlay(alignment: .bottomLeading) {
-                    countBadge(chip.count, inverse: true)
-                        .offset(x: -4, y: 4)
+                    if !concealsStock {
+                        countBadge(chip.count, inverse: true)
+                            .offset(x: -4, y: 4)
+                    }
                 }
                 .frame(width: 50, height: 60)
                 .contentShape(Rectangle())
@@ -271,7 +290,9 @@ struct GamePhysicalTradeSurfaceView: View {
             .buttonStyle(.plain)
             .disabled(chip.count == 0 || selected >= chip.count)
             .accessibilityLabel("Add \(chip.shortLabel) to \(stageTitle)")
-            .accessibilityValue("\(selected) selected, \(chip.count) available")
+            .accessibilityValue(concealsStock
+                ? "\(selected) selected"
+                : "\(selected) selected, \(chip.count) available")
             .accessibilityIdentifier("uls.physicalTrade.\(identifier).\(resourceID(chip.resource)).add")
 
             if selected > 0 {

@@ -15,6 +15,21 @@ enum GamePublicPileLevel: String, Equatable {
         rawValue.capitalized
     }
 
+    /// Coarse thirds deliberately conceal exact inventory, including within each band.
+    static func resourceFilledSegments(remaining: Int) -> Int {
+        guard remaining > 0 else { return 0 }
+        switch resource(remaining: remaining) {
+        case .high: return 3
+        case .medium: return 2
+        case .low: return 1
+        }
+    }
+
+    static func resourceSupplyDescription(remaining: Int) -> String {
+        guard remaining > 0 else { return "Bank supply empty" }
+        return "Bank supply \(resource(remaining: remaining).accessibilityLabel)"
+    }
+
     static func resource(remaining: Int) -> GamePublicPileLevel {
         resolve(remaining: remaining, capacity: 19)
     }

@@ -438,3 +438,7 @@ An open trade/counter draft resets when its canonical state or visible hand chan
 ### Fresh-device lobby entry
 
 A player may open the latest lobby bubble on a device with no local history and see its canonically validated roster, then join through the normal control. They do not need to locate replaced older Messages bubbles. With existing lobby history, concurrent-join unions still require matching parent/claim evidence; receipts arriving ahead of that evidence wait locally and are retried when it arrives. This does not authenticate a sender or recover identity after a device change.
+
+### Resource supply clarity (Beta 1.2)
+
+Bank resources show approximate three-segment bars when tapped: three filled segments for 13–19 cards, two for 7–12, one for 1–6, and an outlined empty bar for zero. The visible explanation is “Bank · Approx. cards left.” At accessibility text sizes the compact label is “Bank supply”; VoiceOver retains the full explanation of approximate fill and empty bars. Trade row headings stack above selection summaries at those sizes. The fill is quantized, so it cannot reveal exact nonzero stock. VoiceOver describes each resource’s qualitative Bank supply or empty, never its exact count. Trade Get has no supply badge or stock announcement; selected Give/Get quantities and local Give hand counts remain exact. Existing selection limits, eligibility and publication behavior are unchanged. The Dev pile retains its existing level presentation.

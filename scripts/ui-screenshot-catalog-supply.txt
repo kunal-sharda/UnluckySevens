@@ -1,0 +1,1 @@
+testResourceSupplyLabelsInBankAndTrade|mixed-bank-supply|host
