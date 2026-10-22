@@ -18,11 +18,25 @@ enum GamePublicPileLevel: String, Equatable {
     /// Coarse thirds deliberately conceal exact inventory, including within each band.
     static func resourceFilledSegments(remaining: Int) -> Int {
         guard remaining > 0 else { return 0 }
-        switch resource(remaining: remaining) {
+        return resource(remaining: remaining).filledSegments
+    }
+
+    static func devCardFilledSegments(remaining: Int) -> Int {
+        guard remaining > 0 else { return 0 }
+        return devCards(remaining: remaining).filledSegments
+    }
+
+    private var filledSegments: Int {
+        switch self {
         case .high: return 3
         case .medium: return 2
         case .low: return 1
         }
+    }
+
+    static func devCardSupplyDescription(remaining: Int) -> String {
+        guard remaining > 0 else { return "Dev Card supply empty" }
+        return "Dev Card supply \(devCards(remaining: remaining).accessibilityLabel)"
     }
 
     static func resourceSupplyDescription(remaining: Int) -> String {

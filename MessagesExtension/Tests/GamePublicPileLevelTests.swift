@@ -32,6 +32,15 @@ final class GamePublicPileLevelTests: XCTestCase {
         XCTAssertEqual(GamePublicPileLevel.devCards(remaining: 25).symbol, "H")
     }
 
+    func testDevSupplyBarsUseCoarseBandsAndAnEmptyTrack() {
+        for (count, filled) in [(-1, 0), (0, 0), (1, 1), (8, 1), (9, 2), (16, 2), (17, 3), (25, 3), (26, 3)] {
+            XCTAssertEqual(GamePublicPileLevel.devCardFilledSegments(remaining: count), filled)
+            XCTAssertFalse(GamePublicPileLevel.devCardSupplyDescription(remaining: count).contains(where: { $0.isNumber }))
+        }
+        XCTAssertEqual(GamePublicPileLevel.devCardSupplyDescription(remaining: 0), "Dev Card supply empty")
+        XCTAssertEqual(GamePublicPileLevel.devCardSupplyDescription(remaining: 9), "Dev Card supply Medium")
+    }
+
     func testDevCardLevelsUseThirdsOfTheStandardPile() {
         XCTAssertEqual(GamePublicPileLevel.devCards(remaining: 25), .high)
         XCTAssertEqual(GamePublicPileLevel.devCards(remaining: 17), .high)

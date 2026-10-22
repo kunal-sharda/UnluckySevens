@@ -346,7 +346,8 @@ struct GameShellView: View {
                                     } else {
                                         GamePhysicalPublicRackView(
                                             bank: bankTrayModel,
-                                            revealsBankCounts: physicalBankCountsRevealed,
+                                            revealsBankCounts: physicalBankCountsRevealed || isTradePanelPresented,
+                                            isTradeShowingSupply: isTradePanelPresented,
                                             developmentDeckCount: screenModel.devDeckCount,
                                             canBuyDevelopmentCard: screenModel.canBuyDevCard,
                                             onToggleBankCounts: {

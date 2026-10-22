@@ -1966,14 +1966,21 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         let mount = boardMountIdentity(of: host)
         let bank = messages.buttons["uls.tabletop.bankRack"].firstMatch
         XCTAssertTrue(bank.waitForExistence(timeout: 8))
+        XCTAssertEqual(bank.value as? String, "Supply levels hidden")
         bank.tap()
-        let bankValue = String(describing: bank.value)
+        let bankValue = bank.value as? String ?? ""
         for expected in ["Wood: Bank supply High", "Brick: Bank supply Medium",
                          "Sheep: Bank supply Low", "Wheat: Bank supply empty"] {
             XCTAssertTrue(bankValue.contains(expected), bankValue)
         }
-        attachScreenshot(named: "Supply - Bank levels")
+        let dev = messages.descendants(matching: .any)["uls.tabletop.devDeck"].firstMatch
+        XCTAssertTrue(String(describing: dev.value).contains("Dev Card supply"))
+        XCTAssertFalse(String(describing: dev.value).contains(where: { $0.isNumber }))
+        attachScreenshot(named: "Supply - Bank and Dev levels")
+        bank.tap()
+        XCTAssertEqual(bank.value as? String, "Supply levels hidden")
         turnElement(identifier: "uls.turnObject.trade", labels: ["Trade"]).tap()
+        XCTAssertEqual(bank.value as? String, bankValue)
         messages.buttons["Player Trade"].firstMatch.tap()
         for resource in ["wood", "brick", "sheep", "wheat"] {
             let button = messages.buttons["uls.physicalTrade.get.\(resource).add"].firstMatch
@@ -1988,7 +1995,16 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             .map { String(describing: $0).contains("available") } ?? false)
         assertFrame(of: board, matches: frame, message: "Supply labels must not move the board.")
         XCTAssertEqual(boardMountIdentity(of: host), mount)
-        attachScreenshot(named: "Supply - Trade selection")
+        attachScreenshot(named: "Supply - Trade automatic reveal")
+        messages.buttons["uls.physicalTrade.close"].firstMatch.tap()
+        XCTAssertEqual(bank.value as? String, "Supply levels hidden")
+        XCTAssertEqual(dev.value as? String, "Supply level hidden")
+        attachScreenshot(named: "Supply - Hidden after closing Trade")
+        bank.tap()
+        turnElement(identifier: "uls.turnObject.trade", labels: ["Trade"]).tap()
+        messages.buttons["Player Trade"].firstMatch.tap()
+        messages.buttons["uls.physicalTrade.close"].firstMatch.tap()
+        XCTAssertEqual(bank.value as? String, bankValue, "Closing Trade preserves manual Bank reveal.")
     }
 
     func testGameplayActionPlayerTradeOfferCommitsCanonicalState() throws {

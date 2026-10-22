@@ -4,6 +4,7 @@ struct GamePhysicalPublicRackView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let bank: GameBankTrayModel
     let revealsBankCounts: Bool
+    var isTradeShowingSupply = false
     let developmentDeckCount: Int
     let canBuyDevelopmentCard: Bool
     let onToggleBankCounts: () -> Void
@@ -21,10 +22,10 @@ struct GamePhysicalPublicRackView: View {
                                 isFaded: false,
                                 stackDepth: 2
                             )
-                            .overlay(alignment: .bottom) {
+                            .overlay(alignment: .top) {
                                 if revealsBankCounts {
-                                    supplyBar(remaining: chip.count)
-                                        .padding(.bottom, 3)
+                                    supplyBar(filledSegments: GamePublicPileLevel.resourceFilledSegments(remaining: chip.count))
+                                        .offset(y: -8)
                                 }
                             }
                         }
@@ -49,9 +50,11 @@ struct GamePhysicalPublicRackView: View {
             .accessibilityLabel("Bank")
             .accessibilityValue(bankAccessibilityValue)
             .accessibilityHint(
-                revealsBankCounts
-                    ? "Approximate cards left: more filled segments means more cards; an empty bar means none. Tap to hide."
-                    : "Shows approximate cards left. More filled segments means more cards; an empty bar means none."
+                isTradeShowingSupply
+                    ? "Approximate cards left: more filled segments means more cards; an empty bar means none. Supply stays visible while Trade is open."
+                    : revealsBankCounts
+                        ? "Approximate cards left: more filled segments means more cards; an empty bar means none. Tap to hide."
+                        : "Shows approximate cards left. More filled segments means more cards; an empty bar means none."
             )
             .accessibilityAddTraits(revealsBankCounts ? .isSelected : [])
 
@@ -76,11 +79,11 @@ struct GamePhysicalPublicRackView: View {
         .accessibilityIdentifier("uls.turn.publicRail")
     }
 
-    private func supplyBar(remaining: Int) -> some View {
+    private func supplyBar(filledSegments: Int) -> some View {
         HStack(spacing: 2) {
             ForEach(0..<3) { segment in
                 Rectangle()
-                    .fill(segment < GamePublicPileLevel.resourceFilledSegments(remaining: remaining)
+                    .fill(segment < filledSegments
                         ? GamePhysicalTurnPalette.primaryText : Color.clear)
                     .frame(width: 6, height: 5)
             }
@@ -99,12 +102,15 @@ struct GamePhysicalPublicRackView: View {
             GameTabletopPortraitCardView(
                 face: .developmentBack,
                 size: GamePhysicalTurnLayout.portraitCardSize,
-                overlayText: revealsBankCounts
-                    ? GamePublicPileLevel.devCards(remaining: developmentDeckCount).symbol
-                    : nil,
-                isFaded: revealsBankCounts,
+                isFaded: false,
                 stackDepth: 3
             )
+            .overlay(alignment: .top) {
+                if revealsBankCounts {
+                    supplyBar(filledSegments: GamePublicPileLevel.devCardFilledSegments(remaining: developmentDeckCount))
+                        .offset(y: -8)
+                }
+            }
 
             GameTabletopNameTileView(
                 title: "Dev Cards",
@@ -126,9 +132,7 @@ struct GamePhysicalPublicRackView: View {
     }
 
     private var devCardsAccessibilityValue: String {
-        guard revealsBankCounts else { return "Count hidden" }
-        return GamePublicPileLevel
-            .devCards(remaining: developmentDeckCount)
-            .accessibilityLabel
+        guard revealsBankCounts else { return "Supply level hidden" }
+        return GamePublicPileLevel.devCardSupplyDescription(remaining: developmentDeckCount)
     }
 }

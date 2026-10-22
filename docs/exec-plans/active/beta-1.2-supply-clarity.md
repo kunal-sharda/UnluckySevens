@@ -27,16 +27,16 @@ Locked proof: focused GamePublicPileLevelTests and existing GameTradePanelModelB
 <!-- verification-contract:start -->
 | ID | Class | Source | Acceptance | Verification | Evidence | Status | Rationale |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| SUP-001 | mechanical | #51 | Coarse Bank thresholds, empty bar, no public stock numbers or Trade badges; hand/selection and rules unchanged | focused tests and source review | report:unit11-bars; report:supply_review-source | pass | Presentation only |
-| SUP-002 | observable | #51 | Bank and Trade readable with clear meaning across mixed supply and accessible text | three focused catalog runs and inspected screenshots | report:iphone042024-ipad042311-accessibility042928 | pass | Real components in Messages |
+| SUP-001 | mechanical | #51 | Coarse Bank thresholds, empty bar, no public stock numbers or Trade badges; hand/selection and rules unchanged | focused tests and source review | report:unit12-devbars; report:supply_review-final | pass | Presentation only |
+| SUP-002 | observable | #51 | Bank and Trade readable with clear meaning across mixed supply and accessible text | three focused catalog runs and inspected screenshots | report:iphone061322-ipad061617-accessibility062421 | pass | Real components in Messages |
 | SUP-003 | mechanical | repo workflow | Owner docs current and validation/push recorded | doc freshness and standard gate | report:owner-doc-source-review | pass | Gate is the final command after contract validation; no milestone closure |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
 | Reviewer | Required | Verdict | Evidence |
 | --- | --- | --- | --- |
-| constraint-auditor | yes | pass | report:supply_review-final-source-and-six-images |
-| SwiftUI-accessibility | yes | pass | report:supply_review-final-source-and-six-images |
+| constraint-auditor | yes | pass | report:supply_review-followup-final |
+| SwiftUI-accessibility | yes | pass | report:supply_review-followup-final |
 <!-- fresh-review:end -->
 
 ## Living Record
@@ -62,3 +62,19 @@ Accessibility attempt 2 passed in output/ui-screenshot-harness/20261022T042928Z-
 Final independent constraint and SwiftUI/accessibility review passes SUP-001/002 after inspecting unit log, all six final images and three matched-hash manifests. Doc freshness passed. SUP-003 owner-doc verification passes; completion gate and commit/push are the final delivery operations, recorded below after execution.
 
 Standard completion gate passed, exit 0 (/tmp/uls-beta12-bars-gate.log): contract, harness audit, whitespace, doc freshness, canonical generation and simulator build. The final source is ready for the authorized feature commit/push on beta-1.2. No runtime source changed after the passing evidence.
+
+## Owner follow-up: Dev bars, top placement and automatic Trade reveal
+
+2026-10-21: user requests the same approximate bar on the Dev pile, bars at the top without obscuring artwork, and confirms automatic supply reveal while Trade is open. Standard/direct remains locked. Derive automatic reveal from visible Trade presentation; preserve the separate manual Bank toggle so closing Trade restores it. Existing thirds remain (Dev: 17–25 / 9–16 / 1–8 / zero). No gameplay changes.
+
+Exact follow-up proof: focused supply mapping/model tests; revised existing supply route on iPhone, iPad and accessibility-medium with Dev semantics, hidden/manual/automatic/restored states, no stock counts, unchanged board frame/mount, and inspected screenshots. Initial plus two diagnosed retries per route. Fresh constraint/SwiftUI review, doc freshness and standard gate, then commit/push. Prior evidence does not establish changed Dev/auto-reveal behavior. Reopen contract until these checks pass.
+
+Follow-up unit tests pass 12/12 (/tmp/uls-beta12-devbars-unit.log). First-attempt iPhone and iPad routes pass in output/ui-screenshot-harness/20261022T061322Z-iphone and 20261022T061617Z-ipad. Captures show top-edge Bank/Dev bars clear of the art; hidden/automatic/manual-restoration assertions pass. Accessibility run pending.
+
+Follow-up accessibility attempt 1 failed before supply assertions: xcresult reports test runner terminated with SIGTERM; retained AX hierarchy is Messages navigation. Failure screenshot collection stalled and subsequently exited. No product assertion failure identified. Attempt 2 uses the same scoped route after canonical generation and the harness cold reset; no scope expansion. Evidence: output/ui-screenshot-harness/20261022T061901Z-iphone (failed), /tmp/uls-beta12-devbars-accessibility-r2.log (retry).
+
+Follow-up accessibility attempt 2 passes in output/ui-screenshot-harness/20261022T062421Z-iphone. All requested hidden/automatic/manual-restoration and privacy assertions pass. Top bars are visible and clear of artwork at accessibility-medium; existing Dev name-tile truncation remains unchanged. Doc freshness passes. No physical-device or milestone-release acceptance claimed.
+
+Final independent follow-up constraint and SwiftUI/accessibility review passes with no blocking findings: all nine final captures, matching installed/built manifests, unit12 and source/owner docs inspected. SUP-003 doc freshness/source review passes; standard completion gate and commit/push follow as final delivery actions.
+
+Follow-up standard completion gate passed, exit 0 (/tmp/uls-beta12-devbars-gate.log): selected contract, harness audit, whitespace, doc freshness, canonical generation and simulator build. Follow-up complete for simulator-scoped acceptance; no Beta 1.1 device or Beta 1.2 release acceptance implied. DESIGN.md/UI flows and this active plan updated; architecture, rules, protocol, QA owners and historical references intentionally unaffected. Authorized commit and push target beta-1.2.
