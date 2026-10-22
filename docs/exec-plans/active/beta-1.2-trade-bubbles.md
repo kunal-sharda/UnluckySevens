@@ -25,16 +25,16 @@ Work on beta-1.2. Preserve concurrent supply-clarity edits. Only trade snapshot/
 <!-- verification-contract:start -->
 | ID | Class | Source | Acceptance | Verification | Evidence | Status | Rationale |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| TB-001 | observable | user clarification | Felt, actual full-strength artwork, repeated small quantities, exact counts below and named players fit bubble | three renderer fixtures and pixel inspection | report:followup-render-pending | pending | Image itself is the shipped bubble asset |
-| TB-002 | mechanical | architecture/secrecy | Public offer only, unchanged caption/summary/protocol/in-game trade | focused copy tests and source review | report:followup-tests-pending | pending | No private hand counts |
-| TB-003 | mechanical | workflow | Owner docs current, validated commit pushed to beta-1.2 | gate and git evidence | report:followup-delivery-pending | pending | Preserve concurrent supply work |
+| TB-001 | observable | user clarification | Felt, actual full-strength artwork, repeated small quantities, exact counts below and named players fit bubble | three renderer fixtures and pixel inspection | report:refinement-round2-three-inspected-images | pass | Image itself is the shipped bubble asset |
+| TB-002 | mechanical | architecture/secrecy | Public offer only, unchanged caption/summary/protocol/in-game trade | focused copy tests and source review | report:refinement17-tests-and-review | pass | No private hand counts |
+| TB-003 | mechanical | workflow | Owner docs current, validated commit pushed to beta-1.2 | gate and git evidence | report:refinement4c75baf-pushed-doc-freshness | pass | Preserve concurrent supply work |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
 | Reviewer | Required | Verdict | Evidence |
 | --- | --- | --- | --- |
-| constraint-auditor | yes | pending | report:readiness_auditor-final-trade-bubbles |
-| product-ux | yes | pending | report:readiness_auditor-three-render-inspection |
+| constraint-auditor | yes | pass | report:readiness_auditor-final-trade-bubbles |
+| product-ux | yes | pass | report:readiness_auditor-three-render-inspection |
 <!-- fresh-review:end -->
 
 ## Living Record
@@ -62,3 +62,7 @@ Fresh constraint/product-UX review passed source, public-only data, all3 pixels 
 Delivery: simulator build passed after final copy correction. Commit7d37a08 pushed to origin/beta-1.2; staged scope contains only the three bubble source files, renderer tests, this plan and the bubble-only DESIGN paragraph. Supply-clarity edits remain uncommitted and untouched. Initial combined git command failed on sandbox index permissions; separately permitted staging/commit succeeded. Final completion gate follows.
 
 Final standard completion gate passed: contract, harness audit, whitespace, doc freshness, canonical generation and simulator build. All TB constraints and required reviews pass. Local review images retained in ignored output/trade-bubbles-review/. Doc freshness: DESIGN and this ExecPlan updated; architecture, decisions, gameplay/product flows and QA contracts unchanged; no historical cleanup. No live message delivery or hardware acceptance claimed. Implementation7d37a08 is pushed; this evidence-only closeout is committed separately.
+
+Refinement fresh constraint/product-UX verdict passes source and all3 final pixels; independently verified17 tests, zero failed/skipped. Implemented refinement committed as4c75baf and pushed to origin/beta-1.2. Only bubble source/tests, its DESIGN paragraph and this plan staged; concurrent supply work remains untouched. Completion gate follows.
+
+Refinement completion gate passed: contract, harness audit, whitespace, doc freshness, canonical generation and simulator build. All constraints/reviews pass. DESIGN and this plan own the only documentation changes in this refinement; rules, architecture, protocol, in-game UI and historical docs intentionally unchanged. No hardware/message-delivery proof claimed. Evidence closeout committed separately.
