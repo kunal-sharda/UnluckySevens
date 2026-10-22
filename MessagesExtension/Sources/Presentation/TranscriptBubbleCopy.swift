@@ -365,7 +365,8 @@ enum TranscriptBubbleCopyBuilder {
             TranscriptTradeVisual(
                 offer: offer,
                 participantStatuses: panel.participantStatuses.filter(\.isTargeted),
-                recipientScopeLabel: recipientScopeLabel
+                recipientScopeLabel: recipientScopeLabel,
+                playerOrder: state.roster
             )
         )
     }

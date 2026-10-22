@@ -15,10 +15,10 @@ final class TranscriptTradeSnapshotRendererTests: XCTestCase {
 
     func testFiveResourcesAndLongPlayerNames() throws {
         let chips = [ResourceV1.wood, .brick, .sheep, .wheat, .ore].map { GameHandChip(resource: $0, count: 2) }
-        try capture("Trade — five resources and long names", give: chips, receive: chips, names: ["Alexandra-Margaret", "Christopher", "Maximilian"], proposer: "Kunal Sharda")
+        try capture("Trade — five resources and long names", give: chips, receive: chips, names: ["Alexandra-Margaret", "Christopher", "Maximilian"], proposer: "Kunal Sharda", resolvedResponses: true)
     }
 
-    private func capture(_ title: String, give: [GameHandChip], receive: [GameHandChip], names: [String], proposer: String = "Kunal", mixedResponses: Bool = false) throws {
+    private func capture(_ title: String, give: [GameHandChip], receive: [GameHandChip], names: [String], proposer: String = "Kunal", mixedResponses: Bool = false, resolvedResponses: Bool = false) throws {
         let bundle = Bundle(for: Self.self)
         for chip in give + receive {
             XCTAssertNotNil(UIImage(named: chip.resource.tabletopStampAssetName, in: bundle, compatibleWith: nil), "Production resource illustration must be available")
@@ -26,9 +26,16 @@ final class TranscriptTradeSnapshotRendererTests: XCTestCase {
         let visual = TranscriptTradeVisual(
             offer: GameTradeOfferSummary(proposerPlayerID: "host", proposerDisplay: proposer, giveLabel: "Gives", give: give, receiveLabel: "Wants", receive: receive, recipientPlayerIDs: names, recipientsLabel: names.joined(separator: ", ")),
             participantStatuses: names.enumerated().map { index, name in
-                GameTradeParticipantStatus(playerID: name, displayName: name, state: mixedResponses && index == 0 ? .declined : .waiting, detailText: mixedResponses && index == 0 ? "Declined" : "Waiting", isTargeted: true, counterGive: [], counterReceive: [])
+                let state: GameTradeParticipantResponseState = resolvedResponses
+                    ? (index == 0 ? .accepted : index == 1 ? .countered : .waiting)
+                    : (mixedResponses && index == 0 ? .declined : .waiting)
+                let detail = resolvedResponses
+                    ? (index == 0 ? "Accepted" : index == 1 ? "Countered" : "Waiting")
+                    : (mixedResponses && index == 0 ? "Declined" : "Waiting")
+                return GameTradeParticipantStatus(playerID: name, displayName: name, state: state, detailText: detail, isTargeted: true, counterGive: [], counterReceive: [])
             },
-            recipientScopeLabel: names.joined(separator: ", ")
+            recipientScopeLabel: names.joined(separator: ", "),
+            playerOrder: ["host"] + names
         )
         let image = try XCTUnwrap(TranscriptTradeSnapshotRenderer.render(visual: visual, assetBundle: bundle))
         XCTAssertEqual(image.size.width, TranscriptBubbleImageRenderer.imageSize.width)

@@ -108,37 +108,53 @@ struct GameTradeReceiptView: View {
 
     @ViewBuilder
     private var recipientRoster: some View {
-        let participants = visual.participantStatuses
-        if participants.isEmpty {
+        if visual.participantStatuses.isEmpty {
             Text(visual.recipientScopeLabel)
                 .font(.caption)
                 .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
         } else {
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach(responseGroups) { group in
-                    let names = participants.filter {
-                        $0.state == group.state && $0.detailText == group.detailText
-                    }.map(\.displayName).joined(separator: ", ")
-                    (Text(group.detailText + " · ")
-                        .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
-                     + Text(names).fontWeight(.medium)
-                        .foregroundStyle(GamePhysicalTurnPalette.primaryText))
-                        .font(.caption)
-                        .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .top, spacing: 12) {
+                ForEach(visual.participantStatuses) { participant in
+                    VStack(spacing: 5) {
+                        GameTabletopPiecePropView(
+                            kind: .settlement,
+                            color: Color(uiColor: GameBoardPalette.playerColor(
+                                owner: participant.playerID,
+                                playerOrder: visual.playerOrder
+                            )),
+                            isSelected: false
+                        )
+                        .frame(width: 34, height: 32)
+                        .overlay(alignment: .bottomTrailing) {
+                            Image(systemName: responseSymbol(participant.state))
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                                .frame(width: 18, height: 18)
+                                .background(GameTheme.felt, in: Circle())
+                                .offset(x: 7, y: 2)
+                        }
+                        Text(participant.displayName)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(participant.displayName), \(participant.detailText)")
                 }
             }
         }
     }
 
-    // Preserve distinct response meanings, even if two states share a label.
-    // First appearance keeps the existing participant ordering stable.
-    private var responseGroups: [GameTradeParticipantStatus] {
-        visual.participantStatuses.enumerated().compactMap { index, participant in
-            let alreadyShown = visual.participantStatuses.prefix(index).contains {
-                $0.state == participant.state && $0.detailText == participant.detailText
-            }
-            return alreadyShown ? nil : participant
+    private func responseSymbol(_ state: GameTradeParticipantResponseState) -> String {
+        switch state {
+        case .waiting: "clock"
+        case .watching: "eye"
+        case .accepted: "checkmark"
+        case .declined: "xmark"
+        case .countered: "arrow.triangle.2.circlepath"
         }
     }
 
@@ -149,6 +165,9 @@ struct GameTradeReceiptView: View {
     private var accessibilityLabel: String {
         let give = resourceDescription(visual.offer.give)
         let receive = resourceDescription(visual.offer.receive)
-        return "\(visual.offer.proposerDisplay) offers \(give) for \(receive). \(visual.recipientScopeLabel)."
+        let responses = visual.participantStatuses.map {
+            "\($0.displayName): \($0.detailText)"
+        }.joined(separator: ". ")
+        return "\(visual.offer.proposerDisplay) offers \(give) for \(receive). \(visual.recipientScopeLabel). \(responses)"
     }
 }

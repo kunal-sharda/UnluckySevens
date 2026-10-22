@@ -246,6 +246,7 @@ final class TranscriptBubbleCopyTests: XCTestCase {
         }
         XCTAssertEqual(visual.offer.proposerDisplay, "Avery")
         XCTAssertEqual(visual.recipientScopeLabel, "To everyone")
+        XCTAssertEqual(visual.playerOrder, state.roster, "Trade pieces must use the board roster, not recipient positions")
     }
 
     func testPartialTradeDeclineKeepsSharedReceipt() {

@@ -25,17 +25,17 @@ Use beta-1.2 and preserve concurrent supply-clarity changes. Only trade receipt,
 <!-- verification-contract:start -->
 | ID | Class | Source | Acceptance | Verification | Evidence | Status | Rationale |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| TB-001 | observable | user request | Felt/full art; visible small multiplicity; exact resource quantities; compact named recipients with individual responses; no clipping | three production renderer captures inspected | report:fan-three-isolated-renders | pass | Renderer output is shipped artwork, not proof of remote receipt |
-| TB-002 | mechanical | architecture and user boundary | Public-only offer; unchanged caption/summary/protocol/in-game behavior; valid content-sized trade image through dispatcher | focused renderer/copy/gallery tests and source review | report:fan-isolated18-tests-source-review | pass | Board-family sizing unchanged |
-| TB-003 | mechanical | workflow | Tracking gaps repaired; owner docs current; scoped commit/push and standard gate | issue readback and gate/git evidence | report:issue54-created-doc-freshness-dcf4407-pushed | pass | Preserve concurrent supply work |
-| TB-004 | judgment | user approved direction | Cards dominate; tight grouping; quiet sender/separator; readable consistent labels and compact response roster | fresh product-UX inspection of three renders | report:compact_bubble_review-fan-followup | pass | Advisory craft review does not replace user taste feedback |
+| TB-001 | observable | user request | Felt/full art; visible small multiplicity; exact resource quantities; compact named recipients with individual responses; no clipping | three production renderer captures inspected | report:player-pieces18-tests-three-renders-fresh-review | pass | Renderer output is shipped artwork, not proof of remote receipt |
+| TB-002 | mechanical | architecture and user boundary | Public-only offer; unchanged caption/summary/protocol/in-game behavior; valid content-sized trade image through dispatcher | focused renderer/copy/gallery tests and source review | report:player-pieces18-tests-three-renders-fresh-review | pass | Board-family sizing unchanged |
+| TB-003 | mechanical | workflow | Tracking gaps repaired; owner docs current; scoped commit/push and standard gate | issue readback and gate/git evidence | report:issue54-created-doc-freshness-dcf4407-pushed | pending | Preserve concurrent supply work |
+| TB-004 | judgment | user approved direction | Cards dominate; tight grouping; quiet sender/separator; readable consistent labels and compact response roster | fresh product-UX inspection of three renders | report:player-pieces18-tests-three-renders-fresh-review | pass | Advisory craft review does not replace user taste feedback |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
 | Reviewer | Required | Verdict | Evidence |
 | --- | --- | --- | --- |
-| constraint-auditor | yes | pass | report:compact_bubble_review-fan-followup-source-and-raw-evidence |
-| product-ux | yes | pass | report:compact_bubble_review-fan-followup-three-captures |
+| constraint-auditor | yes | pass | report:compact_bubble_review-player-pieces |
+| product-ux | yes | pass | report:compact_bubble_review-player-pieces |
 <!-- fresh-review:end -->
 
 ## Living Record
@@ -75,3 +75,9 @@ Isolated follow-up proof: /tmp/uls-trade-fan-isolated.xcresult passes18/18, zero
 Fresh follow-up constraint/product-UX review passes source, raw18-test result and all three final images. Doc freshness passed; temporary isolated simulator removed after validation. Final workflow check/commit/push follows.
 
 Follow-up implementation committed and pushed as dcf4407 on beta-1.2. All selected constraints and fresh reviews pass. Standard completion gate passed (exit0): contract, harness audit, whitespace, doc freshness, canonical generation and simulator build; local log /tmp/uls-trade-fan-completion.log. DESIGN and this plan own the changed facts; architecture, rules, product flows and QA contracts remain intentionally unchanged. No historical cleanup. Map inspection #54 remains tracked but unimplemented.
+
+## Player-piece pass — 2026-10-21
+
+User approves trying player-colored pieces with names and attached status symbols, replacing all status sentence rows. Standard/direct; same three renderer fixtures and18 focused tests, at most two visual rounds. Carry canonical public roster order into the presentation visual so piece colors match the board even for a targeted subset; add a roster assertion to the existing copy test. Reuse production settlement geometry and palette. Names plus clock/check/cross/counter symbols provide redundant identity/state cues; image accessibility text includes full response details. No fake controls, protocol/rules or in-game changes. Dense long-name fixture will also exercise accepted/countered/waiting badges; mixed fixture keeps declined/waiting. Isolated simulator from the start avoids the prior shared-device collision. Fresh review, doc freshness, scoped commit/push and completion gate remain required. Earlier passes below/above are historical evidence only for their respective source.
+
+Player-piece proof: canonical generation and isolated simulator run /tmp/uls-trade-pieces-round1.xcresult pass18/18 with zero skips/failures. All three final captures inspected at output/trade-bubbles-review/player-pieces; distinct clock/cross/check/counter badges, canonical board colors, all names visible including wrapping long names. Fresh source/constraint/product-UX review passes. No second visual round required. Full response accessibility is source-proven in the SwiftUI view only, not transported through UIImage; Messages caption/summary unchanged. No remote/hardware accessibility claim. Final workflow evidence follows.
