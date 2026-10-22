@@ -2,67 +2,62 @@
 
 ## Purpose and Outcome
 
-User clarified that trade conversation bubbles must be functional parts of the tabletop: actual illustrated resource cards, visible multiplicity (two sheep for one wood), quantities underneath, player names, SF typography and felt. Preserve the in-game trade layout; overlap repair requires demonstrated evidence. Lifecycle redesign remains a separate follow-up.
+Implement [#52](https://github.com/kunal-sharda/UnluckySevens/issues/52): a compact tabletop exchange in the Messages conversation bubble. The user rejected the prior slide-like composition and approved trying the independently reviewed direction: tightly gathered full-strength production cards on felt, subordinate sender line, exact per-resource quantities without totals, compact named recipients with individual responses.
 
 ## Execution Settings
 
 - Validation profile: `standard`
 - Delivery posture: `direct`
-- Rationale: user specified the exact visual direction and existing production assets.
+- Rationale: user explicitly authorized trying the described composition and previously delegated routine implementation decisions. This is a bounded implementation with screenshots for subsequent user feedback, not a claim of aesthetic acceptance.
 
 ## Context and Boundaries
 
-Work on beta-1.2. Preserve concurrent supply-clarity edits. Only trade snapshot/receipt presentation and its evidence change; no Core, protocol, hidden-hand data or action eligibility changes. Commit/push the coherent validated slice. Bubble image canvas remains360×260; caption/summary remain the accessible Messages description.
+Use beta-1.2 and preserve concurrent supply-clarity changes. Only trade receipt, card grouping, snapshot sizing, corresponding renderer tests and documentation change. Public offer data, Messages caption/summary, Core, protocol, in-game controls and eligibility remain unchanged. Width remains360; trade artwork height follows its content instead of inheriting the board's260-point canvas. Source inspection found a generic renderer test assuming fixed board dimensions for trade; adjust only that trade expectation and add its existing gallery test to the focused proof. This sizing change removes surplus felt around compact offers.
 
 ## Plan and Locked Proof
 
-1. Replace ocean with felt, remove count overlays that fade resource artwork, show card quantities below and repeated visible cards for small exchanges; bound large stacks with exact quantities.
-2. Render three canonical simulator XCTest snapshot cases: two sheep for one wood, multi-resource/high-count offer, long names/three recipients. Use real production renderer and asset bundle; inspect all three exported attachments. Two visual rounds maximum. Focused bubble-copy tests protect public data semantics. No unrelated UI catalogs or gameplay changes.
-3. Fresh constraint/visual review, doc freshness, standard completion gate, scoped commit/push. Each mechanical command initial plus two diagnosed retries.
+1. Replace evenly distributed columns and fixed empty card slots with intrinsic card clusters and consistent count/name labels. Use a compact sender line and inline recipient response rows; shared waiting states retain one recipient list and one status line.
+2. Canonical generation, focused simulator tests: TranscriptTradeSnapshotRendererTests (three fixtures), TranscriptBubbleCopyTests, and TranscriptBubbleImageRendererTests/testFiveFamilyCheckpointGalleryUsesProductionComponents (existing dispatcher/size contract). Inspect three trade captures: simple two sheep/one wood; mixed large three-recipient offer with differing responses; five resource types/long recipient names. At most two visual rounds; each mechanical command initial plus two diagnosed retries. No real sends or unrelated gameplay catalogs.
+3. Fresh constraint-auditor/product-UX review, doc freshness, standard completion gate, scoped commit/push. User will judge the screenshots; leave #52 open for that feedback.
 
-## Verification Contract
+## Verification Contract and Fresh Review
 
 <!-- verification-contract:start -->
 | ID | Class | Source | Acceptance | Verification | Evidence | Status | Rationale |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| TB-001 | observable | user clarification | Felt, actual full-strength artwork, repeated small quantities, exact counts below and named players fit bubble | three renderer fixtures and pixel inspection | report:refinement-round2-three-inspected-images | pass | Image itself is the shipped bubble asset |
-| TB-002 | mechanical | architecture/secrecy | Public offer only, unchanged caption/summary/protocol/in-game trade | focused copy tests and source review | report:refinement17-tests-and-review | pass | No private hand counts |
-| TB-003 | mechanical | workflow | Owner docs current, validated commit pushed to beta-1.2 | gate and git evidence | report:refinement4c75baf-pushed-doc-freshness | pass | Preserve concurrent supply work |
+| TB-001 | observable | user request | Felt/full art; visible small multiplicity; exact resource quantities; compact named recipients with individual responses; no clipping | three production renderer captures inspected | report:compact-round1-three-inspected-renders | pass | Renderer output is shipped artwork, not proof of remote receipt |
+| TB-002 | mechanical | architecture and user boundary | Public-only offer; unchanged caption/summary/protocol/in-game behavior; valid content-sized trade image through dispatcher | focused renderer/copy/gallery tests and source review | report:compact18-tests-source-review | pass | Board-family sizing unchanged |
+| TB-003 | mechanical | workflow | Tracking gaps repaired; owner docs current; scoped commit/push and standard gate | issue readback and gate/git evidence | report:pending | pending | Preserve concurrent supply work |
+| TB-004 | judgment | user approved direction | Cards dominate; tight grouping; quiet sender/separator; readable consistent labels and compact response roster | fresh product-UX inspection of three renders | report:compact_bubble_review | pass | Advisory craft review does not replace user taste feedback |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
 | Reviewer | Required | Verdict | Evidence |
 | --- | --- | --- | --- |
-| constraint-auditor | yes | pass | report:readiness_auditor-final-trade-bubbles |
-| product-ux | yes | pass | report:readiness_auditor-three-render-inspection |
+| constraint-auditor | yes | pass | report:compact_bubble_review-source-and-raw-evidence |
+| product-ux | yes | pass | report:compact_bubble_review-three-captures |
 <!-- fresh-review:end -->
 
 ## Living Record
 
-Follow-up: user rejects redundant per-side totals and the name/status composition. Reopen standard/direct for a narrow refinement: per-resource quantities only; proposer once in header; recipient names once in footer; collapse identical waiting status into one shared line; improve card spacing. Preserve differing participant responses. Clarify whether "appeared out" means spread/fanned cards while proceeding with the unambiguous cleanup. Locked proof: same three production renderer cases plus copy tests, initial visual round and at most one correction round; fresh constraint/product review, scoped commit/push and standard gate. No in-game trade changes. Prior passing evidence remains historical until refreshed below.
+### Tracking reconciliation — 2026-10-21
 
-Refinement implementation: removed totals from both layouts; waiting recipient names join into one footer with a single awaiting-reply line, while differing responses remain individual. No answer to optional spread clarification after proceeding with independent cleanup; stated assumption of a gentle fan. Simple-exchange card maximum60 (previous52), shallow7-degree fan steps, wider spacing. Mixed3-type exchanges use a common38-point maximum on both sides to avoid inconsistent sizes. New mixed-response fixture preserves declined versus waiting evidence.
+- Milestone1 implementation/local proof: beta-local-implementation-readiness.md. Candidate distribution and hardware/multiplayer acceptance remain in testing-streams-implementation.md and linked Beta1.1 issues.
+- Lifecycle test failures: #15 updated with the four-route attempt11 local pass and corrected fixture-preference harness. Hardware acceptance stays open.
+- Lifecycle appearance: new [#53](https://github.com/kunal-sharda/UnluckySevens/issues/53), single coherent felt surface instead of stacked panels; not implemented.
+- In-game trade overlap/taps/counts: #47 updated to preserve affected-device/overlap verification. Existing draft/button fixes do not prove all reported symptoms resolved. User permits current in-game composition if no overlap.
+- Trade bubble appearance: #52 now owns this work; earlier commits7d37a08 and4c75baf are functional baselines, not aesthetic acceptance.
+- Other bubbles: #3 now explicitly records conversation-size review, starting with the end-game score strip; report concerns before redesigning. Source concern is not a demonstrated defect.
+- Bank/supply clarity remains separate #51 and beta-1.2-supply-clarity.md; its uncommitted changes are preserved.
 
-Refinement proof: two rounds each17/17 tests pass; final /tmp/uls-trade-refine-round2.xcresult. Inspected three final PNGs in /tmp/uls-trade-refine-round2-images and retained copies under output/trade-bubbles-review/refined. No totals, full-strength art, no clipping/overlap; long recipient names fit the consolidated footer. No more visual rounds. DESIGN bubble paragraph updated; unrelated supply edits preserved.
+### Previous evidence
 
-Root cause in existing receipt: it supplies count to GameTabletopPortraitCardView, which deliberately fades the artwork to16% behind overlaid numerals; the snapshot background uses sceneBackground (ocean). Fix at bubble call sites, preserving shared in-game card behavior. Existing receipt is only used by the trade snapshot (verify before edits).
+Two prior bounded visual passes established full-strength illustrated felt cards, removed aggregate totals and added three fixtures. Each final pass had17 passing tests and a passing completion gate; implementations and evidence commits are pushed. The user's subsequent slideshow criticism reopens composition. Independent Impeccable review identified fixed82/112-point empty regions, equal-width columns and dashboard-like response layout as causes. No further polish of the old layout is implied.
 
 ## Validation and Outcome
 
-Validated and delivered. DESIGN owns bubble presentation; other product/rules owners unchanged. Screenshots are local output, not durable binary references.
+Implementation: removed fixed82/112-point regions and equal-width columns. Shared card sizes and consistent count/name labels sit in intrinsic groups. Sender text is subordinate; mixed responses use compact inline rows. Trade height is content-sized; all other families retain fixed canvas. DESIGN bubble paragraph updated.
 
-Implementation: ocean replaced with GameTheme.felt; bubble card calls no longer pass count overlays, preserving full-strength illustrations. Small quantities show repeated cards up to3 where space permits; mixed offers print exact quantities below representative cards. Four/five-type offers use two full-width rows. Common card width52 versus previous34. Proposer and named participant responses retained; duplicate recipient header removed. Only transcript receipt calls changed; in-game card rendering and trade surfaces untouched.
+Round1 proof: canonical generation succeeded after an external-cache sandbox denial and permitted retry. Focused simulator18/18 tests pass, zero skipped/failed, /tmp/uls-trade-compact-round1.xcresult. Three exported trade renders inspected: no clipping/overlap, full art, repeated sheep cards, exact quantities, differing responses and all long names visible. Local copies output/trade-bubbles-review/compact. Existing dispatcher gallery passes with trade-specific size assertions. This is renderer proof, not remote Messages-host delivery. No second visual round needed unless review finds a defect.
 
-Validation: canonical generation succeeded. Round1 and final round2 each passed17 tests (3 renderer fixtures plus14 bubble-copy tests). Final result /tmp/uls-trade-bubbles-round2.xcresult; exported PNGs /tmp/uls-trade-bubbles-round2-images. Root inspected all3 final images: two sheep/one wood, mixed high-count offer, five types with long names. No overlaps; long recipient names truncate in their allocated columns. Images are fixed-size360×260 public-offer artwork, rendered at3x using production assets verified present in test bundle. This proves renderer output, not a new live remote-message send or recipient-host capture. Both allotted visual rounds used; no more polish loop.
-
-Other bubble audit: lobby reuses the actual seat table; ordinary turns use the canonical board. End-game overlays a score strip on the board image and is the next candidate for a conversation-size visual review; source inspection alone does not establish a defect. No other bubble redesigned. Lifecycle redesign remains outside this clarified trade slice.
-
-Fresh constraint/product-UX review passed source, public-only data, all3 pixels and17-test summary. Final singular/plural correction for dense1-card totals source-reviewed; three rendered fixture outputs unaffected. Standard simulator build before commit; gate and delivery evidence follow.
-
-Delivery: simulator build passed after final copy correction. Commit7d37a08 pushed to origin/beta-1.2; staged scope contains only the three bubble source files, renderer tests, this plan and the bubble-only DESIGN paragraph. Supply-clarity edits remain uncommitted and untouched. Initial combined git command failed on sandbox index permissions; separately permitted staging/commit succeeded. Final completion gate follows.
-
-Final standard completion gate passed: contract, harness audit, whitespace, doc freshness, canonical generation and simulator build. All TB constraints and required reviews pass. Local review images retained in ignored output/trade-bubbles-review/. Doc freshness: DESIGN and this ExecPlan updated; architecture, decisions, gameplay/product flows and QA contracts unchanged; no historical cleanup. No live message delivery or hardware acceptance claimed. Implementation7d37a08 is pushed; this evidence-only closeout is committed separately.
-
-Refinement fresh constraint/product-UX verdict passes source and all3 final pixels; independently verified17 tests, zero failed/skipped. Implemented refinement committed as4c75baf and pushed to origin/beta-1.2. Only bubble source/tests, its DESIGN paragraph and this plan staged; concurrent supply work remains untouched. Completion gate follows.
-
-Refinement completion gate passed: contract, harness audit, whitespace, doc freshness, canonical generation and simulator build. All constraints/reviews pass. DESIGN and this plan own the only documentation changes in this refinement; rules, architecture, protocol, in-game UI and historical docs intentionally unchanged. No hardware/message-delivery proof claimed. Evidence closeout committed separately.
+Fresh constraint/product-UX review passes TB-001/002/004 after independently inspecting source, all three images and raw18-test results. TB-003 awaits scoped commit/push and completion gate. Doc freshness and whitespace checks pass. Architecture, rules, product-flow and QA owners remain unaffected; no hardware, distribution or final milestone acceptance claim.

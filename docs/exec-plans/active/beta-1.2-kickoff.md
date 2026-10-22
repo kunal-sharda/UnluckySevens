@@ -16,7 +16,7 @@ The user authorized starting the next milestone on 2026-10-21. GitHub identifies
 
 ## Milestones / Plan of Work
 
-Current GitHub membership, read back 2026-10-21: twelve open issues.
+Initial GitHub membership, read back 2026-10-21: twelve open issues. Follow-up intake adds #52 (trade-bubble composition) and #53 (lifecycle panel appearance); issue bodies own current status. #52 uses beta-1.2-trade-bubbles.md. The lifecycle visual follow-up is distinct from #15's Beta1.1 functional/device acceptance.
 
 1. #51: Trade/Bank supply clarity. First bounded implementation slice; inspect stock versus selected quantities, reuse public supply thresholds and distinguish empty supply.
 2. #13/#14: shared cost/purchase composition, then owned Development Card arrival and timing. Checkpoint representative states before production routing.

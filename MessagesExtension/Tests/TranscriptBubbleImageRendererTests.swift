@@ -130,7 +130,14 @@ final class TranscriptBubbleImageRendererTests: XCTestCase {
                 assetBundle: Bundle(for: TranscriptBubbleImageRendererTests.self)
             )
         )
-        assertBubbleImage(image)
+        if case .trade = copy.visual {
+            XCTAssertEqual(image.size.width, TranscriptBubbleImageRenderer.imageSize.width, accuracy: 0.5)
+            XCTAssertGreaterThan(image.size.height, 150)
+            XCTAssertLessThan(image.size.height, 360)
+            XCTAssertGreaterThan(image.pngData()?.count ?? 0, 1_000)
+        } else {
+            assertBubbleImage(image)
+        }
         return image
     }
 

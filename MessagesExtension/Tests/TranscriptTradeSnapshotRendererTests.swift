@@ -31,7 +31,9 @@ final class TranscriptTradeSnapshotRendererTests: XCTestCase {
             recipientScopeLabel: names.joined(separator: ", ")
         )
         let image = try XCTUnwrap(TranscriptTradeSnapshotRenderer.render(visual: visual, assetBundle: bundle))
-        XCTAssertEqual(image.size, TranscriptBubbleImageRenderer.imageSize)
+        XCTAssertEqual(image.size.width, TranscriptBubbleImageRenderer.imageSize.width)
+        XCTAssertGreaterThan(image.size.height, 150)
+        XCTAssertLessThan(image.size.height, 360)
         let attachment = XCTAttachment(image: image)
         attachment.name = title
         attachment.lifetime = .keepAlways

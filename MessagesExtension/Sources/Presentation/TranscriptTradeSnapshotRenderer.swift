@@ -14,7 +14,7 @@ enum TranscriptTradeSnapshotRenderer {
             )
         )
         renderer.proposedSize = ProposedViewSize(
-            TranscriptBubbleImageRenderer.imageSize
+            width: TranscriptBubbleImageRenderer.imageSize.width, height: nil
         )
         renderer.scale = 3
         return renderer.uiImage

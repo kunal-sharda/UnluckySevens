@@ -4,165 +4,150 @@ struct GameTradeReceiptView: View {
     let visual: TranscriptTradeVisual
     let assetBundle: Bundle
 
-    init(
-        visual: TranscriptTradeVisual,
-        assetBundle: Bundle = .main
-    ) {
+    init(visual: TranscriptTradeVisual, assetBundle: Bundle = .main) {
         self.visual = visual
         self.assetBundle = assetBundle
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("\(visual.offer.proposerDisplay) offers")
-                .font(.headline)
+            (Text(visual.offer.proposerDisplay).fontWeight(.semibold) + Text(" offers"))
+                .font(.subheadline)
                 .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
 
-            if max(visual.offer.give.count, visual.offer.receive.count) > 3 {
-                VStack(spacing: 8) {
+            if isDense {
+                VStack(alignment: .leading, spacing: 12) {
                     denseResourceRow(visual.offer.give, title: "Gives")
                     denseResourceRow(visual.offer.receive, title: "Wants")
                 }
             } else {
-                HStack(spacing: 12) {
+                HStack(alignment: .center, spacing: 10) {
                     resourceGroup(visual.offer.give, title: "Gives")
                     Image(systemName: "arrow.right")
-                        .font(.headline.bold())
-                        .foregroundStyle(GamePhysicalTurnPalette.selectedKeyline)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
                         .accessibilityHidden(true)
                     resourceGroup(visual.offer.receive, title: "Wants")
                 }
                 .frame(maxWidth: .infinity)
             }
 
-            recipientFooter
-
+            recipientRoster
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 16)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
     }
 
+    private var isDense: Bool {
+        max(visual.offer.give.count, visual.offer.receive.count) > 3
+    }
+
+    private var isSimple: Bool {
+        visual.offer.give.count == 1 && visual.offer.receive.count == 1
+    }
+
+    private var cardWidth: CGFloat {
+        if isSimple {
+            let largestStack = min(3, max(visual.offer.give.first?.count ?? 1, visual.offer.receive.first?.count ?? 1))
+            return min(68, 128 / (1 + 0.75 * CGFloat(largestStack - 1)))
+        }
+        let count = max(1, visual.offer.give.count + visual.offer.receive.count)
+        // Reserve the separator and inter-card gaps; both sides share card size.
+        return min(48, (296 - CGFloat(max(0, count - 2)) * 8) / CGFloat(count))
+    }
+
     private func resourceGroup(_ chips: [GameHandChip], title: String) -> some View {
         VStack(spacing: 6) {
             Text(title)
-                .font(.caption.weight(.semibold))
+                .font(.caption2)
                 .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
-            GeometryReader { geometry in
-                let groupWidth = max(1, (geometry.size.width - CGFloat(max(chips.count - 1, 0)) * 5) / CGFloat(max(chips.count, 1)))
-                HStack(alignment: .top, spacing: 5) {
-                    ForEach(chips) { chip in
-                        VStack(spacing: 5) {
-                            TranscriptTradeCardStackView(
-                                chip: chip,
-                                availableWidth: groupWidth,
-                                assetBundle: assetBundle,
-                                maximumCardWidth: max(visual.offer.give.count, visual.offer.receive.count) == 3 ? 38 : 60
-                            )
-                                .frame(height: 82, alignment: .bottom)
-                            Text(chips.count > 3 ? "\(chip.count)" : "\(chip.count) \(chip.shortLabel)")
-                                .font(.caption2.weight(.semibold))
-                                .monospacedDigit()
-                                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                                .multilineTextAlignment(.center)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .frame(width: groupWidth)
+            HStack(alignment: .top, spacing: 8) {
+                ForEach(chips) { chip in
+                    VStack(spacing: 6) {
+                        TranscriptTradeCardStackView(
+                            chip: chip,
+                            cardWidth: cardWidth,
+                            showsIndividualCards: isSimple,
+                            assetBundle: assetBundle
+                        )
+                        resourceQuantity(chip)
                     }
                 }
-                .frame(maxWidth: .infinity)
             }
-            .frame(height: 112)
-
         }
-        .frame(maxWidth: .infinity)
+    }
+
+    private func resourceQuantity(_ chip: GameHandChip) -> some View {
+        VStack(spacing: 1) {
+            Text("\(chip.count)")
+                .font(.subheadline.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+            Text(chip.shortLabel)
+                .font(.caption2)
+                .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
+        }
+        .fixedSize()
     }
 
     private func denseResourceRow(_ chips: [GameHandChip], title: String) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Text(title)
-                .font(.caption.weight(.semibold))
-            .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
-            .frame(width: 45, alignment: .leading)
-            GeometryReader { geometry in
-                let width = min(42, (geometry.size.width - CGFloat(max(chips.count - 1, 0)) * 5) / CGFloat(max(chips.count, 1)))
-                HStack(spacing: 5) {
-                    ForEach(chips) { chip in
-                        VStack(spacing: 3) {
-                            GameTabletopPortraitCardView(face: .resource(chip.resource), size: CGSize(width: width, height: width * 1.27), assetBundle: assetBundle)
-                            Text("\(chip.count)")
-                                .font(.caption2.weight(.semibold))
-                                .monospacedDigit()
-                                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                        }
-                        .frame(maxWidth: .infinity)
+                .font(.caption2)
+                .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
+                .frame(width: 34, alignment: .leading)
+            HStack(alignment: .top, spacing: 8) {
+                ForEach(chips) { chip in
+                    VStack(spacing: 4) {
+                        GameTabletopPortraitCardView(
+                            face: .resource(chip.resource),
+                            size: CGSize(width: 48, height: 48 * 1.27),
+                            assetBundle: assetBundle
+                        )
+                        resourceQuantity(chip)
                     }
                 }
             }
         }
-        .frame(height: 70)
     }
 
     @ViewBuilder
-    private var recipientFooter: some View {
+    private var recipientRoster: some View {
         let participants = visual.participantStatuses
         if !participants.isEmpty && participants.allSatisfy({ $0.state == .waiting }) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text("To " + participants.map(\.displayName).joined(separator: " · "))
-                    .font(participants.count == 1 ? .subheadline.weight(.semibold) : .caption.weight(.semibold))
-                    .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                    .lineLimit(2)
-                Text(participants.count == 1 ? "Awaiting reply" : "Awaiting replies")
+            VStack(alignment: .leading, spacing: 3) {
+                (Text("To ") + Text(participants.map(\.displayName).joined(separator: " · ")).fontWeight(.medium))
                     .font(.caption)
+                    .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(participants.count == 1 ? "Awaiting reply" : "Awaiting replies")
+                    .font(.caption2)
                     .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
             }
         } else if participants.isEmpty {
             Text(visual.recipientScopeLabel)
-                .font(.subheadline)
+                .font(.caption)
                 .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
-                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         } else {
-            HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
                 ForEach(participants) { status in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(status.displayName)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                            .lineLimit(1)
-                        Label(status.detailText, systemImage: statusSymbol(for: status.state))
-                            .font(.caption2)
-                            .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
-                            .lineLimit(1)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    (Text(status.displayName).fontWeight(.medium)
+                        .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                     + Text(" · " + status.detailText)
+                        .foregroundStyle(GamePhysicalTurnPalette.secondaryText))
+                        .font(.caption)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
     }
 
     private func resourceDescription(_ chips: [GameHandChip]) -> String {
-        chips
-            .map { "\($0.count) \($0.shortLabel)" }
-            .joined(separator: " + ")
-    }
-
-    private func statusSymbol(
-        for state: GameTradeParticipantResponseState
-    ) -> String {
-        switch state {
-        case .watching, .waiting:
-            "clock"
-        case .accepted:
-            "checkmark.circle.fill"
-        case .declined:
-            "xmark.circle.fill"
-        case .countered:
-            "arrow.triangle.2.circlepath"
-        }
+        chips.map { "\($0.count) \($0.shortLabel)" }.joined(separator: " + ")
     }
 
     private var accessibilityLabel: String {
