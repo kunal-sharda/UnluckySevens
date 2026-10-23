@@ -28,15 +28,15 @@ Locked proof: focused GamePublicPileLevelTests and existing GameTradePanelModelB
 | ID | Class | Source | Acceptance | Verification | Evidence | Status | Rationale |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | SUP-001 | mechanical | #51 | Coarse Bank thresholds, empty bar, no public stock numbers or Trade badges; hand/selection and rules unchanged | focused tests and source review | report:unit12-devbars; report:supply_review-final | pass | Presentation only |
-| SUP-002 | observable | #51 | Bank and Trade readable with clear meaning across mixed supply and accessible text | three focused catalog runs and inspected screenshots | report:plaque-accessibility063925-iphone064214-ipad064448 | pass | Real components in Messages |
+| SUP-002 | observable | #51 | Bank and Trade readable with clear meaning across mixed supply and accessible text | three focused catalog runs and inspected screenshots | report:inset-iphone081013-ipad081751 | pass | Real components in Messages |
 | SUP-003 | mechanical | repo workflow | Owner docs current and validation/push recorded | doc freshness and standard gate | report:owner-doc-source-review | pass | Gate is the final command after contract validation; no milestone closure |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
 | Reviewer | Required | Verdict | Evidence |
 | --- | --- | --- | --- |
-| constraint-auditor | yes | pass | report:supply_review-plaque-final |
-| SwiftUI-accessibility | yes | pass | report:supply_review-plaque-final |
+| constraint-auditor | yes | pass | report:supply_review-inset-final |
+| SwiftUI-accessibility | yes | pass | report:supply_review-inset-final |
 <!-- fresh-review:end -->
 
 ## Living Record
@@ -92,3 +92,17 @@ Final plaque proof passes: accessibility-medium attempt 2 output/ui-screenshot-h
 Fresh constraint and SwiftUI/accessibility review passes final source/docs and all nine final captures with matching installed/build hashes. SUP-001/002 pass; SUP-003 doc review and freshness pass. Completion gate and delivery are final actions below.
 
 Plaque correction completion gate passed exit 0 (/tmp/uls-plaque-gate.log), including doc freshness, contract/harness checks, canonical generation and simulator build. Correction complete for scoped simulator acceptance. Owner docs DESIGN.md and UI flows updated; architecture, rules, protocol, QA and historical docs intentionally unchanged. Commit/push this coherent correction to beta-1.2; no device or milestone release claim.
+
+## Smaller inset bars — owner revision 2026-10-23
+
+User confirms moving bars back onto card faces and making them smaller. Standard/direct remains locked: use same compact bar for Bank and Dev, inset at bottom of card face to preserve central artwork; preserve wooden plaque, copy and automatic/manual reveal. Proof locked before edits: existing supply catalog on iPhone at large and iPad at accessibility-medium (three states each), inspected screenshots, fresh constraint/SwiftUI review, doc freshness and standard completion gate. No mapping or behavioral changes, so prior unit proof remains applicable. At most two visual rounds, initial plus two diagnosed infrastructure attempts per route; no broader routes.
+
+Inset-bar initial routes pass: output/ui-screenshot-harness/20261023T081013Z-iphone (large) and 20261023T081333Z-ipad (accessibility-medium). Shared bar shrinks from 28×11 to 22×8 points and moves inside the face with a 4-point bottom inset. Existing assertion route verifies hidden/manual/Trade restoration and exact local selection counts; mappings unchanged. Doc freshness and whitespace pass. No hardware validation or milestone release claim.
+
+Visual review rejects iPad accessibility Trade capture: existing centered composer grows over public rail and clips new inset bars. Demonstrated SUP-002 defect permits bounded correction: in short accessibility-size hosts, constrain player composer between public rail and bottom props with scrolling. Pass shell-derived clearances; leave ordinary hosts and recipient overlay unchanged. Replace only iPad proof on attempt 2; iPhone ordinary branch remains applicable.
+
+Replacement iPad accessibility attempt 2 passes in output/ui-screenshot-harness/20261023T081751Z-ipad. Inspected automatic-reveal capture: public bars/plaque/explanation clear above scrollable composer; selection and close/restoration assertions pass. Ordinary iPhone branch retains first-run evidence. Final doc freshness passes (/tmp/uls-inset-docs-final.log). UI flows additionally owns short-host composer scrolling; architecture/rules/protocol/QA/historical docs unaffected.
+
+Fresh independent constraint/SwiftUI review passes final source and six accepted captures plus matching manifests. SUP-001/002 pass, SUP-003 owner-doc/freshness review passes; final gate and delivery follow.
+
+Inset-bar revision completion gate passed exit 0 (/tmp/uls-inset-gate.log): contract/harness audit, whitespace, doc freshness, canonical generation and simulator build. Scoped revision complete; no device/release claim. Commit/push to beta-1.2 follows. Owner updates: DESIGN.md, UI flows and this plan; no historical cleanup needed.

@@ -15,6 +15,8 @@ struct GamePhysicalTradeSurfaceView: View {
     let tutorialTarget: GameTutorialTarget?
     @Binding var showsRecipients: Bool
     let recipientScrimTopInset: CGFloat
+    var composerTopInset: CGFloat = 0
+    var composerBottomInset: CGFloat = 0
     let onClose: () -> Void
     let onChoosePlayerTrade: () -> Void
     let onChooseMaritimeTrade: () -> Void
@@ -80,8 +82,21 @@ struct GamePhysicalTradeSurfaceView: View {
 
     private func playerTrade(_ draft: GameTradeDraft) -> some View {
         ZStack {
-            playerComposerPanel(draft)
-                .padding(.horizontal, 12)
+            GeometryReader { geometry in
+                if dynamicTypeSize.isAccessibilitySize && geometry.size.height < 700 {
+                    ScrollView {
+                        playerComposerPanel(draft)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 4)
+                    }
+                    .frame(height: max(geometry.size.height - composerTopInset - composerBottomInset, 0))
+                    .padding(.top, composerTopInset)
+                } else {
+                    playerComposerPanel(draft)
+                        .padding(.horizontal, 12)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
 
             if showsRecipients {
                 GamePhysicalTurnPalette.focusVeil

@@ -22,10 +22,10 @@ struct GamePhysicalPublicRackView: View {
                                 isFaded: false,
                                 stackDepth: 2
                             )
-                            .overlay(alignment: .top) {
+                            .overlay(alignment: .bottom) {
                                 if revealsBankCounts {
                                     supplyBar(filledSegments: GamePublicPileLevel.resourceFilledSegments(remaining: chip.count))
-                                        .offset(y: -8)
+                                        .padding(.bottom, 4)
                                 }
                             }
                         }
@@ -81,15 +81,15 @@ struct GamePhysicalPublicRackView: View {
     }
 
     private func supplyBar(filledSegments: Int) -> some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 1.5) {
             ForEach(0..<3) { segment in
                 Rectangle()
                     .fill(segment < filledSegments
                         ? GamePhysicalTurnPalette.primaryText : Color.clear)
-                    .frame(width: 6, height: 5)
+                    .frame(width: 5, height: 4)
             }
         }
-        .padding(3)
+        .padding(2)
         .background(GamePhysicalTurnPalette.cardCountInk, in: RoundedRectangle(cornerRadius: 3))
         .overlay {
             RoundedRectangle(cornerRadius: 3)
@@ -106,10 +106,10 @@ struct GamePhysicalPublicRackView: View {
                 isFaded: false,
                 stackDepth: 3
             )
-            .overlay(alignment: .top) {
+            .overlay(alignment: .bottom) {
                 if revealsBankCounts {
                     supplyBar(filledSegments: GamePublicPileLevel.devCardFilledSegments(remaining: developmentDeckCount))
-                        .offset(y: -8)
+                        .padding(.bottom, 4)
                 }
             }
 

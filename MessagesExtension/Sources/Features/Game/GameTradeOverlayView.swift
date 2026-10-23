@@ -10,6 +10,8 @@ struct GameTradeOverlayView: View {
     let tutorialScrollTarget: GameTutorialTarget?
     @Binding var showsRecipients: Bool
     let recipientScrimTopInset: CGFloat
+    var composerTopInset: CGFloat = 0
+    var composerBottomInset: CGFloat = 0
     let onClose: () -> Void
     let onChoosePlayerTrade: () -> Void
     let onChooseMaritimeTrade: () -> Void
@@ -36,6 +38,8 @@ struct GameTradeOverlayView: View {
             tutorialTarget: tutorialScrollTarget,
             showsRecipients: $showsRecipients,
             recipientScrimTopInset: recipientScrimTopInset,
+            composerTopInset: composerTopInset,
+            composerBottomInset: composerBottomInset,
             onClose: onClose,
             onChoosePlayerTrade: onChoosePlayerTrade,
             onChooseMaritimeTrade: onChooseMaritimeTrade,

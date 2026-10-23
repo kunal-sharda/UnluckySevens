@@ -790,6 +790,8 @@ struct GameShellView: View {
                                 tutorialScrollTarget: tutorialTradeTarget,
                                 showsRecipients: $showsPhysicalTradeRecipients,
                                 recipientScrimTopInset: recipientScrimTopInset,
+                                composerTopInset: recipientScrimTopInset + physicalLayout.publicRailHeight + tabletopSectionSpacing,
+                                composerBottomInset: physicalTradeBottomPadding,
                                 onClose: {
                                     closeTradePanel(resetDraft: true)
                                 },
