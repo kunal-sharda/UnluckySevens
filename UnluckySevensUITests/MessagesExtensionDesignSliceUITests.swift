@@ -2054,7 +2054,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         draw.tap()
         XCTAssertTrue(messages.buttons["uls.preview.lifecycle.confirmProposeDraw"].firstMatch.waitForExistence(timeout: 5))
         attachScreenshot(named: "Preview - Draw confirmation")
-        messages.buttons["uls.preview.lifecycle.back"].firstMatch.tap()
+        messages.buttons["uls.preview.lifecycle.keepPlaying"].firstMatch.tap()
         messages.buttons["uls.preview.lifecycle.resign"].firstMatch.tap()
         XCTAssertTrue(messages.buttons["uls.preview.lifecycle.keepPlaying"].firstMatch.waitForExistence(timeout: 5))
         attachScreenshot(named: "Preview - Resign confirmation")
