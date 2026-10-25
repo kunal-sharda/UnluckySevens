@@ -7,7 +7,7 @@ Implement [#13](https://github.com/kunal-sharda/UnluckySevens/issues/13): inspec
 ## Execution Settings
 
 - Validation profile: `standard`
-- Delivery posture: `checkpointed`
+- Delivery posture: `direct`
 - Rationale: user explicitly requests seeing the proposed direction and agreeing before implementation, then seeing the finished result.
 
 ## Context and Boundaries
@@ -101,3 +101,11 @@ Doc-freshness closeout for revision: UI flows records every-occurrence-until-dis
 Current follow-up proof: canonical generated six-route batch20261025T060522Z-iphone passes all journeys. Build/Dev framing is contained after cause-backed outer root sizing correction (see host plan); disable and Settings re-enable succeed with unchanged canonical evidence and initial frame/mount invariants. The source now also asserts frame/mount after re-enable; final independent host confirmation carries those assertions. Updated Dev accessibility role is now verified hittable. Production cost/eligibility examples remain synthetic and visual approval still pending; no production tutorial event/persistence or new-player discovery claim.
 
 Follow-up closeout: host blocker #56 resolved in02fa1ea with independent review and its standard completion gate. Final Build/Dev confirmation passes strengthened disable/re-enable board frame/mount/state checks. Current purchase checkpoint is ready for owner visual judgment, with canonical availability and production tutorial wiring still pending. Owner docs updated for new-card tutorial requirements and QA routes; DESIGN/architecture/rules remain unchanged.
+
+### Production integration authorized — 2026-10-25
+
+Owner explicitly requests integrating all approved designs and writing tests. Standard/direct; visual checkpoint passed. Lock proof before edits: AppPreferences persistence/default/re-enable tests; private new-card delta and purchase-inspection tests; generated extension build and scoped resolver/model suites; installed Messages journeys for Build inspection, Dev explicit confirmation/new-card dismissal/disable, Settings re-enable, Road review, and lifecycle cancel/confirm. Use at most two visual rounds, with diagnosed infrastructure retries under QA. Fresh constraint/product-UX review and completion gate follow implementation. No protocol or rule changes. Production tutorial state must be local; disabled tutorials preserve required choices and explicit purchase confirmation.
+
+2026-10-25 sourced contract-gap amendment: COST-002 and the existing scope require concise private reasons for resource shortage, exhausted pieces, no placement, wrong phase and empty deck. Boolean-only presentation cannot distinguish these cases. Add a read-only Core purchase-blocker query using existing costs/legal-target queries and guard precedence; no reducer or validation semantics change. Only the requesting viewer's resource shortages may be returned, after actor/phase checks. Add focused Core query cases for those blockers, available targets, and nonviewer secrecy. Presentation maps typed blockers into copy; actual publication booleans stay authoritative. Parent runs the focused CoreGameViewQueriesV1Tests with existing production proof.
+
+Canonical blocker query validation: `/tmp/uls-core-purchase-tests2.log` passes 11 focused Core query/atomic-road tests, including the new private shortages, phase/deck precedence, all piece limits and no-placement cases. Two missing explicit lastRoll arguments in the first test compile were corrected; reducer/protocol behavior is unchanged. Query block is committed independently; production UI integration remains under the aggregate approved-integration plan.

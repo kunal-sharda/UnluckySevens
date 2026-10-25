@@ -311,6 +311,53 @@ final class CoreGameViewQueriesV1Tests: XCTestCase {
         XCTAssertFalse(state.canRevealVictoryPoint(for: "B"))
     }
 
+    func testPurchaseBlockersRespectViewerPhaseAndPrivateShortages() {
+        let state = makeState(resourcesByPlayer: ["A": ResourceHandV1(wood: 1), "B": .zero], devDeck: [.knight])
+        XCTAssertEqual(state.purchaseBlocker(for: .road, viewer: "A"), .insufficientResources(ResourceHandV1(brick: 1)))
+        XCTAssertEqual(state.purchaseBlocker(for: .city, viewer: "A"), .insufficientResources(ResourceHandV1(wheat: 2, ore: 3)))
+        XCTAssertEqual(state.purchaseBlocker(for: .developmentCard, viewer: "A"), .insufficientResources(CoreBuildCostsV1.developmentCard))
+        XCTAssertEqual(state.purchaseBlocker(for: .road, viewer: "B"), .notYourTurn)
+        XCTAssertEqual(state.purchaseBlocker(for: .road, viewer: nil), .unknownViewer)
+        XCTAssertEqual(state.purchaseBlocker(for: .road, viewer: "stranger"), .unknownViewer)
+        let beforeRoll = makeState(resourcesByPlayer: ["A": .zero, "B": .zero], turnState: TurnStateV1(step: .needsRoll, lastRoll: nil))
+        XCTAssertEqual(beforeRoll.purchaseBlocker(for: .road, viewer: "A"), .rollFirst)
+        XCTAssertEqual(makeSetupState().purchaseBlocker(for: .road, viewer: "A"), .wrongPhase)
+        let forced = makeState(resourcesByPlayer: ["A": .zero, "B": .zero], turnState: TurnStateV1(step: .needsRobberMove, lastRoll: DiceRollV1(d1: 4, d2: 3)))
+        XCTAssertEqual(forced.purchaseBlocker(for: .developmentCard, viewer: "A"), .finishRequiredAction)
+    }
+
+    func testPurchaseBlockersDistinguishPiecesPlacementAndEmptyDeck() {
+        let resources: [String: ResourceHandV1] = ["A": ResourceHandV1(wood: 8, brick: 8, sheep: 8, wheat: 8, ore: 8), "B": .zero]
+        let noPlacement = makeState(resourcesByPlayer: resources)
+        for kind: CorePurchaseKindV1 in [.road, .settlement, .city] {
+            XCTAssertEqual(noPlacement.purchaseBlocker(for: kind, viewer: "A"), .noLegalPlacement)
+        }
+        let noPieces = makeState(
+            resourcesByPlayer: resources,
+            settlementsByNode: Dictionary(uniqueKeysWithValues: (0..<5).map { ($0, "A") }),
+            citiesByNode: Dictionary(uniqueKeysWithValues: (10..<14).map { ($0, "A") }),
+            roadsByEdge: Dictionary(uniqueKeysWithValues: (0..<15).map { ($0, "A") })
+        )
+        for kind: CorePurchaseKindV1 in [.road, .settlement, .city] {
+            XCTAssertEqual(noPieces.purchaseBlocker(for: kind, viewer: "A"), .noPieces)
+        }
+        XCTAssertEqual(noPlacement.purchaseBlocker(for: .developmentCard, viewer: "A"), .emptyDeck)
+        XCTAssertEqual(makeState(resourcesByPlayer: ["A": .zero, "B": .zero]).purchaseBlocker(for: .developmentCard, viewer: "A"), .emptyDeck)
+    }
+
+    func testAvailablePurchaseInspectionMatchesCanonicalTargetsWithoutMutation() {
+        let resources: [String: ResourceHandV1] = ["A": ResourceHandV1(wood: 8, brick: 8, sheep: 8, wheat: 8, ore: 8), "B": .zero]
+        let home = topology.tiles[0].nodes[0]
+        let state = makeState(resourcesByPlayer: resources, settlementsByNode: [home: "A"], devDeck: [.knight])
+        let hash = state.stateHash
+        XCTAssertFalse(state.legalBuildRoadEdges(for: "A").isEmpty)
+        XCTAssertNil(state.purchaseBlocker(for: .road, viewer: "A"))
+        XCTAssertFalse(state.legalBuildCityNodes(for: "A").isEmpty)
+        XCTAssertNil(state.purchaseBlocker(for: .city, viewer: "A"))
+        XCTAssertNil(state.purchaseBlocker(for: .developmentCard, viewer: "A"))
+        XCTAssertEqual(state.stateHash, hash)
+    }
+
     private func makeState(
         resourcesByPlayer: [String: ResourceHandV1],
         bankResources: ResourceHandV1 = .standardBank,
@@ -320,6 +367,7 @@ final class CoreGameViewQueriesV1Tests: XCTestCase {
         settlementsByNode: [NodeID: String] = [:],
         citiesByNode: [NodeID: String] = [:],
         roadsByEdge: [EdgeID: String] = [:],
+        devDeck: [DevCardV1] = [],
         activeTradeOffer: TradeOfferV1? = nil,
         turnState: TurnStateV1 = TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 4, d2: 3))
     ) -> CoreGameStateV1 {
@@ -352,7 +400,7 @@ final class CoreGameViewQueriesV1Tests: XCTestCase {
             robberRngState: 44,
             resourcesByPlayer: resourcesByPlayer,
             bankResources: bankResources,
-            devDeck: [],
+            devDeck: devDeck,
             devCardsByPlayer: normalizedDevCards,
             newDevCardsByPlayer: normalizedNewDevCards,
             revealedVictoryPointsByPlayer: revealedVictoryPointsByPlayer,
