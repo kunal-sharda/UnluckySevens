@@ -82,6 +82,8 @@ Previous numbered terrain and tree passes were experimentation, not durable prod
 
 Ask for user judgment when current guidance cannot distinguish viable directions, reviewers disagree about a judgment constraint, or a new visual principle is being established. Record the selected principle here and enforce it through the narrowest reusable component, fixture, test, or reviewer rule.
 
+The 2026-10-25 approved Beta 1.2 previews establish these directions for production integration: compact felt resignation confirmation with aligned title/body, quiet gold edge, warm wood Keep Playing action and restrained red resignation action; private new-Dev-card timing guidance with card art, Hand → Dev Cards location, and passive VP wording; shared final-result bubbles with a continuous ocean board region and felt footer showing all player names and public scores; and Road Building with numbered pending roads and a compact review rail below the full board. These directions are visually accepted; production routing and behavior validation remain tracked in their active ExecPlans.
+
 ## Durable References
 
 - [Tabletop UI System](docs/design/tabletop-ui-system.md) is the approved detailed reusable contract extracted from the Physical Props Turn Screen and the starting reference for remaining game surfaces.
