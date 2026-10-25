@@ -207,6 +207,10 @@ while IFS='|' read -r TEST_NAME FIXTURE_ID FIXTURE_ACTOR; do
       /usr/libexec/PlistBuddy -c "Delete :$KEY" "$PREFERENCES_PATH"
     fi
   done
+  if [[ "${FIXTURE_ID:-}" == preview-cost-* ]]; then
+    /usr/libexec/PlistBuddy -c 'Delete :uls.preview.tutorialPopupsEnabled' "$PREFERENCES_PATH" >/dev/null 2>&1 || true
+    /usr/libexec/PlistBuddy -c 'Add :uls.preview.tutorialPopupsEnabled bool true' "$PREFERENCES_PATH"
+  fi
   if [[ -n "${FIXTURE_ID:-}" ]]; then
     /usr/libexec/PlistBuddy -c "Add :uls.debug.launchFixtureID string $FIXTURE_ID" "$PREFERENCES_PATH"
     /usr/libexec/PlistBuddy -c "Add :uls.debug.launchActorID string ${FIXTURE_ACTOR:-host}" "$PREFERENCES_PATH"

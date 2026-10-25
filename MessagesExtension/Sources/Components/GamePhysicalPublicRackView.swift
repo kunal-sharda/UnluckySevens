@@ -5,6 +5,7 @@ struct GamePhysicalPublicRackView: View {
     let bank: GameBankTrayModel
     let revealsBankCounts: Bool
     var isTradeShowingSupply = false
+    var previewDiscoverability = false
     let developmentDeckCount: Int
     let canBuyDevelopmentCard: Bool
     let onToggleBankCounts: () -> Void
@@ -39,6 +40,13 @@ struct GamePhysicalPublicRackView: View {
                                 .foregroundStyle(GamePhysicalTurnPalette.primaryText)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.5)
+                        } else if previewDiscoverability {
+                            Text("Tap for supply")
+                                .font(.caption)
+                                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                                .accessibilityHidden(true)
                         }
                     }
                     .frame(maxWidth: 210)
@@ -59,21 +67,31 @@ struct GamePhysicalPublicRackView: View {
             )
             .accessibilityAddTraits(revealsBankCounts ? .isSelected : [])
 
-            Group {
-                if canBuyDevelopmentCard {
-                    Button(action: onBuyDevelopmentCard) {
+            if previewDiscoverability {
+                Button(action: onBuyDevelopmentCard) { developmentDeck }
+                    .buttonStyle(.plain)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityIdentifier("uls.tabletop.devDeck")
+                    .accessibilityLabel("Dev Cards")
+                    .accessibilityValue(devCardsAccessibilityValue)
+                    .accessibilityHint("Opens card information and purchase options. Opening does not buy a card.")
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityAction { onBuyDevelopmentCard() }
+            } else {
+                Group {
+                    if canBuyDevelopmentCard {
+                        Button(action: onBuyDevelopmentCard) { developmentDeck }
+                            .buttonStyle(.plain)
+                            .accessibilityHint("Buys one card for one sheep, one wheat, and one ore")
+                    } else {
                         developmentDeck
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityHint("Buys one card for one sheep, one wheat, and one ore")
-                } else {
-                    developmentDeck
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityIdentifier("uls.tabletop.devDeck")
+                .accessibilityLabel("Dev Cards")
+                .accessibilityValue(devCardsAccessibilityValue)
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityIdentifier("uls.tabletop.devDeck")
-            .accessibilityLabel("Dev Cards")
-            .accessibilityValue(devCardsAccessibilityValue)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .accessibilityElement(children: .contain)
@@ -100,17 +118,19 @@ struct GamePhysicalPublicRackView: View {
 
     private var developmentDeck: some View {
         VStack(spacing: GamePhysicalTurnLayout.publicLabelGap) {
-            GameTabletopPortraitCardView(
-                face: .developmentBack,
-                size: GamePhysicalTurnLayout.portraitCardSize,
-                isFaded: false,
-                stackDepth: 3
-            )
-            .overlay(alignment: .bottom) {
-                if revealsBankCounts {
-                    supplyBar(filledSegments: GamePublicPileLevel.devCardFilledSegments(remaining: developmentDeckCount))
-                        .padding(.bottom, 4)
+            if previewDiscoverability {
+                HStack(spacing: 4) {
+                    developmentCard
+                    Text("Tap to buy")
+                        .font(.caption)
+                        .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.65)
+                        .frame(width: 44, height: GamePhysicalTurnLayout.portraitCardSize.height)
+                        .accessibilityHidden(true)
                 }
+            } else {
+                developmentCard
             }
 
             GameTabletopNameTileView(
@@ -121,6 +141,21 @@ struct GamePhysicalPublicRackView: View {
         }
         .frame(minWidth: 74, minHeight: 44)
         .contentShape(Rectangle())
+    }
+
+    private var developmentCard: some View {
+        GameTabletopPortraitCardView(
+            face: .developmentBack,
+            size: GamePhysicalTurnLayout.portraitCardSize,
+            isFaded: false,
+            stackDepth: 3
+        )
+        .overlay(alignment: .bottom) {
+            if revealsBankCounts {
+                supplyBar(filledSegments: GamePublicPileLevel.devCardFilledSegments(remaining: developmentDeckCount))
+                    .padding(.bottom, 4)
+            }
+        }
     }
 
     private var bankAccessibilityValue: String {

@@ -1,0 +1,3 @@
+testPreviewLifecycle|preview-lifecycle|host
+testPreviewBuildCosts|preview-cost-build|host
+testPreviewDevPurchase|preview-cost-dev|host

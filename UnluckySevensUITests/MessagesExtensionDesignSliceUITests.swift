@@ -1961,6 +1961,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         hideUXLabChromeWithoutChangingFixture()
         XCTAssertTrue(messages.staticTexts["Need 1 sheep"].firstMatch.waitForExistence(timeout: 5))
         attachScreenshot(named: "Preview - Build costs")
+        verifyPreviewTutorialDisable(captureTabletop: false)
     }
 
     func testPreviewDevPurchase() throws {
@@ -1969,6 +1970,46 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         hideUXLabChromeWithoutChangingFixture()
         XCTAssertTrue(messages.staticTexts["Buy Dev Card"].firstMatch.waitForExistence(timeout: 5))
         attachScreenshot(named: "Preview - Buy Dev Card")
+        verifyPreviewTutorialDisable(captureTabletop: true)
+    }
+
+    private func verifyPreviewTutorialDisable(captureTabletop: Bool) {
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let host = turnElement(identifier: "uls.tabletop.boardHost", labels: [])
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        let originalFrame = board.frame
+        let originalMount = boardMountIdentity(of: host)
+        let before = gameplayActionEvidenceValue()
+        let settings = turnElement(identifier: "", labels: ["Settings"])
+        XCTAssertTrue(settings.exists)
+        let canvas = messages.descendants(matching: .any)["uls.host.usableCanvas"].firstMatch
+        let shell = messages.descendants(matching: .any)["uls.tabletop.shell"].firstMatch
+        let diagnostic = XCTAttachment(string: "canvas=\(canvas.frame); shell=\(shell.frame); settings=\(settings.frame); \(currentHostDiagnosticValue())")
+        diagnostic.name = "Preview framing diagnostics"
+        diagnostic.lifetime = .keepAlways
+        add(diagnostic)
+        XCTAssertGreaterThan(settings.frame.minY, 100, "Header must not be clipped above the Messages sheet.")
+        let disable = messages.buttons["uls.preview.purchase.disableTutorials"].firstMatch
+        XCTAssertTrue(disable.waitForExistence(timeout: 5))
+        disable.tap()
+        XCTAssertTrue(disable.waitForNonExistence(timeout: 5))
+        assertFrame(of: board, matches: originalFrame, message: "Disabling tutorial panels must not move the board.")
+        XCTAssertEqual(boardMountIdentity(of: host), originalMount)
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+        let bank = messages.buttons["uls.tabletop.bankRack"].firstMatch
+        XCTAssertTrue(bank.isHittable)
+        XCTAssertTrue(messages.buttons["uls.tabletop.devDeck"].firstMatch.isHittable)
+        if captureTabletop { attachScreenshot(named: "Preview - Tutorial pop-ups disabled") }
+        bank.tap()
+        XCTAssertTrue((bank.value as? String ?? "").contains("supply"))
+        settings.tap()
+        let toggle = messages.switches["uls.settings.previewTutorialPopups"].firstMatch
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        XCTAssertEqual(toggle.value as? String, "0")
+        toggle.tap()
+        messages.buttons["Done"].firstMatch.tap()
+        XCTAssertTrue(disable.waitForExistence(timeout: 5))
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
     }
 
     func testPreviewUnavailableDevPurchase() throws {

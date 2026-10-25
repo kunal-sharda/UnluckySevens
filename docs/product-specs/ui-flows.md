@@ -306,7 +306,7 @@ Approved requirement (2026-10-24), pending implementation: [#55](https://github.
 - Disabling teaching panels must preserve gameplay, required choices, actionable errors and genuine purchase/destructive confirmations; it must not turn an inspection tap into an unexpected purchase.
 - Bank and Dev-deck tappability must be discoverable both with and without tutorial pop-ups. Bank teaches tapping to reveal approximate supply; the public Dev deck teaches where to buy a Development Card. Accessible action names communicate the same purpose. Preserve the existing approximate-stock secrecy contract.
 - Additional scenario-specific tutorial pop-ups may use the same mechanism. Define each scenario's trigger, content and dismissal behavior before adding it; no expanded curriculum is committed by this requirement.
-- First-show/repeat behavior and the revised enabled/disabled interaction proof must be settled before implementation. Discoverability requires representative new-player observation of finding Bank and Dev actions without verbal coaching, not screenshots alone.
+- While enabled, tutorial pop-ups appear every time their relevant scenario occurs, until the player disables them; dismissing a single occurrence does not permanently suppress that scenario. Lock the exact scenario triggers and revised enabled/disabled interaction proof before implementation. Discoverability requires representative new-player observation of finding Bank and Dev actions without verbal coaching, not screenshots alone.
 - This contextual help supplements the separate lobby tutorial and planned Learn & Reference paths; disabling it does not remove access to those learning resources.
 
 ### Tutorial Lesson Map

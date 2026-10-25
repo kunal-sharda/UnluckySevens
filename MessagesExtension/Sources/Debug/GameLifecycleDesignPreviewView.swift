@@ -22,30 +22,24 @@ struct GameLifecycleDesignPreviewView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            header
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    switch screen {
-                    case .actions:
-                        actionList
-                    case .resign:
-                        resignConfirmation
-                    case .endGame:
-                        endGameConfirmation
-                    case .proposeDraw:
-                        drawProposal
-                    case .drawVote:
-                        drawVote
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, 4)
+        ViewThatFits(in: .vertical) {
+            VStack(alignment: .leading, spacing: 12) {
+                header
+                screenContent
             }
-            .scrollBounceBehavior(.basedOnSize)
+            .padding(16)
+            .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 12) {
+                header
+                ScrollView {
+                    screenContent
+                        .padding(.bottom, 4)
+                }
+                .scrollBounceBehavior(.basedOnSize)
+            }
+            .padding(16)
         }
-        .padding(18)
         .frame(maxWidth: 346)
         .background(GameTheme.felt.opacity(0.98), in: RoundedRectangle(cornerRadius: 14))
         .overlay {
@@ -55,6 +49,22 @@ struct GameLifecycleDesignPreviewView: View {
         .shadow(color: .black.opacity(0.30), radius: 8, y: 3)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("uls.preview.lifecycle")
+    }
+
+    @ViewBuilder
+    private var screenContent: some View {
+        switch screen {
+        case .actions:
+            actionList
+        case .resign:
+            resignConfirmation
+        case .endGame:
+            endGameConfirmation
+        case .proposeDraw:
+            drawProposal
+        case .drawVote:
+            drawVote
+        }
     }
 
     private var header: some View {
@@ -134,13 +144,9 @@ struct GameLifecycleDesignPreviewView: View {
         VStack(alignment: .leading, spacing: 18) {
             explanation("You will leave active play. Your pieces stay on the board, and the remaining players continue.")
 
-            VStack(spacing: 8) {
-                Button("Keep Playing") { screen = .actions }
-                    .buttonStyle(GameTabletopActionButtonStyle(emphasis: .primary, solidBackground: true))
-                    .accessibilityIdentifier("uls.preview.lifecycle.keepPlaying")
-                Button("Resign", role: .destructive) { screen = .actions }
-                    .buttonStyle(GameTabletopActionButtonStyle(emphasis: .destructive, solidBackground: true))
-                    .accessibilityIdentifier("uls.preview.lifecycle.confirmResign")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { resignButtons }
+                VStack(alignment: .leading, spacing: 10) { resignButtons }
             }
         }
     }
@@ -149,16 +155,14 @@ struct GameLifecycleDesignPreviewView: View {
         VStack(alignment: .leading, spacing: 18) {
             explanation("A draw gives every active player a say. Ending the game as host finishes it immediately, without a winner.")
 
-            VStack(spacing: 8) {
-                Button("Propose Draw") { screen = .proposeDraw }
-                    .buttonStyle(GameTabletopActionButtonStyle(emphasis: .primary, solidBackground: true))
-                    .accessibilityIdentifier("uls.preview.lifecycle.proposeDrawInstead")
-                Button("Keep Playing") { screen = .actions }
-                    .buttonStyle(GameTabletopActionButtonStyle(emphasis: .secondary, solidBackground: true))
-                    .accessibilityIdentifier("uls.preview.lifecycle.keepPlaying")
-                Button("End Game Anyway", role: .destructive) { screen = .actions }
-                    .buttonStyle(GameTabletopActionButtonStyle(emphasis: .destructive, solidBackground: true))
-                    .accessibilityIdentifier("uls.preview.lifecycle.confirmEnd")
+            VStack(alignment: .leading, spacing: 10) {
+                compactButton("Propose Draw", emphasis: .primary, identifier: "proposeDrawInstead") {
+                    screen = .proposeDraw
+                }
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) { endGameButtons }
+                    VStack(alignment: .leading, spacing: 10) { endGameButtons }
+                }
             }
         }
     }
@@ -167,13 +171,9 @@ struct GameLifecycleDesignPreviewView: View {
         VStack(alignment: .leading, spacing: 18) {
             explanation("Ask everyone to finish this game as a draw. Every active player must agree; otherwise, play continues.")
 
-            VStack(spacing: 8) {
-                Button("Propose Draw") { screen = .drawVote }
-                    .buttonStyle(GameTabletopActionButtonStyle(emphasis: .primary, solidBackground: true))
-                    .accessibilityIdentifier("uls.preview.lifecycle.confirmProposeDraw")
-                Button("Keep Playing") { screen = .actions }
-                    .buttonStyle(GameTabletopActionButtonStyle(emphasis: .secondary, solidBackground: true))
-                    .accessibilityIdentifier("uls.preview.lifecycle.keepPlaying")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { drawProposalButtons }
+                VStack(alignment: .leading, spacing: 10) { drawProposalButtons }
             }
         }
     }
@@ -182,15 +182,55 @@ struct GameLifecycleDesignPreviewView: View {
         VStack(alignment: .leading, spacing: 18) {
             explanation("Finish this game as a draw? Every active player must agree. If anyone declines, play continues.")
 
-            VStack(spacing: 8) {
-                Button("Agree to Draw") { screen = .actions }
-                    .buttonStyle(GameTabletopActionButtonStyle(emphasis: .primary, solidBackground: true))
-                    .accessibilityIdentifier("uls.preview.lifecycle.agreeDraw")
-                Button("Keep Playing") { screen = .actions }
-                    .buttonStyle(GameTabletopActionButtonStyle(emphasis: .secondary, solidBackground: true))
-                    .accessibilityIdentifier("uls.preview.lifecycle.declineDraw")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { drawVoteButtons }
+                VStack(alignment: .leading, spacing: 10) { drawVoteButtons }
             }
         }
+    }
+
+    @ViewBuilder
+    private var resignButtons: some View {
+        compactButton("Keep Playing", emphasis: .primary, identifier: "keepPlaying") { screen = .actions }
+        compactButton("Resign", emphasis: .destructive, identifier: "confirmResign", role: .destructive) {
+            screen = .actions
+        }
+    }
+
+    @ViewBuilder
+    private var endGameButtons: some View {
+        compactButton("Keep Playing", emphasis: .secondary, identifier: "keepPlaying") { screen = .actions }
+        compactButton("End Game Anyway", emphasis: .destructive, identifier: "confirmEnd", role: .destructive) {
+            screen = .actions
+        }
+    }
+
+    @ViewBuilder
+    private var drawProposalButtons: some View {
+        compactButton("Propose Draw", emphasis: .primary, identifier: "confirmProposeDraw") { screen = .drawVote }
+        compactButton("Keep Playing", emphasis: .secondary, identifier: "keepPlaying") { screen = .actions }
+    }
+
+    @ViewBuilder
+    private var drawVoteButtons: some View {
+        compactButton("Agree to Draw", emphasis: .primary, identifier: "agreeDraw") { screen = .actions }
+        compactButton("Keep Playing", emphasis: .secondary, identifier: "declineDraw") { screen = .actions }
+    }
+
+    private func compactButton(
+        _ title: String,
+        emphasis: GameTabletopActionButtonStyle.Emphasis,
+        identifier: String,
+        role: ButtonRole? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(role: role, action: action) {
+            Text(title)
+                .padding(.horizontal, 14)
+        }
+        .buttonStyle(GameTabletopActionButtonStyle(emphasis: emphasis, solidBackground: true))
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityIdentifier("uls.preview.lifecycle.\(identifier)")
     }
 
     private func explanation(_ text: String) -> some View {
@@ -232,7 +272,7 @@ struct GameLifecycleDesignPreviewView: View {
             }
             .foregroundStyle(GamePhysicalTurnPalette.primaryText)
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .padding(.vertical, 14)
+            .padding(.vertical, 6)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

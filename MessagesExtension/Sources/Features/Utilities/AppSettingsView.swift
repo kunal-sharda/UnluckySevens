@@ -16,6 +16,10 @@ struct AppSettingsView: View {
     var canResendUpdate: Bool = false
     var onResendUpdate: () -> Void = {}
     var reliabilityStorageUnavailable: () -> Bool = { false }
+    var showsTutorialPopupPreviewSetting = false
+    #if DEBUG
+    @AppStorage("uls.preview.tutorialPopupsEnabled") private var previewTutorialPopupsEnabled = true
+    #endif
 
     var body: some View {
         ZStack {
@@ -29,6 +33,16 @@ struct AppSettingsView: View {
                     ScrollView(.vertical, showsIndicators: true) {
                         VStack(alignment: .leading, spacing: 0) {
                             skipAnimationsRow
+                            #if DEBUG
+                            if showsTutorialPopupPreviewSetting {
+                                divider
+                                Toggle("Tutorial pop-ups", isOn: $previewTutorialPopupsEnabled)
+                                    .font(GameTheme.headingFont)
+                                    .foregroundStyle(GameTheme.surface)
+                                    .padding(.vertical, 18)
+                                    .accessibilityIdentifier("uls.settings.previewTutorialPopups")
+                            }
+                            #endif
                             divider
                             currentGameSection
                             if canResendUpdate {

@@ -22,6 +22,14 @@ struct MessagesRootView: View {
         _appPreferences = State(initialValue: AppPreferences())
     }
 
+    private var showsTutorialPopupPreviewSetting: Bool {
+        #if DEBUG
+        viewModel.uxTestingIsActive && viewModel.uxTestingSelectedFixtureID.hasPrefix("preview-cost-")
+        #else
+        false
+        #endif
+    }
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             if let hostLayout = hostLayoutStore.snapshot {
@@ -124,7 +132,8 @@ struct MessagesRootView: View {
                                 clearReliabilityReports: viewModel.clearReliabilityReports,
                                 canResendUpdate: viewModel.canResendCurrentGameUpdate(),
                                 onResendUpdate: viewModel.resendCurrentGameUpdate,
-                                reliabilityStorageUnavailable: { viewModel.reliabilityStorageUnavailable }
+                                reliabilityStorageUnavailable: { viewModel.reliabilityStorageUnavailable },
+                                showsTutorialPopupPreviewSetting: showsTutorialPopupPreviewSetting
                             )
                             .transition(.opacity)
                             .zIndex(20)

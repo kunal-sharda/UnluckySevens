@@ -6,6 +6,7 @@ import ULS_CoreGame
 struct GamePurchaseCostPreviewView: View {
     enum Screen { case build, devAvailable, devUnavailable }
     let screen: Screen
+    let onDisableTutorialPopups: () -> Void
     private let resources: [ResourceV1] = [.wood, .brick, .sheep, .wheat, .ore]
 
     var body: some View {
@@ -35,6 +36,15 @@ struct GamePurchaseCostPreviewView: View {
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(screen == .devAvailable ? GamePhysicalTurnPalette.selectedKeyline : GamePhysicalTurnPalette.nameTileEdge, lineWidth: 1.5))
                         .opacity(screen == .devAvailable ? 1 : 0.55)
                 }
+                Button(action: onDisableTutorialPopups) {
+                    Text("Disable tutorial pop-ups")
+                        .font(.footnote)
+                        .underline()
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("uls.preview.purchase.disableTutorials")
             }
             .foregroundStyle(GamePhysicalTurnPalette.primaryText)
             .padding(20)
@@ -43,6 +53,7 @@ struct GamePurchaseCostPreviewView: View {
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(GamePhysicalTurnPalette.selectedKeyline.opacity(0.7), lineWidth: 1.5))
             .padding(.horizontal, 12)
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("uls.preview.purchase.surface")
     }
 

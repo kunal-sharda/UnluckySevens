@@ -11,6 +11,10 @@ struct GameShellView: View {
         #endif
     }
 
+    #if DEBUG
+    @AppStorage("uls.preview.tutorialPopupsEnabled") private var previewTutorialPopupsEnabled = true
+    #endif
+
     private static let displayCoordinateSpaceName = "uls.gameShell.display"
 
     let viewModel: LobbyDriverViewModel
@@ -356,6 +360,7 @@ struct GameShellView: View {
                                             bank: bankTrayModel,
                                             revealsBankCounts: physicalBankCountsRevealed || isTradePanelPresented,
                                             isTradeShowingSupply: isTradePanelPresented,
+                                            previewDiscoverability: designPreviewID.hasPrefix("preview-cost-"),
                                             developmentDeckCount: screenModel.devDeckCount,
                                             canBuyDevelopmentCard: screenModel.canBuyDevCard,
                                             onToggleBankCounts: {
@@ -945,8 +950,11 @@ struct GameShellView: View {
                     }
 
                     #if DEBUG
-                    if designPreviewID.hasPrefix("preview-cost-") {
-                        GamePurchaseCostPreviewView(screen: designPreviewID == "preview-cost-build" ? .build : designPreviewID == "preview-cost-dev" ? .devAvailable : .devUnavailable)
+                    if designPreviewID.hasPrefix("preview-cost-"), previewTutorialPopupsEnabled {
+                        GamePurchaseCostPreviewView(
+                            screen: designPreviewID == "preview-cost-build" ? .build : designPreviewID == "preview-cost-dev" ? .devAvailable : .devUnavailable,
+                            onDisableTutorialPopups: { previewTutorialPopupsEnabled = false }
+                        )
                             .frame(width: shellSize.width, height: shellSize.height)
                             .zIndex(6)
                     } else if designPreviewID == "preview-map-inspection" {
@@ -1382,6 +1390,9 @@ struct GameShellView: View {
     }
 
     private func handlePublicDevDeckPurchase() {
+        #if DEBUG
+        if designPreviewID.hasPrefix("preview-cost-") { return }
+        #endif
         guard viewModel.handleDevCardAction(.buyDevCard) else { return }
         currentMode = .idle
         shellRoute = .none
