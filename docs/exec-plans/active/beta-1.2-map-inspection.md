@@ -31,7 +31,7 @@ Preview proof locked before implementation: canonical generation via `bash ./scr
 <!-- verification-contract:start -->
 | ID | Class | Source | Acceptance | Verification | Evidence | Status | Rationale |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| MAP-001 | judgment | user request; #54 | Owner approves inspect and return composition | Two real-component captures and explicit owner response | report:pending | pending | Approval gate |
+| MAP-001 | judgment | user request; #54 | Owner approves inspect and return composition | Two real-component captures and explicit owner response | report:owner-feedback-2026-10-24 | pass | Owner: Inspect the board is fine |
 | MAP-002 | mechanical | #54 | Preview inspection changes local state only and invokes no game actions | Source inspection and dedicated DEBUG fixture isolation | report:debug-source-boundary | pass | Preview callbacks only change local state |
 | MAP-003 | observable | #54 | Map becomes unobscured; return restores choices without board remount or movement | Focused fixture test and inspected screenshots | report:round-2-map-journey | pass | Two captures inspected; frame and mount assertions pass on inspection and return |
 | MAP-004 | mechanical | repo workflow | Final accepted implementation has owner docs and completion evidence | Post-approval doc freshness and completion gate | report:pending | pending | Future production stage |
@@ -63,3 +63,5 @@ Round 2 map outcome: `testPreviewMapInspection` passed with board frame and SKVi
 Final preview checkpoint: round 2 catalog passed all five routes; all eight screenshot attachments inspected. Lifecycle surrounding-table framing is corrected and Dev/map are readable. Build surrounding-header clipping remains an explicit visual failure; no further edits within the two-round budget. SF typography is retained with board-token exception. Owner visual approval is pending; no production purchase/lifecycle wiring, fresh final reviews, completion gate, device acceptance or release claim.
 
 Doc freshness: these three active plans own the prototype state and QA owns the new target-only simulator option. DESIGN, PRODUCT, product flows, decisions, architecture and README intentionally retain accepted production behavior; no production facts or setup changed. Historical/reference cleanup is unaffected. Screenshots/results remain ignored local evidence, with no durable binary admission.
+
+2026-10-24 owner feedback: Inspect Board direction approved ("Inspect the board is fine"). This clears the visual approval gate for this track; full production behavior and its exact proof set still need to be locked before implementation. Current turn addresses design feedback across tracks, not production rollout.

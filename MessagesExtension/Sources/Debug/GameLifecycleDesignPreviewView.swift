@@ -106,7 +106,6 @@ struct GameLifecycleDesignPreviewView: View {
         VStack(spacing: 0) {
             actionRow(
                 title: "Propose Draw",
-                detail: "Let everyone agree to finish together.",
                 symbol: "hand.raised",
                 identifier: "proposeDraw"
             ) { screen = .proposeDraw }
@@ -115,7 +114,6 @@ struct GameLifecycleDesignPreviewView: View {
 
             actionRow(
                 title: "Resign",
-                detail: "Leave active play. The others continue.",
                 symbol: "figure.walk.departure",
                 identifier: "resign"
             ) { screen = .resign }
@@ -125,7 +123,6 @@ struct GameLifecycleDesignPreviewView: View {
 
                 actionRow(
                     title: "End Game",
-                    detail: "As host, finish the game for everyone.",
                     symbol: "xmark.octagon",
                     identifier: "endGame"
                 ) { screen = .endGame }
@@ -213,7 +210,6 @@ struct GameLifecycleDesignPreviewView: View {
 
     private func actionRow(
         title: String,
-        detail: String,
         symbol: String,
         identifier: String,
         action: @escaping () -> Void
@@ -225,14 +221,8 @@ struct GameLifecycleDesignPreviewView: View {
                     .frame(width: 28)
                     .accessibilityHidden(true)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.headline)
-                    Text(detail)
-                        .font(.subheadline)
-                        .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                Text(title)
+                    .font(.headline)
 
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
