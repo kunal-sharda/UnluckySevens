@@ -207,6 +207,10 @@ while IFS='|' read -r TEST_NAME FIXTURE_ID FIXTURE_ACTOR; do
       /usr/libexec/PlistBuddy -c "Delete :$KEY" "$PREFERENCES_PATH"
     fi
   done
+  /usr/libexec/PlistBuddy -c 'Delete :uls.debug.hostLayoutProbe' "$PREFERENCES_PATH" >/dev/null 2>&1 || true
+  if [[ "${UI_SCREENSHOT_HOST_LAYOUT_PROBE:-0}" == "1" ]]; then
+    /usr/libexec/PlistBuddy -c 'Add :uls.debug.hostLayoutProbe bool true' "$PREFERENCES_PATH"
+  fi
   if [[ "${FIXTURE_ID:-}" == preview-cost-* ]]; then
     /usr/libexec/PlistBuddy -c 'Delete :uls.preview.tutorialPopupsEnabled' "$PREFERENCES_PATH" >/dev/null 2>&1 || true
     /usr/libexec/PlistBuddy -c 'Add :uls.preview.tutorialPopupsEnabled bool true' "$PREFERENCES_PATH"

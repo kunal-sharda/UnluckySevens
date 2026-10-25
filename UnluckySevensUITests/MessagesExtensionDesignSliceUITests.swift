@@ -1955,6 +1955,32 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachGameplayActionEvidence(name: "Maritime Trade", before: before, after: after)
     }
 
+    func testPreviewHostLayoutProbe() throws {
+        openUnluckySevensExtension()
+        let compactTop = messages.staticTexts["uls.host.probeTop"].firstMatch
+        XCTAssertTrue(compactTop.waitForExistence(timeout: 5))
+        let uiMarker = messages.descendants(matching: .any)["uls.host.uikitGeometry"].firstMatch
+        let compact = XCTAttachment(string: "UIKit=\(uiMarker.value ?? "missing"); UIKitMarker=\(uiMarker.frame); top=\(compactTop.frame)")
+        compact.name = "Compact root containment"
+        compact.lifetime = .keepAlways
+        add(compact)
+        XCTAssertGreaterThanOrEqual(compactTop.frame.minY, uiMarker.frame.minY - 2, "SwiftUI top must stay inside independently measured UIKit host.")
+        messages.buttons["uls.host.probeExpand"].firstMatch.tap()
+        let canvasState = messages.descendants(matching: .any)["uls.host.usableCanvas"].firstMatch
+        let expanded = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value CONTAINS %@", "style=expanded"), object: canvasState)
+        XCTAssertEqual(XCTWaiter.wait(for: [expanded], timeout: 8), .completed)
+        let top = messages.staticTexts["uls.host.probeTop"].firstMatch
+        XCTAssertTrue(top.waitForExistence(timeout: 8))
+        let geometry = messages.descendants(matching: .any)["uls.host.uikitGeometry"].firstMatch
+        let canvas = messages.descendants(matching: .any)["uls.host.usableCanvas"].firstMatch
+        let attachment = XCTAttachment(string: "UIKit=\(geometry.value ?? "missing"); canvas=\(canvas.frame); top=\(top.frame); \(currentHostDiagnosticValue())")
+        attachment.name = "Minimal host geometry"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        attachScreenshot(named: "Minimal host markers")
+        XCTAssertGreaterThan(top.frame.minY, 100)
+    }
+
     func testPreviewBuildCosts() throws {
         openUnluckySevensExtension()
         assertLaunchFixtureLoaded(title: "Preview Build costs")
@@ -1984,7 +2010,8 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(settings.exists)
         let canvas = messages.descendants(matching: .any)["uls.host.usableCanvas"].firstMatch
         let shell = messages.descendants(matching: .any)["uls.tabletop.shell"].firstMatch
-        let diagnostic = XCTAttachment(string: "canvas=\(canvas.frame); shell=\(shell.frame); settings=\(settings.frame); \(currentHostDiagnosticValue())")
+        let uiGeometry = messages.descendants(matching: .any)["uls.host.uikitGeometry"].firstMatch.value ?? "missing"
+        let diagnostic = XCTAttachment(string: "UIKit=\(uiGeometry); canvas=\(canvas.frame); shell=\(shell.frame); settings=\(settings.frame); \(currentHostDiagnosticValue())")
         diagnostic.name = "Preview framing diagnostics"
         diagnostic.lifetime = .keepAlways
         add(diagnostic)
@@ -2009,6 +2036,8 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         toggle.tap()
         messages.buttons["Done"].firstMatch.tap()
         XCTAssertTrue(disable.waitForExistence(timeout: 5))
+        assertFrame(of: board, matches: originalFrame, message: "Re-enabling tutorials must preserve board position.")
+        XCTAssertEqual(boardMountIdentity(of: host), originalMount)
         XCTAssertEqual(gameplayActionEvidenceValue(), before)
     }
 
@@ -2058,6 +2087,16 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         messages.buttons["uls.preview.lifecycle.resign"].firstMatch.tap()
         XCTAssertTrue(messages.buttons["uls.preview.lifecycle.keepPlaying"].firstMatch.waitForExistence(timeout: 5))
         attachScreenshot(named: "Preview - Resign confirmation")
+        let header = turnElement(identifier: "", labels: ["Settings"])
+        let panel = messages.descendants(matching: .any)["uls.preview.lifecycle"].firstMatch
+        let canvas = messages.descendants(matching: .any)["uls.host.usableCanvas"].firstMatch
+        let geometry = XCTAttachment(string: "canvas=\(canvas.frame); header=\(header.frame); panel=\(panel.frame)")
+        geometry.name = "Lifecycle host geometry"
+        geometry.lifetime = .keepAlways
+        add(geometry)
+        XCTAssertGreaterThan(header.frame.minY, 100)
+        XCTAssertGreaterThanOrEqual(panel.frame.minY, canvas.frame.minY)
+        XCTAssertLessThanOrEqual(panel.frame.maxY, canvas.frame.maxY)
     }
 
     func testResourceSupplyLabelsInBankAndTrade() throws {

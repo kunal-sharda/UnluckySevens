@@ -5,6 +5,10 @@ import UIKit
 final class MessagesViewController: MSMessagesAppViewController {
     private let runtime = MessagesExtensionHostRuntime()
     private let hostResizeShield = MessagesHostResizeShield()
+    #if DEBUG
+    private weak var debugHostingView: UIView?
+    private let debugGeometry = UILabel()
+    #endif
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -23,6 +27,18 @@ final class MessagesViewController: MSMessagesAppViewController {
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(hostingController.view)
         hostingController.didMove(toParent: self)
+        #if DEBUG
+        debugHostingView = hostingController.view
+        if UserDefaults.standard.string(forKey: "uls.debug.launchFixtureID")?.hasPrefix("preview-") == true {
+            debugGeometry.frame = CGRect(x: 0, y: 40, width: 1, height: 1)
+            debugGeometry.textColor = .clear
+            debugGeometry.isUserInteractionEnabled = false
+            debugGeometry.isAccessibilityElement = true
+            debugGeometry.accessibilityIdentifier = "uls.host.uikitGeometry"
+            debugGeometry.accessibilityLabel = "UIKit host geometry"
+            view.addSubview(debugGeometry)
+        }
+        #endif
 
         NSLayoutConstraint.activate([
             hostingController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -43,6 +59,11 @@ final class MessagesViewController: MSMessagesAppViewController {
             topExclusionHeight: resizeGrabberExclusionHeight
         )
         observeCurrentHostLayout()
+        #if DEBUG
+        if let child = debugHostingView {
+            debugGeometry.accessibilityValue = "rootBounds=\(view.bounds); rootWindow=\(view.convert(view.bounds, to: nil)); rootSafe=\(view.safeAreaInsets); childBounds=\(child.bounds); childWindow=\(child.convert(child.bounds, to: nil)); childSafe=\(child.safeAreaInsets); center=\(child.center); transform=\(child.transform); window=\(String(describing: view.window)); constraints=\(view.constraints)"
+        }
+        #endif
     }
 
     override func didBecomeActive(with conversation: MSConversation) {

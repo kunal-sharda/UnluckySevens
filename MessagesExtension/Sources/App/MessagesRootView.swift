@@ -31,6 +31,15 @@ struct MessagesRootView: View {
     }
 
     var body: some View {
+        // Keep the host-facing layout flexible. A fixed-size root is otherwise
+        // centered when Messages temporarily proposes less space during transitions.
+        GeometryReader { geometry in
+            rootContent
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
+        }
+    }
+
+    private var rootContent: some View {
         ZStack(alignment: .topLeading) {
             if let hostLayout = hostLayoutStore.snapshot {
                 #if DEBUG
@@ -97,6 +106,16 @@ struct MessagesRootView: View {
                             )
                         case .game:
                     #if DEBUG
+                            if UserDefaults.standard.bool(forKey: "uls.debug.hostLayoutProbe") {
+                                VStack {
+                                    Text("Host top marker").accessibilityIdentifier("uls.host.probeTop")
+                                    Button("Expand probe", action: onRequestExpanded).accessibilityIdentifier("uls.host.probeExpand")
+                                    Spacer()
+                                    Text("Host bottom marker").accessibilityIdentifier("uls.host.probeBottom")
+                                }
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .background(.blue.opacity(0.15))
+                            } else {
                             GameShellView(
                                 viewModel: viewModel,
                                 onSettingsTap: showGameplaySettings,
@@ -110,6 +129,7 @@ struct MessagesRootView: View {
                                     : viewModel.uxTestingInitialGameRoute
                             )
                             .id("\(viewModel.gameShellResetToken)-\(viewModel.uxTestingForcesCityTargets)")
+                            }
                     #else
                             GameShellView(
                                 viewModel: viewModel,

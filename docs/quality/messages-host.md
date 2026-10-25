@@ -12,6 +12,8 @@ Use this section for repo knowledge that was learned the hard way and should inf
 
 These are the main iMessage-specific complexities we have already paid for in this repo. Treat them as working constraints, not trivia. If a future change touches any of these surfaces, reread this section before changing the code.
 
+A host-sized SwiftUI canvas still needs a flexible outer layout boundary. A fixed-height root ZStack can be centered outside the UIKit child when the host proposal temporarily shrinks, even while the stored bounds/insets are unchanged. `MessagesRootView` uses an outer GeometryReader and an explicit top-leading frame to the current proposal; its existing canonical canvas measurements remain unchanged. Diagnose displacement with independent UIKit window coordinates, not only two SwiftUI accessibility markers. The DEBUG fixed-marker probe reproduces this without board or popup content. Do not disable keyboard safe areas as a substitute for identifying the displaced layer.
+
 ### Gameplay Flow Fidelity
 
 These are the durable gameplay-UX rules learned while hardening the product shell against shortcut-heavy debug-era behavior.
