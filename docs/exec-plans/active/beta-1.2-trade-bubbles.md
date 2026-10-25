@@ -7,8 +7,8 @@ Implement [#52](https://github.com/kunal-sharda/UnluckySevens/issues/52): a comp
 ## Execution Settings
 
 - Validation profile: `standard`
-- Delivery posture: `checkpointed`
-- Rationale: the approved trade work remains accepted. The 2026-10-24 shared-bubble follow-up is a new visual comparison, with owner approval before productionizing non-trade artwork.
+- Delivery posture: `direct`
+- Rationale: owner approved the final shared-result previews on 2026-10-25 and explicitly authorized production integration and tests. Existing trade acceptance remains unchanged.
 
 ## Context and Boundaries
 
@@ -32,13 +32,15 @@ Use beta-1.2 and preserve concurrent supply-clarity changes. Only trade receipt,
 | SB-001 | observable | owner request and issue3 | Real long-name final result and draw remain readable at conversation size | Three renderer comparison images inspected | report:shared-results-final-three-images-inspected | pass | DEBUG proposal readable; owner judgment remains separate |
 | SB-002 | mechanical | architecture and approved trade boundary | Production dispatcher, trade artwork, caption/summary and protocol unchanged; preview uses canonical public scores | Source diff and focused renderer test | report:shared-results-round1-17-tests | pass | No publication path selects proposal |
 | SB-003 | judgment | owner visual gate | Owner approves the shared result composition before productionization | Owner screenshot feedback | report:owner-approval-2026-10-25 | pass | Owner accepted final presented designs; production proof remains separate |
+| SB-004 | mechanical | owner production request | Production game-over dispatcher uses public structured score rows; private cards/resources cannot affect result artwork/copy; other families unchanged | Renderer and copy suites plus source review | report:pending-production | pending | Production integration proof |
+| SB-005 | observable | accepted shared result design | Production victory and draw show full names/scores with complete board and continuous ocean | Three production renderer captures inspected | report:pending-production | pending | Accepted layout promoted unchanged |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
 | Reviewer | Required | Verdict | Evidence |
 | --- | --- | --- | --- |
-| constraint-auditor | yes | pass | report:compact_bubble_review-player-pieces |
-| product-ux | yes | pass | report:compact_bubble_review-player-pieces |
+| constraint-auditor | yes | pending | report:production-shared-results-review |
+| product-ux | yes | pending | report:production-shared-results-review |
 <!-- fresh-review:end -->
 
 ## Living Record
@@ -108,3 +110,11 @@ Shared-result final preview proof: parent reports the focused comparison route p
 ### Visual acceptance — 2026-10-25
 
 Owner response to the final resignation, Dev timing, shared-result and Road Building captures: “those looks great!” The presented direction is approved; this supersedes pending owner-judgment notes above. Production integration and its scoped behavior tests, fresh reviews and completion gate remain outstanding. This acceptance-only update changes no runtime code. Validation: doc freshness and whitespace checks; prior preview evidence remains applicable without rerunning simulator captures.
+
+### Production integration — 2026-10-25
+
+Standard/direct following explicit owner approval and implementation request. Locked proof before source edits: full `TranscriptBubbleImageRendererTests`, `TranscriptBubbleCopyTests` and `TranscriptTradeSnapshotRendererTests` suites; add structured roster/public-score and hidden-resource/Dev-card invariance assertions. Capture exactly three production results (short-name victory, four long-name victory, four long-name draw) through `testSharedGameOverDesignComparison`; inspect all three, one correction round if needed. Parent serializes canonical generation and simulator execution. Existing ordinary-turn/lobby/gallery and trade tests preserve non-target families. No protocol, caption/summary or Core scoring changes; production view consumes only the public visual model, not canonical private state. Fresh constraint/product-UX review and standard completion gate follow final proof. No live delivery or device-accessibility claim.
+
+Production source handoff: approved composition now lives in `TranscriptGameOverSnapshotView`, reached by the existing production dispatcher. The public visual model carries ordered player ID/name/score rows; no canonical state or private inventory enters the view. Result artwork uses intrinsic height, preserving full names; board/trade/lobby dispatch and caption/summary stay unchanged. Removed the superseded DEBUG-only comparison component. The three-image comparison test now renders only production routes. Added privacy invariance coverage varying resources and both old/new Dev inventories (including hidden VP) for victory and draw. Swift parser and whitespace checks pass. Runtime tests/capture inspection, fresh review and completion gate remain parent-coordinated and pending.
+
+Production validation 2026-10-25: corrected generated extension batch passes 63/63 tests, including all three transcript suites and hidden-inventory invariance. Exported three production result captures under `output/beta12-production-model-images`; parent inspected victory, long-name victory and draw. Complete board, all names/scores and public player colors remain readable without clipping. Shared-result source is ready for scoped commit/push; aggregate fresh review and completion gate remain tracked in `beta-1.2-approved-integration.md`. No remote delivery or milestone acceptance claim.

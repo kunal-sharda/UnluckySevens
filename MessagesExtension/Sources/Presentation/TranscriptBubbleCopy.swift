@@ -379,16 +379,18 @@ enum TranscriptBubbleCopyBuilder {
             return .none
         }
 
-        let scoreLine = state.roster
-            .map {
-                "\(displayName(for: $0, in: state)) \(victoryPoints(for: $0, in: state))"
-            }
-            .joined(separator: " · ")
+        let scores = state.roster.map { player in
+            TranscriptGameOverScore(
+                id: player,
+                displayName: displayName(for: player, in: state),
+                points: victoryPoints(for: player, in: state)
+            )
+        }
         return .gameOver(
             TranscriptGameOverVisual(
                 renderModel: renderModel,
                 winnerTitle: winnerTitle,
-                scoreLine: scoreLine
+                scores: scores
             )
         )
     }

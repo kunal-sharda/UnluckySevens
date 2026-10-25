@@ -124,8 +124,15 @@ final class TranscriptBubbleImageRendererTests: XCTestCase {
         attach(gameOver, name: "Preview family 5 - Game over")
     }
 
-    #if DEBUG
     func testSharedGameOverDesignComparison() throws {
+        let shortVictory = makeBoardState(phase: .gameOver)
+        attach(
+            try render(copy: TranscriptBubbleCopyBuilder.turnIntent(
+                .endTurn, actor: "A", resultingState: shortVictory
+            )),
+            name: "Shared result 1 - Production victory"
+        )
+
         let victory = makeBoardState(phase: .gameOver, longNames: true)
         let victoryCopy = TranscriptBubbleCopyBuilder.turnIntent(
             .endTurn, actor: "A", resultingState: victory
@@ -134,15 +141,12 @@ final class TranscriptBubbleImageRendererTests: XCTestCase {
             return XCTFail("Expected final-result artwork.")
         }
         XCTAssertEqual(victoryVisual.winnerTitle, "Alexandria Morgan won")
-        for player in victory.roster {
-            let name = try XCTUnwrap(victory.playerDisplayNamesByPlayer[player])
-            XCTAssertTrue(victoryVisual.scoreLine.contains("\(name) \(victoryPoints(for: player, in: victory))"))
-        }
-        attach(try render(copy: victoryCopy), name: "Shared result 1 - Production long names")
-        attach(
-            try renderResultProposal(state: victory, visual: victoryVisual),
-            name: "Shared result 2 - Proposed long-name victory"
-        )
+        XCTAssertEqual(victoryVisual.scores.map(\.id), victory.roster)
+        XCTAssertEqual(victoryVisual.scores.map(\.displayName), [
+            "Alexandria Morgan", "Christopher James", "Samantha Williams", "Theodore Anderson",
+        ])
+        XCTAssertEqual(victoryVisual.scores.map(\.points), [10, 1, 0, 0])
+        attach(try render(copy: victoryCopy), name: "Shared result 2 - Production long-name victory")
 
         let draw = makeBoardState(phase: .gameOver, longNames: true, resultReason: .draw)
         let drawCopy = TranscriptBubbleCopyBuilder.drawVote(
@@ -153,31 +157,29 @@ final class TranscriptBubbleImageRendererTests: XCTestCase {
         }
         XCTAssertEqual(drawVisual.winnerTitle, "Draw")
         XCTAssertEqual(drawCopy.caption, "Unlucky Sevens: Draw Agreed")
-        attach(
-            try renderResultProposal(state: draw, visual: drawVisual),
-            name: "Shared result 3 - Proposed draw"
-        )
+        XCTAssertEqual(drawVisual.scores.map(\.id), draw.roster)
+        XCTAssertEqual(drawVisual.scores.map(\.points), [7, 1, 0, 0])
+        attach(try render(copy: drawCopy), name: "Shared result 3 - Production draw")
     }
 
-    private func renderResultProposal(
-        state: CoreGameStateV1,
-        visual: TranscriptGameOverVisual
-    ) throws -> UIImage {
-        let board = try XCTUnwrap(GameBoardSnapshotRenderer.render(
-            renderModel: visual.renderModel, variant: .transcriptPreview
-        ))
-        let renderer = ImageRenderer(content: TranscriptSharedResultDesignPreviewView(
-            state: state, visual: visual, boardImage: board
-        ))
-        renderer.scale = 3
-        let image = try XCTUnwrap(renderer.uiImage)
-        XCTAssertEqual(image.size.width, 360, accuracy: 0.5)
-        XCTAssertGreaterThan(image.size.height, 240)
-        XCTAssertLessThan(image.size.height, 360)
-        return image
+    func testFinalResultVisualDoesNotExposePrivateResourcesOrDevCards() {
+        for reason in [GameEndReasonV1.victory, .draw] {
+            let publicState = makeBoardState(phase: .gameOver, longNames: true, resultReason: reason)
+            let privateState = makeBoardState(
+                phase: .gameOver, longNames: true, resultReason: reason,
+                hiddenResources: ResourceHandV1(wood: 8, brick: 3, sheep: 5, wheat: 4, ore: 7),
+                hiddenCards: DevCardInventoryV1(knight: 2, monopoly: 1, roadBuilding: 1, victoryPoint: 3)
+            )
+            XCTAssertNotEqual(publicState.stateHash, privateState.stateHash)
+            let publicCopy = reason == .draw
+                ? TranscriptBubbleCopyBuilder.drawVote(resultingState: publicState, actor: "A", approved: true)
+                : TranscriptBubbleCopyBuilder.turnIntent(.endTurn, actor: "A", resultingState: publicState)
+            let privateCopy = reason == .draw
+                ? TranscriptBubbleCopyBuilder.drawVote(resultingState: privateState, actor: "A", approved: true)
+                : TranscriptBubbleCopyBuilder.turnIntent(.endTurn, actor: "A", resultingState: privateState)
+            XCTAssertEqual(publicCopy, privateCopy, "Private inventories must not change public artwork or copy")
+        }
     }
-
-    #endif
 
     private func render(copy: TranscriptBubbleCopy) throws -> UIImage {
         let image = try XCTUnwrap(
@@ -186,12 +188,18 @@ final class TranscriptBubbleImageRendererTests: XCTestCase {
                 assetBundle: Bundle(for: TranscriptBubbleImageRendererTests.self)
             )
         )
-        if case .trade = copy.visual {
+        switch copy.visual {
+        case .trade:
             XCTAssertEqual(image.size.width, TranscriptBubbleImageRenderer.imageSize.width, accuracy: 0.5)
             XCTAssertGreaterThan(image.size.height, 150)
             XCTAssertLessThan(image.size.height, 360)
             XCTAssertGreaterThan(image.pngData()?.count ?? 0, 1_000)
-        } else {
+        case .gameOver:
+            XCTAssertEqual(image.size.width, TranscriptBubbleImageRenderer.imageSize.width, accuracy: 0.5)
+            XCTAssertGreaterThan(image.size.height, 240)
+            XCTAssertLessThan(image.size.height, 360)
+            XCTAssertGreaterThan(image.pngData()?.count ?? 0, 1_000)
+        default:
             assertBubbleImage(image)
         }
         return image
@@ -243,7 +251,9 @@ final class TranscriptBubbleImageRendererTests: XCTestCase {
     private func makeBoardState(
         phase: PhaseV1,
         longNames: Bool = false,
-        resultReason: GameEndReasonV1 = .victory
+        resultReason: GameEndReasonV1 = .victory,
+        hiddenResources: ResourceHandV1 = .zero,
+        hiddenCards: DevCardInventoryV1 = .zero
     ) -> CoreGameStateV1 {
         let roster = longNames ? ["A", "B", "C", "D"] : ["A", "B", "C"]
         let boardRules = BoardRulesV1(strategy: .noRedAdjacentV1)
@@ -269,7 +279,9 @@ final class TranscriptBubbleImageRendererTests: XCTestCase {
             seed: 17,
             diceRngState: 23,
             robberRngState: 29,
-            resourcesByPlayer: Dictionary(uniqueKeysWithValues: roster.map { ($0, .zero) }),
+            resourcesByPlayer: Dictionary(uniqueKeysWithValues: roster.map { ($0, hiddenResources) }),
+            devCardsByPlayer: Dictionary(uniqueKeysWithValues: roster.map { ($0, hiddenCards) }),
+            newDevCardsByPlayer: Dictionary(uniqueKeysWithValues: roster.map { ($0, hiddenCards) }),
             revealedVictoryPointsByPlayer: phase == .gameOver ? ["A": resultReason == .victory ? 9 : 6] : [:],
             winnerPlayer: phase == .gameOver && resultReason == .victory ? "A" : nil,
             winningVictoryPoints: phase == .gameOver && resultReason == .victory ? 10 : 0,
