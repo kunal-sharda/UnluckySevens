@@ -1,0 +1,66 @@
+# Beta 1.2 lifecycle surface preview — #53
+
+## Purpose and Outcome
+
+Preview [#53](https://github.com/kunal-sharda/UnluckySevens/issues/53): one felt surface whose content changes between current-game actions and confirmations. This is a visual checkpoint, not a lifecycle behavior rewrite or completion of #15 device acceptance.
+
+## Execution Settings
+
+- Validation profile: `standard`
+- Delivery posture: `checkpointed`
+- Rationale: user explicitly requests parallel design previews and agreement before finished implementation.
+
+## Context and Boundaries
+
+Retain the existing felt palette, wooden action-button treatment, SF typography and mounted game context. Only a new DEBUG-only component is authored. Preview taps change local presentation state; no Core actions, transport, canonical state, resign, draw or host-end publication. Production Game Information, confirmations and legality remain unchanged. Parent owns shared host integration and simulator execution; this slice owns its preview component and plan.
+
+## Milestones / Plan of Work
+
+1. Inspect the existing Game Information and lifecycle confirmation components.
+2. Present a single framed felt surface with readable actions and in-place confirmation content.
+3. Capture three representative states through the existing Messages UX Lab harness on an isolated simulator: actions, draw-proposal confirmation and resignation confirmation. Inspect once, allow one correction round, then pause for owner visual approval.
+4. Only after approval, lock production behavior/legality proof and implement accepted routing in a subsequent slice.
+
+## Approval Gate
+
+Stop after three representative captures. User approval of this concrete visual direction is required before productionization, fresh final reviews or the completion gate. Initial direction approval authorizes the DEBUG preview only. No completion claim while approval is pending.
+
+## Verification Contract and Fresh Review
+
+Locked preview proof: source boundary inspection, canonical project generation/build through the parent coordinator, three Messages harness captures on an isolated device, and screenshot inspection. Maximum two visual rounds. An infrastructure retry requires retained diagnostics and a recorded correction; no repeated unchanged runs. Final production tests and exact routes are locked after owner approval and before production edits.
+
+<!-- verification-contract:start -->
+| ID | Class | Source | Acceptance | Verification | Evidence | Status | Rationale |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| LIFE-001 | mechanical | #53; user request | Preview cannot publish lifecycle actions or alter production routing | DEBUG boundary and callback source inspection | report:debug-source-boundary | pass | Local state transitions only; no gameplay callbacks |
+| LIFE-002 | observable | #53 | Actions, draw-proposal confirmation and resignation confirmation share one coherent surface with readable controls | three harness captures and inspection | report:round-2-lifecycle-captures | pass | Three captures inspected; local navigation checks pass; approval remains separate |
+| LIFE-003 | judgment | user request | Owner approves concrete preview before production work | explicit owner response to captures | report:pending | pending | Approval gate |
+| LIFE-004 | mechanical | repo workflow | Accepted final behavior and required validation recorded before delivery claim | later scoped tests, doc freshness and completion gate | report:pending | pending | Deferred until approval |
+<!-- verification-contract:end -->
+
+<!-- fresh-review:start -->
+| Reviewer | Required | Verdict | Evidence |
+| --- | --- | --- | --- |
+| constraint-auditor | yes | pending | report:after-owner-approval |
+| SwiftUI-product-UX | yes | pending | report:after-owner-approval |
+<!-- fresh-review:end -->
+
+## Living Record
+
+2026-10-24: inspected GameTurnGameInfoView, GameLifecycleConfirmationView, GameTabletopActionButtonStyle and lifecycle guidance. Existing confirmation nests a second framed panel and veil inside the framed Players surface. Proposed preview uses one frame, changes its title/body in place, keeps a clear Back path, and separates dangerous actions with spacing and explanatory copy. Font/materials reuse production definitions. No production changes.
+
+## Validation and Outcome
+
+Preview in progress. This active plan owns proposed execution/design state. DESIGN, product flows, architecture, decisions and QA owners intentionally unchanged until acceptance. Parent coordinates isolated build/capture; no test, build or completion claim yet.
+
+Parent coordination: fixture `preview-lifecycle` uses the existing turnAfterRoll board and overlays this DEBUG component at zIndex6. Three captures are menu, draw-proposal confirmation and resignation confirmation. End Game and draw voting are reachable local presentation states; they are not extra captures in this first checkpoint. Parent owns harness/tests. Component IDs use `uls.preview.lifecycle.*`.
+
+2026-10-24 preview round 1: canonical generation/build succeeded on dedicated simulator `ULS Beta12 Preview` (`686DF547-CAC8-467B-8298-89F70C08A878`), using target-only resets. Initial evidence: `output/ui-screenshot-harness/20261025T040640Z-iphone`. Build capture showed clipped top/table framing; Dev captures were readable. Before the single correction round, constrain each DEBUG overlay to the existing shell dimensions. Map preview also exposes its board diagnostics only in that fixture so the declared frame/mount assertions can run. Production accessibility remains unchanged. Round 1 is exploratory evidence, not final acceptance.
+
+Round 1 outcome: all five catalog routes passed (three cost, one map journey, one lifecycle journey; eight attachments). All attachments inspected. Map and Dev layout were readable; Build and lifecycle showed the same top framing issue. Round 2 uses the bounded-shell correction and the declared map frame/mount checks. `make doc-freshness`, `make harness-audit`, shell syntax and whitespace checks passed; audit notices correctly retain pending owner judgments and future production reviews.
+
+Round 2 (`output/ui-screenshot-harness/20261025T042213Z-iphone`): generated build passed. The Build route passed its content assertion, but inspected capture still clips the surrounding table header. Explicit shell bounds did not resolve the framing hypothesis; root cause is unproven. Do not mistake the UI test pass for visual acceptance. Two-round visual budget reached: no further layout edits or capture loops before owner feedback. Purchase availability copy remains synthetic and is not canonical eligibility proof.
+
+Final preview checkpoint: round 2 catalog passed all five routes; all eight screenshot attachments inspected. Lifecycle surrounding-table framing is corrected and Dev/map are readable. Build surrounding-header clipping remains an explicit visual failure; no further edits within the two-round budget. SF typography is retained with board-token exception. Owner visual approval is pending; no production purchase/lifecycle wiring, fresh final reviews, completion gate, device acceptance or release claim.
+
+Doc freshness: these three active plans own the prototype state and QA owns the new target-only simulator option. DESIGN, PRODUCT, product flows, decisions, architecture and README intentionally retain accepted production behavior; no production facts or setup changed. Historical/reference cleanup is unaffected. Screenshots/results remain ignored local evidence, with no durable binary admission.

@@ -3,6 +3,14 @@ import SwiftUI
 import ULS_CoreGame
 
 struct GameShellView: View {
+    private var designPreviewID: String {
+        #if DEBUG
+        return viewModel.uxTestingIsActive ? viewModel.uxTestingSelectedFixtureID : ""
+        #else
+        return ""
+        #endif
+    }
+
     private static let displayCoordinateSpaceName = "uls.gameShell.display"
 
     let viewModel: LobbyDriverViewModel
@@ -395,7 +403,7 @@ struct GameShellView: View {
                             )
                             .allowsHitTesting(!isGameInfoOpen)
                             .gameTutorialTarget(.board)
-                            .accessibilityHidden(isPhysicalStartTurn)
+                            .accessibilityHidden(isPhysicalStartTurn && designPreviewID != "preview-map-inspection")
                             .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius + 8))
                             .background {
                                 GeometryReader { boardGeometry in
@@ -897,7 +905,7 @@ struct GameShellView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-                    if !isGameOver, isPhysicalStartTurn, physicalDiceRollResult == nil,
+                    if designPreviewID != "preview-map-inspection", !isGameOver, isPhysicalStartTurn, physicalDiceRollResult == nil,
                        resolvedMode == .idle || resolvedMode == .playDevCard {
                         GamePhysicalStartTurnView(
                             devCardPanel: devCardPanelModel?.executableSelectionOnly(),
@@ -935,6 +943,32 @@ struct GameShellView: View {
                         .frame(width: shellSize.width, height: shellSize.height)
                         .zIndex(5)
                     }
+
+                    #if DEBUG
+                    if designPreviewID.hasPrefix("preview-cost-") {
+                        GamePurchaseCostPreviewView(screen: designPreviewID == "preview-cost-build" ? .build : designPreviewID == "preview-cost-dev" ? .devAvailable : .devUnavailable)
+                            .frame(width: shellSize.width, height: shellSize.height)
+                            .zIndex(6)
+                    } else if designPreviewID == "preview-map-inspection" {
+                        GameMapInspectionPreviewView(
+                            devCardPanel: devCardPanelModel?.executableSelectionOnly(),
+                            canPlayDevCards: screenModel.actionDock.primaryItems.contains { $0.kind == .devCards && $0.isEnabled },
+                            canRoll: screenModel.actionDock.primaryItems.contains { $0.kind == .roll && $0.isEnabled },
+                            contentScale: physicalLayout.contentScale
+                        )
+                        .frame(width: shellSize.width, height: shellSize.height)
+                        .zIndex(6)
+                    } else if designPreviewID == "preview-lifecycle" {
+                        ZStack {
+                            GameTheme.felt.opacity(0.48).ignoresSafeArea()
+                            GameLifecycleDesignPreviewView(isHost: true, onClose: {})
+                                .frame(maxHeight: 440)
+                                .padding(.horizontal, 20)
+                        }
+                        .frame(width: shellSize.width, height: shellSize.height)
+                        .zIndex(6)
+                    }
+                    #endif
 
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

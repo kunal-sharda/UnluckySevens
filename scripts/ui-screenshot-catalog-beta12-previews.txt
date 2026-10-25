@@ -1,0 +1,5 @@
+testPreviewBuildCosts|preview-cost-build|host
+testPreviewDevPurchase|preview-cost-dev|host
+testPreviewUnavailableDevPurchase|preview-cost-dev-unavailable|host
+testPreviewMapInspection|preview-map-inspection|host
+testPreviewLifecycle|preview-lifecycle|host

@@ -1955,6 +1955,70 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachGameplayActionEvidence(name: "Maritime Trade", before: before, after: after)
     }
 
+    func testPreviewBuildCosts() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Preview Build costs")
+        hideUXLabChromeWithoutChangingFixture()
+        XCTAssertTrue(messages.staticTexts["Need 1 sheep"].firstMatch.waitForExistence(timeout: 5))
+        attachScreenshot(named: "Preview - Build costs")
+    }
+
+    func testPreviewDevPurchase() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Preview Dev purchase")
+        hideUXLabChromeWithoutChangingFixture()
+        XCTAssertTrue(messages.staticTexts["Buy Dev Card"].firstMatch.waitForExistence(timeout: 5))
+        attachScreenshot(named: "Preview - Buy Dev Card")
+    }
+
+    func testPreviewUnavailableDevPurchase() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Preview unavailable Dev")
+        hideUXLabChromeWithoutChangingFixture()
+        XCTAssertTrue(messages.staticTexts["Need 1 ore"].firstMatch.waitForExistence(timeout: 5))
+        attachScreenshot(named: "Preview - Unavailable Dev Card")
+    }
+
+    func testPreviewMapInspection() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Preview map inspection")
+        hideUXLabChromeWithoutChangingFixture()
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        let originalFrame = board.frame
+        let host = turnElement(identifier: "uls.tabletop.boardHost", labels: [])
+        let originalMount = boardMountIdentity(of: host)
+        let inspect = messages.buttons["uls.preview.map.inspect"].firstMatch
+        XCTAssertTrue(inspect.waitForExistence(timeout: 5))
+        attachScreenshot(named: "Preview - Inspect before rolling")
+        inspect.tap()
+        let back = messages.buttons["uls.preview.map.return"].firstMatch
+        XCTAssertTrue(back.waitForExistence(timeout: 5))
+        attachScreenshot(named: "Preview - Unobscured map")
+        assertFrame(of: board, matches: originalFrame, message: "Inspecting must preserve the board frame.")
+        XCTAssertEqual(boardMountIdentity(of: host), originalMount)
+        back.tap()
+        XCTAssertTrue(inspect.waitForExistence(timeout: 5))
+        assertFrame(of: board, matches: originalFrame, message: "Returning must preserve the board frame.")
+        XCTAssertEqual(boardMountIdentity(of: host), originalMount)
+    }
+
+    func testPreviewLifecycle() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Preview lifecycle")
+        hideUXLabChromeWithoutChangingFixture()
+        let draw = messages.buttons["uls.preview.lifecycle.proposeDraw"].firstMatch
+        XCTAssertTrue(draw.waitForExistence(timeout: 5))
+        attachScreenshot(named: "Preview - Game actions")
+        draw.tap()
+        XCTAssertTrue(messages.buttons["uls.preview.lifecycle.confirmProposeDraw"].firstMatch.waitForExistence(timeout: 5))
+        attachScreenshot(named: "Preview - Draw confirmation")
+        messages.buttons["uls.preview.lifecycle.back"].firstMatch.tap()
+        messages.buttons["uls.preview.lifecycle.resign"].firstMatch.tap()
+        XCTAssertTrue(messages.buttons["uls.preview.lifecycle.keepPlaying"].firstMatch.waitForExistence(timeout: 5))
+        attachScreenshot(named: "Preview - Resign confirmation")
+    }
+
     func testResourceSupplyLabelsInBankAndTrade() throws {
         openUnluckySevensExtension()
         assertLaunchFixtureLoaded(title: "Mixed Bank supply")

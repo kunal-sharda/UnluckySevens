@@ -104,7 +104,11 @@ if [[ ! -d "$APP_PATH" || -z "$XCTESTRUN_PATH" ]]; then
   exit 66
 fi
 
-xcrun simctl shutdown all >/dev/null 2>&1 || true
+if [[ "${UI_SCREENSHOT_TARGET_ONLY:-0}" == "1" ]]; then
+  xcrun simctl shutdown "$DEVICE_ID" >/dev/null 2>&1 || true
+else
+  xcrun simctl shutdown all >/dev/null 2>&1 || true
+fi
 xcrun simctl boot "$DEVICE_ID"
 xcrun simctl bootstatus "$DEVICE_ID" -b
 if [[ -n "$CONTENT_SIZE" ]]; then
@@ -159,7 +163,8 @@ EXTENSION_DEFAULTS_DOMAIN="$EXTENSION_DATA_CONTAINER/Library/Preferences/me.ksha
   printf 'fixture_injection=offline-plugin-container-preferences\n'
   printf 'route_reset=shutdown-target,write-and-verify-preferences,boot-target\n'
   printf 'started_at_utc=%s\n' "$RUN_STAMP"
-  printf 'simulator_reset=shutdown-all,boot-target,uninstall-app,install-fresh,restart-messages\n'
+  printf 'target_only_reset=%s\n' "${UI_SCREENSHOT_TARGET_ONLY:-0}"
+  printf 'simulator_reset=shutdown-selected-scope,boot-target,uninstall-app,install-fresh,restart-messages\n'
   printf 'retry_policy=diagnostic-first\n'
   printf 'max_focused_reruns=%s\n' "$MAX_FOCUSED_RERUNS"
   printf 'attempt_number=%s\n' "$ATTEMPT_NUMBER"
