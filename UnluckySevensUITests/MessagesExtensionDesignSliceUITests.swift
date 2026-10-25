@@ -1981,6 +1981,36 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertGreaterThan(top.frame.minY, 100)
     }
 
+    func testPreviewNewKnightTiming() throws {
+        try verifyDevTimingPreview(title: "Preview new Knight", isVictoryPoint: false)
+    }
+
+    func testPreviewNewVictoryPointTiming() throws {
+        try verifyDevTimingPreview(title: "Preview new Victory Point", isVictoryPoint: true)
+    }
+
+    private func verifyDevTimingPreview(title: String, isVictoryPoint: Bool) throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: title)
+        hideUXLabChromeWithoutChangingFixture()
+        let surface = messages.descendants(matching: .any)["uls.preview.devTiming.surface"].firstMatch
+        XCTAssertTrue(surface.waitForExistence(timeout: 5))
+        let before = gameplayActionEvidenceValue()
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let host = turnElement(identifier: "uls.tabletop.boardHost", labels: [])
+        let frame = board.frame
+        let mount = boardMountIdentity(of: host)
+        let settings = turnElement(identifier: "", labels: ["Settings"])
+        XCTAssertGreaterThan(settings.frame.minY, 100)
+        attachScreenshot(named: isVictoryPoint ? "New Victory Point timing" : "New Knight timing")
+        let buttonID = isVictoryPoint ? "uls.preview.devTiming.disableTutorials" : "uls.preview.devTiming.dismiss"
+        messages.buttons[buttonID].firstMatch.tap()
+        XCTAssertTrue(surface.waitForNonExistence(timeout: 5))
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+        assertFrame(of: board, matches: frame, message: "Timing guidance must not move the board.")
+        XCTAssertEqual(boardMountIdentity(of: host), mount)
+    }
+
     func testPreviewBuildCosts() throws {
         openUnluckySevensExtension()
         assertLaunchFixtureLoaded(title: "Preview Build costs")
@@ -2071,6 +2101,69 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(inspect.waitForExistence(timeout: 5))
         assertFrame(of: board, matches: originalFrame, message: "Returning must preserve the board frame.")
         XCTAssertEqual(boardMountIdentity(of: host), originalMount)
+    }
+
+    func testPreviewRoadBuilding() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Preview Road Building")
+        hideUXLabChromeWithoutChangingFixture()
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let host = turnElement(identifier: "uls.tabletop.boardHost", labels: [])
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        let originalFrame = board.frame
+        let originalMount = boardMountIdentity(of: host)
+        let before = gameplayActionEvidenceValue()
+        let progress = messages.staticTexts["uls.preview.roads.progress"].firstMatch
+        let confirm = messages.buttons["uls.preview.roads.confirm"].firstMatch
+        func assertProgress(_ text: String) {
+            let expectation = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "label == %@", text), object: progress
+            )
+            XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed)
+        }
+        func assertUnchanged() {
+            assertFrame(of: board, matches: originalFrame, message: "Road draft must not move the mounted board.")
+            XCTAssertEqual(boardMountIdentity(of: host), originalMount)
+            XCTAssertEqual(gameplayActionEvidenceValue(), before, "Preview choices must not publish a move.")
+            let controls = messages.descendants(matching: .any)["uls.preview.roads.controls"].firstMatch
+            if controls.exists {
+                XCTAssertGreaterThanOrEqual(controls.frame.minY, board.frame.maxY - 1, "Road review controls must stay below the board.")
+            }
+        }
+        assertProgress("Select Road 1 of 2")
+        XCTAssertFalse(confirm.exists)
+        attachScreenshot(named: "Preview - Road Building empty draft")
+        try tapFirstBoardTarget(kind: "edge", requiresConfirmation: false)
+        assertProgress("Select Road 2 of 2")
+        XCTAssertFalse(confirm.exists)
+        assertUnchanged()
+        attachScreenshot(named: "Preview - Road Building first road pending")
+        try tapFirstBoardTarget(kind: "edge", requiresConfirmation: false)
+        assertProgress("Review 2 roads")
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        assertUnchanged()
+        attachScreenshot(named: "Preview - Road Building two-road review")
+        messages.buttons["uls.preview.roads.undo"].firstMatch.tap()
+        assertProgress("Select Road 2 of 2")
+        XCTAssertFalse(confirm.exists)
+        assertUnchanged()
+        messages.buttons["uls.preview.roads.startOver"].firstMatch.tap()
+        assertProgress("Select Road 1 of 2")
+        assertUnchanged()
+        try tapFirstBoardTarget(kind: "edge", requiresConfirmation: false)
+        assertProgress("Select Road 2 of 2")
+        messages.buttons["uls.preview.roads.cancel"].firstMatch.tap()
+        XCTAssertTrue(messages.staticTexts["Canceled. No card played."].firstMatch.waitForExistence(timeout: 5))
+        assertUnchanged()
+        messages.buttons["uls.preview.roads.restart"].firstMatch.tap()
+        assertProgress("Select Road 1 of 2")
+        try tapFirstBoardTarget(kind: "edge", requiresConfirmation: false)
+        assertProgress("Select Road 2 of 2")
+        try tapFirstBoardTarget(kind: "edge", requiresConfirmation: false)
+        assertProgress("Review 2 roads")
+        confirm.tap()
+        XCTAssertTrue(messages.staticTexts["Preview confirmed both roads. No move sent."].firstMatch.waitForExistence(timeout: 5))
+        assertUnchanged()
     }
 
     func testPreviewLifecycle() throws {

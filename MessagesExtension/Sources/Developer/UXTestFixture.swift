@@ -96,11 +96,14 @@ enum UXTestFixtures {
         turnNeedsRoll,
         turnAfterRoll,
         mixedBankSupply,
+        newKnight,
+        newVictoryPoint,
         UXTestFixture(id: "preview-cost-build", title: "Preview Build costs", detail: "Visual checkpoint only", defaultActorID: host, state: turnAfterRoll.state),
         UXTestFixture(id: "preview-cost-dev", title: "Preview Dev purchase", detail: "Visual checkpoint only", defaultActorID: host, state: turnAfterRoll.state),
         UXTestFixture(id: "preview-cost-dev-unavailable", title: "Preview unavailable Dev", detail: "Visual checkpoint only", defaultActorID: host, state: turnAfterRoll.state),
         UXTestFixture(id: "preview-map-inspection", title: "Preview map inspection", detail: "Visual checkpoint only", defaultActorID: host, state: turnNeedsRoll.state),
         UXTestFixture(id: "preview-lifecycle", title: "Preview lifecycle", detail: "Visual checkpoint only", defaultActorID: host, state: turnAfterRoll.state),
+        UXTestFixture(id: "preview-road-building", title: "Preview Road Building", detail: "Local two-road draft only", defaultActorID: host, state: turnAfterRoll.state),
         drawVote,
         endTurnAction,
         waitingOnAlice,
@@ -378,6 +381,34 @@ enum UXTestFixtures {
                 step: .afterRoll,
                 lastRoll: DiceRollV1(d1: 3, d2: 5)
             )
+        )
+    )
+
+    private static let newKnight = UXTestFixture(
+        id: "preview-dev-timing-knight",
+        title: "Preview new Knight",
+        detail: "New action card timing tutorial; no purchase or play is sent.",
+        defaultActorID: host,
+        state: makeTurnFixture(
+            rev: 10,
+            currentPlayer: host,
+            devCardsByPlayer: [:],
+            newDevCardsByPlayer: [host: DevCardInventoryV1(knight: 1)],
+            turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 5))
+        )
+    )
+
+    private static let newVictoryPoint = UXTestFixture(
+        id: "preview-dev-timing-vp",
+        title: "Preview new Victory Point",
+        detail: "Passive Victory Point tutorial; no reveal action.",
+        defaultActorID: host,
+        state: makeTurnFixture(
+            rev: 10,
+            currentPlayer: host,
+            devCardsByPlayer: [:],
+            newDevCardsByPlayer: [host: DevCardInventoryV1(victoryPoint: 1)],
+            turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 5))
         )
     )
 

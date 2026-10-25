@@ -13,6 +13,61 @@ struct GameShellView: View {
 
     #if DEBUG
     @AppStorage("uls.preview.tutorialPopupsEnabled") private var previewTutorialPopupsEnabled = true
+    @State private var devTimingPreviewDismissed = false
+    @State private var roadPreviewDraft = GameRoadBuildingPreviewDraft()
+    @State private var roadPreviewAcknowledgment: String?
+
+    private static var roadPreviewFixture: UXTestFixture {
+        UXTestFixtures.all.first { $0.id == "preview-road-building" }!
+    }
+
+    private var roadPreviewOverlay: GameBoardOverlayModel {
+        let fixture = Self.roadPreviewFixture
+        var overlay = GameBoardOverlayModel(
+            legalTileIDs: [], legalNodeIDs: [],
+            legalEdgeIDs: roadPreviewAcknowledgment == nil
+                ? roadPreviewDraft.legalEdges(in: fixture.state, actor: fixture.defaultActorID) : [],
+            anchorNodeID: nil, selectedTarget: nil
+        )
+        overlay.pendingEdgeIDs = roadPreviewDraft.pendingEdgeIDs
+        return overlay
+    }
+
+    private var roadPreviewRail: some View {
+        VStack(spacing: 8) {
+            if let roadPreviewAcknowledgment {
+                Text(roadPreviewAcknowledgment)
+                    .font(.subheadline)
+                    .accessibilityIdentifier("uls.preview.roads.acknowledgment")
+                Button("Try Again") {
+                    roadPreviewDraft.reset()
+                    self.roadPreviewAcknowledgment = nil
+                }
+                .buttonStyle(GameTabletopActionButtonStyle(emphasis: .primary, solidBackground: true))
+                .accessibilityIdentifier("uls.preview.roads.restart")
+            } else {
+                GameRoadBuildingPreviewControls(
+                    draft: roadPreviewDraft,
+                    onUndo: { roadPreviewDraft.undo() },
+                    onStartOver: { roadPreviewDraft.reset() },
+                    onCancel: {
+                        roadPreviewDraft.reset()
+                        roadPreviewAcknowledgment = "Canceled. No card played."
+                    },
+                    onConfirm: {
+                        let fixture = Self.roadPreviewFixture
+                        guard roadPreviewDraft.reviewedDraft(in: fixture.state, actor: fixture.defaultActorID) != nil else { return }
+                        roadPreviewDraft.reset()
+                        roadPreviewAcknowledgment = "Preview confirmed both roads. No move sent."
+                    }
+                )
+            }
+        }
+        .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+        .padding(8)
+        .frame(maxWidth: 366)
+        .background(GameTheme.felt)
+    }
     #endif
 
     private static let displayCoordinateSpaceName = "uls.gameShell.display"
@@ -103,11 +158,18 @@ struct GameShellView: View {
             mode: resolvedMode,
             draft: devCardDraft
         )
-        let overlayModel = viewModel.makeBoardOverlayModel(
+        let productionOverlayModel = viewModel.makeBoardOverlayModel(
             mode: resolvedMode,
             devCardDraft: devCardDraft,
             selectedTarget: selectedBoardTarget
         )
+        #if DEBUG
+        let overlayModel = designPreviewID == "preview-road-building" ? roadPreviewOverlay : productionOverlayModel
+        let boardInteractionMode = designPreviewID == "preview-road-building" ? roadPreviewDraft.mode : resolvedMode
+        #else
+        let overlayModel = productionOverlayModel
+        let boardInteractionMode = resolvedMode
+        #endif
         let headerModel = GameHeaderModel(
             statusLine: screenModel.header.statusLine,
             metaText: ""
@@ -389,7 +451,7 @@ struct GameShellView: View {
                                 model: boardModel,
                                 renderModel: screenModel.boardRenderModel,
                                 overlayModel: overlayModel,
-                                interactionMode: resolvedMode,
+                                interactionMode: boardInteractionMode,
                                 selectionText: visibleBoardSelectionText,
                                 hintBottomInset: boardHintBottomInset,
                                 showsCreamFrame: false,
@@ -399,6 +461,15 @@ struct GameShellView: View {
                                 bottomOcclusionHeight: boardBottomOcclusionHeight,
                                 onInteractionChanged: nil,
                                 onTargetTap: { target in
+                                    #if DEBUG
+                                    if designPreviewID == "preview-road-building" {
+                                        if case let .edge(edgeID) = target, roadPreviewAcknowledgment == nil {
+                                            let fixture = Self.roadPreviewFixture
+                                            roadPreviewDraft.select(edgeID, in: fixture.state, actor: fixture.defaultActorID)
+                                        }
+                                        return
+                                    }
+                                    #endif
                                     handleBoardTap(target, mode: resolvedMode)
                                 }
                             )
@@ -957,6 +1028,17 @@ struct GameShellView: View {
                         )
                             .frame(width: shellSize.width, height: shellSize.height)
                             .zIndex(6)
+                    } else if designPreviewID.hasPrefix("preview-dev-timing-"),
+                              previewTutorialPopupsEnabled, !devTimingPreviewDismissed,
+                              let panel = viewModel.makeDevCardPanelModel(mode: .playDevCard, draft: nil) {
+                        GameDevTimingPreviewView(
+                            panel: panel,
+                            kind: designPreviewID.hasSuffix("-vp") ? .victoryPoint : .knight,
+                            onDismiss: { devTimingPreviewDismissed = true },
+                            onDisableTutorialPopups: { previewTutorialPopupsEnabled = false }
+                        )
+                        .frame(width: shellSize.width, height: shellSize.height)
+                        .zIndex(6)
                     } else if designPreviewID == "preview-map-inspection" {
                         GameMapInspectionPreviewView(
                             devCardPanel: devCardPanelModel?.executableSelectionOnly(),
@@ -966,6 +1048,12 @@ struct GameShellView: View {
                         )
                         .frame(width: shellSize.width, height: shellSize.height)
                         .zIndex(6)
+                    } else if designPreviewID == "preview-road-building" {
+                        roadPreviewRail
+                            .padding(.horizontal, 12)
+                            .padding(.bottom, 8)
+                            .frame(width: shellSize.width, height: shellSize.height, alignment: .bottom)
+                            .zIndex(6)
                     } else if designPreviewID == "preview-lifecycle" {
                         ZStack {
                             GameTheme.felt.opacity(0.48).ignoresSafeArea()

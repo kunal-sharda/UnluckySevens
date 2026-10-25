@@ -6,6 +6,7 @@ struct GameBoardOverlayModel: Equatable {
     let legalEdgeIDs: [EdgeID]
     let anchorNodeID: NodeID?
     let selectedTarget: GameBoardTarget?
+    var pendingEdgeIDs: [EdgeID] = []
 
     static let empty = GameBoardOverlayModel(
         legalTileIDs: [],

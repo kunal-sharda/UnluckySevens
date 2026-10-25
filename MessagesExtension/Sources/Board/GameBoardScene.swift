@@ -766,6 +766,38 @@ final class GameBoardScene: SKScene {
             )
         }
 
+        for (index, edgeID) in overlayModel.pendingEdgeIDs.enumerated() {
+            let line = layout.edgeLine(for: edgeID, topology: topology)
+            let start = scenePoint(for: line.start)
+            let end = scenePoint(for: line.end)
+            let path = CGMutablePath()
+            path.move(to: start)
+            path.addLine(to: end)
+            // An outlined road plus ordinal distinguishes a draft without color alone.
+            let outline = SKShapeNode(path: path)
+            outline.strokeColor = GameBoardPalette.selectedHighlight
+            outline.lineWidth = layout.roadWidth + 5
+            outline.lineCap = .round
+            node.addChild(outline)
+            let center = SKShapeNode(path: path)
+            center.strokeColor = GameBoardPalette.sceneBackground
+            center.lineWidth = max(2, layout.roadWidth - 1)
+            center.lineCap = .round
+            node.addChild(center)
+            let badge = SKShapeNode(circleOfRadius: 8)
+            badge.position = CGPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2)
+            badge.fillColor = GameBoardPalette.sceneBackground
+            badge.strokeColor = GameBoardPalette.selectedHighlight
+            badge.lineWidth = 1.5
+            let number = SKLabelNode(fontNamed: UIFont.systemFont(ofSize: 10, weight: .semibold).fontName)
+            number.text = String(index + 1)
+            number.fontSize = 10
+            number.fontColor = GameBoardPalette.selectedHighlight
+            number.verticalAlignmentMode = .center
+            badge.addChild(number)
+            node.addChild(badge)
+        }
+
         for nodeID in overlayModel.legalNodeIDs {
             node.addChild(
                 makeNodeHighlightNode(

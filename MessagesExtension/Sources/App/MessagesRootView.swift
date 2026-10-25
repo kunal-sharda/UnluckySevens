@@ -24,7 +24,10 @@ struct MessagesRootView: View {
 
     private var showsTutorialPopupPreviewSetting: Bool {
         #if DEBUG
-        viewModel.uxTestingIsActive && viewModel.uxTestingSelectedFixtureID.hasPrefix("preview-cost-")
+        viewModel.uxTestingIsActive && (
+            viewModel.uxTestingSelectedFixtureID.hasPrefix("preview-cost-")
+                || viewModel.uxTestingSelectedFixtureID.hasPrefix("preview-dev-timing-")
+        )
         #else
         false
         #endif

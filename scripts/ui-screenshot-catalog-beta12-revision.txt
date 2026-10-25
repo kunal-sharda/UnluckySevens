@@ -1,3 +1,6 @@
 testPreviewLifecycle|preview-lifecycle|host
 testPreviewBuildCosts|preview-cost-build|host
 testPreviewDevPurchase|preview-cost-dev|host
+testPreviewNewKnightTiming|preview-dev-timing-knight|host
+testPreviewNewVictoryPointTiming|preview-dev-timing-vp|host
+testPreviewRoadBuilding|preview-road-building|host
