@@ -1,3 +1,4 @@
+import SwiftUI
 import UIKit
 import ULS_CoreGame
 import XCTest
@@ -123,6 +124,61 @@ final class TranscriptBubbleImageRendererTests: XCTestCase {
         attach(gameOver, name: "Preview family 5 - Game over")
     }
 
+    #if DEBUG
+    func testSharedGameOverDesignComparison() throws {
+        let victory = makeBoardState(phase: .gameOver, longNames: true)
+        let victoryCopy = TranscriptBubbleCopyBuilder.turnIntent(
+            .endTurn, actor: "A", resultingState: victory
+        )
+        guard case let .gameOver(victoryVisual) = victoryCopy.visual else {
+            return XCTFail("Expected final-result artwork.")
+        }
+        XCTAssertEqual(victoryVisual.winnerTitle, "Alexandria Morgan won")
+        for player in victory.roster {
+            let name = try XCTUnwrap(victory.playerDisplayNamesByPlayer[player])
+            XCTAssertTrue(victoryVisual.scoreLine.contains("\(name) \(victoryPoints(for: player, in: victory))"))
+        }
+        attach(try render(copy: victoryCopy), name: "Shared result 1 - Production long names")
+        attach(
+            try renderResultProposal(state: victory, visual: victoryVisual),
+            name: "Shared result 2 - Proposed long-name victory"
+        )
+
+        let draw = makeBoardState(phase: .gameOver, longNames: true, resultReason: .draw)
+        let drawCopy = TranscriptBubbleCopyBuilder.drawVote(
+            resultingState: draw, actor: "A", approved: true
+        )
+        guard case let .gameOver(drawVisual) = drawCopy.visual else {
+            return XCTFail("Expected draw artwork.")
+        }
+        XCTAssertEqual(drawVisual.winnerTitle, "Draw")
+        XCTAssertEqual(drawCopy.caption, "Unlucky Sevens: Draw Agreed")
+        attach(
+            try renderResultProposal(state: draw, visual: drawVisual),
+            name: "Shared result 3 - Proposed draw"
+        )
+    }
+
+    private func renderResultProposal(
+        state: CoreGameStateV1,
+        visual: TranscriptGameOverVisual
+    ) throws -> UIImage {
+        let board = try XCTUnwrap(GameBoardSnapshotRenderer.render(
+            renderModel: visual.renderModel, variant: .transcriptPreview
+        ))
+        let renderer = ImageRenderer(content: TranscriptSharedResultDesignPreviewView(
+            state: state, visual: visual, boardImage: board
+        ))
+        renderer.scale = 3
+        let image = try XCTUnwrap(renderer.uiImage)
+        XCTAssertEqual(image.size.width, 360, accuracy: 0.5)
+        XCTAssertGreaterThan(image.size.height, 240)
+        XCTAssertLessThan(image.size.height, 360)
+        return image
+    }
+
+    #endif
+
     private func render(copy: TranscriptBubbleCopy) throws -> UIImage {
         let image = try XCTUnwrap(
             TranscriptBubbleImageRenderer.render(
@@ -184,8 +240,12 @@ final class TranscriptBubbleImageRendererTests: XCTestCase {
         ).rehashed()
     }
 
-    private func makeBoardState(phase: PhaseV1) -> CoreGameStateV1 {
-        let roster = ["A", "B", "C"]
+    private func makeBoardState(
+        phase: PhaseV1,
+        longNames: Bool = false,
+        resultReason: GameEndReasonV1 = .victory
+    ) -> CoreGameStateV1 {
+        let roster = longNames ? ["A", "B", "C", "D"] : ["A", "B", "C"]
         let boardRules = BoardRulesV1(strategy: .noRedAdjacentV1)
         let board = StandardBoardGeneratorV1.generate(
             boardSeed: SeedDeriver(masterSeed: 17).seed(for: .board),
@@ -199,19 +259,25 @@ final class TranscriptBubbleImageRendererTests: XCTestCase {
             stateHash: "",
             roster: roster,
             currentPlayer: "A",
-            playerDisplayNamesByPlayer: [
-                "A": "Avery",
-                "B": "Maya",
-                "C": "Theo",
-            ],
+            playerDisplayNamesByPlayer: longNames ? [
+                "A": "Alexandria Morgan",
+                "B": "Christopher James",
+                "C": "Samantha Williams",
+                "D": "Theodore Anderson",
+            ] : ["A": "Avery", "B": "Maya", "C": "Theo"],
             phase: phase,
             seed: 17,
             diceRngState: 23,
             robberRngState: 29,
             resourcesByPlayer: Dictionary(uniqueKeysWithValues: roster.map { ($0, .zero) }),
-            revealedVictoryPointsByPlayer: phase == .gameOver ? ["A": 9] : [:],
-            winnerPlayer: phase == .gameOver ? "A" : nil,
-            winningVictoryPoints: phase == .gameOver ? 10 : 0,
+            revealedVictoryPointsByPlayer: phase == .gameOver ? ["A": resultReason == .victory ? 9 : 6] : [:],
+            winnerPlayer: phase == .gameOver && resultReason == .victory ? "A" : nil,
+            winningVictoryPoints: phase == .gameOver && resultReason == .victory ? 10 : 0,
+            gameResult: phase == .gameOver && resultReason != .victory
+                ? GameResultV1(
+                    reason: resultReason, winnerPlayers: [],
+                    finalScoresByPlayer: ["A": 7, "B": 1, "C": 0, "D": 0]
+                ) : nil,
             settlementsByNode: phase == .setup ? [:] : [0: "A", 9: "B"],
             roadsByEdge: phase == .setup ? [:] : [3: "A"],
             boardRules: boardRules,

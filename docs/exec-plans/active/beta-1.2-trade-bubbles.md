@@ -7,8 +7,8 @@ Implement [#52](https://github.com/kunal-sharda/UnluckySevens/issues/52): a comp
 ## Execution Settings
 
 - Validation profile: `standard`
-- Delivery posture: `direct`
-- Rationale: user explicitly authorized trying the described composition and previously delegated routine implementation decisions. This is a bounded implementation with screenshots for subsequent user feedback, not a claim of aesthetic acceptance.
+- Delivery posture: `checkpointed`
+- Rationale: the approved trade work remains accepted. The 2026-10-24 shared-bubble follow-up is a new visual comparison, with owner approval before productionizing non-trade artwork.
 
 ## Context and Boundaries
 
@@ -29,6 +29,9 @@ Use beta-1.2 and preserve concurrent supply-clarity changes. Only trade receipt,
 | TB-002 | mechanical | architecture and user boundary | Public-only offer; unchanged caption/summary/protocol/in-game behavior; valid content-sized trade image through dispatcher | focused renderer/copy/gallery tests and source review | report:player-pieces18-tests-three-renders-fresh-review | pass | Board-family sizing unchanged |
 | TB-003 | mechanical | workflow | Tracking gaps repaired; owner docs current; scoped commit/push and standard gate | issue readback and gate/git evidence | report:player-pieces-doc-freshness-c540ed9-pushed | pass | Preserve concurrent supply work |
 | TB-004 | judgment | user approved direction | Cards dominate; tight grouping; quiet sender/separator; readable consistent labels and compact response roster | fresh product-UX inspection of three renders | report:player-pieces18-tests-three-renders-fresh-review | pass | Advisory craft review does not replace user taste feedback |
+| SB-001 | observable | owner request and issue3 | Real long-name final result and draw remain readable at conversation size | Three renderer comparison images inspected | report:shared-results-final-three-images-inspected | pass | DEBUG proposal readable; owner judgment remains separate |
+| SB-002 | mechanical | architecture and approved trade boundary | Production dispatcher, trade artwork, caption/summary and protocol unchanged; preview uses canonical public scores | Source diff and focused renderer test | report:shared-results-round1-17-tests | pass | No publication path selects proposal |
+| SB-003 | judgment | owner visual gate | Owner approves the shared result composition before productionization | Owner screenshot feedback | pending | pending | Stop at comparison |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
@@ -87,3 +90,17 @@ Player-piece implementation committed/pushed as c540ed9. Standard completion gat
 ## Owner acceptance — 2026-10-21
 
 User explicitly approved the final player-piece rendering: "that's so much nicer !! let's go with that". This supersedes prior pending aesthetic feedback. Keep the shipped composition from c540ed9; verification recorded in81da0a8 remains applicable. Issue52 closes for this visual slice. Pre-roll map inspection54, lifecycle appearance53, broader bubble coverage3, and hardware/release acceptance remain separate. DESIGN records the approved direction. This acceptance-only update changes no source: run doc freshness and whitespace checks, commit/push the record; do not repeat the passing18-test/build/review proof without a source change.
+
+## Shared-bubble follow-up — 2026-10-24
+
+The owner requests parallel work on shared conversation bubbles. The accepted trade composition above stays unchanged. Broader #3 identifies the end-game score strip as the first inspection target. This new slice is **standard/checkpointed**: build a DEBUG-only real-component comparison, then obtain owner judgment before changing the production dispatcher or artwork. The existing pass rows above describe the accepted trade slice only, not this comparison.
+
+Locked proof: one focused `TranscriptBubbleImageRendererTests/testSharedGameOverDesignComparison` route produces at most three images: production long-name result, proposed long-name victory, and proposed draw. The existing production renderer/copy suites remain the regression proof if the proposal is approved. Two visual rounds maximum; the parent serializes canonical generation and simulator execution. No live sends, protocol changes, hidden-information changes, or changes to the approved trade renderer.
+
+Design direction: retain the real board as the shared-game identity, give the result its own quiet felt region, and replace the one-line all-player score string with individually readable public name/score pairs and the same player pieces/colors used in the approved trade bubble. SF typography remains consistent; the production board retains its number-token lettering. A result with long names may grow vertically instead of shrinking or clipping names. The comparison consumes the canonical fixture state and production board rendering; it is never selected by publication code.
+
+Pending proof/approval: renderer execution, actual image inspection, and owner visual acceptance. No fresh final review or completion gate while this visual gate is pending. Source review found that the production winner and score strip each use `lineLimit(1)`; truncation remains a concern until inspected at conversation scale. Lobby/ordinary-turn designs remain unchanged pending evidence of a concrete issue.
+
+Shared-result round1: parent reports17 passing scoped renderer/model tests; three artifacts in `output/beta12-component-review` independently inspected. The production long-name result truncates after Samantha and omits Theodore, demonstrating the source concern. Both DEBUG proposals show the complete winner/draw title, all four names, canonical player colors and scores without text clipping. The reduced board remains complete; this is a result summary rather than detailed board inspection. One concrete composition defect is corrected in the permitted second round: extend the production ocean background across the top region, removing the inset bitmap's exposed rectangular edges against felt. This does not enlarge/crop the map or change data. Final correction capture is recorded below. Owner acceptance remains pending; no production publication or remote-host proof is claimed.
+
+Shared-result final preview proof: parent reports the focused comparison route passed1/1; all three final images in `output/beta12-bubbles-final` independently inspected. Victory `4453961F-0DA6-4EB2-BF05-86B37AE370F1.png` and draw `03AA4F24-4041-4416-8FBC-50A134AC9B5F.png` show the complete board on a continuous ocean region, distinct felt result area, readable title, all four complete names and public scores, and canonical player-piece colors. Baseline `68E6DC3B-AA26-4D4E-B57B-A453CA906890.png` confirms the original score truncation. The inset-image edge defect is resolved; two bounded visual rounds are used and no further iteration is planned before feedback. SB-001/002 pass for this preview; SB-003 remains pending owner acceptance. Production dispatcher/artwork and approved trade composition are unchanged. No live Messages delivery, full accessibility, fresh final review or completion-gate claim.
