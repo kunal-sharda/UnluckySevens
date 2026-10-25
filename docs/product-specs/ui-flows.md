@@ -297,6 +297,18 @@ Player Trade requirements:
 - Exit and the final right-side tap return to the invoking lobby state.
 - Tutorial never publishes or mutates a real game.
 
+### Contextual Tutorial Pop-ups and Tabletop Discoverability
+
+Approved requirement (2026-10-24), pending implementation: [#55](https://github.com/kunal-sharda/UnluckySevens/issues/55), coordinated with costs in #13 and Dev guidance in #14.
+
+- The Build and Dev Card panels previewed on `beta-1.2` are themselves the optional contextual tutorial pop-ups. They retain the physical piece/card artwork and cost presentation; they are not replaced by anchored text hints. With tutorial pop-ups disabled, ordinary play retains the physical tabletop interaction.
+- Every tutorial pop-up includes **Disable tutorial pop-ups**, which turns off all contextual tutorial pop-ups through a persistent device-local preference. Settings allows re-enabling them. This preference does not alter canonical state or transport.
+- Disabling teaching panels must preserve gameplay, required choices, actionable errors and genuine purchase/destructive confirmations; it must not turn an inspection tap into an unexpected purchase.
+- Bank and Dev-deck tappability must be discoverable both with and without tutorial pop-ups. Bank teaches tapping to reveal approximate supply; the public Dev deck teaches where to buy a Development Card. Accessible action names communicate the same purpose. Preserve the existing approximate-stock secrecy contract.
+- Additional scenario-specific tutorial pop-ups may use the same mechanism. Define each scenario's trigger, content and dismissal behavior before adding it; no expanded curriculum is committed by this requirement.
+- First-show/repeat behavior and the revised enabled/disabled interaction proof must be settled before implementation. Discoverability requires representative new-player observation of finding Bank and Dev actions without verbal coaching, not screenshots alone.
+- This contextual help supplements the separate lobby tutorial and planned Learn & Reference paths; disabling it does not remove access to those learning resources.
+
 ### Tutorial Lesson Map
 
 | # | Lesson | Real surface taught |
