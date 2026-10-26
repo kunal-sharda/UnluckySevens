@@ -32,15 +32,15 @@ Use beta-1.2 and preserve concurrent supply-clarity changes. Only trade receipt,
 | SB-001 | observable | owner request and issue3 | Real long-name final result and draw remain readable at conversation size | Three renderer comparison images inspected | report:shared-results-final-three-images-inspected | pass | DEBUG proposal readable; owner judgment remains separate |
 | SB-002 | mechanical | architecture and approved trade boundary | Production dispatcher, trade artwork, caption/summary and protocol unchanged; preview uses canonical public scores | Source diff and focused renderer test | report:shared-results-round1-17-tests | pass | No publication path selects proposal |
 | SB-003 | judgment | owner visual gate | Owner approves the shared result composition before productionization | Owner screenshot feedback | report:owner-approval-2026-10-25 | pass | Owner accepted final presented designs; production proof remains separate |
-| SB-004 | mechanical | owner production request | Production game-over dispatcher uses public structured score rows; private cards/resources cannot affect result artwork/copy; other families unchanged | Renderer and copy suites plus source review | report:pending-production | pending | Production integration proof |
-| SB-005 | observable | accepted shared result design | Production victory and draw show full names/scores with complete board and continuous ocean | Three production renderer captures inspected | report:pending-production | pending | Accepted layout promoted unchanged |
+| SB-004 | mechanical | owner production request | Production game-over dispatcher uses public structured score rows; private cards/resources cannot affect result artwork/copy; other families unchanged | Renderer and copy suites plus source review | file:docs/exec-plans/active/beta-1.2-approved-integration.md | pass | Production integration proof and standard gate passed; see aggregate evidence |
+| SB-005 | observable | accepted shared result design | Production victory and draw show full names/scores with complete board and continuous ocean | Three production renderer captures inspected | file:docs/exec-plans/active/beta-1.2-approved-integration.md | pass | Production integration proof and standard gate passed; see aggregate evidence |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
 | Reviewer | Required | Verdict | Evidence |
 | --- | --- | --- | --- |
-| constraint-auditor | yes | pending | report:production-shared-results-review |
-| product-ux | yes | pending | report:production-shared-results-review |
+| constraint-auditor | yes | pass | report:integration_auditor-final-2026-10-25; file:docs/exec-plans/active/beta-1.2-approved-integration.md |
+| product-ux | yes | pass | report:integration_auditor-final-2026-10-25; file:docs/exec-plans/active/beta-1.2-approved-integration.md |
 <!-- fresh-review:end -->
 
 ## Living Record

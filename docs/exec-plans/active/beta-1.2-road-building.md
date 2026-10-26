@@ -34,14 +34,14 @@ Locked proof: scoped draft unit tests; existing atomic Core Road Building test; 
 | ROAD-001 | mechanical | #16 | Draft uses Core legality, supports revision/cancel and stale revalidation without mutation | Focused draft tests and source boundary inspection | report:component-review.xcresult-four-tests; report:core-road-building-one-test | pass | DEBUG local draft tests passed; production confirmation is separate |
 | ROAD-002 | observable | #16 | Pending roads and review remain on the mounted board without state publication | Dedicated fixture journey and three captures | report:20261025T061738Z-road-building-journey; report:three-final-artifacts-inspected | pass | Full preview journey and no-overlap assertion pass; board, ports and pending markers visibly clear |
 | ROAD-003 | judgment | #16 | Owner accepts two-road objective, pending markers and review controls | Owner screenshot feedback | report:owner-approval-2026-10-25 | pass | Owner accepted final presented designs; production proof remains separate |
-| ROAD-004 | mechanical | #16 | Final production confirmation produces one atomic result and meets owner-doc contract | Post-approval tests and completion gate | report:pending | pending | Production follow-up |
+| ROAD-004 | mechanical | #16 | Final production confirmation produces one atomic result and meets owner-doc contract | Post-approval tests and completion gate | file:docs/exec-plans/active/beta-1.2-approved-integration.md | pass | Production integration proof and standard gate passed; see aggregate evidence |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
 | Reviewer | Required | Verdict | Evidence |
 | --- | --- | --- | --- |
-| constraint-auditor | yes | pending | report:after-owner-approval |
-| product-ux | yes | pending | report:after-owner-approval |
+| constraint-auditor | yes | pass | report:integration_auditor-final-2026-10-25; file:docs/exec-plans/active/beta-1.2-approved-integration.md |
+| product-ux | yes | pass | report:integration_auditor-final-2026-10-25; file:docs/exec-plans/active/beta-1.2-approved-integration.md |
 <!-- fresh-review:end -->
 
 ## Living Record
@@ -88,3 +88,7 @@ Road production component checkpoint: promoted the tested local draft to `GameRo
 ### Accessibility-size non-overlap correction — 2026-10-25
 
 Production AX journey attempt 3 reached the final two-road review and demonstrated the predeclared non-overlap defect: rail minY605.833 versus board maxY687.000. Source and `/tmp/uls-ax-progress.png` inspection identify the duplicated progress heading plus four vertically stacked button rows as the cause. Controls-only correction retains full Dynamic Type text and 44pt targets: at accessibility sizes Cancel and Undo share a row, Start Over occupies the next row, and confirmation remains a separate brown row. The top table header already communicates road progress; the duplicate rail heading is omitted only at accessibility sizes, retaining progress and instructions as the rail's accessibility value/hint and retaining any exceptional guidance visibly. Normal-size appearance and button IDs/actions remain unchanged. No board geometry, identity, scale or shell reservations change. Parent will rerun only the failed production AX road journey, then inspect the accepted artifact. Syntax/whitespace checks pass; visual/runtime correction is not yet claimed verified.
+
+## Final production integration evidence (2026-10-25)
+
+Production behavior and scoped tests are recorded in [the approved integration plan](beta-1.2-approved-integration.md). It owns the clean six-route normal-size and two-route accessibility proof, final fresh review, build gate and pushed commits. This supersedes earlier production-pending progress notes; preview history remains unchanged. Broader milestone/device acceptance and unrelated queued scope are not claimed here.

@@ -38,14 +38,14 @@ Locked preview proof: DEBUG boundary/source inspection, canonical generated buil
 | DEVT-002 | observable | #14; user request | New action card explains next-turn wait and Hand / Dev Cards location; VP explains passive score and automatic winning reveal | Two fixture captures and inspected copy/art | report:20261025T060522Z-dev-timing | pass | Both actual PNGs inspected; explanation and controls readable without clipping |
 | DEVT-003 | observable | #55; user frequency answer | Got it dismisses this occurrence; global Disable uses shared preference; board and canonical evidence stay unchanged | Parent scoped tutorial harness assertions | report:20261025T060522Z-dev-timing | pass | Knight dismiss and VP disable passed board/frame/canonical invariance; preview scope only |
 | DEVT-004 | judgment | user visual-checkpoint requirement | Owner approves concrete timing tutorial before production | Explicit owner response to captures | report:owner-approval-2026-10-25 | pass | Owner accepted final presented designs; production proof remains separate |
-| DEVT-005 | mechanical | repo workflow | Owner facts and final scoped validation recorded | Doc freshness and post-approval standard completion gate | report:pending | pending | Completion stage after approval |
+| DEVT-005 | mechanical | repo workflow | Owner facts and final scoped validation recorded | Doc freshness and post-approval standard completion gate | file:docs/exec-plans/active/beta-1.2-approved-integration.md | pass | Production integration proof and standard gate passed; see aggregate evidence |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
 | Reviewer | Required | Verdict | Evidence |
 | --- | --- | --- | --- |
-| constraint-auditor | yes | pending | report:after-owner-approval |
-| SwiftUI-product-UX | yes | pending | report:after-owner-approval |
+| constraint-auditor | yes | pass | report:integration_auditor-final-2026-10-25; file:docs/exec-plans/active/beta-1.2-approved-integration.md |
+| SwiftUI-product-UX | yes | pass | report:integration_auditor-final-2026-10-25; file:docs/exec-plans/active/beta-1.2-approved-integration.md |
 <!-- fresh-review:end -->
 
 ## Living Record
@@ -79,3 +79,7 @@ Owner response to the final resignation, Dev timing, shared-result and Road Buil
 ### Production integration authorized — 2026-10-25
 
 Owner explicitly requests integrating all approved designs and writing tests. Standard/direct; visual checkpoint passed. Lock proof before edits: AppPreferences persistence/default/re-enable tests; private new-card delta and purchase-inspection tests; generated extension build and scoped resolver/model suites; installed Messages journeys for Build inspection, Dev explicit confirmation/new-card dismissal/disable, Settings re-enable, Road review, and lifecycle cancel/confirm. Use at most two visual rounds, with diagnosed infrastructure retries under QA. Fresh constraint/product-UX review and completion gate follow implementation. No protocol or rule changes. Production tutorial state must be local; disabled tutorials preserve required choices and explicit purchase confirmation.
+
+## Final production integration evidence (2026-10-25)
+
+Production behavior and scoped tests are recorded in [the approved integration plan](beta-1.2-approved-integration.md). It owns the clean six-route normal-size and two-route accessibility proof, final fresh review, build gate and pushed commits. This supersedes earlier production-pending progress notes; preview history remains unchanged. Broader milestone/device acceptance and unrelated queued scope are not claimed here.

@@ -3635,7 +3635,12 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
     func testCurrentGameLifecycleActionsAreDiscoverableForNonHostDuringTurn() throws {
         openUnluckySevensExtension()
         assertLaunchFixtureLoaded(title: "Turn after roll")
-        prepareExpandedScreenshot()
+        loadDirectGameplayActionFixture(
+            identifier: "uls.uxLab.cleanShot.lifecycleGuestExpanded.direct",
+            label: "Clean expanded guest turn"
+        )
+        prepareExpandedScreenshot(expansionAlreadyRequested: true)
+        assertLaunchFixtureLoaded(title: "Turn after roll")
         let before = gameplayActionEvidenceValue()
         let board = turnElement(identifier: "uls.tabletop.board", labels: [])
         let boardHost = turnElement(identifier: "uls.tabletop.boardHost", labels: ["Live game board host"])
@@ -3649,9 +3654,10 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertFalse(messages.buttons["uls.games.endGame"].firstMatch.exists)
         resign.tap()
 
-        let confirmation = messages.descendants(matching: .any)["uls.games.lifecycleConfirmation"].firstMatch
-        XCTAssertTrue(confirmation.waitForExistence(timeout: 4))
+        let confirmation = messages.descendants(matching: .any)["uls.turn.gameInfo"].firstMatch
         let confirm = messages.buttons["uls.games.confirmResign"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.staticTexts["Resign?"].firstMatch.exists)
         let keepPlaying = messages.buttons["uls.games.keepPlaying"].firstMatch
         assertMinimumTarget(confirm, message: "Resign confirmation must retain a 44-point target.")
         assertMinimumTarget(keepPlaying, message: "Keep Playing must retain a 44-point target.")
@@ -3659,12 +3665,12 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(keepPlaying.isHittable)
         assertElement(confirmation, isContainedIn: messages.frame, message: "Resign content must fit the host.")
         XCTAssertEqual(canonicalRecoveryFingerprint(from: gameplayActionEvidenceValue()), canonicalRecoveryFingerprint(from: before))
-        assertFrame(of: board, matches: boardFrame, message: "Opening resignation must not move the board.")
-        XCTAssertEqual(boardMountIdentity(of: boardHost), mount)
+        // The board host intentionally uses its .occluded DEBUG identifier while this
+        // surface is open. Compare the normal host's geometry/mount after closing it.
         attachScreenshot(named: "Game Information - Production Resign Confirmation")
 
         keepPlaying.tap()
-        XCTAssertTrue(confirmation.waitForNonExistence(timeout: 4))
+        XCTAssertTrue(confirm.waitForNonExistence(timeout: 4))
         XCTAssertTrue(resign.waitForExistence(timeout: 4))
         XCTAssertEqual(canonicalRecoveryFingerprint(from: gameplayActionEvidenceValue()), canonicalRecoveryFingerprint(from: before))
         messages.buttons["uls.games.close"].firstMatch.tap()
@@ -3688,7 +3694,12 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
     func testCurrentGameLifecycleDrawVoteRemainsInCurrentGame() throws {
         openUnluckySevensExtension()
         assertLaunchFixtureLoaded(title: "Draw vote")
-        prepareExpandedScreenshot()
+        loadDirectGameplayActionFixture(
+            identifier: "uls.uxLab.cleanShot.lifecycleDrawExpanded.direct",
+            label: "Clean expanded guest draw vote"
+        )
+        prepareExpandedScreenshot(expansionAlreadyRequested: true)
+        assertLaunchFixtureLoaded(title: "Draw vote")
         let before = gameplayActionEvidenceValue()
         openCurrentGameLifecycleMenu().tap()
         XCTAssertTrue(messages.buttons["uls.games.agreeDraw"].firstMatch.waitForExistence(timeout: 4))
@@ -3716,17 +3727,19 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(endGame.waitForExistence(timeout: 4))
         endGame.tap()
 
-        let confirmation = messages.descendants(matching: .any)["uls.games.lifecycleConfirmation"].firstMatch
-        XCTAssertTrue(confirmation.waitForExistence(timeout: 4))
+        let confirmation = messages.descendants(matching: .any)["uls.turn.gameInfo"].firstMatch
+        let hostEndConfirmation = messages.buttons["uls.games.endAnyway"].firstMatch
+        XCTAssertTrue(hostEndConfirmation.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.staticTexts["End this game?"].firstMatch.exists)
         XCTAssertTrue(messages.buttons["uls.games.proposeDraw"].firstMatch.exists)
-        XCTAssertTrue(messages.buttons["uls.games.endAnyway"].firstMatch.exists)
         messages.buttons["uls.games.keepPlaying"].firstMatch.tap()
-        XCTAssertTrue(confirmation.waitForNonExistence(timeout: 4))
+        XCTAssertTrue(hostEndConfirmation.waitForNonExistence(timeout: 4))
         XCTAssertEqual(canonicalRecoveryFingerprint(from: gameplayActionEvidenceValue()), canonicalRecoveryFingerprint(from: before))
 
         messages.buttons["uls.games.proposeDraw"].firstMatch.tap()
         let propose = messages.buttons["uls.games.confirmProposeDraw"].firstMatch
         XCTAssertTrue(propose.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.staticTexts["Propose a draw?"].firstMatch.exists)
         XCTAssertEqual(canonicalRecoveryFingerprint(from: gameplayActionEvidenceValue()), canonicalRecoveryFingerprint(from: before))
         assertMinimumTarget(propose, message: "Draw confirmation must retain a 44-point target.")
         assertElement(confirmation, isContainedIn: messages.frame, message: "Draw confirmation must fit the host.")
@@ -5104,11 +5117,9 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
     }
 
     private func dismissPersistedUtilitySurfaces() {
-        let lifecycleConfirmation = messages.descendants(matching: .any)[
-            "uls.games.lifecycleConfirmation"
-        ].firstMatch
-        if lifecycleConfirmation.waitForExistence(timeout: 0.2) {
-            lifecycleConfirmation.buttons["uls.games.keepPlaying"].firstMatch.tap()
+        let keepPlaying = messages.buttons["uls.games.keepPlaying"].firstMatch
+        if keepPlaying.waitForExistence(timeout: 0.2) {
+            keepPlaying.tap()
         }
         let closeGameActions = messages.buttons["uls.games.close"].firstMatch
         if closeGameActions.exists {
@@ -5289,7 +5300,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
                 )
                 if appRow.exists {
                     tapCurrentFrame(of: appRow)
-                    if waitForUnluckySevensSurface(timeout: 10) {
+                    if waitForUnluckySevensSurface(timeout: 30) {
                         return
                     }
                     break

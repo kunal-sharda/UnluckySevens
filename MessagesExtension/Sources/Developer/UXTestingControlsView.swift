@@ -298,6 +298,27 @@ struct UXTestingControlsView: View {
         VStack(alignment: .leading, spacing: 10) {
             header
 
+            HStack(spacing: 8) {
+                cleanShotChipButton(
+                    title: "Guest",
+                    systemImage: "person.fill",
+                    accessibilityLabel: "Clean expanded guest turn",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.lifecycleGuestExpanded.direct"
+                ) {
+                    viewModel.onRequestExpanded?()
+                    activateCleanFixture(id: UXTestFixtures.defaultFixtureID, actingAs: UXTestFixtures.alice)
+                }
+                cleanShotChipButton(
+                    title: "Draw",
+                    systemImage: "hand.thumbsup.fill",
+                    accessibilityLabel: "Clean expanded guest draw vote",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.lifecycleDrawExpanded.direct"
+                ) {
+                    viewModel.onRequestExpanded?()
+                    activateCleanFixture(id: UXTestFixtures.drawVoteID, actingAs: UXTestFixtures.alice)
+                }
+            }
+
             cleanShotChipButton(
                 title: "Road Action",
                 systemImage: "road.lanes",
@@ -598,6 +619,7 @@ struct UXTestingControlsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isButton)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityIdentifier(accessibilityIdentifier)
     }
