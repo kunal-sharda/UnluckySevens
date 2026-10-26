@@ -41,6 +41,7 @@ Use this order when reasoning about the repo:
 
 - After each major implementation block or bug fix, run its scoped validation, commit the coherent change, and push it to the current work branch. Use milestone names for branches: `beta-1.1` for Beta 1.1 and `beta-1.2` for Beta 1.2; do not push milestone implementation directly to `master`. Report any commit or push failure, and preserve unfinished work without claiming it is validated.
 - Do not open Xcode as part of agent validation or visual review. Use command-line builds, simulator commands, and the checked-in harnesses.
+- After finishing simulator work, shut down every simulator used for the task and close the Simulator app. Preserve a running session only when the user explicitly asks to keep it open. Verify cleanup before finalizing.
 - Do not run `tuist generate` directly for validation. Run `bash ./scripts/gen.sh`, which performs the repo-specific no-open generation and generated-project patching required for the standalone Messages package.
 - Before any `xcodebuild -workspace UnluckySevens.xcworkspace ...` validation, run `bash ./scripts/gen.sh` in the same slice unless the current command sequence already did so.
 - Prefer the reusable Messages simulator and screenshot harnesses documented in [docs/quality/qa.md](docs/quality/qa.md). Manual simulator driving is a fallback for gaps; promote repeated manual steps into XCUITest helpers or DEBUG-only UX Lab controls.
