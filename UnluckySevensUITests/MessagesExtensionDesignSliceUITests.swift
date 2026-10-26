@@ -2080,6 +2080,84 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: "Preview - Unavailable Dev Card")
     }
 
+    func testPreRollMapInspectionPreservesDevChoices() throws {
+        try verifyProductionMapInspection(withDev: true, capturePrompt: true, captureMap: true)
+    }
+
+    func testPreRollMapInspectionExpandsCompactRollOnly() throws {
+        try verifyProductionMapInspection(withDev: false, capturePrompt: false, captureMap: false)
+    }
+
+    func testPreRollMapInspectionAtAccessibilitySize() throws {
+        try verifyProductionMapInspection(withDev: true, capturePrompt: false, captureMap: true)
+    }
+
+    private func verifyProductionMapInspection(withDev: Bool, capturePrompt: Bool, captureMap: Bool) throws {
+        openUnluckySevensExtension()
+        if withDev {
+            loadDirectGameplayActionFixture(
+                identifier: "uls.uxLab.cleanShot.preRollExpanded.direct",
+                label: "Clean expanded pre-roll with Dev Cards"
+            )
+            prepareExpandedScreenshot(expansionAlreadyRequested: true)
+        } else {
+            assertLaunchFixtureLoaded(title: "Turn needs roll only")
+            hideUXLabChromeWithoutChangingFixture()
+            let canvas = messages.descendants(matching: .any)["uls.host.usableCanvas"].firstMatch
+            XCTAssertTrue(String(describing: canvas.value).contains("style=compact"), "Exercise a real compact entry.")
+        }
+        let inspect = messages.buttons["uls.preRoll.map.inspect"].firstMatch
+        let back = messages.buttons["uls.preRoll.map.return"].firstMatch
+        let roll = messages.buttons["uls.startTurn.roll"].firstMatch
+        let dev = messages.buttons["uls.startTurn.devCards"].firstMatch
+        XCTAssertTrue(waitForHittable(inspect, timeout: 5))
+        XCTAssertTrue(roll.exists)
+        XCTAssertEqual(dev.exists, withDev)
+        let before = gameplayActionEvidenceValue()
+        if capturePrompt { attachScreenshot(named: "Pre-roll - Inspect Board") }
+        if withDev {
+            dev.tap()
+            XCTAssertTrue(messages.descendants(matching: .any)["uls.startTurn.devChooser"].firstMatch.waitForExistence(timeout: 5))
+        }
+        tapCurrentFrame(of: inspect)
+        XCTAssertTrue(waitForHittable(back, timeout: 8))
+        prepareExpandedScreenshot(expansionAlreadyRequested: true)
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let host = turnElement(identifier: "uls.tabletop.boardHost", labels: [])
+        XCTAssertTrue(board.waitForExistence(timeout: 5))
+        XCTAssertTrue(host.exists)
+        let frame = board.frame
+        let mount = boardMountIdentity(of: host)
+        XCTAssertGreaterThan(frame.width, 100)
+        XCTAssertFalse(mount.isEmpty)
+        XCTAssertGreaterThanOrEqual(back.frame.minY, frame.maxY - 1, "Return must not cover the board.")
+        XCTAssertGreaterThanOrEqual(back.frame.height, 44)
+        XCTAssertFalse(roll.exists)
+        XCTAssertFalse(dev.exists)
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+        if captureMap { attachScreenshot(named: "Pre-roll - Unobscured map") }
+        // Public map inspection must not turn a board touch into a game action.
+        board.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+        tapCurrentFrame(of: back)
+        XCTAssertTrue(waitForHittable(inspect, timeout: 5))
+        XCTAssertTrue(roll.exists)
+        XCTAssertEqual(dev.exists, withDev)
+        if withDev {
+            XCTAssertTrue(messages.descendants(matching: .any)["uls.startTurn.devChooser"].firstMatch.exists,
+                          "Returning must preserve the open chooser.")
+        }
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+        tapCurrentFrame(of: inspect)
+        XCTAssertTrue(waitForHittable(back, timeout: 5))
+        assertFrame(of: board, matches: frame, message: "Inspection toggles must preserve the expanded board frame.")
+        XCTAssertEqual(boardMountIdentity(of: host), mount, "Inspection must retain the mounted SpriteKit view.")
+        tapCurrentFrame(of: back)
+        XCTAssertTrue(inspect.waitForExistence(timeout: 5))
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+        attachGameplayActionEvidence(name: "Read-only pre-roll inspection", before: before, after: gameplayActionEvidenceValue())
+    }
+
     func testPreviewMapInspection() throws {
         openUnluckySevensExtension()
         assertLaunchFixtureLoaded(title: "Preview map inspection")

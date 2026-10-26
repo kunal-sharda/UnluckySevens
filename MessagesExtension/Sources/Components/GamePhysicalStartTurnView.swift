@@ -9,54 +9,60 @@ struct GamePhysicalStartTurnView: View {
     let onToggleDevCards: () -> Void
     let onSelectDevCard: (GameDevCardActionKind) -> Void
     let onRoll: () -> Void
+    var showsFocusVeil = true
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                GamePhysicalTurnPalette.focusVeil
-                    .ignoresSafeArea()
-
-                VStack(spacing: isDevChooserOpen ? 22 : 32) {
-                    Spacer(minLength: 24)
-
-                    VStack(spacing: 9) {
-                        Text(isDevChooserOpen ? "Choose a Dev Card" : "Your Turn")
-                            .font(GameTheme.displayFont)
-                            .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                            .multilineTextAlignment(.center)
-
-                        Capsule()
-                            .fill(GamePhysicalTurnPalette.selectedKeyline)
-                            .frame(width: 38, height: 3)
-                    }
-
-                    if isDevChooserOpen {
-                        GamePhysicalStartTurnDevChooserView(
-                            panel: devCardPanel,
-                            onSelect: onSelectDevCard
-                        )
-
-                        GamePhysicalStartTurnChoiceView(
-                            canPlayDevCards: canPlayDevCards,
-                            canRoll: canRoll,
-                            isDevChooserOpen: true,
-                            onToggleDevCards: onToggleDevCards,
-                            onRoll: onRoll
-                        )
-                    } else {
-                        GamePhysicalStartTurnChoiceView(
-                            canPlayDevCards: canPlayDevCards,
-                            canRoll: canRoll,
-                            isDevChooserOpen: false,
-                            onToggleDevCards: onToggleDevCards,
-                            onRoll: onRoll
-                        )
-                    }
-
-                    Spacer(minLength: 24)
+                if showsFocusVeil {
+                    GamePhysicalTurnPalette.focusVeil.ignoresSafeArea()
                 }
-                .padding(.horizontal, 28)
-                .scaleEffect(contentScale)
+
+                ScrollView {
+                    VStack(spacing: isDevChooserOpen ? 22 : 32) {
+                        Spacer(minLength: 24)
+
+                        VStack(spacing: 9) {
+                            Text(isDevChooserOpen ? "Choose a Dev Card" : "Your Turn")
+                                .font(GameTheme.displayFont)
+                                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                                .multilineTextAlignment(.center)
+
+                            Capsule()
+                                .fill(GamePhysicalTurnPalette.selectedKeyline)
+                                .frame(width: 38, height: 3)
+                        }
+
+                        if isDevChooserOpen {
+                            GamePhysicalStartTurnDevChooserView(
+                                panel: devCardPanel,
+                                onSelect: onSelectDevCard
+                            )
+
+                            GamePhysicalStartTurnChoiceView(
+                                canPlayDevCards: canPlayDevCards,
+                                canRoll: canRoll,
+                                isDevChooserOpen: true,
+                                onToggleDevCards: onToggleDevCards,
+                                onRoll: onRoll
+                            )
+                        } else {
+                            GamePhysicalStartTurnChoiceView(
+                                canPlayDevCards: canPlayDevCards,
+                                canRoll: canRoll,
+                                isDevChooserOpen: false,
+                                onToggleDevCards: onToggleDevCards,
+                                onRoll: onRoll
+                            )
+                        }
+
+                        Spacer(minLength: 24)
+                    }
+                    .padding(.horizontal, 28)
+                    .scaleEffect(contentScale)
+                    .frame(minHeight: geometry.size.height)
+                }
+                .scrollBounceBehavior(.basedOnSize)
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
         }

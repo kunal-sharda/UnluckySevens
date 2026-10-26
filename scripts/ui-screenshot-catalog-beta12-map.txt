@@ -1,0 +1,2 @@
+testPreRollMapInspectionPreservesDevChoices|turn-needs-roll|host
+testPreRollMapInspectionExpandsCompactRollOnly|turn-needs-roll-only|host

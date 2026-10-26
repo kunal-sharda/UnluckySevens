@@ -95,6 +95,7 @@ struct GameShellView: View {
     @State private var shellRoute: GameShellRoute = .none
     @State private var isHandOpen = true
     @State private var physicalBankCountsRevealed = false
+    @State private var isInspectingPreRollBoard = false
     @State private var normalTurnContextSnapshot: GameNormalTurnContextSnapshot
     @State private var physicalBoardCenteringOffset: CGFloat = 0
     @State private var physicalBoardMeasuredFrame: CGRect = .zero
@@ -431,6 +432,7 @@ struct GameShellView: View {
                                     : physicalLayout.topBarHeight,
                                 alignment: .center
                             )
+                            .allowsHitTesting(!isPhysicalStartTurn)
                             .accessibilityHidden(isPhysicalStartTurn)
 
                             if showsPhysicalPublicRail && !isPhysicalGameOver {
@@ -490,6 +492,7 @@ struct GameShellView: View {
                                         return
                                     }
                                     #endif
+                                    guard !isInspectingPreRollBoard else { return }
                                     handleBoardTap(target, mode: resolvedMode)
                                 }
                             )
@@ -499,7 +502,7 @@ struct GameShellView: View {
                             )
                             .allowsHitTesting(!isGameInfoOpen)
                             .gameTutorialTarget(.board)
-                            .accessibilityHidden(isPhysicalStartTurn && designPreviewID != "preview-map-inspection")
+                            .accessibilityHidden(isPhysicalStartTurn && !isInspectingPreRollBoard && designPreviewID != "preview-map-inspection")
                             .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius + 8))
                             .background {
                                 GeometryReader { boardGeometry in
@@ -996,7 +999,7 @@ struct GameShellView: View {
 
                     if designPreviewID != "preview-map-inspection", !isGameOver, isPhysicalStartTurn, physicalDiceRollResult == nil,
                        resolvedMode == .idle || resolvedMode == .playDevCard {
-                        GamePhysicalStartTurnView(
+                        GamePreRollInspectionView(
                             devCardPanel: devCardPanelModel?.executableSelectionOnly(),
                             canPlayDevCards: screenModel.actionDock.primaryItems.contains {
                                 $0.kind == .devCards && $0.isEnabled
@@ -1004,9 +1007,15 @@ struct GameShellView: View {
                             canRoll: screenModel.actionDock.primaryItems.contains {
                                 $0.kind == .roll && $0.isEnabled
                             },
+                            contentScale: physicalLayout.contentScale,
+                            isInspectingBoard: isInspectingPreRollBoard,
                             isDevChooserOpen: shellRoute == .devCards
                                 && resolvedMode == .playDevCard,
-                            contentScale: physicalLayout.contentScale,
+                            onInspect: {
+                                isInspectingPreRollBoard = true
+                                viewModel.onRequestExpanded?()
+                            },
+                            onReturn: { isInspectingPreRollBoard = false },
                             onToggleDevCards: {
                                 handleActionSelection(
                                     .devCards,
@@ -1030,7 +1039,9 @@ struct GameShellView: View {
                             onComplete: completePhysicalDiceRoll
                         )
                         .frame(width: shellSize.width, height: shellSize.height)
-                        .zIndex(5)
+                        .zIndex(physicalDiceRollResult == nil ? 3.9 : 5)
+                        .allowsHitTesting(physicalDiceRollResult != nil)
+                        .accessibilityHidden(physicalDiceRollResult == nil)
                     }
 
                     if !isGameOver, !designPreviewID.hasPrefix("preview-") {
@@ -1151,6 +1162,9 @@ struct GameShellView: View {
             purchasedDevKind = preferences.tutorialPopupsEnabled ? viewModel.devPurchaseTutorialKind : nil
         }
         .onReceive(viewModel.$gameplayShellProjection.removeDuplicates()) { projection in
+            if shellProjection.gameId != projection.gameId || shellProjection.stateHash != projection.stateHash {
+                isInspectingPreRollBoard = false
+            }
             let draftContextChanged = shellProjection.gameId != projection.gameId
                 || shellProjection.stateHash != projection.stateHash
                 || shellProjection.gameScreenModel.handTray != projection.gameScreenModel.handTray
@@ -1188,6 +1202,7 @@ struct GameShellView: View {
             }
         }
         .onChange(of: resolvedMode) { _, newMode in
+            if newMode != .idle && newMode != .playDevCard { isInspectingPreRollBoard = false }
             handleResolvedModeChange(newMode)
         }
         .onChange(of: shellRoute) { _, newRoute in
@@ -1971,6 +1986,7 @@ struct GameShellView: View {
     }
 
     private func resetLocalShellInteractionState() {
+        isInspectingPreRollBoard = false
         showsDevPurchase = false
         purchasedDevKind = nil
         roadSubmissionHash = nil

@@ -298,6 +298,16 @@ struct UXTestingControlsView: View {
         VStack(alignment: .leading, spacing: 10) {
             header
 
+            cleanShotChipButton(
+                title: "Pre-roll",
+                systemImage: "map",
+                accessibilityLabel: "Clean expanded pre-roll with Dev Cards",
+                accessibilityIdentifier: "uls.uxLab.cleanShot.preRollExpanded.direct"
+            ) {
+                viewModel.onRequestExpanded?()
+                activateCleanFixture(id: UXTestFixtures.turnNeedsRollID, actingAs: UXTestFixtures.host)
+            }
+
             HStack(spacing: 8) {
                 cleanShotChipButton(
                     title: "Guest",

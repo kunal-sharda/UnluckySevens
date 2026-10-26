@@ -123,6 +123,8 @@ Turn rules relevant to presentation:
 
 - The normal pre-roll state keeps the mounted Physical Props table beneath a focused full-host choice layer.
 - If both are legal, the layer shows owned executable Dev Cards and Roll. Otherwise it shows Roll alone.
+- Inspect Board temporarily removes the choice layer without rolling, playing, buying, or publishing anything. Back to Roll restores the same choices and any open Dev chooser. Compact Messages expands for inspection and stays expanded on return.
+- Inspect Board and Back to Roll are accessible controls. Inspection removes the pre-roll accessibility hiding from the mounted board and does not commit board targets; game/revision or shell resets clear inspection.
 - Closing the Dev chooser returns without consuming a card.
 - Completing a pre-roll Dev action returns to Roll alone.
 - Dice animation decorates the already-authoritative result. Skip, Reduce Motion, and Skip Animations all resolve to that same result and still require explicit continuation.

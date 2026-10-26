@@ -1040,8 +1040,12 @@ final class LobbyDriverViewModel: ObservableObject {
         #if DEBUG
         // Catalog launch fixtures are installed before the host's first activation.
         // Preserve only explicitly configured fixtures; ordinary drawer entry still resets.
-        if uxTestingIsActive, userDefaults.string(forKey: UXTestFixtures.launchFixtureIDDefaultsKey) != nil {
-            onRequestExpanded?()
+        if uxTestingIsActive,
+           let fixtureID = userDefaults.string(forKey: UXTestFixtures.launchFixtureIDDefaultsKey) {
+            // This fixture proves that Inspect Board itself expands a compact host.
+            if fixtureID != UXTestFixtures.turnNeedsRollOnlyID {
+                onRequestExpanded?()
+            }
             return
         }
         #endif

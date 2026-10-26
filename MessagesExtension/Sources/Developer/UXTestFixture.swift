@@ -94,6 +94,7 @@ enum UXTestFixtures {
         setupRoadPlacement,
         setupHandoff,
         turnNeedsRoll,
+        turnNeedsRollOnly,
         turnAfterRoll,
         mixedBankSupply,
         newKnight,
@@ -128,6 +129,7 @@ enum UXTestFixtures {
     static let setupRoadPlacementID = "setup-road-placement"
     static let setupHandoffID = "setup-handoff"
     static let turnNeedsRollID = "turn-needs-roll"
+    static let turnNeedsRollOnlyID = "turn-needs-roll-only"
     static let drawVoteID = "draw-vote"
     static let endTurnActionID = "end-turn-action"
     static let tradeOfferID = "trade-offer"
@@ -358,6 +360,20 @@ enum UXTestFixtures {
         state: makeTurnFixture(
             rev: 8,
             currentPlayer: host,
+            turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
+        )
+    )
+
+    private static let turnNeedsRollOnly = UXTestFixture(
+        id: turnNeedsRollOnlyID,
+        title: "Turn needs roll only",
+        detail: "Current player before rolling without playable Development Cards.",
+        defaultActorID: host,
+        state: makeTurnFixture(
+            rev: 8,
+            currentPlayer: host,
+            devCardsByPlayer: [:],
+            newDevCardsByPlayer: [:],
             turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
         )
     )
