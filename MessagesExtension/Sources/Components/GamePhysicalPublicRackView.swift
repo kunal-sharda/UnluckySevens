@@ -5,7 +5,7 @@ struct GamePhysicalPublicRackView: View {
     let bank: GameBankTrayModel
     let revealsBankCounts: Bool
     var isTradeShowingSupply = false
-    var previewDiscoverability = false
+    var previewDiscoverability = true
     let developmentDeckCount: Int
     let canBuyDevelopmentCard: Bool
     let onToggleBankCounts: () -> Void

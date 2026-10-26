@@ -1,0 +1,2 @@
+testGameplayActionPlayRoadBuildingCommitsCanonicalState|turn-after-roll|host
+testCurrentGameLifecycleActionsAreDiscoverableForNonHostDuringTurn|turn-after-roll|alice

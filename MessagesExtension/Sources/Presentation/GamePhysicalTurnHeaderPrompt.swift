@@ -19,6 +19,7 @@ enum GamePhysicalTurnHeaderPrompt: String, CaseIterable, Equatable {
     case chooseOneMore
     case placeFirstRoad
     case placeSecondRoad
+    case reviewRoads
 
     var text: String {
         switch self {
@@ -42,6 +43,7 @@ enum GamePhysicalTurnHeaderPrompt: String, CaseIterable, Equatable {
         case .chooseOneMore: return "Choose One More"
         case .placeFirstRoad: return "Place the First Road"
         case .placeSecondRoad: return "Place the Second Road"
+        case .reviewRoads: return "Review Both Roads"
         }
     }
 }

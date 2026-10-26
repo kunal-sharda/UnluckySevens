@@ -32,6 +32,7 @@ enum GameScreenModelBuilder {
             devDeckCount: context.selectedState?.devDeck.count ?? 0,
             canBuyDevCard: actionAvailability.canBuyDevCard,
             actionDock: makeActionDockModel(
+                context: context,
                 actionAvailability: actionAvailability,
                 modeAvailability: context.modeAvailability
             ),
@@ -211,6 +212,7 @@ enum GameScreenModelBuilder {
     }
 
     private static func makeActionDockModel(
+        context: GameScreenContext,
         actionAvailability: GameActionAvailability,
         modeAvailability: GameModeAvailability
     ) -> GameActionDockModel {
@@ -241,7 +243,7 @@ enum GameScreenModelBuilder {
                     kind: .build,
                     title: "Build",
                     systemImage: "hammer.fill",
-                    isEnabled: actionAvailability.canBuild
+                    isEnabled: actionAvailability.canBuild || (!actionAvailability.canRoll && actionAvailability.canEndTurn)
                 ),
                 GameActionDockItem(
                     kind: .devCards,
@@ -258,7 +260,11 @@ enum GameScreenModelBuilder {
                     systemImage: "road.lanes",
                     cost: CoreBuildCostsV1.road,
                     placementInstruction: "Tap a highlighted edge, then tap it again to build.",
-                    isEnabled: modeAvailability.canBuildRoad
+                    isEnabled: modeAvailability.canBuildRoad,
+                    unavailableReason: GamePurchaseBlockerCopy.message(
+                        context.selectedState?.purchaseBlocker(for: .road, viewer: context.actingAs),
+                        kind: .road
+                    )
                 ),
                 GameBuildShelfItem(
                     kind: .buildSettlement,
@@ -266,7 +272,11 @@ enum GameScreenModelBuilder {
                     systemImage: "house.fill",
                     cost: CoreBuildCostsV1.settlement,
                     placementInstruction: "Tap a highlighted corner, then tap it again to build.",
-                    isEnabled: modeAvailability.canBuildSettlement
+                    isEnabled: modeAvailability.canBuildSettlement,
+                    unavailableReason: GamePurchaseBlockerCopy.message(
+                        context.selectedState?.purchaseBlocker(for: .settlement, viewer: context.actingAs),
+                        kind: .settlement
+                    )
                 ),
                 GameBuildShelfItem(
                     kind: .buildCity,
@@ -274,9 +284,13 @@ enum GameScreenModelBuilder {
                     systemImage: "building.2.fill",
                     cost: CoreBuildCostsV1.city,
                     placementInstruction: "Tap one of your highlighted settlements, then tap it again to upgrade.",
-                    isEnabled: modeAvailability.canBuildCity
+                    isEnabled: modeAvailability.canBuildCity,
+                    unavailableReason: GamePurchaseBlockerCopy.message(
+                        context.selectedState?.purchaseBlocker(for: .city, viewer: context.actingAs),
+                        kind: .city
+                    )
                 ),
-            ].filter(\.isEnabled)
+            ].filter { $0.isEnabled || (!actionAvailability.canRoll && actionAvailability.canEndTurn) }
         )
     }
 

@@ -22,12 +22,7 @@ struct GameTurnGameInfoView: View {
     let onResign: () -> Void
     let onHostEnd: () -> Void
     let onClose: () -> Void
-    @State private var pendingConfirmation: Confirmation?
-
-    private enum Confirmation {
-        case resign
-        case hostEnd
-    }
+    @State private var showsActions = false
 
     static func preferredHeight(for model: GameInfoModel) -> CGFloat {
         let visiblePlayerCount = min(model.players.count, 4)
@@ -39,6 +34,33 @@ struct GameTurnGameInfoView: View {
     }
 
     var body: some View {
+        Group {
+            if showsActions {
+                GameLifecycleActionsView(
+                    availability: .init(
+                        claimVictory: canClaimVictory,
+                        resendUpdate: canResendUpdate,
+                        proposeDraw: canProposeDraw,
+                        voteOnDraw: canVoteOnDraw,
+                        resign: canResign,
+                        hostEnd: canHostEnd
+                    ),
+                    unavailableMessage: lifecycleUnavailableMessage,
+                    shouldOfferDrawBeforeHostEnd: shouldOfferDrawBeforeHostEnd,
+                    onAction: performAction,
+                    onClose: onClose
+                )
+            } else {
+                playersPanel
+                    .frame(height: Self.preferredHeight(for: model))
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("uls.turn.gameInfo")
+        .gameTutorialTarget(.gameInfo)
+    }
+
+    private var playersPanel: some View {
         ZStack {
             GameTheme.felt.opacity(0.98)
 
@@ -105,25 +127,6 @@ struct GameTurnGameInfoView: View {
             }
             .padding(14)
 
-            if let pendingConfirmation {
-                GameLifecycleConfirmationView(
-                    title: pendingConfirmation == .resign
-                        ? "Resign from this game?"
-                        : "End this game?",
-                    message: confirmationMessage(for: pendingConfirmation),
-                    destructiveTitle: pendingConfirmation == .resign ? "Resign" : "End Game Anyway",
-                    showsProposeDraw: pendingConfirmation == .hostEnd && shouldOfferDrawBeforeHostEnd && canProposeDraw,
-                    onKeepPlaying: { self.pendingConfirmation = nil },
-                    onProposeDraw: {
-                        onProposeDraw()
-                        self.pendingConfirmation = nil
-                    },
-                    onConfirm: {
-                        if pendingConfirmation == .resign { onResign() } else { onHostEnd() }
-                        self.pendingConfirmation = nil
-                    }
-                )
-            }
         }
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay {
@@ -131,63 +134,33 @@ struct GameTurnGameInfoView: View {
                 .stroke(GamePhysicalTurnPalette.selectedKeyline.opacity(0.74), lineWidth: 1.5)
         }
         .shadow(color: .black.opacity(0.30), radius: 8, y: 3)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("uls.turn.gameInfo")
-        .gameTutorialTarget(.gameInfo)
     }
 
     private var lifecycleMenu: some View {
-        Menu {
-            if canResendUpdate {
-                Button("Resend Game Update", systemImage: "arrow.clockwise", action: onResendUpdate)
-                    .accessibilityIdentifier("uls.gameInfo.resendUpdate")
-            }
-            if canClaimVictory {
-                Button("Declare Victory", systemImage: "trophy", action: onClaimVictory)
-                    .accessibilityIdentifier("uls.gameInfo.claimVictory")
-            }
-            if !canClaimVictory {
-                if let lifecycleUnavailableMessage {
-                    Text(lifecycleUnavailableMessage)
-                }
-                if canVoteOnDraw {
-                    Button("Agree to Draw", systemImage: "hand.thumbsup") { onVoteOnDraw(true) }
-                    Button("Decline Draw", systemImage: "hand.thumbsdown") { onVoteOnDraw(false) }
-                } else if canProposeDraw {
-                    Button("Propose Draw", systemImage: "hand.raised", action: onProposeDraw)
-                }
-                if canResign {
-                    Button("Resign", systemImage: "figure.walk.departure", role: .destructive) {
-                        pendingConfirmation = .resign
-                    }
-                }
-                if canHostEnd {
-                    Button("End Game", systemImage: "xmark.octagon", role: .destructive) {
-                        pendingConfirmation = .hostEnd
-                    }
-                }
-            }
-        } label: {
+        Button { showsActions = true } label: {
             Image(systemName: "ellipsis.circle")
                 .font(.headline)
                 .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .accessibilityLabel("Current game actions")
         .accessibilityIdentifier("uls.gameInfo.lifecycleActions")
     }
 
-    private func confirmationMessage(for confirmation: Confirmation) -> String {
-        switch confirmation {
-        case .resign:
-            "You will leave active play. Your pieces stay on the board, and the remaining players continue."
-        case .hostEnd:
-            shouldOfferDrawBeforeHostEnd
-                ? "A draw gives every active player a say. You can still end the game immediately as host."
-                : "Ending is unilateral. Final scores remain visible, but no winner is declared."
+    private func performAction(_ action: GameLifecycleActionPresentation.Action) {
+        switch action {
+        case .claimVictory: onClaimVictory()
+        case .resendUpdate: onResendUpdate()
+        case .proposeDraw: onProposeDraw()
+        case .agreeDraw: onVoteOnDraw(true)
+        case .declineDraw: onVoteOnDraw(false)
+        case .resign: onResign()
+        case .hostEnd: onHostEnd()
         }
     }
+
 }
 
 private struct GameTurnGameInfoPlayerRow: View {

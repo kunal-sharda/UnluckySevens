@@ -1,0 +1,6 @@
+testGameplayActionBuyDevCardCommitsCanonicalState|turn-after-roll|host
+testProductionTutorialPreferenceAndInspection|turn-after-roll|host
+testGameplayActionPlayRoadBuildingCommitsCanonicalState|turn-after-roll|host
+testCurrentGameLifecycleActionsAreDiscoverableForNonHostDuringTurn|turn-after-roll|alice
+testCurrentGameHostEndRemainsInCurrentGame|turn-after-roll|host
+testCurrentGameLifecycleDrawVoteRemainsInCurrentGame|draw-vote|alice

@@ -19,6 +19,21 @@ final class AppPreferencesTests: XCTestCase {
         super.tearDown()
     }
 
+    func testTutorialPopupsDefaultOn() {
+        XCTAssertTrue(AppPreferences(userDefaults: userDefaults).tutorialPopupsEnabled)
+    }
+
+    func testTutorialDisableAndReenablePersistAcrossPreferenceInstances() {
+        let initial = AppPreferences(userDefaults: userDefaults)
+        initial.tutorialPopupsEnabled = false
+        let reopened = AppPreferences(userDefaults: userDefaults)
+        XCTAssertFalse(reopened.tutorialPopupsEnabled)
+        XCTAssertFalse(userDefaults.bool(forKey: AppPreferences.tutorialPopupsKey))
+        reopened.tutorialPopupsEnabled = true
+        XCTAssertTrue(AppPreferences(userDefaults: userDefaults).tutorialPopupsEnabled)
+        XCTAssertFalse(reopened.skipsAnimations, "Tutorial preferences must not change animation settings")
+    }
+
     func testSkipAnimationsDefaultsOff() {
         XCTAssertFalse(AppPreferences(userDefaults: userDefaults).skipsAnimations)
     }

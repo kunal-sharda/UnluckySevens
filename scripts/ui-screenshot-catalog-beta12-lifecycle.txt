@@ -1,0 +1,3 @@
+testCurrentGameLifecycleActionsAreDiscoverableForNonHostDuringTurn|turn-after-roll|alice
+testCurrentGameHostEndRemainsInCurrentGame|turn-after-roll|host
+testCurrentGameLifecycleDrawVoteRemainsInCurrentGame|draw-vote|alice

@@ -37,8 +37,20 @@ enum GameBoardOverlayModelBuilder {
             legalNodeIDs: legalNodes,
             legalEdgeIDs: legalEdges,
             anchorNodeID: anchorNodeID,
-            selectedTarget: normalizedSelection
+            selectedTarget: normalizedSelection,
+            pendingEdgeIDs: pendingRoadEdges(state: state, actingAs: actingAs, mode: mode, draft: devCardDraft)
         )
+    }
+
+    private static func pendingRoadEdges(
+        state: CoreGameStateV1, actingAs: String?, mode: GameMode, draft: GameDevCardDraft?
+    ) -> [EdgeID] {
+        guard mode == .devCardRoadBuildingFirst || mode == .devCardRoadBuildingSecond,
+              let actor = actingAs,
+              case let .roadBuilding(first, second) = draft else { return [] }
+        var pending = GameRoadBuildingDraft(firstEdgeID: first, secondEdgeID: second)
+        pending.revalidate(in: state, actor: actor)
+        return pending.pendingEdgeIDs
     }
 
     private static func setupAnchorNodeID(

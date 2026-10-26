@@ -173,7 +173,7 @@ final class GameScreenModelBuilderTests: XCTestCase {
         XCTAssertTrue(model.actionDock.buildShelfItems.isEmpty)
     }
 
-    func testBuildShelfIncludesOnlyExecutablePiecesWithCoreOwnedCosts() {
+    func testBuildShelfRetainsUnavailablePiecesWithCoreOwnedCosts() {
         let model = GameScreenModelBuilder.build(
             context: GameScreenContext(
                 selectedState: makeState(resourcesByPlayer: ["A": .zero, "B": .zero]),
@@ -202,12 +202,13 @@ final class GameScreenModelBuilderTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(model.actionDock.buildShelfItems.map(\.kind), [.buildRoad, .buildCity])
-        XCTAssertEqual(model.actionDock.buildShelfItems.map(\.cost), [CoreBuildCostsV1.road, CoreBuildCostsV1.city])
+        XCTAssertEqual(model.actionDock.buildShelfItems.map(\.kind), [.buildRoad, .buildSettlement, .buildCity])
+        XCTAssertEqual(model.actionDock.buildShelfItems.map(\.cost), [CoreBuildCostsV1.road, CoreBuildCostsV1.settlement, CoreBuildCostsV1.city])
         XCTAssertEqual(
             model.actionDock.buildShelfItems.map(\.placementInstruction),
             [
                 "Tap a highlighted edge, then tap it again to build.",
+                "Tap a highlighted corner, then tap it again to build.",
                 "Tap one of your highlighted settlements, then tap it again to upgrade.",
             ]
         )

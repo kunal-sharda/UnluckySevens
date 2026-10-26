@@ -33,6 +33,12 @@ struct AppSettingsView: View {
                     ScrollView(.vertical, showsIndicators: true) {
                         VStack(alignment: .leading, spacing: 0) {
                             skipAnimationsRow
+                            divider
+                            Toggle("Tutorial pop-ups", isOn: $preferences.tutorialPopupsEnabled)
+                                .font(GameTheme.headingFont)
+                                .foregroundStyle(GameTheme.surface)
+                                .padding(.vertical, 18)
+                                .accessibilityIdentifier("uls.settings.tutorialPopups")
                             #if DEBUG
                             if showsTutorialPopupPreviewSetting {
                                 divider

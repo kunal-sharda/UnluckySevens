@@ -101,6 +101,25 @@ struct GameShellView: View {
     @State private var physicalDiceRollResult: GameDiceRollResult?
     @State private var physicalDiceCompletionGate = GameDiceRollCompletionGate()
     @State private var showsPhysicalTradeRecipients = false
+    @State private var showsDevPurchase = false
+    @State private var isSendingGameUpdate = false
+    @State private var roadSubmissionHash: String?
+    @State private var purchasedDevKind: GameDevCardVisualKind?
+
+    private var roadDraft: GameRoadBuildingDraft {
+        if case let .roadBuilding(first, second) = devCardDraft {
+            return GameRoadBuildingDraft(firstEdgeID: first, secondEdgeID: second)
+        }
+        return GameRoadBuildingDraft()
+    }
+
+    private func reviseRoadDraft(undo: Bool) {
+        var draft = roadDraft
+        if undo { draft.undo() } else { draft.reset() }
+        devCardDraft = draft.devCardDraft
+        currentMode = draft.mode
+        clearBoardSelection()
+    }
 
     init(
         viewModel: LobbyDriverViewModel,
@@ -124,6 +143,7 @@ struct GameShellView: View {
         self.tutorialHeaderTitle = tutorialHeaderTitle
         let initialProjection = viewModel.gameplayShellProjection
         _shellProjection = State(initialValue: initialProjection)
+        _isSendingGameUpdate = State(initialValue: viewModel.isSendingGameUpdate)
         _currentMode = State(initialValue: initialMode)
         _shellRoute = State(initialValue: initialRoute)
         _isHandOpen = State(initialValue: initialRoute == .none)
@@ -422,7 +442,7 @@ struct GameShellView: View {
                                             bank: bankTrayModel,
                                             revealsBankCounts: physicalBankCountsRevealed || isTradePanelPresented,
                                             isTradeShowingSupply: isTradePanelPresented,
-                                            previewDiscoverability: designPreviewID.hasPrefix("preview-cost-"),
+                                            previewDiscoverability: true,
                                             developmentDeckCount: screenModel.devDeckCount,
                                             canBuyDevelopmentCard: screenModel.canBuyDevCard,
                                             onToggleBankCounts: {
@@ -552,7 +572,8 @@ struct GameShellView: View {
                         )
                         .contentShape(Rectangle())
 
-                        if !isGameOver, !isPhysicalStartTurn, !isActionablePhysicalDiscard {
+                        if !isGameOver, !isPhysicalStartTurn, !isActionablePhysicalDiscard,
+                           resolvedMode != .devCardRoadBuildingFirst, resolvedMode != .devCardRoadBuildingSecond {
                             Group {
                                 if let setupPlacementModel, isPhysicalSetup {
                                     GamePhysicalSetupPieceRailView(
@@ -670,9 +691,7 @@ struct GameShellView: View {
                                     ownedDevelopmentCards: screenModel.ownedDevCards,
                                     buildItems: screenModel.actionDock.buildShelfItems,
                                     devCardPanel: devCardPanelModel,
-                                    canOpenDevCards: screenModel.actionDock.primaryItems.contains {
-                                        $0.kind == .devCards && $0.isEnabled
-                                    },
+                                    canOpenDevCards: !screenModel.ownedDevCards.isEmpty,
                                     playerColor: physicalPlayerColor,
                                     onSelectBuild: handleBuildShelfSelection,
                                     onOpenDevCards: {
@@ -782,12 +801,6 @@ struct GameShellView: View {
                                     onClose: handleGameInfoToggle
                                 )
                                 .gameTutorialTarget(.gameInfo)
-                                .frame(
-                                    height: GameTurnGameInfoView.preferredHeight(
-                                        for: screenModel.gameInfo
-                                    ),
-                                    alignment: .top
-                                )
                                 .frame(maxWidth: 346)
                                 .padding(.horizontal, 20)
                             }
@@ -1020,6 +1033,54 @@ struct GameShellView: View {
                         .zIndex(5)
                     }
 
+                    if !isGameOver, !designPreviewID.hasPrefix("preview-") {
+                        if showsDevPurchase || (shellRoute == .build && preferences.tutorialPopupsEnabled && resolvedMode == .idle) {
+                            ZStack {
+                                Color.black.opacity(0.3)
+                                ScrollView {
+                                    GamePurchaseTutorialView(
+                                        buildItems: showsDevPurchase ? nil : screenModel.actionDock.buildShelfItems,
+                                        hand: screenModel.handTray,
+                                        canBuy: screenModel.canBuyDevCard,
+                                        unavailableReason: viewModel.devPurchaseUnavailableReason(),
+                                        tutorialsEnabled: preferences.tutorialPopupsEnabled,
+                                        playerColor: physicalPlayerColor,
+                                        onBuild: handleBuildShelfSelection,
+                                        onBuy: confirmPublicDevDeckPurchase,
+                                        onClose: { showsDevPurchase = false; shellRoute = .none },
+                                        onDisable: { preferences.tutorialPopupsEnabled = false }
+                                    ).padding(12)
+                                }.fixedSize(horizontal: false, vertical: true)
+                            }
+                            .frame(width: shellSize.width, height: shellSize.height)
+                            .zIndex(6)
+                        } else if preferences.tutorialPopupsEnabled, let purchasedDevKind,
+                                  let panel = viewModel.devPurchaseTutorialPanel {
+                            ZStack {
+                                Color.black.opacity(0.3)
+                                GameDevTimingTutorialView(panel: panel, kind: purchasedDevKind,
+                                    onDismiss: { self.purchasedDevKind = nil },
+                                    onDisableTutorialPopups: {
+                                        preferences.tutorialPopupsEnabled = false
+                                        self.purchasedDevKind = nil
+                                    }).padding(12)
+                            }.frame(width: shellSize.width, height: shellSize.height).zIndex(6)
+                        }
+                        if resolvedMode == .devCardRoadBuildingFirst || resolvedMode == .devCardRoadBuildingSecond {
+                            VStack {
+                                Spacer()
+                                GameRoadBuildingControls(draft: roadDraft,
+                                    onUndo: { reviseRoadDraft(undo: true) },
+                                    onStartOver: { reviseRoadDraft(undo: false) },
+                                    onCancel: dismissDevCardFlow,
+                                    onConfirm: handleConfirmDevCardDraft,
+                                    isSending: isSendingGameUpdate)
+                                    .padding(.horizontal, 12)
+                                    .padding(.bottom, hostBottomClearance)
+                            }.frame(width: shellSize.width, height: shellSize.height).zIndex(3)
+                        }
+                    }
+
                     #if DEBUG
                     if designPreviewID.hasPrefix("preview-cost-"), previewTutorialPopupsEnabled {
                         GamePurchaseCostPreviewView(
@@ -1084,10 +1145,25 @@ struct GameShellView: View {
                 devCardDraft = nil
             }
         }
+        .onReceive(viewModel.$isSendingGameUpdate.removeDuplicates()) { isSendingGameUpdate = $0 }
+        .onReceive(viewModel.$devPurchaseTutorialToken.dropFirst()) { _ in
+            showsDevPurchase = false
+            purchasedDevKind = preferences.tutorialPopupsEnabled ? viewModel.devPurchaseTutorialKind : nil
+        }
         .onReceive(viewModel.$gameplayShellProjection.removeDuplicates()) { projection in
             let draftContextChanged = shellProjection.gameId != projection.gameId
                 || shellProjection.stateHash != projection.stateHash
                 || shellProjection.gameScreenModel.handTray != projection.gameScreenModel.handTray
+            if roadSubmissionHash == nil, projection.stateHash != shellProjection.stateHash,
+               case .roadBuilding = devCardDraft {
+                devCardDraft = .roadBuilding(firstEdgeID: nil, secondEdgeID: nil)
+                currentMode = .devCardRoadBuildingFirst
+                clearBoardSelection()
+            }
+            if let anchor = roadSubmissionHash, projection.stateHash != anchor {
+                roadSubmissionHash = nil
+                dismissDevCardFlow()
+            }
             shellProjection = projection
             synchronizeNormalTurnContext(with: projection)
             synchronizeTradeOverlay(with: projection, draftContextChanged: draftContextChanged)
@@ -1481,7 +1557,13 @@ struct GameShellView: View {
         #if DEBUG
         if designPreviewID.hasPrefix("preview-cost-") { return }
         #endif
+        purchasedDevKind = nil
+        showsDevPurchase = true
+    }
+
+    private func confirmPublicDevDeckPurchase() {
         guard viewModel.handleDevCardAction(.buyDevCard) else { return }
+        // The accepted local handoff emits the private tutorial event.
         currentMode = .idle
         shellRoute = .none
         isHandOpen = true
@@ -1889,6 +1971,9 @@ struct GameShellView: View {
     }
 
     private func resetLocalShellInteractionState() {
+        showsDevPurchase = false
+        purchasedDevKind = nil
+        roadSubmissionHash = nil
         currentMode = .idle
         selectedBoardTarget = nil
         boardCommitDraft = nil
@@ -1937,11 +2022,14 @@ struct GameShellView: View {
         guard let devCardDraft else {
             return
         }
+        let isRoad: Bool
+        if case .roadBuilding = devCardDraft { isRoad = true } else { isRoad = false }
+        if isRoad { roadSubmissionHash = shellProjection.stateHash }
         guard viewModel.publishDevCardDraft(devCardDraft) else {
+            roadSubmissionHash = nil
             return
         }
-
-        dismissDevCardFlow()
+        if !isRoad { dismissDevCardFlow() }
     }
 
     private func handleBankResourceSelection(_ resource: ResourceV1, mode: GameMode) {
@@ -1974,6 +2062,7 @@ struct GameShellView: View {
     }
 
     private func dismissDevCardFlow() {
+        roadSubmissionHash = nil
         devCardDraft = nil
         currentMode = .idle
         shellRoute = .none
@@ -1981,6 +2070,7 @@ struct GameShellView: View {
     }
 
     private func handleBoardTap(_ target: GameBoardTarget, mode: GameMode) {
+        guard !viewModel.isSendingGameUpdate else { return }
         let normalizedTarget = normalizedBoardTarget(for: target, mode: mode)
 
         switch mode {
@@ -2068,12 +2158,9 @@ struct GameShellView: View {
                 boardHintText = failureHint(for: mode)
                 return
             }
-            if viewModel.publishDevCardDraft(.roadBuilding(firstEdgeID: firstEdgeID, secondEdgeID: edgeID)) {
-                dismissDevCardFlow()
-            } else {
-                selectedBoardTarget = normalizedTarget
-                boardHintText = normalizedTarget?.selectionLabel(for: mode)
-            }
+            devCardDraft = .roadBuilding(firstEdgeID: firstEdgeID, secondEdgeID: edgeID)
+            selectedBoardTarget = nil
+            boardHintText = "Review both roads"
         default:
             selectedBoardTarget = nil
             boardHintText = nil

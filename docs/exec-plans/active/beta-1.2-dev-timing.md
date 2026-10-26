@@ -7,7 +7,7 @@ Preview the newly purchased Dev Card timing guidance requested by the owner on 2
 ## Execution Settings
 
 - Validation profile: `standard`
-- Delivery posture: `checkpointed`
+- Delivery posture: `direct`
 - Rationale: requested addition joins the still-unapproved tutorial visual checkpoint. Implement an honest DEBUG preview and obtain owner visual judgment before production trigger wiring.
 
 ## Context and Boundaries
@@ -75,3 +75,7 @@ Preview delivery closeout: canonical builds, focused model proof and scoped Mess
 ### Visual acceptance — 2026-10-25
 
 Owner response to the final resignation, Dev timing, shared-result and Road Building captures: “those looks great!” The presented direction is approved; this supersedes pending owner-judgment notes above. Production integration and its scoped behavior tests, fresh reviews and completion gate remain outstanding. This acceptance-only update changes no runtime code. Validation: doc freshness and whitespace checks; prior preview evidence remains applicable without rerunning simulator captures.
+
+### Production integration authorized — 2026-10-25
+
+Owner explicitly requests integrating all approved designs and writing tests. Standard/direct; visual checkpoint passed. Lock proof before edits: AppPreferences persistence/default/re-enable tests; private new-card delta and purchase-inspection tests; generated extension build and scoped resolver/model suites; installed Messages journeys for Build inspection, Dev explicit confirmation/new-card dismissal/disable, Settings re-enable, Road review, and lifecycle cancel/confirm. Use at most two visual rounds, with diagnosed infrastructure retries under QA. Fresh constraint/product-UX review and completion gate follow implementation. No protocol or rule changes. Production tutorial state must be local; disabled tutorials preserve required choices and explicit purchase confirmation.

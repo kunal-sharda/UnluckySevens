@@ -21,6 +21,7 @@ struct UXTestingControlsView: View {
                 quickStateMenu
                 startTurnDevChooserButton
                 hideChromeButton
+                expandScreenshotButton
                 toggleButton
             }
 
@@ -272,6 +273,17 @@ struct UXTestingControlsView: View {
         .accessibilityIdentifier("uls.uxLab.restoreChrome")
     }
 
+    private var expandScreenshotButton: some View {
+        cleanShotButton(
+            systemImage: "arrow.up.left.and.arrow.down.right",
+            accessibilityLabel: "Expand for Screenshot",
+            accessibilityIdentifier: "uls.uxLab.expandScreenshot"
+        ) {
+            viewModel.onRequestExpanded?()
+            viewModel.hideUXTestingChrome()
+        }
+    }
+
     private var hideChromeButton: some View {
         cleanShotButton(
             systemImage: "eye.slash",
@@ -285,6 +297,16 @@ struct UXTestingControlsView: View {
     private var controlsPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
+
+            cleanShotChipButton(
+                title: "Road Action",
+                systemImage: "road.lanes",
+                accessibilityLabel: "Clean expanded Road Building action",
+                accessibilityIdentifier: "uls.uxLab.cleanShot.roadBuildingExpanded.direct"
+            ) {
+                viewModel.onRequestExpanded?()
+                activateCleanFixture(id: UXTestFixtures.endTurnActionID, actingAs: UXTestFixtures.host)
+            }
 
             HStack(spacing: 8) {
                 cleanShotChipButton(

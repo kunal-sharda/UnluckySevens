@@ -15,6 +15,9 @@ final class LobbyDriverViewModel: ObservableObject {
     @Published var staleContextWarning: String = "-"
     @Published var boardStrategy: BoardGenStrategyV1
     @Published private(set) var gameShellResetToken: Int = 0
+    @Published private(set) var devPurchaseTutorialToken = 0
+    private(set) var devPurchaseTutorialPanel: GameDevCardPanelModel?
+    private(set) var devPurchaseTutorialKind: GameDevCardVisualKind?
     @Published private(set) var recoveredGames: [ActiveGameRecoverySummary] = []
     @Published private(set) var dismissRequestToken: Int = 0
     @Published private var compactFreshLaunchState = CompactFreshLaunchState()
@@ -575,6 +578,13 @@ final class LobbyDriverViewModel: ObservableObject {
         return model
     }
 
+    func devPurchaseUnavailableReason() -> String? {
+        GamePurchaseBlockerCopy.message(
+            selectedState?.purchaseBlocker(for: .developmentCard, viewer: localActorIdentifier()),
+            kind: .developmentCard
+        )
+    }
+
     func makeDevCardPanelModel(
         mode: GameMode,
         draft: GameDevCardDraft?
@@ -682,9 +692,15 @@ final class LobbyDriverViewModel: ObservableObject {
                 && isCurrentActor
                 && !stealVictimOptions.isEmpty,
             canTrade: canOpenTradePanel,
-            canPlayDevCard: shellActionAvailability.canPlayDevCards,
+            canPlayDevCard: shellActionAvailability.canPlayDevCards || canInspectOwnedDevCards,
             canDiscard: state.phase == .turn && state.turnState?.step == .pendingDiscards
         )
+    }
+
+    private var canInspectOwnedDevCards: Bool {
+        guard let state = selectedState, let actor = localActorIdentifier(),
+              state.phase == .turn, state.turnState?.step.allowsDevCardPlay == true else { return false }
+        return state.visibleDevCards(for: actor).contains { $0.player == actor && $0.totalCount > 0 }
     }
 
     private var canOpenTradePanel: Bool {
@@ -1791,7 +1807,14 @@ final class LobbyDriverViewModel: ObservableObject {
             activateAuthoringStateIfNeeded(resolution)
             preparedAction = true
             do {
-                try applyAndPublishTurnIntent(draft, successStatus: "Published dev-card purchase")
+                let before = GameDevCardPanelModelBuilder.build(state: resolution.state, actingAs: draft.actor)
+                try applyAndPublishTurnIntent(draft, successStatus: "Published dev-card purchase") { [weak self] accepted in
+                    guard let self, self.selectedState?.gameId == accepted.gameId else { return }
+                    let after = GameDevCardPanelModelBuilder.build(state: accepted, actingAs: draft.actor)
+                    self.devPurchaseTutorialKind = GameDevPurchaseTutorial.newKind(before: before, after: after)
+                    self.devPurchaseTutorialPanel = after
+                    self.devPurchaseTutorialToken += 1
+                }
                 return true
             } catch {
                 setLastError("Dev-card action failed: \(error.localizedDescription)")
@@ -3170,7 +3193,8 @@ final class LobbyDriverViewModel: ObservableObject {
     @discardableResult
     private func applyAndPublishTurnIntent(
         _ draft: TurnActionDraft,
-        successStatus: String
+        successStatus: String,
+        onAccepted: ((CoreGameStateV1) -> Void)? = nil
     ) throws -> CoreGameStateV1 {
         let resolution = actionAuthoringStateResolution(for: draft.anchorGameId)
         activateAuthoringStateIfNeeded(resolution)
@@ -3207,7 +3231,8 @@ final class LobbyDriverViewModel: ObservableObject {
                 resultingState: toState
             ),
             state: toState,
-            successStatus: successStatus, diagnosticAction: ReliabilityDiagnosticBuffer.Action.turn(draft.intent)
+            successStatus: successStatus, diagnosticAction: ReliabilityDiagnosticBuffer.Action.turn(draft.intent),
+            onAccepted: { onAccepted?(toState) }
         )
         return toState
     }

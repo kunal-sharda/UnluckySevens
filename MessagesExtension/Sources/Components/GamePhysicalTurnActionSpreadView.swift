@@ -67,8 +67,8 @@ struct GamePhysicalTurnActionSpreadView: View {
                 .accessibilityValue(ownedDevAccessibilityValue)
                 .accessibilityHint(
                     canOpenDevCards
-                        ? "Opens your playable Dev Cards"
-                        : "No owned Dev Cards are playable now"
+                        ? "Opens your owned Dev Cards and their timing"
+                        : "No owned Dev Cards to inspect now"
                 )
             }
         }
@@ -194,15 +194,22 @@ struct GamePhysicalTurnActionSpreadView: View {
 
                         costRow(item.cost)
                             .frame(height: 16)
+                        if !item.isEnabled, let reason = item.unavailableReason {
+                            Text(reason).font(.caption2)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                     .frame(width: 76)
                     .frame(minHeight: 74)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .disabled(!item.isEnabled)
+                .opacity(item.isEnabled ? 1 : 0.55)
                 .accessibilityIdentifier("uls.physicalProps.build.\(item.kind.rawValue)")
                 .accessibilityLabel(buildAccessibilityLabel(item))
-                .accessibilityHint("Shows placement targets for \(item.title)")
+                .accessibilityHint(item.isEnabled ? "Shows placement targets for \(item.title)" : item.unavailableReason ?? "Unavailable now")
                 .gameTutorialTarget(tutorialTarget(for: item.kind))
             }
         }

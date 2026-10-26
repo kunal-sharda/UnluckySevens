@@ -2,6 +2,12 @@ import XCTest
 @testable import MessagesExtensionSupport
 
 final class GamePhysicalTurnHeaderPromptResolverTests: XCTestCase {
+    func testReadyRoadDraftRequestsReviewInsteadOfAnotherPlacement() {
+        XCTAssertEqual(GamePhysicalTurnHeaderPromptResolver.prompt(route: .devCards,
+            mode: .devCardRoadBuildingSecond, hasBoardCommitDraft: false,
+            devCardDraft: .roadBuilding(firstEdgeID: 1, secondEdgeID: 2)), .reviewRoads)
+    }
+
     func testEveryPhysicalInstructionHeaderUsesTheApprovedTitleCaseCopy() {
         let expected: [(GamePhysicalTurnHeaderPrompt, String)] = [
             (.choosePiece, "Choose a Piece"),
@@ -24,6 +30,7 @@ final class GamePhysicalTurnHeaderPromptResolverTests: XCTestCase {
             (.chooseOneMore, "Choose One More"),
             (.placeFirstRoad, "Place the First Road"),
             (.placeSecondRoad, "Place the Second Road"),
+            (.reviewRoads, "Review Both Roads"),
         ]
 
         XCTAssertEqual(expected.count, GamePhysicalTurnHeaderPrompt.allCases.count)

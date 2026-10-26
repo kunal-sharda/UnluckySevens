@@ -44,6 +44,7 @@ enum GamePhysicalTurnHeaderPromptResolver {
         case .devCardRoadBuildingFirst:
             return .placeFirstRoad
         case .devCardRoadBuildingSecond:
+            if case .roadBuilding(.some, .some) = devCardDraft { return .reviewRoads }
             return .placeSecondRoad
         case .idle,
              .setup,

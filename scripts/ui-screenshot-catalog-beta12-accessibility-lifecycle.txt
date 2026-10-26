@@ -1,0 +1,1 @@
+testCurrentGameLifecycleActionsAreDiscoverableForNonHostDuringTurn|turn-after-roll|alice

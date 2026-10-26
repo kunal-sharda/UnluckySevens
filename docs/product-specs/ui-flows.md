@@ -190,6 +190,7 @@ The upper instruction is the short action heading centered between Settings and 
 | Year of Plenty after one selection | `Choose One More` |
 | Road Building first placement | `Place the First Road` |
 | Road Building second placement | `Place the Second Road` |
+| Road Building pair ready | `Review Both Roads` |
 
 ### Current Exclusions
 
@@ -299,7 +300,7 @@ Player Trade requirements:
 
 ### Contextual Tutorial Pop-ups and Tabletop Discoverability
 
-Approved requirement (2026-10-24), pending implementation: [#55](https://github.com/kunal-sharda/UnluckySevens/issues/55), coordinated with costs in #13 and Dev guidance in #14.
+Approved behavior (2026-10-25): [#55](https://github.com/kunal-sharda/UnluckySevens/issues/55), coordinated with costs in #13 and Dev guidance in #14.
 
 - The Build and Dev Card panels previewed on `beta-1.2` are themselves the optional contextual tutorial pop-ups. They retain the physical piece/card artwork and cost presentation; they are not replaced by anchored text hints. With tutorial pop-ups disabled, ordinary play retains the physical tabletop interaction.
 - Every tutorial pop-up includes **Disable tutorial pop-ups**, which turns off all contextual tutorial pop-ups through a persistent device-local preference. Settings allows re-enabling them. This preference does not alter canonical state or transport.
@@ -309,6 +310,10 @@ Approved requirement (2026-10-24), pending implementation: [#55](https://github.
 - Additional scenario-specific tutorial pop-ups may use the same mechanism. Define each scenario's trigger, content and dismissal behavior before adding it; no expanded curriculum is committed by this requirement.
 - While enabled, tutorial pop-ups appear every time their relevant scenario occurs, until the player disables them; dismissing a single occurrence does not permanently suppress that scenario. Lock the exact scenario triggers and revised enabled/disabled interaction proof before implementation. Discoverability requires representative new-player observation of finding Bank and Dev actions without verbal coaching, not screenshots alone.
 - This contextual help supplements the separate lobby tutorial and planned Learn & Reference paths; disabling it does not remove access to those learning resources.
+
+Road Building keeps both numbered road selections local until **Play Road Building**. Undo removes the last choice; Start Over clears both; Cancel discards the draft without consuming a card. Sending locks the draft; a failed handoff leaves it available for retry. A received canonical update resets stale selections, and confirmation revalidates through Core before one atomic publication. The compact control rail replaces the ordinary lower props during this flow, without refitting or remounting the board.
+
+Build teaching opens each time Build is entered while enabled. With teaching off, the physical piece spread retains costs, disabled states and reasons. The public Dev pile always opens inspection with an explicit Buy Dev Card action; disabling teaching never makes a deck tap purchase immediately. A successful local purchase emits private timing guidance; failed sends and incoming remote updates do not. Acknowledgement dismisses only that occurrence. Held/new cards remain inspectable through Hand → Dev Cards without acquiring play actions.
 
 ### Tutorial Lesson Map
 

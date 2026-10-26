@@ -7,7 +7,7 @@ Address [#16](https://github.com/kunal-sharda/UnluckySevens/issues/16): show Roa
 ## Execution Settings
 
 - Validation profile: `standard`
-- Delivery posture: `checkpointed`
+- Delivery posture: `direct`
 - Rationale: the issue requires an interaction checkpoint; current authorization requests implementation and report-back, not approval of an unseen composition.
 
 ## Context and Boundaries
@@ -76,3 +76,15 @@ Preview delivery closeout: canonical builds, focused model proof and scoped Mess
 ### Visual acceptance — 2026-10-25
 
 Owner response to the final resignation, Dev timing, shared-result and Road Building captures: “those looks great!” The presented direction is approved; this supersedes pending owner-judgment notes above. Production integration and its scoped behavior tests, fresh reviews and completion gate remain outstanding. This acceptance-only update changes no runtime code. Validation: doc freshness and whitespace checks; prior preview evidence remains applicable without rerunning simulator captures.
+
+### Production implementation authorization — 2026-10-25
+
+Owner approved the shown design, then explicitly requested production integration and tests. Standard/direct for this settled direction. Cancel, Undo and Start Over become actual dark-felt, light-outlined buttons distinct from the brown primary confirmation. Parent owns shell wiring and shared validation; road worker owns production draft/controls, pending-edge projection and focused tests.
+
+Locked production proof before edits: draft tests covering legal dependent selections, replacement, undo/reset, invalid input and stale confirmation; view-model publication tests covering no publish before confirmation, one accepted atomic two-road result with one audit/receipt, duplicate confirmation rejection and failed-send retry; overlay tests that pending roads appear only during the road flow; production UI journey for select/undo/reset/cancel/reopen/confirm, stable board frame/mount and canonical state until confirm. At most three representative road captures in the shared batch plus one diagnosed correction round. Parent runs canonical generation, scoped simulator tests, UI harness and standard completion gate serially, with fresh constraint/product-UX review. Existing Core atomic test remains applicable; no Core/protocol behavior changes. Wider physical-device release acceptance is outside this implementation slice.
+
+Road production component checkpoint: promoted the tested local draft to `GameRoadBuildingDraft`, retained preview aliases, introduced reusable production controls with dark felt/light-outline 44pt revision buttons and accessibility-size stacking, and projected only revalidated pending road IDs during road modes. Added `GameRoadBuildingProductionTests`: actual publication handoff verifies one pending send, accepted atomic pair/one revision/one audit/card decrement/no resource cost, rejects duplicate confirmations, and preserves canonical state after a failed send with explicit retry. Overlay tests exclude idle and invalid drafts. Existing four draft tests now cover the production type through the alias. Swift syntax and whitespace checks pass; generated compile/runtime/UI proof remain parent-coordinated and are not claimed yet. No viewmodel or engine changes were necessary; shell integration must retain draft while send is pending and on failure.
+
+### Accessibility-size non-overlap correction — 2026-10-25
+
+Production AX journey attempt 3 reached the final two-road review and demonstrated the predeclared non-overlap defect: rail minY605.833 versus board maxY687.000. Source and `/tmp/uls-ax-progress.png` inspection identify the duplicated progress heading plus four vertically stacked button rows as the cause. Controls-only correction retains full Dynamic Type text and 44pt targets: at accessibility sizes Cancel and Undo share a row, Start Over occupies the next row, and confirmation remains a separate brown row. The top table header already communicates road progress; the duplicate rail heading is omitted only at accessibility sizes, retaining progress and instructions as the rail's accessibility value/hint and retaining any exceptional guidance visibly. Normal-size appearance and button IDs/actions remain unchanged. No board geometry, identity, scale or shell reservations change. Parent will rerun only the failed production AX road journey, then inspect the accepted artifact. Syntax/whitespace checks pass; visual/runtime correction is not yet claimed verified.

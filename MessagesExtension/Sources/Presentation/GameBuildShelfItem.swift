@@ -15,6 +15,7 @@ struct GameBuildShelfItem: Identifiable, Equatable {
     let cost: ResourceHandV1
     let placementInstruction: String
     let isEnabled: Bool
+    var unavailableReason: String? = nil
 
     var id: Kind { kind }
 }
