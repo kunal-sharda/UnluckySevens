@@ -2372,6 +2372,14 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
     }
 
     func testGameplayActionBuyDevCardCommitsCanonicalState() throws {
+        try verifyGameplayDevPurchase(captureTiming: true)
+    }
+
+    func testTutorialTimingPreferenceControls() throws {
+        try verifyGameplayDevPurchase(captureTiming: false)
+    }
+
+    private func verifyGameplayDevPurchase(captureTiming: Bool) throws {
         openUnluckySevensExtension()
         waitForUXLabChrome()
         loadTurnGameplaySlice()
@@ -2392,32 +2400,49 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachGameplayActionEvidence(name: "Buy Dev Card", before: before, after: after)
         let gotIt = messages.buttons["uls.tutorial.devTiming.dismiss"].firstMatch
         XCTAssertTrue(waitForHittable(gotIt, timeout: 4))
-        attachScreenshot(named: "New Dev Card timing")
+        XCTAssertTrue(messages.buttons["uls.tutorial.devTiming.disableTip"].firstMatch.exists)
+        XCTAssertTrue(messages.buttons["uls.tutorial.devTiming.disableTutorials"].firstMatch.exists)
+        if captureTiming { attachScreenshot(named: "New Dev Card timing") }
         gotIt.tap()
         XCTAssertEqual(gameplayActionEvidenceValue(), after)
     }
 
     func testProductionTutorialPreferenceAndInspection() throws {
+        try verifyIndividualTutorialPreferences(captureBuild: true)
+    }
+
+    func testIndividualTutorialPreferencesAtAccessibilitySize() throws {
+        try verifyIndividualTutorialPreferences(captureBuild: false)
+    }
+
+    private func verifyIndividualTutorialPreferences(captureBuild: Bool) throws {
         openCanonicalPostRollActionFixture()
         let before = gameplayActionEvidenceValue()
         let board = turnElement(identifier: "uls.tabletop.board", labels: [])
         let host = turnElement(identifier: "uls.tabletop.boardHost", labels: [])
         let frame = board.frame
         let mount = boardMountIdentity(of: host)
-        turnElement(identifier: "uls.turnObject.build", labels: ["Build"]).tap()
+        let build = turnElement(identifier: "uls.turnObject.build", labels: ["Build"])
+        build.tap()
         let disable = messages.buttons["uls.tutorial.purchase.disable"].firstMatch
+        let disableTip = messages.buttons["uls.tutorial.purchase.disableTip"].firstMatch
+        XCTAssertTrue(waitForHittable(disableTip, timeout: 4))
         XCTAssertTrue(waitForHittable(disable, timeout: 4))
-        attachScreenshot(named: "Production Build tutorial")
-        disable.tap()
-        XCTAssertTrue(disable.waitForNonExistence(timeout: 4))
+        XCTAssertGreaterThanOrEqual(disableTip.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(disable.frame.height, 44)
+        if captureBuild { attachScreenshot(named: "Tutorial - Disable this or all") }
+        disableTip.tap()
+        XCTAssertTrue(disableTip.waitForNonExistence(timeout: 4))
         XCTAssertEqual(gameplayActionEvidenceValue(), before)
-        assertFrame(of: board, matches: frame, message: "Tutorial dismissal preserves board")
-        XCTAssertEqual(boardMountIdentity(of: host), mount)
         let deck = messages.buttons["uls.tabletop.devDeck"].firstMatch
-        XCTAssertTrue(deck.isHittable); deck.tap()
+        XCTAssertTrue(deck.isHittable)
+        deck.tap()
+        XCTAssertTrue(waitForHittable(disableTip, timeout: 4), "Disabling Build must preserve Dev teaching.")
         let buy = messages.buttons["uls.purchase.confirm"].firstMatch
         XCTAssertTrue(waitForHittable(buy, timeout: 4))
-        XCTAssertFalse(disable.exists)
+        disable.tap()
+        XCTAssertTrue(disable.waitForNonExistence(timeout: 4))
+        XCTAssertTrue(buy.exists, "Global tutorial suppression must keep explicit purchase confirmation.")
         XCTAssertEqual(gameplayActionEvidenceValue(), before)
         messages.buttons["uls.purchase.close"].firstMatch.tap()
         turnElement(identifier: "", labels: ["Settings"]).tap()
@@ -2425,12 +2450,33 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(toggle.waitForExistence(timeout: 4))
         XCTAssertEqual(toggle.value as? String, "0")
         toggle.tap()
+        messages.buttons["uls.settings.chooseTutorialTips"].firstMatch.tap()
+        let buildTip = messages.switches["uls.settings.tip.buildCosts"].firstMatch
+        let devTip = messages.switches["uls.settings.tip.devPurchase"].firstMatch
+        XCTAssertTrue(buildTip.waitForExistence(timeout: 4))
+        XCTAssertEqual(buildTip.value as? String, "0", "Master re-enable must retain individual choices.")
+        XCTAssertEqual(devTip.value as? String, "1")
+        buildTip.tap()
+        XCTAssertEqual(buildTip.value as? String, "1")
+        attachScreenshot(named: "Tutorial - Individual Settings")
+        buildTip.tap()
+        XCTAssertEqual(buildTip.value as? String, "0")
+        let list = messages.scrollViews["uls.settings.tips.list"].firstMatch
+        let enableAll = messages.buttons["uls.settings.tips.enableAll"].firstMatch
+        for _ in 0..<4 where !enableAll.isHittable { list.swipeUp() }
+        XCTAssertTrue(waitForHittable(enableAll, timeout: 4))
+        enableAll.tap()
+        messages.navigationBars["Tutorial Tips"].buttons.firstMatch.tap()
         messages.buttons["Done"].firstMatch.tap()
-        turnElement(identifier: "uls.turnObject.build", labels: ["Build"]).tap()
-        XCTAssertTrue(disable.waitForExistence(timeout: 4))
+        build.tap()
+        XCTAssertTrue(disableTip.waitForExistence(timeout: 4))
+        messages.buttons["uls.purchase.close"].firstMatch.tap()
+        build.tap()
+        XCTAssertTrue(disableTip.waitForExistence(timeout: 4), "Close must dismiss only this occurrence.")
         XCTAssertEqual(gameplayActionEvidenceValue(), before)
-        assertFrame(of: board, matches: frame, message: "Re-enable preserves board")
+        assertFrame(of: board, matches: frame, message: "Tutorial preferences preserve board")
         XCTAssertEqual(boardMountIdentity(of: host), mount)
+        attachGameplayActionEvidence(name: "Tutorial preferences are local", before: before, after: gameplayActionEvidenceValue())
     }
 
     func testGameplayActionSetupSettlementAndRoadCommitCanonicalState() throws {

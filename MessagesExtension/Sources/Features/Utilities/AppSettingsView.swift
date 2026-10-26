@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AppSettingsView: View {
     private enum Destination: Hashable {
+        case tutorialTips
         case rules
         case reliability
     }
@@ -39,6 +40,11 @@ struct AppSettingsView: View {
                                 .foregroundStyle(GameTheme.surface)
                                 .padding(.vertical, 18)
                                 .accessibilityIdentifier("uls.settings.tutorialPopups")
+                            NavigationLink("Choose tutorial tips", value: Destination.tutorialTips)
+                                .font(GameTheme.headingFont)
+                                .foregroundStyle(GameTheme.surface)
+                                .frame(minHeight: 44)
+                                .accessibilityIdentifier("uls.settings.chooseTutorialTips")
                             #if DEBUG
                             if showsTutorialPopupPreviewSetting {
                                 divider
@@ -79,6 +85,8 @@ struct AppSettingsView: View {
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: Destination.self) { destination in
                     switch destination {
+                    case .tutorialTips:
+                        TutorialTipsSettingsView(preferences: preferences)
                     case .reliability:
                         ReliabilityReportView(
                             load: loadReliabilityReport,

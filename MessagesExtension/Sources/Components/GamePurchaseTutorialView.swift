@@ -13,6 +13,7 @@ struct GamePurchaseTutorialView: View {
     let onBuy: () -> Void
     let onClose: () -> Void
     let onDisable: () -> Void
+    let onDisableTip: () -> Void
 
     var body: some View {
         VStack(spacing: 16) {
@@ -51,9 +52,11 @@ struct GamePurchaseTutorialView: View {
             Button("Close", action: onClose).frame(minHeight: 44)
                 .accessibilityIdentifier("uls.purchase.close")
             if tutorialsEnabled {
-                Button("Disable tutorial pop-ups", action: onDisable)
-                    .font(.footnote).underline().frame(minHeight: 44)
-                    .accessibilityIdentifier("uls.tutorial.purchase.disable")
+                GameTutorialPreferenceControls(
+                    onDisableTip: onDisableTip, onDisableAll: onDisable,
+                    accessibilityPrefix: "uls.tutorial.purchase",
+                    disableAllIdentifier: "uls.tutorial.purchase.disable"
+                )
             }
         }
         .foregroundStyle(GamePhysicalTurnPalette.primaryText)

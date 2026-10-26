@@ -1045,7 +1045,7 @@ struct GameShellView: View {
                     }
 
                     if !isGameOver, !designPreviewID.hasPrefix("preview-") {
-                        if showsDevPurchase || (shellRoute == .build && preferences.tutorialPopupsEnabled && resolvedMode == .idle) {
+                        if showsDevPurchase || (shellRoute == .build && preferences.shouldShowTip(.buildCosts) && resolvedMode == .idle) {
                             ZStack {
                                 Color.black.opacity(0.3)
                                 ScrollView {
@@ -1054,18 +1054,21 @@ struct GameShellView: View {
                                         hand: screenModel.handTray,
                                         canBuy: screenModel.canBuyDevCard,
                                         unavailableReason: viewModel.devPurchaseUnavailableReason(),
-                                        tutorialsEnabled: preferences.tutorialPopupsEnabled,
+                                        tutorialsEnabled: preferences.shouldShowTip(showsDevPurchase ? .devPurchase : .buildCosts),
                                         playerColor: physicalPlayerColor,
                                         onBuild: handleBuildShelfSelection,
                                         onBuy: confirmPublicDevDeckPurchase,
                                         onClose: { showsDevPurchase = false; shellRoute = .none },
-                                        onDisable: { preferences.tutorialPopupsEnabled = false }
+                                        onDisable: { preferences.tutorialPopupsEnabled = false },
+                                        onDisableTip: {
+                                            preferences.setTip(showsDevPurchase ? .devPurchase : .buildCosts, enabled: false)
+                                        }
                                     ).padding(12)
                                 }.fixedSize(horizontal: false, vertical: true)
                             }
                             .frame(width: shellSize.width, height: shellSize.height)
                             .zIndex(6)
-                        } else if preferences.tutorialPopupsEnabled, let purchasedDevKind,
+                        } else if let purchasedDevKind, preferences.shouldShowTip(.newCard(purchasedDevKind)),
                                   let panel = viewModel.devPurchaseTutorialPanel {
                             ZStack {
                                 Color.black.opacity(0.3)
@@ -1073,6 +1076,10 @@ struct GameShellView: View {
                                     onDismiss: { self.purchasedDevKind = nil },
                                     onDisableTutorialPopups: {
                                         preferences.tutorialPopupsEnabled = false
+                                        self.purchasedDevKind = nil
+                                    },
+                                    onDisableTip: {
+                                        preferences.setTip(.newCard(purchasedDevKind), enabled: false)
                                         self.purchasedDevKind = nil
                                     }).padding(12)
                             }.frame(width: shellSize.width, height: shellSize.height).zIndex(6)
@@ -1159,7 +1166,11 @@ struct GameShellView: View {
         .onReceive(viewModel.$isSendingGameUpdate.removeDuplicates()) { isSendingGameUpdate = $0 }
         .onReceive(viewModel.$devPurchaseTutorialToken.dropFirst()) { _ in
             showsDevPurchase = false
-            purchasedDevKind = preferences.tutorialPopupsEnabled ? viewModel.devPurchaseTutorialKind : nil
+            if let kind = viewModel.devPurchaseTutorialKind, preferences.shouldShowTip(.newCard(kind)) {
+                purchasedDevKind = kind
+            } else {
+                purchasedDevKind = nil
+            }
         }
         .onReceive(viewModel.$gameplayShellProjection.removeDuplicates()) { projection in
             if shellProjection.gameId != projection.gameId || shellProjection.stateHash != projection.stateHash {

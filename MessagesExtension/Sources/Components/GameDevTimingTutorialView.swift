@@ -6,6 +6,7 @@ struct GameDevTimingTutorialView: View {
     let kind: GameDevCardVisualKind
     let onDismiss: () -> Void
     let onDisableTutorialPopups: () -> Void
+    let onDisableTip: () -> Void
 
     private var newCard: GameDevCardTileModel? {
         guard panel.newCounts.contains(where: { $0.title == kind.title && $0.count > 0 }) else {
@@ -87,15 +88,11 @@ struct GameDevTimingTutorialView: View {
                 .buttonStyle(GameTabletopActionButtonStyle(emphasis: .primary, solidBackground: true))
                 .accessibilityIdentifier("uls.tutorial.devTiming.dismiss")
 
-                Button(action: onDisableTutorialPopups) {
-                    Text("Disable tutorial pop-ups")
-                        .font(.footnote)
-                        .underline()
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("uls.tutorial.devTiming.disableTutorials")
+                GameTutorialPreferenceControls(
+                    onDisableTip: onDisableTip, onDisableAll: onDisableTutorialPopups,
+                    accessibilityPrefix: "uls.tutorial.devTiming",
+                    disableAllIdentifier: "uls.tutorial.devTiming.disableTutorials"
+                )
             }
         }
     }

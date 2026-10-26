@@ -1,0 +1,2 @@
+testProductionTutorialPreferenceAndInspection|turn-after-roll|host
+testTutorialTimingPreferenceControls|turn-after-roll|host
