@@ -10,6 +10,14 @@ struct GamePurchaseCostPreviewView: View {
     private let resources: [ResourceV1] = [.wood, .brick, .sheep, .wheat, .ore]
 
     var body: some View {
+        if screen == .build {
+            GameBuildGuidePreviewView(onClose: onDisableTutorialPopups)
+        } else {
+            legacyPreview
+        }
+    }
+
+    private var legacyPreview: some View {
         ZStack {
             GameTheme.felt.opacity(0.48).ignoresSafeArea()
             VStack(spacing: 20) {

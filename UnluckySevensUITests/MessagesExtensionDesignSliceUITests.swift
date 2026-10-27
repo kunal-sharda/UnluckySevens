@@ -2012,11 +2012,31 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertEqual(boardMountIdentity(of: host), mount)
     }
 
+    func testPreviewCompactBuildGuide() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Preview Build costs")
+        hideUXLabChromeWithoutChangingFixture()
+        let road = messages.buttons["uls.preview.guide.Road"].firstMatch
+        XCTAssertTrue(road.waitForExistence(timeout: 5))
+        for title in ["Settlement", "City", "Dev Card"] {
+            XCTAssertTrue(messages.buttons["uls.preview.guide.\(title)"].firstMatch.isHittable)
+        }
+        let before = gameplayActionEvidenceValue()
+        attachScreenshot(named: "Preview - Compact Build and Buy guide")
+        road.tap()
+        XCTAssertEqual(road.value as? String, "Selected")
+        let hide = messages.buttons["uls.preview.guide.hideTip"].firstMatch
+        hide.tap()
+        XCTAssertEqual(hide.value as? String, "Checked")
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+        verifyPreviewTutorialDisable(captureTabletop: false)
+    }
+
     func testPreviewBuildCosts() throws {
         openUnluckySevensExtension()
         assertLaunchFixtureLoaded(title: "Preview Build costs")
         hideUXLabChromeWithoutChangingFixture()
-        XCTAssertTrue(messages.staticTexts["Need 1 sheep"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(messages.buttons["uls.preview.guide.Road"].firstMatch.waitForExistence(timeout: 5))
         attachScreenshot(named: "Preview - Build costs")
         verifyPreviewTutorialDisable(captureTabletop: false)
     }
