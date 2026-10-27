@@ -5,26 +5,44 @@ struct GameTutorialPreferenceControls: View {
     let onDisableAll: () -> Void
     let accessibilityPrefix: String
     let disableAllIdentifier: String
+    var onEnableTip: () -> Void = {}
+    @State private var hidesTip = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            preferenceButton("Don't show this tip again", action: onDisableTip)
-                .accessibilityIdentifier("\(accessibilityPrefix).disableTip")
-            preferenceButton("Disable all tutorial tips", action: onDisableAll)
-                .accessibilityIdentifier(disableAllIdentifier)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) { tipButton; Spacer(minLength: 0); allButton }
+            VStack(alignment: .leading, spacing: 4) { tipButton; allButton }
         }
     }
 
-    private func preferenceButton(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
+    private var tipButton: some View {
+        Button {
+            hidesTip.toggle()
+            if hidesTip { onDisableTip() } else { onEnableTip() }
+        } label: {
+            Label("Hide this tip", systemImage: hidesTip ? "checkmark.square.fill" : "square")
                 .font(.footnote)
-                .underline()
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, minHeight: 44)
+                .fixedSize(horizontal: true, vertical: false)
+                .frame(minHeight: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityValue(hidesTip ? "Checked" : "Unchecked")
+        .accessibilityHint("Controls whether this topic appears next time. You can restore it in Settings.")
+        .accessibilityIdentifier("\(accessibilityPrefix).disableTip")
+    }
+
+    private var allButton: some View {
+        Button(action: onDisableAll) {
+            Text("Turn off all tips")
+                .font(.footnote)
+                .fixedSize(horizontal: true, vertical: false)
+                .padding(.horizontal, 8)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+                .overlay(RoundedRectangle(cornerRadius: 7).stroke(.primary.opacity(0.4)))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(disableAllIdentifier)
     }
 }

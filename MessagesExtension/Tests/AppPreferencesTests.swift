@@ -19,6 +19,33 @@ final class AppPreferencesTests: XCTestCase {
         super.tearDown()
     }
 
+    func testDevTeachingWaitsForEligibilityAndFreeSurfaceThenPersistsForTurn() {
+        let preferences = AppPreferences(userDefaults: userDefaults)
+        let turn = GameDevPurchaseTeachingContext(gameID: "game", turnID: "A:123")
+        XCTAssertFalse(preferences.claimDevPurchaseTeaching(context: turn, canBuy: false, isBusy: false))
+        XCTAssertFalse(preferences.claimDevPurchaseTeaching(context: turn, canBuy: true, isBusy: true))
+        XCTAssertTrue(preferences.claimDevPurchaseTeaching(context: turn, canBuy: true, isBusy: false))
+        XCTAssertFalse(preferences.claimDevPurchaseTeaching(context: turn, canBuy: false, isBusy: false))
+        XCTAssertFalse(preferences.claimDevPurchaseTeaching(context: turn, canBuy: true, isBusy: false))
+        let reopened = AppPreferences(userDefaults: userDefaults)
+        XCTAssertFalse(reopened.claimDevPurchaseTeaching(context: turn, canBuy: true, isBusy: false))
+        XCTAssertTrue(reopened.claimDevPurchaseTeaching(context: .init(gameID: "game", turnID: "A:456"), canBuy: true, isBusy: false))
+        XCTAssertTrue(reopened.claimDevPurchaseTeaching(context: .init(gameID: "other", turnID: "A:123"), canBuy: true, isBusy: false))
+    }
+
+    func testDevTeachingSuppressionDoesNotConsumeAnUnseenTurn() {
+        let preferences = AppPreferences(userDefaults: userDefaults)
+        let turn = GameDevPurchaseTeachingContext(gameID: "game", turnID: "A:123")
+        preferences.setTip(.devPurchase, enabled: false)
+        XCTAssertFalse(preferences.claimDevPurchaseTeaching(context: turn, canBuy: true, isBusy: false))
+        preferences.setTip(.devPurchase, enabled: true)
+        preferences.tutorialPopupsEnabled = false
+        XCTAssertFalse(preferences.claimDevPurchaseTeaching(context: turn, canBuy: true, isBusy: false))
+        preferences.tutorialPopupsEnabled = true
+        XCTAssertFalse(preferences.claimDevPurchaseTeaching(context: nil, canBuy: true, isBusy: false))
+        XCTAssertTrue(preferences.claimDevPurchaseTeaching(context: turn, canBuy: true, isBusy: false))
+    }
+
     func testTutorialPopupsDefaultOn() {
         XCTAssertTrue(AppPreferences(userDefaults: userDefaults).tutorialPopupsEnabled)
     }

@@ -21,6 +21,17 @@ final class GamePurchaseTutorialTests: XCTestCase {
         super.tearDown()
     }
 
+    func testTeachingContextIsLocalPostRollAndStableThroughPurchase() throws {
+        let state = makeState(deck: [.knight])
+        let context = try XCTUnwrap(GameDevPurchaseTeachingContext.make(state: state, actor: "A"))
+        XCTAssertNil(GameDevPurchaseTeachingContext.make(state: state, actor: "B"))
+        XCTAssertNil(GameDevPurchaseTeachingContext.make(state: nil, actor: "A"))
+        let model = LobbyDriverViewModel(userDefaults: defaults, tutorialState: state, tutorialActorID: "A")
+        model.stateHandoffForTesting = { $0(.success(())) }
+        XCTAssertTrue(model.handleDevCardAction(.buyDevCard))
+        XCTAssertEqual(model.gameplayShellProjection.devPurchaseTeachingContext, context)
+    }
+
     func testDetectsEachPrivateNewKindAndRejectsAbsentOrUnchangedPanels() throws {
         let before = try panel(newCards: .zero)
         XCTAssertNil(GameDevPurchaseTutorial.newKind(before: nil, after: before))

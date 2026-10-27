@@ -1,0 +1,2 @@
+testSlidingBuildCostsReference|turn-after-roll|host
+testAutomaticDevBankTeaching|end-turn-action|host

@@ -103,6 +103,10 @@ struct GameShellView: View {
     @State private var physicalDiceCompletionGate = GameDiceRollCompletionGate()
     @State private var showsPhysicalTradeRecipients = false
     @State private var showsDevPurchase = false
+    @State private var showsDevTeaching = false
+    @State private var showsBuildReference = false
+    @State private var buildReferenceHasTeaching = false
+    private let isUtilityPresented: Bool
     @State private var isSendingGameUpdate = false
     @State private var roadSubmissionHash: String?
     @State private var purchasedDevKind: GameDevCardVisualKind?
@@ -131,7 +135,8 @@ struct GameShellView: View {
         initialRoute: GameShellRoute = .none,
         minimumActionSurfaceHeight: CGFloat? = nil,
         tutorialTradeTarget: GameTutorialTarget? = nil,
-        tutorialHeaderTitle: String? = nil
+        tutorialHeaderTitle: String? = nil,
+        isUtilityPresented: Bool = false
     ) {
         self.viewModel = viewModel
         self.onSettingsTap = onSettingsTap
@@ -142,6 +147,7 @@ struct GameShellView: View {
         self.minimumActionSurfaceHeight = minimumActionSurfaceHeight
         self.tutorialTradeTarget = tutorialTradeTarget
         self.tutorialHeaderTitle = tutorialHeaderTitle
+        self.isUtilityPresented = isUtilityPresented
         let initialProjection = viewModel.gameplayShellProjection
         _shellProjection = State(initialValue: initialProjection)
         _isSendingGameUpdate = State(initialValue: viewModel.isSendingGameUpdate)
@@ -500,7 +506,7 @@ struct GameShellView: View {
                                 width: boardViewportLayout.size.width,
                                 height: boardViewportLayout.size.height
                             )
-                            .allowsHitTesting(!isGameInfoOpen)
+                            .allowsHitTesting(!isGameInfoOpen && !showsBuildReference && !showsDevPurchase)
                             .gameTutorialTarget(.board)
                             .accessibilityHidden(isPhysicalStartTurn && !isInspectingPreRollBoard && designPreviewID != "preview-map-inspection")
                             .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius + 8))
@@ -621,6 +627,8 @@ struct GameShellView: View {
                                 .bottom,
                                 physicalLayout.bottomRailPadding
                             )
+                            .allowsHitTesting(!showsBuildReference && !showsDevPurchase)
+                            .accessibilityHidden(showsBuildReference || showsDevPurchase)
                             .zIndex(0.5)
                         }
 
@@ -686,6 +694,8 @@ struct GameShellView: View {
                                 .padding(.horizontal, GameTheme.shellPadding)
                                 .padding(.bottom, GameTheme.shellPadding)
                                 .transition(.opacity)
+                                .allowsHitTesting(!showsBuildReference && !showsDevPurchase)
+                                .accessibilityHidden(showsBuildReference || showsDevPurchase)
                                 .zIndex(0.75)
                             } else if isHandOpen {
                                 GamePhysicalTurnActionSpreadView(
@@ -713,6 +723,8 @@ struct GameShellView: View {
                                 .padding(.horizontal, GameTheme.shellPadding)
                                 .padding(.bottom, GameTheme.shellPadding + reservedTrayHeight)
                                 .transition(.opacity)
+                                .allowsHitTesting(!showsBuildReference && !showsDevPurchase)
+                                .accessibilityHidden(showsBuildReference || showsDevPurchase)
                                 .zIndex(0.75)
                             } else if shellRoute == .build, resolvedMode == .idle {
                                 GamePhysicalTurnActionSpreadView(
@@ -725,7 +737,8 @@ struct GameShellView: View {
                                     playerColor: physicalPlayerColor,
                                     onSelectBuild: handleBuildShelfSelection,
                                     onOpenDevCards: {},
-                                    onSelectDevCard: handleDevCardSelection
+                                    onSelectDevCard: handleDevCardSelection,
+                                    onOpenBuildCosts: openBuildReference
                                 )
                                 .scaleEffect(physicalLayout.contentScale)
                                 .frame(height: actionSurfaceHeight)
@@ -733,6 +746,8 @@ struct GameShellView: View {
                                 .padding(.horizontal, GameTheme.shellPadding)
                                 .padding(.bottom, GameTheme.shellPadding + reservedTrayHeight)
                                 .transition(.opacity)
+                                .allowsHitTesting(!showsBuildReference && !showsDevPurchase)
+                                .accessibilityHidden(showsBuildReference || showsDevPurchase)
                                 .zIndex(0.75)
                             } else if shellRoute == .devCards, resolvedMode == .playDevCard {
                                 GamePhysicalTurnActionSpreadView(
@@ -753,6 +768,8 @@ struct GameShellView: View {
                                 .padding(.horizontal, GameTheme.shellPadding)
                                 .padding(.bottom, GameTheme.shellPadding + reservedTrayHeight)
                                 .transition(.opacity)
+                                .allowsHitTesting(!showsBuildReference && !showsDevPurchase)
+                                .accessibilityHidden(showsBuildReference || showsDevPurchase)
                                 .zIndex(0.75)
                             } else if shellRoute == .devCards,
                                       resolvedMode == .devCardMonopoly
@@ -772,6 +789,8 @@ struct GameShellView: View {
                                 .padding(.horizontal, GameTheme.shellPadding)
                                 .padding(.bottom, GameTheme.shellPadding + reservedTrayHeight)
                                 .transition(.opacity)
+                                .allowsHitTesting(!showsBuildReference && !showsDevPurchase)
+                                .accessibilityHidden(showsBuildReference || showsDevPurchase)
                                 .zIndex(0.75)
                             }
                         }
@@ -1045,30 +1064,40 @@ struct GameShellView: View {
                     }
 
                     if !isGameOver, !designPreviewID.hasPrefix("preview-") {
-                        if showsDevPurchase || (shellRoute == .build && preferences.shouldShowTip(.buildCosts) && resolvedMode == .idle) {
-                            ZStack {
-                                Color.black.opacity(0.3)
-                                ScrollView {
-                                    GamePurchaseTutorialView(
-                                        buildItems: showsDevPurchase ? nil : screenModel.actionDock.buildShelfItems,
-                                        hand: screenModel.handTray,
-                                        canBuy: screenModel.canBuyDevCard,
-                                        unavailableReason: viewModel.devPurchaseUnavailableReason(),
-                                        tutorialsEnabled: preferences.shouldShowTip(showsDevPurchase ? .devPurchase : .buildCosts),
-                                        playerColor: physicalPlayerColor,
-                                        onBuild: handleBuildShelfSelection,
-                                        onBuy: confirmPublicDevDeckPurchase,
-                                        onClose: { showsDevPurchase = false; shellRoute = .none },
-                                        onDisable: { preferences.tutorialPopupsEnabled = false },
-                                        onDisableTip: {
-                                            preferences.setTip(showsDevPurchase ? .devPurchase : .buildCosts, enabled: false)
-                                        }
-                                    ).padding(12)
-                                }.fixedSize(horizontal: false, vertical: true)
+                        if showsBuildReference || showsDevPurchase {
+                            ZStack(alignment: .bottom) {
+                                Group {
+                                    if showsBuildReference {
+                                        GameBuildCostReferenceView(
+                                            items: screenModel.actionDock.buildShelfItems, playerColor: physicalPlayerColor,
+                                            canBuy: screenModel.canBuyDevCard, buyUnavailableReason: viewModel.devPurchaseUnavailableReason(),
+                                            showsTutorialControls: buildReferenceHasTeaching,
+                                            onBuild: handleBuildShelfSelection, onDev: handlePublicDevDeckPurchase,
+                                            onClose: closeTableCard,
+                                            onDisableTip: { preferences.setTip(.buildCosts, enabled: false) },
+                                            onEnableTip: { preferences.setTip(.buildCosts, enabled: true) },
+                                            onDisableAll: { preferences.tutorialPopupsEnabled = false; closeTableCard() })
+                                    } else {
+                                        GamePurchaseTutorialView(
+                                            canBuy: screenModel.canBuyDevCard,
+                                            unavailableReason: viewModel.devPurchaseUnavailableReason(),
+                                            tutorialsEnabled: showsDevTeaching,
+                                            onBuy: confirmPublicDevDeckPurchase,
+                                            onClose: closeTableCard,
+                                            onDisable: { preferences.tutorialPopupsEnabled = false; showsDevTeaching = false },
+                                            onDisableTip: { preferences.setTip(.devPurchase, enabled: false) },
+                                            onEnableTip: { preferences.setTip(.devPurchase, enabled: true) })
+                                    }
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.top, physicalLayout.topBarHeight + publicRailHeight + 20)
+                                .padding(.bottom, bottomTrayHeight + physicalLayout.bottomRailPadding + 12)
+                                .transition(motionPolicy.animatesSpatialMotion ? .move(edge: .bottom).combined(with: .opacity) : .opacity)
                             }
                             .frame(width: shellSize.width, height: shellSize.height)
+                            .transition(motionPolicy.animatesSpatialMotion ? .move(edge: .bottom).combined(with: .opacity) : .opacity)
                             .zIndex(6)
-                        } else if let purchasedDevKind, preferences.shouldShowTip(.newCard(purchasedDevKind)),
+                        } else if let purchasedDevKind,
                                   let panel = viewModel.devPurchaseTutorialPanel {
                             ZStack {
                                 Color.black.opacity(0.3)
@@ -1080,8 +1109,8 @@ struct GameShellView: View {
                                     },
                                     onDisableTip: {
                                         preferences.setTip(.newCard(purchasedDevKind), enabled: false)
-                                        self.purchasedDevKind = nil
-                                    }).padding(12)
+                                    },
+                                    onEnableTip: { preferences.setTip(.newCard(purchasedDevKind), enabled: true) }).padding(12)
                             }.frame(width: shellSize.width, height: shellSize.height).zIndex(6)
                         }
                         if resolvedMode == .devCardRoadBuildingFirst || resolvedMode == .devCardRoadBuildingSecond {
@@ -1148,10 +1177,22 @@ struct GameShellView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
+                #if DEBUG
+                .overlay(alignment: .topLeading) {
+                    Text("Motion")
+                        .font(.system(size: 1))
+                        .opacity(0.01)
+                        .frame(width: 1, height: 1)
+                        .accessibilityIdentifier("uls.tabletop.motionPolicy")
+                        .accessibilityValue("reduceMotion=\(accessibilityReduceMotion);spatial=\(motionPolicy.animatesSpatialMotion)")
+                        .allowsHitTesting(false)
+                }
+                #endif
                 .coordinateSpace(.named(Self.displayCoordinateSpaceName))
         }
         return shell
         .onAppear {
+            if shellRoute == .build, preferences.shouldShowTip(.buildCosts) { openBuildReference() }
             synchronizeMode(with: screenModel.modeAvailability)
             synchronizeBoardSelection(mode: resolvedMode)
             synchronizeHandTrayVisibility(for: resolvedMode)
@@ -1163,6 +1204,16 @@ struct GameShellView: View {
                 devCardDraft = nil
             }
         }
+        .task(id: devTeachingRequest) {
+            guard preferences.claimDevPurchaseTeaching(context: devTeachingRequest.context,
+                canBuy: devTeachingRequest.canBuy, isBusy: devTeachingRequest.isBusy) else { return }
+            withAnimation(motionPolicy.resolvedAnimation()) {
+                showsDevTeaching = true
+                showsDevPurchase = true
+            }
+        }
+        .animation(motionPolicy.resolvedAnimation(), value: showsBuildReference)
+        .animation(motionPolicy.resolvedAnimation(), value: showsDevPurchase)
         .onReceive(viewModel.$isSendingGameUpdate.removeDuplicates()) { isSendingGameUpdate = $0 }
         .onReceive(viewModel.$devPurchaseTutorialToken.dropFirst()) { _ in
             showsDevPurchase = false
@@ -1216,7 +1267,17 @@ struct GameShellView: View {
             if newMode != .idle && newMode != .playDevCard { isInspectingPreRollBoard = false }
             handleResolvedModeChange(newMode)
         }
+        .onChange(of: preferences.tutorialPopupsEnabled) { _, enabled in
+            if !enabled {
+                if buildReferenceHasTeaching { showsBuildReference = false }
+                buildReferenceHasTeaching = false
+                showsDevTeaching = false
+                purchasedDevKind = nil
+            }
+        }
         .onChange(of: shellRoute) { _, newRoute in
+            if newRoute == .build, preferences.shouldShowTip(.buildCosts) { openBuildReference() }
+            if newRoute != .build { showsBuildReference = false }
             NotificationCenter.default.post(
                 name: .gameBoardPanelOcclusionChanged,
                 object: nil,
@@ -1551,6 +1612,7 @@ struct GameShellView: View {
     }
 
     private func handleGameInfoToggle() {
+        closeTableCard()
         if shellRoute == .gameInfo {
             GameBoardPanelOcclusionController.setHeight(0)
             NotificationCenter.default.post(
@@ -1584,7 +1646,32 @@ struct GameShellView: View {
         if designPreviewID.hasPrefix("preview-cost-") { return }
         #endif
         purchasedDevKind = nil
+        showsBuildReference = false
+        shellRoute = .none
+        showsDevTeaching = preferences.shouldShowTip(.devPurchase)
+        // A manually opened eligible tip counts for this turn too; closing it must not summon it again.
+        _ = preferences.claimDevPurchaseTeaching(context: shellProjection.devPurchaseTeachingContext,
+            canBuy: shellProjection.gameScreenModel.canBuyDevCard, isBusy: false)
         showsDevPurchase = true
+    }
+
+    private func openBuildReference() {
+        buildReferenceHasTeaching = preferences.shouldShowTip(.buildCosts)
+        showsBuildReference = true
+    }
+
+    private func closeTableCard() {
+        showsBuildReference = false
+        showsDevPurchase = false
+        showsDevTeaching = false
+    }
+
+    private var devTeachingRequest: GameDevTeachingRequest {
+        GameDevTeachingRequest(context: shellProjection.devPurchaseTeachingContext,
+            canBuy: shellProjection.gameScreenModel.canBuyDevCard && preferences.shouldShowTip(.devPurchase),
+            isBusy: isUtilityPresented || tutorialHeaderTitle != nil || designPreviewID.hasPrefix("preview-")
+                || currentMode != .idle || shellRoute != .none || physicalDiceRollResult != nil
+                || showsDevPurchase || showsBuildReference || purchasedDevKind != nil || isSendingGameUpdate)
     }
 
     private func confirmPublicDevDeckPurchase() {
@@ -1898,6 +1985,7 @@ struct GameShellView: View {
     }
 
     private func handleBuildShelfSelection(_ buildKind: GameBuildShelfItem.Kind) {
+        showsBuildReference = false
         shellRoute = .build
         switch buildKind {
         case .buildRoad:
@@ -1998,6 +2086,8 @@ struct GameShellView: View {
 
     private func resetLocalShellInteractionState() {
         isInspectingPreRollBoard = false
+        showsBuildReference = false
+        showsDevTeaching = false
         showsDevPurchase = false
         purchasedDevKind = nil
         roadSubmissionHash = nil

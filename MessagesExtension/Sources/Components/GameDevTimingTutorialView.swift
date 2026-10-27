@@ -7,6 +7,7 @@ struct GameDevTimingTutorialView: View {
     let onDismiss: () -> Void
     let onDisableTutorialPopups: () -> Void
     let onDisableTip: () -> Void
+    var onEnableTip: () -> Void = {}
 
     private var newCard: GameDevCardTileModel? {
         guard panel.newCounts.contains(where: { $0.title == kind.title && $0.count > 0 }) else {
@@ -91,7 +92,7 @@ struct GameDevTimingTutorialView: View {
                 GameTutorialPreferenceControls(
                     onDisableTip: onDisableTip, onDisableAll: onDisableTutorialPopups,
                     accessibilityPrefix: "uls.tutorial.devTiming",
-                    disableAllIdentifier: "uls.tutorial.devTiming.disableTutorials"
+                    disableAllIdentifier: "uls.tutorial.devTiming.disableTutorials", onEnableTip: onEnableTip
                 )
             }
         }

@@ -6,6 +6,8 @@ This is compact retrospective history, not live execution state. GitHub mileston
 
 ### Changed
 
+- Beta 1.2 adds a sliding Build Costs reference, timely Dev/Bank teaching, and individual/global tip controls while preserving explicit purchase confirmation and manual reference access.
+
 - Adopted proportional work tracking: GitHub Issues own discrete work, milestones own release scope, and ExecPlans are reserved for broad, risky, release-sensitive, or resumable orchestration.
 - Reconciled the post-launch documentation backlog, archived terminal and superseded plans, and moved confirmed Beta 1.1 follow-up into deduplicated issues.
 

@@ -14,6 +14,7 @@ struct GameShellProjection: Equatable {
     let discardPanelModel: GameDiscardPanelModel?
     let robberVictimOptions: [GameRobberVictimOption]
     let tradePanelModel: GameTradePanelModel?
+    var devPurchaseTeachingContext: GameDevPurchaseTeachingContext? = nil
 
     static let empty = GameShellProjection(
         gameId: "-",
@@ -162,7 +163,8 @@ enum GameShellProjectionBuilder {
             tradePanelModel: GameTradePanelModelBuilder.build(
                 state: state,
                 actingAs: actingAs
-            )
+            ),
+            devPurchaseTeachingContext: GameDevPurchaseTeachingContext.make(state: state, actor: actingAs)
         )
     }
 

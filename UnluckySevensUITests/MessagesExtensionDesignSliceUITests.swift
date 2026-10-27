@@ -2403,6 +2403,8 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         openUnluckySevensExtension()
         waitForUXLabChrome()
         loadTurnGameplaySlice()
+        let teachingClose = messages.buttons["uls.purchase.close"].firstMatch
+        if teachingClose.waitForExistence(timeout: 2) { teachingClose.tap() }
 
         let before = gameplayActionEvidenceValue()
         let devDeck = turnElement(identifier: "uls.tabletop.devDeck", labels: ["Dev Cards"])
@@ -2425,6 +2427,126 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         if captureTiming { attachScreenshot(named: "New Dev Card timing") }
         gotIt.tap()
         XCTAssertEqual(gameplayActionEvidenceValue(), after)
+    }
+
+    func testSlidingBuildCostsReference() throws {
+        try verifySlidingBuildCostsReference(capture: true)
+    }
+
+    func testSlidingBuildCostsReferenceAtAccessibilitySize() throws {
+        try verifySlidingBuildCostsReference(capture: true, verifiesReduceMotion: true)
+    }
+
+    private func verifySlidingBuildCostsReference(capture: Bool, verifiesReduceMotion: Bool = false) throws {
+        openCanonicalPostRollActionFixture()
+        if verifiesReduceMotion {
+            let motion = messages.staticTexts["uls.tabletop.motionPolicy"].firstMatch
+            XCTAssertTrue(motion.waitForExistence(timeout: 4))
+            XCTAssertEqual(motion.value as? String, "reduceMotion=true;spatial=false")
+            let proof = XCTAttachment(string: motion.value as? String ?? "missing")
+            proof.name = "System Reduce Motion policy"
+            proof.lifetime = .keepAlways
+            add(proof)
+        }
+        let before = gameplayActionEvidenceValue()
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let host = turnElement(identifier: "uls.tabletop.boardHost", labels: [])
+        let frame = board.frame
+        let mount = boardMountIdentity(of: host)
+        turnElement(identifier: "uls.turnObject.build", labels: ["Build"]).tap()
+        let reference = messages.descendants(matching: .any)["uls.buildCosts.reference"].firstMatch
+        XCTAssertTrue(reference.waitForExistence(timeout: 5))
+        for kind in ["buildRoad", "buildSettlement", "buildCity"] {
+            XCTAssertTrue(messages.buttons["uls.tutorial.build.\(kind)"].firstMatch.exists)
+        }
+        let hide = messages.buttons["uls.tutorial.purchase.disableTip"].firstMatch
+        let all = messages.buttons["uls.tutorial.purchase.disable"].firstMatch
+        // XCTest may report a clipped button frame as hittable. At AX sizes explicitly reveal the footer.
+        if verifiesReduceMotion { reference.swipeUp() }
+        for _ in 0..<4 where !all.isHittable || all.frame.maxY > reference.frame.maxY + 1 { reference.swipeUp() }
+        XCTAssertTrue(waitForHittable(hide, timeout: 4))
+        XCTAssertTrue(waitForHittable(all, timeout: 4))
+        XCTAssertGreaterThanOrEqual(hide.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(all.frame.height, 44)
+        XCTAssertLessThanOrEqual(all.frame.maxY, reference.frame.maxY + 1, "All-tip action must be fully inside the reference card")
+        XCTAssertGreaterThanOrEqual(hide.frame.minY, reference.frame.minY, "Checkbox must remain inside the card")
+        if capture { attachScreenshot(named: "Build Costs - Sliding reference") }
+        hide.tap()
+        XCTAssertEqual(hide.value as? String, "Checked")
+        XCTAssertTrue(reference.exists, "Hiding a topic must leave the current reference usable")
+        let close = messages.buttons["uls.purchase.close"].firstMatch
+        for _ in 0..<4 where !close.isHittable { reference.swipeDown() }
+        close.tap()
+        let prop = messages.buttons["uls.buildCosts.open"].firstMatch
+        XCTAssertTrue(waitForHittable(prop, timeout: 4))
+        prop.tap()
+        XCTAssertTrue(reference.waitForExistence(timeout: 4))
+        XCTAssertFalse(hide.exists, "Reference remains available with its optional teaching disabled")
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+        assertFrame(of: board, matches: frame, message: "Sliding card must keep the board steady")
+        XCTAssertEqual(boardMountIdentity(of: host), mount)
+        if !verifiesReduceMotion {
+            messages.buttons["uls.buildCosts.dev"].firstMatch.tap()
+            XCTAssertTrue(messages.buttons["uls.purchase.confirm"].firstMatch.waitForExistence(timeout: 4))
+            XCTAssertEqual(gameplayActionEvidenceValue(), before, "Reference Dev row opens confirmation without buying")
+            messages.buttons["uls.purchase.close"].firstMatch.tap()
+            XCTAssertFalse(messages.buttons["uls.purchase.confirm"].firstMatch.waitForExistence(timeout: 2))
+            turnElement(identifier: "uls.turnObject.build", labels: ["Build"]).tap()
+            messages.buttons["uls.buildCosts.open"].firstMatch.tap()
+            let road = messages.buttons["uls.tutorial.build.buildRoad"].firstMatch
+            for _ in 0..<4 where !road.isHittable { reference.swipeDown() }
+            road.tap()
+            try tapFirstBoardTarget(kind: "edge", requiresConfirmation: true)
+            let after = waitForGameplayActionEvidenceChange(from: before, timeout: 6)
+            XCTAssertTrue(after.contains("status=Published road build"), after)
+        }
+    }
+
+    func testAutomaticDevBankTeaching() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "End turn action")
+        hideUXLabChromeWithoutChangingFixture()
+        let before = gameplayActionEvidenceValue()
+        let explanation = messages.staticTexts["uls.tutorial.purchase.bankExplanation"].firstMatch
+        XCTAssertTrue(explanation.waitForExistence(timeout: 5))
+        attachScreenshot(named: "Dev and Bank - Timely teaching")
+        let bank = messages.buttons["uls.tabletop.bankRack"].firstMatch
+        XCTAssertTrue(bank.isHittable)
+        bank.tap()
+        XCTAssertTrue((bank.value as? String ?? "").contains("supply"))
+        let hide = messages.buttons["uls.tutorial.purchase.disableTip"].firstMatch
+        hide.tap()
+        XCTAssertEqual(hide.value as? String, "Checked")
+        XCTAssertTrue(explanation.exists)
+        hide.tap()
+        XCTAssertEqual(hide.value as? String, "Unchecked")
+        messages.buttons["uls.purchase.close"].firstMatch.tap()
+        XCTAssertTrue(explanation.waitForNonExistence(timeout: 3))
+        turnElement(identifier: "", labels: ["Settings"]).tap()
+        messages.buttons["uls.settings.chooseTutorialTips"].firstMatch.tap()
+        XCTAssertTrue(messages.switches["uls.settings.tip.devPurchase"].firstMatch.waitForExistence(timeout: 4))
+        messages.navigationBars["Tutorial Tips"].buttons.firstMatch.tap()
+        messages.buttons["Done"].firstMatch.tap()
+        XCTAssertFalse(explanation.waitForExistence(timeout: 2), "Returning to the same turn must not repeat teaching")
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+        messages.buttons["uls.tabletop.devDeck"].firstMatch.tap()
+        // Global Settings suppression applies to a currently open teaching card.
+        turnElement(identifier: "", labels: ["Settings"]).tap()
+        messages.switches["uls.settings.tutorialPopups"].firstMatch.tap()
+        messages.buttons["Done"].firstMatch.tap()
+        XCTAssertFalse(explanation.exists)
+        XCTAssertTrue(messages.buttons["uls.purchase.confirm"].firstMatch.exists)
+        // Players replaces the card rather than opening underneath it.
+        turnElement(identifier: "", labels: ["Players and game information"]).tap()
+        XCTAssertTrue(messages.buttons["uls.purchase.confirm"].firstMatch.waitForNonExistence(timeout: 3))
+        messages.buttons["uls.gameInfo.close"].firstMatch.tap()
+        messages.buttons["uls.tabletop.devDeck"].firstMatch.tap()
+        XCTAssertFalse(explanation.exists)
+        let buy = messages.buttons["uls.purchase.confirm"].firstMatch
+        XCTAssertTrue(buy.isHittable, "Disabling teaching must retain explicit purchase confirmation")
+        buy.tap()
+        let after = waitForGameplayActionEvidenceChange(from: before, timeout: 6)
+        XCTAssertTrue(after.contains("status=Published dev-card purchase"), after)
     }
 
     func testProductionTutorialPreferenceAndInspection() throws {
@@ -2452,7 +2574,8 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(disable.frame.height, 44)
         if captureBuild { attachScreenshot(named: "Tutorial - Disable this or all") }
         disableTip.tap()
-        XCTAssertTrue(disableTip.waitForNonExistence(timeout: 4))
+        XCTAssertEqual(disableTip.value as? String, "Checked")
+        messages.buttons["uls.purchase.close"].firstMatch.tap()
         XCTAssertEqual(gameplayActionEvidenceValue(), before)
         let deck = messages.buttons["uls.tabletop.devDeck"].firstMatch
         XCTAssertTrue(deck.isHittable)
@@ -2491,7 +2614,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         build.tap()
         XCTAssertTrue(disableTip.waitForExistence(timeout: 4))
         messages.buttons["uls.purchase.close"].firstMatch.tap()
-        build.tap()
+        messages.buttons["uls.buildCosts.open"].firstMatch.tap()
         XCTAssertTrue(disableTip.waitForExistence(timeout: 4), "Close must dismiss only this occurrence.")
         XCTAssertEqual(gameplayActionEvidenceValue(), before)
         assertFrame(of: board, matches: frame, message: "Tutorial preferences preserve board")
@@ -5048,7 +5171,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         return evidence.value as? String ?? ""
     }
 
-    private func openCanonicalPostRollActionFixture() {
+    private func openCanonicalPostRollActionFixture(dismissTeaching: Bool = true) {
         openUnluckySevensExtension()
         loadDirectGameplayActionFixture(
             identifier: "uls.uxLab.cleanShot.endTurnAction.direct",
@@ -5058,6 +5181,10 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
             containing: "status=UX Lab loaded End turn action",
             timeout: 6
         )
+        if dismissTeaching {
+            let close = messages.buttons["uls.purchase.close"].firstMatch
+            if close.waitForExistence(timeout: 2) { close.tap() }
+        }
     }
 
     private func loadDirectGameplayActionFixture(identifier: String, label: String) {

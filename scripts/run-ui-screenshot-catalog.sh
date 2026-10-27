@@ -211,6 +211,13 @@ while IFS='|' read -r TEST_NAME FIXTURE_ID FIXTURE_ACTOR; do
   if [[ "${UI_SCREENSHOT_HOST_LAYOUT_PROBE:-0}" == "1" ]]; then
     /usr/libexec/PlistBuddy -c 'Add :uls.debug.hostLayoutProbe bool true' "$PREFERENCES_PATH"
   fi
+  # These teaching journeys need a fresh local preference baseline, not a fresh game rule state.
+  if [[ "$TEST_NAME" == testSlidingBuildCostsReference* || "$TEST_NAME" == testAutomaticDevBankTeaching ]]; then
+    for KEY in uls.tutorialPopupsEnabled uls.disabledTutorialTips uls.devTeachingTurns; do
+      /usr/libexec/PlistBuddy -c "Delete :$KEY" "$PREFERENCES_PATH" >/dev/null 2>&1 || true
+    done
+    /usr/libexec/PlistBuddy -c 'Add :uls.tutorialPopupsEnabled bool true' "$PREFERENCES_PATH"
+  fi
   if [[ "${FIXTURE_ID:-}" == preview-cost-* || "${FIXTURE_ID:-}" == preview-dev-timing-* ]]; then
     /usr/libexec/PlistBuddy -c 'Delete :uls.preview.tutorialPopupsEnabled' "$PREFERENCES_PATH" >/dev/null 2>&1 || true
     /usr/libexec/PlistBuddy -c 'Add :uls.preview.tutorialPopupsEnabled bool true' "$PREFERENCES_PATH"

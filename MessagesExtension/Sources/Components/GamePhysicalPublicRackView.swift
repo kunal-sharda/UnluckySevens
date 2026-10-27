@@ -40,13 +40,6 @@ struct GamePhysicalPublicRackView: View {
                                 .foregroundStyle(GamePhysicalTurnPalette.primaryText)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.5)
-                        } else if previewDiscoverability {
-                            Text("Tap for supply")
-                                .font(.caption)
-                                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-                                .accessibilityHidden(true)
                         }
                     }
                     .frame(maxWidth: 210)
@@ -118,20 +111,7 @@ struct GamePhysicalPublicRackView: View {
 
     private var developmentDeck: some View {
         VStack(spacing: GamePhysicalTurnLayout.publicLabelGap) {
-            if previewDiscoverability {
-                HStack(spacing: 4) {
-                    developmentCard
-                    Text("Tap to buy")
-                        .font(.caption)
-                        .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                        .lineLimit(3)
-                        .minimumScaleFactor(0.65)
-                        .frame(width: 44, height: GamePhysicalTurnLayout.portraitCardSize.height)
-                        .accessibilityHidden(true)
-                }
-            } else {
-                developmentCard
-            }
+            developmentCard
 
             GameTabletopNameTileView(
                 title: "Dev Cards",

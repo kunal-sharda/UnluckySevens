@@ -8,6 +8,18 @@ final class AppPreferences {
     static let disabledTutorialTipsKey = "uls.disabledTutorialTips"
     static let skipAnimationsKey = "uls.skipAnimations"
 
+    private static let devTeachingTurnsKey = "uls.devTeachingTurns"
+
+    /// Consume only when the card can actually appear. Closing/reopening the host does not repeat it.
+    func claimDevPurchaseTeaching(context: GameDevPurchaseTeachingContext?, canBuy: Bool, isBusy: Bool) -> Bool {
+        guard shouldShowTip(.devPurchase), canBuy, !isBusy, let context else { return false }
+        var turns = userDefaults.dictionary(forKey: Self.devTeachingTurnsKey) as? [String: String] ?? [:]
+        guard turns[context.gameID] != context.turnID else { return false }
+        turns[context.gameID] = context.turnID
+        userDefaults.set(turns, forKey: Self.devTeachingTurnsKey)
+        return true
+    }
+
     private let userDefaults: UserDefaults
 
     var skipsAnimations: Bool {

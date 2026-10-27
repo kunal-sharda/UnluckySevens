@@ -20,6 +20,7 @@ struct GamePhysicalTurnActionSpreadView: View {
     let onSelectBuild: (GameBuildShelfItem.Kind) -> Void
     let onOpenDevCards: () -> Void
     let onSelectDevCard: (GameDevCardActionKind) -> Void
+    var onOpenBuildCosts: () -> Void = {}
 
     var body: some View {
         Group {
@@ -192,8 +193,9 @@ struct GamePhysicalTurnActionSpreadView: View {
                             .lineLimit(1)
                             .frame(height: 16)
 
-                        costRow(item.cost)
-                            .frame(height: 16)
+                        Text(item.kind == .buildRoad ? "0 VP" : item.kind == .buildSettlement ? "1 VP" : "2 VP")
+                            .font(.caption2)
+                            .foregroundStyle(GamePhysicalTurnPalette.primaryText)
                         if !item.isEnabled, let reason = item.unavailableReason {
                             Text(reason).font(.caption2)
                                 .multilineTextAlignment(.center)
@@ -212,8 +214,23 @@ struct GamePhysicalTurnActionSpreadView: View {
                 .accessibilityHint(item.isEnabled ? "Shows placement targets for \(item.title)" : item.unavailableReason ?? "Unavailable now")
                 .gameTutorialTarget(tutorialTarget(for: item.kind))
             }
+            Button(action: onOpenBuildCosts) {
+                VStack(spacing: 5) {
+                    Image(systemName: "list.bullet.rectangle").font(.title3)
+                    Text("Build\nCosts").font(.caption2.bold()).multilineTextAlignment(.center)
+                }
+                .foregroundStyle(GameTheme.felt)
+                .frame(width: 54, height: 74)
+                .background(GameTheme.surface, in: RoundedRectangle(cornerRadius: 5))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Build Costs")
+            .accessibilityHint("Slides the building and Dev Card cost reference onto the table")
+            .accessibilityIdentifier("uls.buildCosts.open")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("uls.physicalProps.buildSpread")
     }
 

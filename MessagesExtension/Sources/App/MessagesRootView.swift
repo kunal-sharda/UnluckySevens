@@ -129,7 +129,8 @@ struct MessagesRootView: View {
                                     : viewModel.uxTestingInitialGameMode,
                                 initialRoute: viewModel.uxTestingForcesCityTargets
                                     ? .build
-                                    : viewModel.uxTestingInitialGameRoute
+                                    : viewModel.uxTestingInitialGameRoute,
+                                isUtilityPresented: utilityRoute != nil
                             )
                             .id("\(viewModel.gameShellResetToken)-\(viewModel.uxTestingForcesCityTargets)")
                             }
@@ -138,7 +139,8 @@ struct MessagesRootView: View {
                                 viewModel: viewModel,
                                 onSettingsTap: showGameplaySettings,
                                 onGamesTap: showGames,
-                                preferences: appPreferences
+                                preferences: appPreferences,
+                                isUtilityPresented: utilityRoute != nil
                             )
                     #endif
                         }

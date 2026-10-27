@@ -1,0 +1,2 @@
+# Requires accessibility-medium and system Reduce Motion enabled on the isolated target; restore the original setting afterward.
+testSlidingBuildCostsReferenceAtAccessibilitySize|turn-after-roll|host

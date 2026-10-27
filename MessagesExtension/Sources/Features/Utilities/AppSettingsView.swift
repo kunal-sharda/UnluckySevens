@@ -40,7 +40,7 @@ struct AppSettingsView: View {
                                 .foregroundStyle(GameTheme.surface)
                                 .padding(.vertical, 18)
                                 .accessibilityIdentifier("uls.settings.tutorialPopups")
-                            NavigationLink("Choose tutorial tips", value: Destination.tutorialTips)
+                            NavigationLink("Choose which tips appear", value: Destination.tutorialTips)
                                 .font(GameTheme.headingFont)
                                 .foregroundStyle(GameTheme.surface)
                                 .frame(minHeight: 44)
