@@ -15,6 +15,18 @@ struct GamePurchaseTutorialView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "uls.debug.referenceCopyPreview") {
+            preview
+        } else {
+            shippingCard
+        }
+        #else
+        shippingCard
+        #endif
+    }
+
+    private var shippingCard: some View {
         Group {
             if dynamicTypeSize.isAccessibilitySize {
                 ScrollView { content }.scrollBounceBehavior(.basedOnSize)
@@ -72,4 +84,56 @@ struct GamePurchaseTutorialView: View {
             }
         }.buttonStyle(.plain)
     }
+
+    #if DEBUG
+    @State private var showsAwardDetail = false
+
+    private var preview: some View {
+        GameTableReferencePreview(title: "Dev Cards", close: onClose) {
+            HStack(spacing: 12) {
+                GameTabletopPortraitCardView(face: .developmentBack, size: CGSize(width: 32, height: 40), stackDepth: 2)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Draw one hidden card.").font(.subheadline.bold())
+                    Text("Buy from the Dev Cards pile above the board.").font(.caption)
+                }
+                Spacer(minLength: 3)
+                GameBuildCostRow(cost: CoreBuildCostsV1.developmentCard)
+            }.padding(.vertical, 4)
+            if tutorialsEnabled {
+                Divider()
+                ForEach([GameDevCardVisualKind.knight, .roadBuilding, .yearOfPlenty, .monopoly, .victoryPoint]) { kind in
+                    HStack(spacing: 10) {
+                        GameTabletopPortraitCardView(face: .ownedDevelopment(kind), size: CGSize(width: 21, height: 27))
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(kind.title).font(.subheadline.bold())
+                            Text(effect(kind)).font(.caption)
+                        }
+                    }
+                }
+                Divider()
+                GameReferenceAwardPreview(title: "Largest Army", detail: "Play at least 3 Knights. To take Largest Army from another player, play more Knights than they have.", expanded: $showsAwardDetail)
+            }
+            if !canBuy, let unavailableReason { Text(unavailableReason).font(.caption) }
+            Button("Buy Dev Card", action: onBuy)
+                .buttonStyle(GameTabletopActionButtonStyle(emphasis: .primary, solidBackground: true))
+                .frame(minHeight: 44).disabled(!canBuy).accessibilityIdentifier("uls.purchase.confirm")
+            if tutorialsEnabled {
+                Divider()
+                GameTutorialPreferenceControls(onDisableTip: onDisableTip, onDisableAll: onDisable,
+                    accessibilityPrefix: "uls.tutorial.purchase", disableAllIdentifier: "uls.tutorial.purchase.disable", onEnableTip: onEnableTip)
+            }
+        }.accessibilityElement(children: .contain).accessibilityIdentifier("uls.purchase.surface")
+    }
+
+    private func effect(_ kind: GameDevCardVisualKind) -> String {
+        switch kind {
+        case .knight: "Move the robber and steal a resource. Counts toward Largest Army."
+        case .roadBuilding: "Place up to 2 roads for free."
+        case .yearOfPlenty: "Take 2 resources of your choice from the Bank."
+        case .monopoly: "Choose a resource. Take all of it from the other players."
+        case .victoryPoint: "Gain 1 hidden VP. Your card is revealed automatically at 10 VP on your turn."
+        }
+    }
+    #endif
+
 }

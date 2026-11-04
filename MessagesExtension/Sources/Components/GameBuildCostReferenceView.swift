@@ -18,6 +18,18 @@ struct GameBuildCostReferenceView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "uls.debug.referenceCopyPreview") {
+            preview
+        } else {
+            shippingCard
+        }
+        #else
+        shippingCard
+        #endif
+    }
+
+    private var shippingCard: some View {
         Group {
             if dynamicTypeSize.isAccessibilitySize {
                 ScrollView { content }.scrollBounceBehavior(.basedOnSize)
@@ -95,5 +107,58 @@ struct GameBuildCostReferenceView: View {
     private func piece(_ kind: GameBuildShelfItem.Kind) -> GameTabletopPiecePropView.Kind {
         switch kind { case .buildRoad: .road; case .buildSettlement: .settlement; case .buildCity: .city }
     }
+
+    #if DEBUG
+    @State private var showsAwardDetail = false
+
+    private var preview: some View {
+        GameTableReferencePreview(title: "Build Costs", close: onClose) {
+            ForEach(items) { item in
+                Button { onBuild(item.kind) } label: {
+                    HStack(spacing: 10) {
+                        GameTabletopPiecePropView(kind: piece(item.kind), color: playerColor, isSelected: item.isEnabled)
+                            .frame(width: 34, height: 28)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(item.title).font(.subheadline.bold())
+                            Text(benefit(item.kind)).font(.caption)
+                            if !item.isEnabled, let reason = item.unavailableReason { Text(reason).font(.caption) }
+                        }
+                        Spacer(minLength: 3)
+                        GameBuildCostRow(cost: item.cost)
+                    }.frame(minHeight: 48).contentShape(Rectangle())
+                }.disabled(!item.isEnabled)
+                .accessibilityIdentifier("uls.tutorial.build.\(item.kind.rawValue)")
+            }
+            Button(action: onDev) {
+                HStack(spacing: 10) {
+                    GameTabletopPortraitCardView(face: .developmentBack, size: CGSize(width: 22, height: 28))
+                        .frame(width: 34)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Dev Card").font(.subheadline.bold())
+                        Text("Draw one hidden card.").font(.caption)
+                    }
+                    Spacer()
+                    GameBuildCostRow(cost: CoreBuildCostsV1.developmentCard)
+                }.frame(minHeight: 48).contentShape(Rectangle())
+            }.accessibilityIdentifier("uls.buildCosts.dev")
+            Divider()
+            GameReferenceAwardPreview(title: "Longest Road", detail: "Connect at least 5 roads in one continuous route. To take Longest Road from another player, build a longer route.", expanded: $showsAwardDetail)
+            if showsTutorialControls {
+                Divider()
+                GameTutorialPreferenceControls(onDisableTip: onDisableTip, onDisableAll: onDisableAll,
+                    accessibilityPrefix: "uls.tutorial.purchase", disableAllIdentifier: "uls.tutorial.purchase.disable", onEnableTip: onEnableTip)
+            }
+        }.accessibilityElement(children: .contain).accessibilityIdentifier("uls.buildCosts.reference")
+    }
+
+    private func benefit(_ kind: GameBuildShelfItem.Kind) -> String {
+        switch kind {
+        case .buildRoad: "Extend your route toward Longest Road."
+        case .buildSettlement: "Collect resources from adjacent tiles. 1 VP."
+        case .buildCity: "Replace a settlement. Double its production. 2 VP total."
+        }
+    }
+    #endif
+
 }
 

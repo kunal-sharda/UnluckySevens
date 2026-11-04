@@ -2502,6 +2502,28 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         }
     }
 
+    func testTableReferenceCopyPreview() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "End turn action")
+        hideUXLabChromeWithoutChangingFixture()
+        let before = gameplayActionEvidenceValue()
+        let close = messages.buttons["uls.purchase.close"].firstMatch
+        let army = messages.buttons["uls.reference.award.Largest Army"].firstMatch
+        XCTAssertTrue(army.waitForExistence(timeout: 5))
+        attachScreenshot(named: "Dev Cards guide")
+        army.tap()
+        XCTAssertTrue(messages.staticTexts["uls.reference.award.detail"].firstMatch.waitForExistence(timeout: 4))
+        close.tap()
+        turnElement(identifier: "uls.turnObject.build", labels: ["Build"]).tap()
+        let road = messages.buttons["uls.reference.award.Longest Road"].firstMatch
+        XCTAssertTrue(road.waitForExistence(timeout: 5))
+        attachScreenshot(named: "Build Costs reference")
+        road.tap()
+        XCTAssertTrue(messages.staticTexts["uls.reference.award.detail"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+        close.tap()
+    }
+
     func testAutomaticDevBankTeaching() throws {
         openUnluckySevensExtension()
         assertLaunchFixtureLoaded(title: "End turn action")
