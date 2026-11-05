@@ -170,6 +170,14 @@ struct GamePhysicalTurnActionSpreadView: View {
         }
     }
 
+    private var usesPortraitReference: Bool {
+        #if DEBUG
+        UserDefaults.standard.bool(forKey: "uls.debug.portraitReference")
+        #else
+        false
+        #endif
+    }
+
     private var buildSpread: some View {
         HStack(alignment: .center, spacing: 6) {
             ForEach(buildItems) { item in
@@ -193,9 +201,11 @@ struct GamePhysicalTurnActionSpreadView: View {
                             .lineLimit(1)
                             .frame(height: 16)
 
-                        Text(item.kind == .buildRoad ? "0 VP" : item.kind == .buildSettlement ? "1 VP" : "2 VP")
-                            .font(.caption2)
-                            .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                        if !usesPortraitReference {
+                            Text(item.kind == .buildRoad ? "0 VP" : item.kind == .buildSettlement ? "1 VP" : "2 VP")
+                                .font(.caption2)
+                                .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                        }
                         if !item.isEnabled, let reason = item.unavailableReason {
                             Text(reason).font(.caption2)
                                 .multilineTextAlignment(.center)
@@ -215,15 +225,11 @@ struct GamePhysicalTurnActionSpreadView: View {
                 .gameTutorialTarget(tutorialTarget(for: item.kind))
             }
             #if DEBUG
-            if UserDefaults.standard.bool(forKey: "uls.debug.portraitReference") {
+            if usesPortraitReference {
                 Button(action: onOpenBuildCosts) {
-                    VStack(spacing: 3) {
-                        Color.clear.frame(width: 42, height: 63)
-                            .anchorPreference(key: BuildReferenceAnchor.self, value: .bounds) { $0 }
-                        Text("Build Costs").font(.caption2.bold())
-                            .foregroundStyle(GamePhysicalTurnPalette.primaryText)
-                    }
-                    .contentShape(Rectangle())
+                    Color.clear.frame(width: 54, height: 74)
+                        .anchorPreference(key: BuildReferenceAnchor.self, value: .bounds) { $0 }
+                        .contentShape(Rectangle())
                 }
                 .accessibilityLabel("Build Costs").accessibilityIdentifier("uls.buildCosts.open")
             } else { buildCostsProp }

@@ -9,7 +9,7 @@ struct BuildReferenceAnchor: PreferenceKey {
     }
 }
 
-/// One card at a fixed typesetting size. Only its position and scale change during pickup.
+/// The cover and reference share a paper outline throughout pickup and return.
 struct GamePortraitReferencePreview: View {
     let origin: CGRect
     let size: CGSize
@@ -59,11 +59,24 @@ struct GamePortraitReferencePreview: View {
     }
 
     private var face: some View {
-        ViewThatFits(in: .vertical) {
-            contents.fixedSize(horizontal: false, vertical: true)
-            ScrollView { contents }
+        ZStack {
+            if lifted {
+                ViewThatFits(in: .vertical) {
+                    contents.fixedSize(horizontal: false, vertical: true)
+                    ScrollView { contents }
+                }
+                .padding(24)
+            } else {
+                VStack(spacing: 16) {
+                    roadMark.frame(width: width * 0.74)
+                    Text("Build\nCosts")
+                        .font(.system(size: width * 0.21, weight: .semibold))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.center)
+                }
+            }
         }
-        .padding(22)
         .frame(width: width, height: height)
         .foregroundStyle(ink)
         .background(paper, in: RoundedRectangle(cornerRadius: 15))
@@ -80,36 +93,38 @@ struct GamePortraitReferencePreview: View {
         .accessibilityIdentifier("uls.portraitReference.face")
     }
 
+    private var roadMark: some View {
+        Image("BuildCostsRoadPrint", bundle: .main)
+            .resizable().aspectRatio(contentMode: .fit).accessibilityHidden(true)
+    }
+
     private var contents: some View {
         VStack(spacing: 10) {
-            Text("Build Costs").font(.title.bold()).accessibilityAddTraits(.isHeader)
-            Image("BuildCostsRoadPrint", bundle: .main)
-                .resizable().aspectRatio(contentMode: .fit)
-                .frame(maxHeight: width * 0.33).accessibilityHidden(true)
+            HStack {
+                Text("Build Costs").font(.title.bold()).accessibilityAddTraits(.isHeader)
+                Spacer()
+                roadMark.frame(width: 60)
+            }
             Divider()
             ForEach(items) { item in
                 Button { onBuild(item.kind) } label: {
                     HStack(spacing: 8) {
                         GameTabletopPiecePropView(kind: piece(item.kind), color: playerColor, isSelected: false)
                             .frame(width: 31, height: 27)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.title).font(.subheadline.bold())
-                            if item.kind == .buildSettlement { Text("1 VP").font(.caption) }
-                            if item.kind == .buildCity { Text("2 VP total").font(.caption) }
-                        }
+                        Text(item.title).font(.headline)
                         Spacer(minLength: 2)
                         GameBuildCostRow(cost: item.cost)
-                    }.frame(minHeight: 44).contentShape(Rectangle())
+                    }.frame(minHeight: max(44, height * 0.11)).contentShape(Rectangle())
                 }.disabled(!item.isEnabled)
             }
             Button(action: onDev) {
                 HStack(spacing: 8) {
                     GameTabletopPortraitCardView(face: .developmentBack, size: CGSize(width: 21, height: 28))
                         .frame(width: 31)
-                    Text("Dev Card").font(.subheadline.bold())
+                    Text("Dev Card").font(.headline)
                     Spacer()
                     GameBuildCostRow(cost: CoreBuildCostsV1.developmentCard)
-                }.frame(minHeight: 44).contentShape(Rectangle())
+                }.frame(minHeight: max(44, height * 0.11)).contentShape(Rectangle())
             }
             Divider()
             GameReferenceAwardPreview(title: "Longest Road", detail: "Connect at least 5 roads in one continuous route. To take Longest Road from another player, build a longer route.", expanded: $expanded)
