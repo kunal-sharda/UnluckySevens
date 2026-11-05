@@ -2502,6 +2502,32 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         }
     }
 
+    func testPortraitReferencePickup() throws {
+        openCanonicalPostRollActionFixture()
+        let before = gameplayActionEvidenceValue()
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let initialFrame = board.frame
+        turnElement(identifier: "uls.turnObject.build", labels: ["Build"]).tap()
+        let prop = messages.buttons["uls.buildCosts.open"].firstMatch
+        let close = messages.buttons["uls.purchase.close"].firstMatch
+        XCTAssertTrue(prop.waitForExistence(timeout: 5))
+        XCTAssertFalse(close.exists)
+        attachScreenshot(named: "01 Card at rest")
+        prop.tap()
+        XCTAssertTrue(close.waitForExistence(timeout: 4))
+        XCTAssertFalse(messages.buttons["uls.tutorial.purchase.disableTip"].exists)
+        attachScreenshot(named: "02 Card in hand")
+        let face = messages.descendants(matching: .any)["uls.portraitReference.face"].firstMatch
+        face.swipeDown()
+        XCTAssertTrue(close.waitForNonExistence(timeout: 4))
+        prop.tap()
+        close.tap()
+        XCTAssertTrue(close.waitForNonExistence(timeout: 4))
+        XCTAssertTrue(prop.isHittable)
+        assertFrame(of: board, matches: initialFrame, message: "Reading the card preserves board position")
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+    }
+
     func testTableReferenceCopyPreview() throws {
         openUnluckySevensExtension()
         assertLaunchFixtureLoaded(title: "End turn action")

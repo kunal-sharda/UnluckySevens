@@ -215,6 +215,11 @@ while IFS='|' read -r TEST_NAME FIXTURE_ID FIXTURE_ACTOR; do
   if [[ "$TEST_NAME" == testTableReferenceCopyPreview ]]; then
     /usr/libexec/PlistBuddy -c 'Add :uls.debug.referenceCopyPreview bool true' "$PREFERENCES_PATH"
   fi
+  /usr/libexec/PlistBuddy -c 'Delete :uls.debug.portraitReference' "$PREFERENCES_PATH" >/dev/null 2>&1 || true
+  if [[ "$TEST_NAME" == testPortraitReferencePickup ]]; then
+    /usr/libexec/PlistBuddy -c 'Add :uls.debug.portraitReference bool true' "$PREFERENCES_PATH"
+    /usr/libexec/PlistBuddy -c 'Delete :uls.skipAnimations' "$PREFERENCES_PATH" >/dev/null 2>&1 || true
+  fi
   # These teaching journeys need a fresh local preference baseline, not a fresh game rule state.
   if [[ "$TEST_NAME" == testSlidingBuildCostsReference* || "$TEST_NAME" == testAutomaticDevBankTeaching || "$TEST_NAME" == testTableReferenceCopyPreview ]]; then
     for KEY in uls.tutorialPopupsEnabled uls.disabledTutorialTips uls.devTeachingTurns; do

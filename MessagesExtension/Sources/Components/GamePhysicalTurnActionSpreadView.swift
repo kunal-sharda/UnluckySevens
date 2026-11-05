@@ -214,6 +214,29 @@ struct GamePhysicalTurnActionSpreadView: View {
                 .accessibilityHint(item.isEnabled ? "Shows placement targets for \(item.title)" : item.unavailableReason ?? "Unavailable now")
                 .gameTutorialTarget(tutorialTarget(for: item.kind))
             }
+            #if DEBUG
+            if UserDefaults.standard.bool(forKey: "uls.debug.portraitReference") {
+                Button(action: onOpenBuildCosts) {
+                    VStack(spacing: 3) {
+                        Color.clear.frame(width: 42, height: 63)
+                            .anchorPreference(key: BuildReferenceAnchor.self, value: .bounds) { $0 }
+                        Text("Build Costs").font(.caption2.bold())
+                            .foregroundStyle(GamePhysicalTurnPalette.primaryText)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Build Costs").accessibilityIdentifier("uls.buildCosts.open")
+            } else { buildCostsProp }
+            #else
+            buildCostsProp
+            #endif
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("uls.physicalProps.buildSpread")
+    }
+
+    private var buildCostsProp: some View {
             Button(action: onOpenBuildCosts) {
                 VStack(spacing: 5) {
                     Image(systemName: "list.bullet.rectangle").font(.title3)
@@ -228,10 +251,6 @@ struct GamePhysicalTurnActionSpreadView: View {
             .accessibilityLabel("Build Costs")
             .accessibilityHint("Slides the building and Dev Card cost reference onto the table")
             .accessibilityIdentifier("uls.buildCosts.open")
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("uls.physicalProps.buildSpread")
     }
 
     private func costRow(_ cost: ResourceHandV1) -> some View {

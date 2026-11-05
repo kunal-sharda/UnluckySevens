@@ -1064,7 +1064,7 @@ struct GameShellView: View {
                     }
 
                     if !isGameOver, !designPreviewID.hasPrefix("preview-") {
-                        if showsBuildReference || showsDevPurchase {
+                        if (showsBuildReference && !previewsPortraitReference) || showsDevPurchase {
                             ZStack(alignment: .bottom) {
                                 Group {
                                     if showsBuildReference {
@@ -1176,6 +1176,20 @@ struct GameShellView: View {
 
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                #if DEBUG
+                .overlayPreferenceValue(BuildReferenceAnchor.self) { anchor in
+                    if previewsPortraitReference, let anchor {
+                        GeometryReader { canvas in
+                            GamePortraitReferencePreview(origin: canvas[anchor], size: canvas.size,
+                                lifted: showsBuildReference, policy: motionPolicy,
+                                items: screenModel.actionDock.buildShelfItems, playerColor: physicalPlayerColor,
+                                onBuild: handleBuildShelfSelection, onDev: handlePublicDevDeckPurchase,
+                                onClose: closeTableCard)
+                        }
+                        .allowsHitTesting(showsBuildReference)
+                    }
+                }
+                #endif
                 }
                 #if DEBUG
                 .overlay(alignment: .topLeading) {
@@ -1192,7 +1206,7 @@ struct GameShellView: View {
         }
         return shell
         .onAppear {
-            if shellRoute == .build, preferences.shouldShowTip(.buildCosts) { openBuildReference() }
+            if shellRoute == .build, !previewsPortraitReference, preferences.shouldShowTip(.buildCosts) { openBuildReference() }
             synchronizeMode(with: screenModel.modeAvailability)
             synchronizeBoardSelection(mode: resolvedMode)
             synchronizeHandTrayVisibility(for: resolvedMode)
@@ -1276,7 +1290,7 @@ struct GameShellView: View {
             }
         }
         .onChange(of: shellRoute) { _, newRoute in
-            if newRoute == .build, preferences.shouldShowTip(.buildCosts) { openBuildReference() }
+            if newRoute == .build, !previewsPortraitReference, preferences.shouldShowTip(.buildCosts) { openBuildReference() }
             if newRoute != .build { showsBuildReference = false }
             NotificationCenter.default.post(
                 name: .gameBoardPanelOcclusionChanged,
@@ -1655,8 +1669,16 @@ struct GameShellView: View {
         showsDevPurchase = true
     }
 
+    private var previewsPortraitReference: Bool {
+        #if DEBUG
+        UserDefaults.standard.bool(forKey: "uls.debug.portraitReference")
+        #else
+        false
+        #endif
+    }
+
     private func openBuildReference() {
-        buildReferenceHasTeaching = preferences.shouldShowTip(.buildCosts)
+        buildReferenceHasTeaching = !previewsPortraitReference && preferences.shouldShowTip(.buildCosts)
         showsBuildReference = true
     }
 
