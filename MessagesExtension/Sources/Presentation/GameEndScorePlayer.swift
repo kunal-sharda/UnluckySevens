@@ -7,4 +7,5 @@ struct GameEndScorePlayer: Identifiable, Equatable {
     let isLocalPlayer: Bool
     let awardLabels: [String]
     let scoreBreakdown: GameEndScoreBreakdown
+    var ownershipMark: GamePlayerMark = .circle
 }

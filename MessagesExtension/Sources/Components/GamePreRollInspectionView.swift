@@ -14,6 +14,7 @@ struct GamePreRollInspectionView: View {
     let onToggleDevCards: () -> Void
     let onSelectDevCard: (GameDevCardActionKind) -> Void
     let onRoll: () -> Void
+    var onReference: () -> Void = {}
     var accessibilityPrefix = "uls.preRoll.map"
     @AccessibilityFocusState private var returnControlIsFocused: Bool
 
@@ -62,6 +63,9 @@ struct GamePreRollInspectionView: View {
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 28)
+        }
+        .overlay(alignment: .topTrailing) {
+            GameReferenceButton(action: onReference).padding(12)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .contain)

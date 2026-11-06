@@ -23,7 +23,7 @@ struct GamePhysicalStartTurnView: View {
                         Spacer(minLength: 24)
 
                         VStack(spacing: 9) {
-                            Text(isDevChooserOpen ? "Choose a Dev Card" : "Your Turn")
+                            Text(isDevChooserOpen ? "Choose a Dev Card" : canPlayDevCards ? "Play a Dev Card or Roll" : "Your Turn")
                                 .font(GameTheme.displayFont)
                                 .foregroundStyle(GamePhysicalTurnPalette.primaryText)
                                 .multilineTextAlignment(.center)

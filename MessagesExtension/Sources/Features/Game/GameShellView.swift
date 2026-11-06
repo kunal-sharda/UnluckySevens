@@ -1,5 +1,6 @@
 import Combine
 import SwiftUI
+import UIKit
 import ULS_CoreGame
 
 struct GameShellView: View {
@@ -74,6 +75,8 @@ struct GameShellView: View {
 
     let viewModel: LobbyDriverViewModel
     let onSettingsTap: () -> Void
+    let onReferenceTap: () -> Void
+    let onControlInteraction: ((GameControlInteraction) -> Void)?
     let onGamesTap: () -> Void
     let preferences: AppPreferences
     private let initialModeOnReset: GameMode
@@ -102,10 +105,12 @@ struct GameShellView: View {
     @State private var physicalDiceRollResult: GameDiceRollResult?
     @State private var physicalDiceCompletionGate = GameDiceRollCompletionGate()
     @State private var showsPhysicalTradeRecipients = false
+    @State private var showsRollReceipt = false
     @State private var showsDevPurchase = false
     @State private var showsDevTeaching = false
     @State private var showsBuildReference = false
     @State private var buildReferenceHasTeaching = false
+    private let isSyntheticSession: Bool
     private let isUtilityPresented: Bool
     @State private var isSendingGameUpdate = false
     @State private var roadSubmissionHash: String?
@@ -129,6 +134,7 @@ struct GameShellView: View {
     init(
         viewModel: LobbyDriverViewModel,
         onSettingsTap: @escaping () -> Void = {},
+        onReferenceTap: @escaping () -> Void = {},
         onGamesTap: @escaping () -> Void = {},
         preferences: AppPreferences,
         initialMode: GameMode = .idle,
@@ -136,10 +142,14 @@ struct GameShellView: View {
         minimumActionSurfaceHeight: CGFloat? = nil,
         tutorialTradeTarget: GameTutorialTarget? = nil,
         tutorialHeaderTitle: String? = nil,
-        isUtilityPresented: Bool = false
+        isUtilityPresented: Bool = false,
+        isSyntheticSession: Bool = false,
+        onControlInteraction: ((GameControlInteraction) -> Void)? = nil
     ) {
         self.viewModel = viewModel
         self.onSettingsTap = onSettingsTap
+        self.onReferenceTap = onReferenceTap
+        self.onControlInteraction = onControlInteraction
         self.onGamesTap = onGamesTap
         self.preferences = preferences
         initialModeOnReset = initialMode
@@ -148,6 +158,7 @@ struct GameShellView: View {
         self.tutorialTradeTarget = tutorialTradeTarget
         self.tutorialHeaderTitle = tutorialHeaderTitle
         self.isUtilityPresented = isUtilityPresented
+        self.isSyntheticSession = isSyntheticSession
         let initialProjection = viewModel.gameplayShellProjection
         _shellProjection = State(initialValue: initialProjection)
         _isSendingGameUpdate = State(initialValue: viewModel.isSendingGameUpdate)
@@ -358,7 +369,7 @@ struct GameShellView: View {
                         - (physicalLayout.boardFrameVerticalInset * 2),
                     0
                 )
-                let boardViewportLayout = GameBoardViewportLayout.fit(
+                let fittedBoardViewport = GameBoardViewportLayout.fit(
                     availableSize: CGSize(
                         width: max(
                             shellSize.width
@@ -369,6 +380,9 @@ struct GameShellView: View {
                         height: boardHostPresentationHeight
                     )
                 )
+                let boardViewportLayout = isSyntheticSession
+                    ? GameBoardViewportLayout(size: CGSize(width: max(shellSize.width - 32, 0), height: fittedBoardViewport.size.height), uniformScale: fittedBoardViewport.uniformScale)
+                    : fittedBoardViewport
                 let boardBottomOcclusionHeight = isGameInfoOpen
                     ? GameTurnGameInfoView.boardClearanceHeight
                     : CGFloat.zero
@@ -401,6 +415,7 @@ struct GameShellView: View {
                                         GamePhysicalSetupTopBarView(
                                             model: setupPlacementModel,
                                             onSettingsTap: onSettingsTap,
+                                            onReferenceTap: onReferenceTap,
                                             onGameInfoTap: handleGameInfoToggle
                                         )
                                 } else if isPhysicalGameOver,
@@ -421,6 +436,7 @@ struct GameShellView: View {
                                                 prompt: physicalHeaderPrompt,
                                                 isGameInfoOpen: isGameInfoOpen,
                                                 onSettingsTap: onSettingsTap,
+                                            onReferenceTap: onReferenceTap,
                                                 onGameInfoTap: handleGameInfoToggle
                                             )
                                         }
@@ -456,6 +472,7 @@ struct GameShellView: View {
                                             onToggleBankCounts: {
                                                 withAnimation(motionPolicy.resolvedAnimation(GameTheme.quickAnimation)) {
                                                     physicalBankCountsRevealed.toggle()
+                                                    if physicalBankCountsRevealed { onControlInteraction?(.bank) }
                                                 }
                                             },
                                         onBuyDevelopmentCard: handlePublicDevDeckPurchase
@@ -483,7 +500,7 @@ struct GameShellView: View {
                                 selectionText: visibleBoardSelectionText,
                                 hintBottomInset: boardHintBottomInset,
                                 showsCreamFrame: false,
-                                boardContentVerticalOffset: isPhysicalSetup
+                                boardContentVerticalOffset: isPhysicalSetup || isSyntheticSession
                                     ? 0
                                     : physicalBoardCenteringOffset,
                                 bottomOcclusionHeight: boardBottomOcclusionHeight,
@@ -507,8 +524,21 @@ struct GameShellView: View {
                                 height: boardViewportLayout.size.height
                             )
                             .allowsHitTesting(!isGameInfoOpen && !showsBuildReference && !showsDevPurchase)
+                            .environment(\.isPracticeBoard, isSyntheticSession)
                             .gameTutorialTarget(.board)
                             .accessibilityHidden(isPhysicalStartTurn && !isInspectingPreRollBoard && designPreviewID != "preview-map-inspection")
+                            .overlay {
+                                if !isPhysicalGameOver && !isSyntheticSession {
+                                    GameTableSeatsView(players: screenModel.gameInfo.players, compact: boardViewportLayout.size.width < 300, onShowPlayers: handleGameInfoToggle)
+                                        .padding(14)
+                                        .allowsHitTesting(!isUtilityPresented && !showsBuildReference && !showsDevPurchase)
+                                }
+                            }
+                            .overlay(alignment: .topTrailing) {
+                                if isPhysicalGameOver {
+                                    GameReferenceButton(action: onReferenceTap).padding(14)
+                                }
+                            }
                             .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius + 8))
                             .background {
                                 GeometryReader { boardGeometry in
@@ -717,6 +747,20 @@ struct GameShellView: View {
                                     },
                                     onSelectDevCard: handleDevCardSelection
                                 )
+                                .overlay(alignment: .topTrailing) {
+                                    if let ready = viewModel.makeDevCardPanelModel(mode: .playDevCard, draft: nil),
+                                       ready.cards.contains(where: { $0.isEnabled && $0.kind != .victoryPoint }) {
+                                        Text("Dev: Play available")
+                                            .font(.caption2.bold())
+                                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                                            .foregroundStyle(GameTheme.surface)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 3)
+                                            .background(GameTheme.felt, in: Capsule())
+                                            .offset(y: -22)
+                                            .allowsHitTesting(false)
+                                    }
+                                }
                                 .scaleEffect(physicalLayout.contentScale)
                                 .frame(height: actionSurfaceHeight)
                                 .frame(maxWidth: lowerRailWidth)
@@ -750,20 +794,8 @@ struct GameShellView: View {
                                 .accessibilityHidden(showsBuildReference || showsDevPurchase)
                                 .zIndex(0.75)
                             } else if shellRoute == .devCards, resolvedMode == .playDevCard {
-                                GamePhysicalTurnActionSpreadView(
-                                    content: .devCards,
-                                    hand: screenModel.handTray,
-                                    ownedDevelopmentCards: screenModel.ownedDevCards,
-                                    buildItems: screenModel.actionDock.buildShelfItems,
-                                    devCardPanel: devCardPanelModel,
-                                    canOpenDevCards: true,
-                                    playerColor: physicalPlayerColor,
-                                    onSelectBuild: handleBuildShelfSelection,
-                                    onOpenDevCards: {},
-                                    onSelectDevCard: handleDevCardSelection
-                                )
-                                .scaleEffect(physicalLayout.contentScale)
-                                .frame(height: actionSurfaceHeight)
+                                GameOwnedDevInspectionView(panel: devCardPanelModel, onPlay: handleDevCardSelection)
+                                .frame(height: min(260, shellSize.height * 0.42))
                                 .frame(maxWidth: lowerRailWidth)
                                 .padding(.horizontal, GameTheme.shellPadding)
                                 .padding(.bottom, GameTheme.shellPadding + reservedTrayHeight)
@@ -830,6 +862,10 @@ struct GameShellView: View {
                                 width: shellSize.width,
                                 height: shellSize.height + geometry.safeAreaInsets.bottom
                             )
+                            .overlay(alignment: .topLeading) {
+                                GameReferenceButton(action: onReferenceTap)
+                                    .padding(.leading, 56)
+                            }
                             .padding(.bottom, -geometry.safeAreaInsets.bottom)
                             .ignoresSafeArea(edges: .bottom)
                             .zIndex(3)
@@ -1044,11 +1080,42 @@ struct GameShellView: View {
                                 )
                             },
                             onSelectDevCard: handleDevCardSelection,
-                            onRoll: beginPhysicalDiceRoll
+                            onRoll: beginPhysicalDiceRoll,
+                            onReference: onReferenceTap
                         )
                         .frame(width: shellSize.width, height: shellSize.height)
                         .transition(.opacity)
                         .zIndex(4)
+                    }
+
+                    if showsRollReceipt, let receipt = viewModel.privateRollReceipt,
+                       physicalDiceRollResult == nil, !isUtilityPresented,
+                       !showsDevPurchase, !showsBuildReference, !isTradePanelPresented {
+                        VStack {
+                            Spacer()
+                            VStack(alignment: .leading, spacing: 8) {
+                                GameRollReceiptView(receipt: receipt, rollerName: viewModel.receiptRollerName)
+                                Button { showsRollReceipt = false } label: {
+                                    Text("Got it").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+                                }
+                                    .accessibilityIdentifier("uls.roll.receipt.close")
+                            }
+                            .padding(16)
+                            .foregroundStyle(GameTheme.felt)
+                            .background(GameTheme.surface, in: RoundedRectangle(cornerRadius: 12))
+                            .frame(maxWidth: 340)
+                            .padding(.bottom, reservedTrayHeight)
+                        }
+                        .id("\(viewModel.gameplayShellProjection.gameId)-\(receipt.revision)")
+                        .onAppear {
+                            if preferences.claimRollReceipt(gameID: viewModel.gameplayShellProjection.gameId,
+                                                            revision: receipt.revision) {
+                                UIAccessibility.post(notification: .announcement,
+                                    argument: GameRollReceiptView.announcement(receipt: receipt,
+                                        rollerName: viewModel.receiptRollerName))
+                            }
+                        }
+                        .zIndex(9)
                     }
 
                     if isPhysicalStartTurn || physicalDiceRollResult != nil {
@@ -1227,6 +1294,16 @@ struct GameShellView: View {
             }
         }
         .animation(motionPolicy.resolvedAnimation(), value: showsBuildReference)
+        .onAppear { updateRollReceiptVisibility() }
+        .onChange(of: viewModel.privateRollReceipt) { _, _ in updateRollReceiptVisibility() }
+        .onChange(of: shellRoute) { _, route in
+            switch route {
+            case .trade: onControlInteraction?(.trade)
+            case .devCards: onControlInteraction?(.ownedDev)
+            case .gameInfo: onControlInteraction?(.players)
+            default: break
+            }
+        }
         .animation(motionPolicy.resolvedAnimation(), value: showsDevPurchase)
         .onReceive(viewModel.$isSendingGameUpdate.removeDuplicates()) { isSendingGameUpdate = $0 }
         .onReceive(viewModel.$devPurchaseTutorialToken.dropFirst()) { _ in
@@ -1292,25 +1369,13 @@ struct GameShellView: View {
         .onChange(of: shellRoute) { _, newRoute in
             if newRoute == .build, !previewsPortraitReference, preferences.shouldShowTip(.buildCosts) { openBuildReference() }
             if newRoute != .build { showsBuildReference = false }
-            NotificationCenter.default.post(
-                name: .gameBoardPanelOcclusionChanged,
-                object: nil,
-                userInfo: [
-                    "height": newRoute == .gameInfo
-                        ? GameTurnGameInfoView.boardClearanceHeight
-                        : CGFloat.zero
-                ]
-            )
+            updateBoardPanelOcclusion(newRoute == .gameInfo ? GameTurnGameInfoView.boardClearanceHeight : 0)
         }
         .onChange(of: screenModel.boardRenderModel) { _, _ in
             synchronizeBoardSelection(mode: resolvedMode)
         }
         .onDisappear {
-            NotificationCenter.default.post(
-                name: .gameBoardPanelOcclusionChanged,
-                object: nil,
-                userInfo: ["height": CGFloat.zero]
-            )
+            updateBoardPanelOcclusion(0)
         }
         .transaction { transaction in
             if preferences.skipsAnimations {
@@ -1595,6 +1660,7 @@ struct GameShellView: View {
     }
 
     private func handleHandToggle() {
+        onControlInteraction?(.hand)
         if viewModel.isNormalPostRollActiveTurn {
             if isHandOpen {
                 withAnimation(motionPolicy.resolvedAnimation(GameTheme.quickAnimation)) {
@@ -1625,15 +1691,27 @@ struct GameShellView: View {
         clearBoardSelection()
     }
 
+    private func updateRollReceiptVisibility() {
+        guard let receipt = viewModel.privateRollReceipt else {
+            showsRollReceipt = false
+            return
+        }
+        showsRollReceipt = !preferences.hasSeenRollReceipt(gameID: viewModel.gameplayShellProjection.gameId,
+                                                          revision: receipt.revision)
+    }
+
+    private func updateBoardPanelOcclusion(_ height: CGFloat) {
+        // The practice shell sits over a mounted real board and must not broadcast into it.
+        guard !isSyntheticSession else { return }
+        GameBoardPanelOcclusionController.setHeight(height)
+        NotificationCenter.default.post(name: .gameBoardPanelOcclusionChanged,
+                                        object: nil, userInfo: ["height": height])
+    }
+
     private func handleGameInfoToggle() {
         closeTableCard()
         if shellRoute == .gameInfo {
-            GameBoardPanelOcclusionController.setHeight(0)
-            NotificationCenter.default.post(
-                name: .gameBoardPanelOcclusionChanged,
-                object: nil,
-                userInfo: ["height": CGFloat.zero]
-            )
+            updateBoardPanelOcclusion(0)
             shellRoute = .none
         } else {
             if case .trade = shellRoute {
@@ -1642,14 +1720,7 @@ struct GameShellView: View {
             currentMode = .idle
             devCardDraft = nil
             isHandOpen = false
-            GameBoardPanelOcclusionController.setHeight(
-                GameTurnGameInfoView.boardClearanceHeight
-            )
-            NotificationCenter.default.post(
-                name: .gameBoardPanelOcclusionChanged,
-                object: nil,
-                userInfo: ["height": GameTurnGameInfoView.boardClearanceHeight]
-            )
+            updateBoardPanelOcclusion(GameTurnGameInfoView.boardClearanceHeight)
             shellRoute = .gameInfo
         }
         clearBoardSelection()
@@ -1667,6 +1738,7 @@ struct GameShellView: View {
         _ = preferences.claimDevPurchaseTeaching(context: shellProjection.devPurchaseTeachingContext,
             canBuy: shellProjection.gameScreenModel.canBuyDevCard, isBusy: false)
         showsDevPurchase = true
+        onControlInteraction?(.publicDev)
     }
 
     private var previewsPortraitReference: Bool {
@@ -1691,7 +1763,7 @@ struct GameShellView: View {
     private var devTeachingRequest: GameDevTeachingRequest {
         GameDevTeachingRequest(context: shellProjection.devPurchaseTeachingContext,
             canBuy: shellProjection.gameScreenModel.canBuyDevCard && preferences.shouldShowTip(.devPurchase),
-            isBusy: isUtilityPresented || tutorialHeaderTitle != nil || designPreviewID.hasPrefix("preview-")
+            isBusy: isUtilityPresented || isSyntheticSession || tutorialHeaderTitle != nil || designPreviewID.hasPrefix("preview-")
                 || currentMode != .idle || shellRoute != .none || physicalDiceRollResult != nil
                 || showsDevPurchase || showsBuildReference || purchasedDevKind != nil || isSendingGameUpdate)
     }
@@ -1713,6 +1785,7 @@ struct GameShellView: View {
 
     private func handleEndTurnConfirmationConfirm() {
         guard viewModel.publishTurnState(for: .endTurn) else { return }
+        onControlInteraction?(.endTurn)
         currentMode = .idle
         shellRoute = .none
         isHandOpen = true
@@ -2383,6 +2456,7 @@ struct GameShellView: View {
             didPublish = false
         }
 
+        if didPublish { onControlInteraction?(.boardConfirmed) }
         if !didPublish {
             selectedBoardTarget = draft.target
             boardHintText = draft.hintText

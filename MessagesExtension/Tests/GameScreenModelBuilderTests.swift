@@ -259,6 +259,20 @@ final class GameScreenModelBuilderTests: XCTestCase {
         XCTAssertFalse(model.actionDock.primaryItems[3].isEnabled)
     }
 
+    func testPublicScoresDoNotIncludeHiddenVictoryPoints() {
+        for viewer in ["A", "B"] {
+            let projections = [0, 4].map { hidden in
+                let state = makeState(currentPlayer: "A", resourcesByPlayer: ["A": .zero, "B": .zero],
+                    devCardsByPlayer: ["A": DevCardInventoryV1(victoryPoint: hidden)])
+                return GameScreenModelBuilder.build(context: GameScreenContext(selectedState: state,
+                    actingAs: viewer, contextBanner: "", contextMeta: "",
+                    actionAvailability: .none, modeAvailability: .none))
+            }
+            XCTAssertEqual(projections[0].gameInfo.players.map(\.victoryPoints), projections[1].gameInfo.players.map(\.victoryPoints))
+            if viewer == "B" { XCTAssertEqual(projections[0].ownedDevCards, projections[1].ownedDevCards) }
+        }
+    }
+
     func testBuildCreatesLocalOwnedDevInventoryAndPublicGameInfo() throws {
         let state = makeState(
             currentPlayer: "A",
@@ -452,6 +466,7 @@ final class GameScreenModelBuilderTests: XCTestCase {
         XCTAssertEqual(endScreen.winnerTitle, "Victory!")
         XCTAssertEqual(endScreen.winningScoreText, "10 points")
         XCTAssertEqual(endScreen.players.map(\.id), ["B", "A", "C"])
+        XCTAssertEqual(endScreen.players.map(\.ownershipMark), [.triangle, .circle, .square])
         XCTAssertEqual(endScreen.players.map(\.victoryPoints), [10, 1, 1])
         XCTAssertEqual(endScreen.players.map(\.isWinner), [true, false, false])
         XCTAssertEqual(endScreen.players.map(\.isLocalPlayer), [true, false, false])

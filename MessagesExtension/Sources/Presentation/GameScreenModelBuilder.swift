@@ -183,7 +183,8 @@ enum GameScreenModelBuilder {
                 developmentCardCount: devCounts[player] ?? 0,
                 isCurrentPlayer: state.currentPlayer == player,
                 isLocalPlayer: context.actingAs == player,
-                awardLabels: awards
+                awardLabels: awards,
+                isResigned: state.resignedPlayers.contains(player)
             )
         }
 

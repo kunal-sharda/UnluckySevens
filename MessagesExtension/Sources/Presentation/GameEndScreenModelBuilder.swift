@@ -28,7 +28,8 @@ enum GameEndScreenModelBuilder {
                     isWinner: winnerIDs.contains(player.id),
                     isLocalPlayer: player.isLocalPlayer,
                     awardLabels: player.awardLabels,
-                    scoreBreakdown: scoreBreakdown(for: player.id, in: state)
+                    scoreBreakdown: scoreBreakdown(for: player.id, in: state),
+                    ownershipMark: GamePlayerMark.resolve(owner: player.id, playerOrder: state.roster)
                 )
             }
             .sorted { lhs, rhs in

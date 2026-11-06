@@ -94,8 +94,11 @@ enum UXTestFixtures {
         setupRoadPlacement,
         setupHandoff,
         turnNeedsRoll,
+        rollBankShortage,
         turnNeedsRollOnly,
         turnAfterRoll,
+        fourPlayerSeats,
+        mixedPurchaseCosts,
         mixedBankSupply,
         newKnight,
         newVictoryPoint,
@@ -364,6 +367,14 @@ enum UXTestFixtures {
         )
     )
 
+    private static let rollBankShortage = UXTestFixture(
+        id: "roll-bank-shortage", title: "Roll bank shortage",
+        detail: "Observed roll with no local production because the Bank is empty.",
+        defaultActorID: host,
+        state: makeState(rev: 28, phase: .turn, bankResources: .zero,
+            turnState: TurnStateV1(step: .needsRoll, lastRoll: nil))
+    )
+
     private static let turnNeedsRollOnly = UXTestFixture(
         id: turnNeedsRollOnlyID,
         title: "Turn needs roll only",
@@ -376,6 +387,28 @@ enum UXTestFixtures {
             newDevCardsByPlayer: [:],
             turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
         )
+    )
+
+    private static let mixedPurchaseCosts = UXTestFixture(
+        id: "mixed-purchase-costs", title: "Mixed purchase costs", detail: "Road affordable; other purchases resource-short.",
+        defaultActorID: host,
+        state: makeState(rev: 9, phase: .turn,
+            resourcesByPlayer: [host: ResourceHandV1(wood: 1, brick: 1), alice: .zero, ben: .zero],
+            turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 5)))
+    )
+
+    private static let fourPlayerSeats = UXTestFixture(
+        id: "four-player-seats", title: "Four player seats", detail: "Stable public seats and ownership marks.",
+        defaultActorID: host,
+        state: makeState(rev: 9, roster: [host, alice, ben, "fourth"], currentPlayer: alice,
+            phase: .turn,
+            resourcesByPlayer: [host: ResourceHandV1(wood: 2), alice: .zero, ben: .zero, "fourth": .zero],
+            settlementsByNode: [0: host, 10: alice, 20: ben, 30: "fourth"],
+            citiesByNode: [:], roadsByEdge: Dictionary(uniqueKeysWithValues:
+                [(0, host), (10, alice), (20, ben), (30, "fourth")].map { node, player in
+                    (StandardBoardTopologyV1.standard().edges.firstIndex { $0.a == node || $0.b == node }!, player)
+                }),
+            turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 5)))
     )
 
     private static let turnAfterRoll = UXTestFixture(
