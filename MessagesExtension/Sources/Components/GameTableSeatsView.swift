@@ -3,6 +3,7 @@ import SwiftUI
 struct GameTableSeatsView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let players: [GameInfoPlayerSummary]
+    var compact = false
     let onShowPlayers: () -> Void
 
     var body: some View {
@@ -35,15 +36,16 @@ struct GameTableSeatsView: View {
                         .overlay { Path(mark.path(in: CGRect(x: 0, y: 0, width: 9, height: 9))).stroke(GameTheme.surface, lineWidth: 1) }
                         .frame(width: 9, height: 9)
                     Text(player.displayName)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize && !compact ? 2 : 1)
+                        .minimumScaleFactor(0.8)
                 }
-                Text("\(player.victoryPoints) public VP\(player.isResigned ? " · Left" : player.isLocalPlayer ? " · You" : "")")
+                Text(compact ? "\(player.victoryPoints) VP" : "\(player.victoryPoints) public VP\(player.isResigned ? " · Left" : player.isLocalPlayer ? " · You" : "")")
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
             }
             .font(.caption2.weight(player.isCurrentPlayer ? .bold : .regular))
             .foregroundStyle(GameTheme.surface)
             .padding(5)
-            .frame(width: dynamicTypeSize.isAccessibilitySize ? 140 : 110, alignment: .leading)
+            .frame(width: compact ? 64 : dynamicTypeSize.isAccessibilitySize ? 140 : 110, alignment: .leading)
             .frame(minHeight: 44)
             .background(GameTheme.felt.opacity(0.94), in: RoundedRectangle(cornerRadius: 5))
             .overlay {

@@ -97,6 +97,7 @@ enum UXTestFixtures {
         turnNeedsRollOnly,
         turnAfterRoll,
         fourPlayerSeats,
+        mixedPurchaseCosts,
         mixedBankSupply,
         newKnight,
         newVictoryPoint,
@@ -377,6 +378,14 @@ enum UXTestFixtures {
             newDevCardsByPlayer: [:],
             turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
         )
+    )
+
+    private static let mixedPurchaseCosts = UXTestFixture(
+        id: "mixed-purchase-costs", title: "Mixed purchase costs", detail: "Road affordable; other purchases resource-short.",
+        defaultActorID: host,
+        state: makeState(rev: 9, phase: .turn,
+            resourcesByPlayer: [host: ResourceHandV1(wood: 1, brick: 1), alice: .zero, ben: .zero],
+            turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 5)))
     )
 
     private static let fourPlayerSeats = UXTestFixture(

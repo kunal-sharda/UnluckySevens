@@ -1,7 +1,35 @@
 import ULS_CoreGame
 
 enum GameDevCardPanelModelBuilder {
-    static func build(
+    static func build(state: CoreGameStateV1?, actingAs: String?, mode: GameMode = .playDevCard,
+                      draft: GameDevCardDraft? = nil) -> GameDevCardPanelModel? {
+        guard let state, let panel = buildRaw(state: state, actingAs: actingAs, mode: mode, draft: draft) else { return nil }
+        let cards = panel.cards.map { card in
+            let reason: String
+            if card.kind == .victoryPoint {
+                reason = "Counts immediately. Reveals automatically at 10 points on your turn."
+            } else if card.isEnabled {
+                reason = card.detailText
+            } else if actingAs != state.currentPlayer {
+                reason = "Waiting for your turn."
+            } else if state.turnState?.step.allowsDevCardPlay != true {
+                reason = "Finish the required discard or robber action first."
+            } else if state.devCardActionPlayedThisTurn {
+                reason = "You already played an action Dev Card this turn."
+            } else {
+                reason = card.detailText
+            }
+            return GameDevCardTileModel(kind: card.kind, count: card.count,
+                statusText: card.kind == .victoryPoint ? "\(card.count) hidden" : card.statusText,
+                detailText: reason, actionKind: card.actionKind, isEnabled: card.isEnabled, isSelected: card.isSelected)
+        }
+        return GameDevCardPanelModel(message: panel.message, cards: cards, playableCounts: panel.playableCounts,
+            heldCounts: panel.heldCounts, newCounts: panel.newCounts, playActions: panel.playActions,
+            timingNotes: panel.timingNotes, draftSummary: panel.draftSummary, confirmTitle: panel.confirmTitle,
+            canConfirm: panel.canConfirm, showsBackButton: panel.showsBackButton)
+    }
+
+    private static func buildRaw(
         state: CoreGameStateV1?,
         actingAs: String?,
         mode: GameMode = .playDevCard,
@@ -459,13 +487,13 @@ enum GameDevCardPanelModelBuilder {
             let total = playable + held + new
             let action = actionsByKind[kind.actionKind]
 
-            guard total > 0 || action != nil else {
+            guard total > 0 else {
                 return nil
             }
 
             return GameDevCardTileModel(
                 kind: kind,
-                count: max(total, 1),
+                count: total,
                 statusText: statusText(
                     for: kind,
                     playable: playable,

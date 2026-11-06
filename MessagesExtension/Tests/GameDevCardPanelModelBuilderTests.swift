@@ -193,6 +193,24 @@ final class GameDevCardPanelModelBuilderTests: XCTestCase {
         }
     }
 
+    func testLegacyPublicOnlyWinnerDoesNotInventOwnedVictoryPointCard() throws {
+        let state = makeState(currentPlayer: "A", resourcesByPlayer: ["A": .zero, "B": .zero],
+            revealedVictoryPointsByPlayer: ["A": 10])
+        let panel = try XCTUnwrap(GameDevCardPanelModelBuilder.build(state: state, actingAs: "A"))
+        XCTAssertTrue(state.canRevealVictoryPoint(for: "A"))
+        XCTAssertFalse(panel.cards.contains { $0.kind == .victoryPoint })
+    }
+
+    func testExhaustedAndOffTurnCardsExplainTheirOwnUnavailableState() throws {
+        let state = makeState(currentPlayer: "A", resourcesByPlayer: ["A": .zero, "B": .zero],
+            devCardsByPlayer: ["A": DevCardInventoryV1(monopoly: 1), "B": DevCardInventoryV1(knight: 1)],
+            devCardActionPlayedThisTurn: true)
+        let current = try XCTUnwrap(GameDevCardPanelModelBuilder.build(state: state, actingAs: "A"))
+        XCTAssertTrue(current.cards.allSatisfy { !$0.isEnabled && $0.detailText.contains("already played") })
+        let waiting = try XCTUnwrap(GameDevCardPanelModelBuilder.build(state: state, actingAs: "B"))
+        XCTAssertTrue(waiting.cards.allSatisfy { !$0.isEnabled && $0.detailText == "Waiting for your turn." })
+    }
+
     private func makeState(
         currentPlayer: String,
         resourcesByPlayer: [String: ResourceHandV1],

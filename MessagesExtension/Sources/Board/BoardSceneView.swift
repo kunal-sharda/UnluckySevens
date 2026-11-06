@@ -3,6 +3,7 @@ import SwiftUI
 import UIKit
 
 struct BoardSceneView: View, Equatable {
+    @Environment(\.isPracticeBoard) private var isPracticeBoard
     let renderModel: GameBoardRenderModel
     let overlayModel: GameBoardOverlayModel
     let interactionMode: GameMode
@@ -214,7 +215,7 @@ struct BoardSceneView: View, Equatable {
     }
 
     private func resolvedReferenceSize(for viewportSize: CGSize) -> CGSize {
-        stableBoardReferenceSize ?? viewportSize
+        isPracticeBoard ? viewportSize : (stableBoardReferenceSize ?? viewportSize)
     }
 
     private func shouldPromoteReferenceSize(to viewportSize: CGSize) -> Bool {
@@ -227,6 +228,7 @@ struct BoardSceneView: View, Equatable {
     }
 
     private func promotedReferenceSize(for viewportSize: CGSize) -> CGSize {
+        if isPracticeBoard { return viewportSize }
         guard let stableBoardReferenceSize else {
             return viewportSize
         }

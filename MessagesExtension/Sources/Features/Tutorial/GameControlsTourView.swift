@@ -18,28 +18,31 @@ struct GameControlsTourView: View {
             VStack(spacing: 0) {
                 if progress.index < GameControlInteraction.allCases.count {
                     let interaction = GameControlInteraction.allCases[progress.index]
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(instruction(for: interaction)).font(.subheadline)
-                                .accessibilityAddTraits(.isHeader)
+                    VStack(alignment: .leading, spacing: 4) {
+                            ScrollView {
+                                Text(instruction(for: interaction)).font(.subheadline)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .accessibilityAddTraits(.isHeader)
+                            }
                             HStack {
-                                Button("Back") { progress.back() }.disabled(progress.index == 0)
+                                Button { progress.back() } label: { Text("Back").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle()) }.disabled(progress.index == 0)
                                 Spacer()
-                                Button("Reference") { showsReference = true }
+                                Button { showsReference = true } label: { Text("Reference").frame(minHeight: 44).contentShape(Rectangle()) }
                                 Spacer()
                                 if progress.completed.contains(interaction) {
-                                    Button("Continue") { progress.advance() }
+                                    Button { progress.advance() } label: { Text("Continue").frame(minHeight: 44).contentShape(Rectangle()) }
                                         .accessibilityIdentifier("uls.controls.continue")
                                 } else {
-                                    Button("Skip") { progress.advance() }
+                                    Button { progress.advance() } label: { Text("Skip").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle()) }
                                         .accessibilityIdentifier("uls.controls.skip")
                                 }
                             }
+                            .font(.subheadline)
                             .frame(minHeight: 44)
-                        }
-                        .padding(12)
                     }
-                    .frame(height: min(150, geometry.size.height * 0.28))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .frame(height: min(110, geometry.size.height * 0.24))
                     .foregroundStyle(GameTheme.felt)
                     .background(GameTheme.surface)
                     GameControlsPracticeView(interaction: interaction, skipsAnimations: preferences.skipsAnimations,
@@ -47,15 +50,15 @@ struct GameControlsTourView: View {
                         progress.record(event)
                     }
                     .id(progress.index)
-                    .frame(width: geometry.size.width, height: max(0, geometry.size.height - min(150, geometry.size.height * 0.28)))
+                    .frame(width: geometry.size.width, height: max(0, geometry.size.height - min(110, geometry.size.height * 0.24)))
                 } else {
                     VStack(spacing: 20) {
                         Text(progress.isComplete ? "Controls practiced" : "Practice saved")
                             .font(.title2).accessibilityAddTraits(.isHeader)
                         Text("\(progress.completed.count) of \(GameControlInteraction.allCases.count) controls practiced.")
                         Text("In Messages, open the latest game bubble to resume. Read the turn prompt to see who acts next. Settings and Players hold the current game’s options.")
-                        Button("Replay") { progress = GameControlsTourProgress() }
-                        Button("Return to Reference", action: onDismiss)
+                        Button { progress = GameControlsTourProgress() } label: { Text("Replay").frame(minHeight: 44).contentShape(Rectangle()) }
+                        Button(action: onDismiss) { Text("Return to Reference").frame(minHeight: 44).contentShape(Rectangle()) }
                     }
                     .padding(24)
                     .foregroundStyle(GameTheme.surface)
@@ -86,7 +89,7 @@ struct GameControlsTourView: View {
 
     private func instruction(for interaction: GameControlInteraction) -> String {
         switch interaction {
-        case .bank: "Know Catan? Practice the controls here. In Messages, open the latest game bubble and read whose turn it is. Tap Bank to inspect supply."
+        case .bank: "Tap Bank to inspect approximate supply. This is a practice game."
         case .publicDev: "Tap the public Dev pile to inspect a purchase. Buying requires a separate confirmation."
         case .hand: "Tap Hand to open or tuck away your private cards."
         case .boardConfirmed: "Open Build, choose Road, select a highlighted edge, then confirm the placement. Only this practice table changes."

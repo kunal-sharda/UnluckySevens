@@ -368,7 +368,7 @@ struct GameShellView: View {
                         - (physicalLayout.boardFrameVerticalInset * 2),
                     0
                 )
-                let boardViewportLayout = GameBoardViewportLayout.fit(
+                let fittedBoardViewport = GameBoardViewportLayout.fit(
                     availableSize: CGSize(
                         width: max(
                             shellSize.width
@@ -379,6 +379,9 @@ struct GameShellView: View {
                         height: boardHostPresentationHeight
                     )
                 )
+                let boardViewportLayout = isSyntheticSession
+                    ? GameBoardViewportLayout(size: CGSize(width: max(shellSize.width - 32, 0), height: fittedBoardViewport.size.height), uniformScale: fittedBoardViewport.uniformScale)
+                    : fittedBoardViewport
                 let boardBottomOcclusionHeight = isGameInfoOpen
                     ? GameTurnGameInfoView.boardClearanceHeight
                     : CGFloat.zero
@@ -526,8 +529,8 @@ struct GameShellView: View {
                             .accessibilityHidden(isPhysicalStartTurn && !isInspectingPreRollBoard && designPreviewID != "preview-map-inspection")
                             .overlay {
                                 if !isPhysicalGameOver {
-                                    GameTableSeatsView(players: screenModel.gameInfo.players, onShowPlayers: handleGameInfoToggle)
-                                        .padding(.horizontal, 4)
+                                    GameTableSeatsView(players: screenModel.gameInfo.players, compact: boardViewportLayout.size.width < 300, onShowPlayers: handleGameInfoToggle)
+                                        .padding(14)
                                         .allowsHitTesting(!isUtilityPresented && !showsBuildReference && !showsDevPurchase)
                                 }
                             }
@@ -739,6 +742,19 @@ struct GameShellView: View {
                                     },
                                     onSelectDevCard: handleDevCardSelection
                                 )
+                                .overlay(alignment: .topTrailing) {
+                                    if let ready = viewModel.makeDevCardPanelModel(mode: .playDevCard, draft: nil),
+                                       ready.cards.contains(where: { $0.isEnabled && $0.kind != .victoryPoint }) {
+                                        Text("Dev: Play available")
+                                            .font(.caption2.bold())
+                                            .foregroundStyle(GameTheme.surface)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 3)
+                                            .background(GameTheme.felt, in: Capsule())
+                                            .offset(y: -22)
+                                            .allowsHitTesting(false)
+                                    }
+                                }
                                 .scaleEffect(physicalLayout.contentScale)
                                 .frame(height: actionSurfaceHeight)
                                 .frame(maxWidth: lowerRailWidth)
@@ -1073,8 +1089,9 @@ struct GameShellView: View {
                             Spacer()
                             VStack(alignment: .leading, spacing: 8) {
                                 GameRollReceiptView(receipt: receipt, rollerName: viewModel.receiptRollerName)
-                                Button("Got it") { showsRollReceipt = false }
-                                    .frame(minHeight: 44)
+                                Button { showsRollReceipt = false } label: {
+                                    Text("Got it").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+                                }
                                     .accessibilityIdentifier("uls.roll.receipt.close")
                             }
                             .padding(16)
@@ -1083,6 +1100,7 @@ struct GameShellView: View {
                             .frame(maxWidth: 340)
                             .padding(.bottom, reservedTrayHeight)
                         }
+                        .id("\(viewModel.gameplayShellProjection.gameId)-\(receipt.revision)")
                         .onAppear {
                             _ = preferences.claimRollReceipt(gameID: viewModel.gameplayShellProjection.gameId,
                                                              revision: receipt.revision)
@@ -1735,7 +1753,7 @@ struct GameShellView: View {
     private var devTeachingRequest: GameDevTeachingRequest {
         GameDevTeachingRequest(context: shellProjection.devPurchaseTeachingContext,
             canBuy: shellProjection.gameScreenModel.canBuyDevCard && preferences.shouldShowTip(.devPurchase),
-            isBusy: isUtilityPresented || onControlInteraction != nil || tutorialHeaderTitle != nil || designPreviewID.hasPrefix("preview-")
+            isBusy: isUtilityPresented || isSyntheticSession || tutorialHeaderTitle != nil || designPreviewID.hasPrefix("preview-")
                 || currentMode != .idle || shellRoute != .none || physicalDiceRollResult != nil
                 || showsDevPurchase || showsBuildReference || purchasedDevKind != nil || isSendingGameUpdate)
     }

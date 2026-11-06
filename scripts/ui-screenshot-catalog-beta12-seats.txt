@@ -1,2 +1,2 @@
 testFourPlayerSeatsAndReference|four-player-seats|host
-testCaptureActionableDiscardComposer|pending-discard|host
+testForcedActionReferenceInspection|pending-discard|host

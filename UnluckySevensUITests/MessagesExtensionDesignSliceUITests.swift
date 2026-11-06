@@ -2550,6 +2550,69 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         close.tap()
     }
 
+    func testPrivateRollReceiptAndReference() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Turn needs roll")
+        hideUXLabChromeWithoutChangingFixture()
+        let before = gameplayActionEvidenceValue()
+        messages.buttons["uls.startTurn.roll"].firstMatch.tap()
+        let after = waitForGameplayActionEvidenceChange(from: before, timeout: 10)
+        XCTAssertTrue(after.contains("status=Published roll"), after)
+        let receipt = messages.descendants(matching: .any)["uls.roll.privateReceipt"].firstMatch
+        XCTAssertTrue(receipt.waitForExistence(timeout: 10))
+        attachScreenshot(named: "Private roll - verified production receipt")
+        messages.buttons["uls.roll.receipt.close"].firstMatch.tap()
+        messages.buttons["uls.tabletop.reference"].firstMatch.tap()
+        let latest = messages.buttons["Your latest observed roll"].firstMatch
+        for _ in 0..<4 where !latest.isHittable { messages.swipeUp() }
+        XCTAssertTrue(latest.waitForExistence(timeout: 4))
+        latest.tap()
+        XCTAssertTrue(receipt.waitForExistence(timeout: 4))
+        messages.buttons["uls.learning.close"].firstMatch.tap()
+        XCTAssertFalse(messages.buttons["uls.roll.receipt.close"].firstMatch.exists)
+        XCTAssertEqual(gameplayActionEvidenceValue(), after)
+    }
+
+    func testMixedPurchaseCostInspection() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Mixed purchase costs")
+        hideUXLabChromeWithoutChangingFixture()
+        let before = gameplayActionEvidenceValue()
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let frame = board.frame
+        messages.buttons["uls.turnObject.build"].firstMatch.tap()
+        let road = messages.buttons["uls.tutorial.build.buildRoad"].firstMatch
+        XCTAssertTrue(road.waitForExistence(timeout: 4))
+        XCTAssertTrue(road.isEnabled)
+        XCTAssertFalse(messages.buttons["uls.tutorial.build.buildSettlement"].firstMatch.isEnabled)
+        XCTAssertFalse(messages.buttons["uls.tutorial.build.buildCity"].firstMatch.isEnabled)
+        attachScreenshot(named: "Mixed costs - road available")
+        messages.buttons["uls.purchase.close"].firstMatch.tap()
+        messages.buttons["uls.tabletop.devDeck"].firstMatch.tap()
+        let buy = messages.buttons["uls.purchase.confirm"].firstMatch
+        XCTAssertTrue(buy.waitForExistence(timeout: 4))
+        XCTAssertFalse(buy.isEnabled)
+        attachScreenshot(named: "Mixed costs - Dev unavailable")
+        messages.buttons["uls.purchase.close"].firstMatch.tap()
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+        assertFrame(of: board, matches: frame, message: "Inspecting unavailable costs must retain the mounted board")
+    }
+
+    func testForcedActionReferenceInspection() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Pending discard")
+        hideUXLabChromeWithoutChangingFixture()
+        let before = gameplayActionEvidenceValue()
+        messages.buttons["uls.tabletop.reference"].firstMatch.tap()
+        let inventory = messages.buttons["Your owned Dev Cards"].firstMatch
+        XCTAssertTrue(inventory.waitForExistence(timeout: 4))
+        inventory.tap()
+        XCTAssertTrue(messages.descendants(matching: .any)["uls.devCards.inventory"].firstMatch.waitForExistence(timeout: 4))
+        attachScreenshot(named: "Forced action - private inspection")
+        messages.buttons["uls.learning.close"].firstMatch.tap()
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+    }
+
     func testFourPlayerSeatsAndReference() throws {
         openUnluckySevensExtension()
         assertLaunchFixtureLoaded(title: "Four player seats")
@@ -2628,8 +2691,13 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         next.tap()
         XCTAssertTrue(messages.staticTexts["Controls practiced"].firstMatch.waitForExistence(timeout: 4))
         messages.buttons["Return to Reference"].firstMatch.tap()
+        messages.buttons["uls.learning.beginner"].firstMatch.tap()
+        let exitBeginner = messages.buttons["Exit tutorial"].firstMatch
+        XCTAssertTrue(exitBeginner.waitForExistence(timeout: 4))
+        exitBeginner.tap()
         messages.buttons["uls.learning.close"].firstMatch.tap()
         XCTAssertTrue(messages.buttons["uls.gameInfo.close"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.descendants(matching: .any)["uls.tabletop.boardHost.occluded"].firstMatch.exists)
         XCTAssertEqual(gameplayActionEvidenceValue(), before)
         messages.buttons["uls.gameInfo.close"].firstMatch.tap()
         attachScreenshot(named: "Table - Seats and public scores")

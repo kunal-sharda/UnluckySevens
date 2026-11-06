@@ -28,13 +28,19 @@ struct GameLearningView: View {
                         .font(.subheadline)
                     Text(boardStrategy == .noRedAdjacentV1 ? "Balanced board" : "Classic random board")
                         .font(.caption)
-                    NavigationLink("Know Catan? Learn the Controls", value: Destination.controls)
+                    NavigationLink(value: Destination.controls) {
+                            HStack { Text("Know Catan? Learn the Controls"); Spacer(); Image(systemName: "chevron.right").accessibilityHidden(true) }
+                        }
                         .frame(minHeight: 44)
                         .accessibilityIdentifier("uls.learning.controls")
-                    NavigationLink("New to Catan? Learn the Game", value: Destination.beginner)
+                    NavigationLink(value: Destination.beginner) {
+                            HStack { Text("New to Catan? Learn the Game"); Spacer(); Image(systemName: "chevron.right").accessibilityHidden(true) }
+                        }
                         .frame(minHeight: 44)
                         .accessibilityIdentifier("uls.learning.beginner")
-                    NavigationLink("Strategy quick tips", value: Destination.strategy)
+                    NavigationLink(value: Destination.strategy) {
+                            HStack { Text("Strategy quick tips"); Spacer(); Image(systemName: "chevron.right").accessibilityHidden(true) }
+                        }
                         .frame(minHeight: 44)
                         .accessibilityIdentifier("uls.learning.strategy")
                     if let ownedDevPanel {
