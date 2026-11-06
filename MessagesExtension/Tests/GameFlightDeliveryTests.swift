@@ -20,6 +20,36 @@ final class GameFlightDeliveryTests: XCTestCase {
         XCTAssertNil(before.productionReceipt(from: after, for: viewer))
     }
 
+    func testReceiptAnnouncementNamesOnlyVerifiedLocalGains() throws {
+        let before = GameTutorialStateComposer.state(for: .rollDice)
+        let after = try apply(intent: .rollDice, to: before, actor: before.currentPlayer)
+        let receipt = try XCTUnwrap(after.productionReceipt(from: before, for: GameTutorialStateComposer.localPlayer))
+        let copy = GameRollReceiptView.announcement(receipt: receipt, rollerName: "Roller")
+        XCTAssertTrue(copy.hasPrefix("Roller rolled \(receipt.roll.d1) plus \(receipt.roll.d2), total \(receipt.roll.d1 + receipt.roll.d2)."))
+        if receipt.roll.d1 + receipt.roll.d2 == 7 {
+            XCTAssertTrue(copy.contains("No production."))
+        } else if receipt.gains.totalCount == 0 {
+            XCTAssertTrue(copy.contains("You received no resources."))
+        } else {
+            for resource in [ResourceV1.wood, .brick, .sheep, .wheat, .ore] where receipt.gains.count(for: resource) > 0 {
+                XCTAssertTrue(copy.contains("\(receipt.gains.count(for: resource)) \(resource.rawValue)"))
+            }
+        }
+        XCTAssertFalse(copy.contains("opponent"))
+    }
+
+    func testNoProductionFixtureAnnouncesBankShortageWithoutOpponentPayouts() throws {
+        let fixture = UXTestFixtures.fixture(id: "roll-bank-shortage")
+        XCTAssertEqual(fixture.id, "roll-bank-shortage")
+        let after = try apply(intent: .rollDice, to: fixture.state, actor: fixture.defaultActorID)
+        let receipt = try XCTUnwrap(after.productionReceipt(from: fixture.state, for: fixture.defaultActorID))
+        XCTAssertEqual(receipt.gains.totalCount, 0)
+        XCTAssertTrue(receipt.bankShortage)
+        let copy = GameRollReceiptView.announcement(receipt: receipt, rollerName: "Roller")
+        XCTAssertTrue(copy.contains("You received no resources."))
+        XCTAssertTrue(copy.contains("The Bank could not supply some of your production."))
+    }
+
     func testReceiptPersistsWithoutAttributingLaterTurnToProduction() throws {
         let name = "GameFlightDeliveryTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!

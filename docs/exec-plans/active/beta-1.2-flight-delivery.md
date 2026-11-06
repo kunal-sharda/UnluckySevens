@@ -4,8 +4,8 @@
 Implement remaining Beta 1.2 tickets under the owner's 2026-11-05 delegation to iterate autonomously, commit and push, and report assumptions and delivered behavior afterward. Issue membership remains authoritative in milestone 2.
 
 ## Execution Settings
-- Validation profile: standard
-- Delivery posture: direct
+- Validation profile: `standard`
+- Delivery posture: `direct`
 - Rationale: owner explicitly delegated design iteration and production decisions. Each implementation slice receives scoped proof and a fresh review. Final milestone/device acceptance remains separate and requires release-critical evidence.
 
 ## Context and Boundaries
@@ -26,24 +26,24 @@ Use the QA diagnostic-first initial plus ten focused-rerun ceiling. Every rerun 
 <!-- verification-contract:start -->
 | ID | Class | Source | Acceptance | Verification | Evidence | Status | Rationale |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| FL-01 | mechanical | user isolation request | Preserve original checkout and Build Costs work | Diff and worktree inspection | report:isolated-worktree-c51a207 | pending | Recheck before delivery |
-| FL-02 | mechanical | issues 25,26,55 | Learning is interactive, isolated and context preserving | Focused learning tests | report:pending | pending | Implementation pending |
-| FL-03 | observable | issues 25,26,55 | Reference and controls work at normal and accessibility sizes | Scoped UI journeys and captures | report:pending | pending | Authorized, awaiting implementation |
-| FL-04 | mechanical | issues 42,19,22 | Stable, color-independent identity and public-only scoring | Projection and privacy tests | report:pending | pending | Source audit pending |
-| FL-05 | observable | issues 42,19,22 | Identity and standings remain readable across host states | Four-player and forced-action captures | report:pending | pending | Authorized, awaiting implementation |
-| FL-06 | mechanical | issues 17,18 | Public continuation and private receipts preserve secrecy and attribution | Copy and query tests | report:pending | pending | Source audit pending |
-| FL-07 | observable | issues 17,18 | Roll feedback and transcript composition are usable | Renderer and receipt journeys | report:pending | pending | Hardware evidence separately required |
-| FL-08 | mechanical | issues 13,14,3 | Missing timing and visual regression matrices covered | Focused test and fixture inventory | report:pending | pending | Reconcile prior evidence first |
-| FL-09 | judgment | user flight delegation | Coherent product fit across new surfaces | Fresh product UX review | report:pending | pending | Feedback deferred by owner |
-| FL-10 | mechanical | AGENTS | Docs, scoped validation and integration are current | Doc freshness and completion gate | report:pending | pending | No completion claim yet |
+| FL-01 | mechanical | user isolation request | Preserve original checkout and Build Costs work | Diff and worktree inspection | report:original-checkout-status-unchanged; command:git-diff-c51a207-protected-components | pass | Original five dirty paths unchanged; protected component diff empty |
+| FL-02 | mechanical | issues 25,26,55 | Learning is interactive, isolated and context preserving | Focused learning tests | report:model-r3-74-pass; report:normal-r10-four-journeys-pass | pass | Synthetic state/transport/occlusion isolated; full eight controls and context return exercised |
+| FL-03 | observable | issues 25,26,55 | Reference and controls work at normal and accessibility sizes | Scoped UI journeys and captures | report:normal-r10-pass; report:AX-r11-visual-fail | fail | AX document readable; table/navigation scaling corrections await proof after learning retry ceiling |
+| FL-04 | mechanical | issues 42,19,22 | Stable, color-independent identity and public-only scoring | Projection and privacy tests | report:model-r3-74-pass; report:model-r5-42-pass | pass | Roster marks, public score privacy and score-sort identity mapping covered |
+| FL-05 | observable | issues 42,19,22 | Identity and standings remain readable across host states | Four-player and forced-action captures | report:normal-r7-seats; report:AX-r11-seat-overlap | fail | AX score-marker scaling corrected but not yet visually verified |
+| FL-06 | mechanical | issues 17,18 | Public continuation and private receipts preserve secrecy and attribution | Copy and query tests | report:core-production-3-pass; report:model-r4-30-pass; report:model-r3-74-pass | pass | Observed-transition attribution and public continuation supported; missing-history behavior explicitly unavailable |
+| FL-07 | observable | issues 17,18 | Roll feedback and transcript composition are usable | Renderer and receipt journeys | report:normal-r10-gain-receipt-pass; report:missing-predecessor-gap | blocked | First-open exact receipt and connected-device acceptance unresolved; AX settings lane in flight |
+| FL-08 | mechanical | issues 13,14,3 | Missing timing and visual regression matrices covered | Focused test and fixture inventory | report:model-r3-74-pass; report:normal-cost-and-waiting-inventory-pass | pending | Added matrices supported; final AX/device composition and contrast mode proof pending |
+| FL-09 | judgment | user flight delegation | Coherent product fit across new surfaces | Fresh product UX review | report:product-review-normal-scoped-pass-AX-fail | fail | Inspected AX defects remain unverified after source corrections; human feedback deferred |
+| FL-10 | mechanical | AGENTS | Docs, scoped validation and integration are current | Doc freshness and completion gate | command:make-doc-freshness; report:harness-audit-absent-prior-evidence | pending | Freshness passes; final tests, cleanup, gate and push pending |
 <!-- verification-contract:end -->
 
 <!-- fresh-review:start -->
 | Reviewer | Required | Verdict | Evidence |
 | --- | --- | --- | --- |
-| constraint-auditor | yes | pending | report:pending |
-| behavioral | yes | pending | report:pending |
-| product-ux | yes | pending | report:pending |
+| constraint-auditor | yes | blocked | report:final_contract-independent-audit-missing-acceptance |
+| behavioral | yes | pass | report:beta_audit-reviewed-isolation-privacy-continuation |
+| product-ux | yes | fail | report:product_review-AX-artifact-defects |
 <!-- fresh-review:end -->
 
 ## Living Record
@@ -91,3 +91,19 @@ Normal cost inspection passed in attempt 9. Receipt journey attempt 1 stopped wh
 #3 explicitly records clipped large-text public-rail labels from prior evidence. Public Bank/Dev labels now size their height to text and permit fitting the full words; the shared Build Costs/name-tile component remains untouched. This correction is included in the locked AX capture matrix.
 
 Follow-up validation run 5 passed 42/42 tests, including end-score mark/roster mapping and updated continuation hierarchy (`/tmp/uls-flight-slice-tests-r5.log`). Current source uses quiet passive text markers rather than four persistent card backgrounds; current actor remains distinct. Normal journey attempt 10 is running, followed by AX and supported iPad composition checks.
+
+Normal attempt 10 passed all four journeys: full learning/return preservation, observed gain receipt/reference deduplication, waiting robber move inventory and waiting robber steal inventory (`output/ui-screenshot-harness/20261106T022208Z-iphone`). Inspected receipt shows exactly two sheep for observed 3+2 roll. Product review found seat text still overlapping the smaller synthetic board; remove passive seat markers only from synthetic practice, retaining its real Players control. Attempt 11 is the final allowed learning correction pass, also covering the originally locked accessibility matrix and actual Reduce Motion policy. The dedicated AX simulator's existing ReduceMotionEnabled preference was 0, temporarily set to 1 before boot and must be restored. Added a deterministic empty-Bank no-production receipt fixture. Updated the legacy winning-state harness to use the existing Declare Victory recovery action because owned VP cards are passive.
+
+Fresh constraint audit independently confirmed 74/30/42 model/render passes, Core 3 passes and all four normal journeys. It identified a sourced #18 announcement gap: combined AX children did not actively announce arrival. Added a once-per-claimed-revision `UIAccessibility.post(.announcement)` using the same local-only text as the persistent AX label, following Apple's symbol docs for `post(notification:argument:)` and `Notification.announcement`. A focused presentation regression and final build remain required for this change. Full #22 surface/settings and human review, compact/name/focus cases, and connected-device proof remain outstanding; favorable source review does not close these obligations.
+
+AX learning attempt 11 passed all interactions, but independent inspection FAILED visual acceptance: Reference and navigation text truncated; expanded seat labels covered hexes; physical action nameplates were unreadable. The reference document itself passed visual review. Diagnosed source corrections fit the Reference label, allocate 42%/up to260pt to AX practice instructions, bound practice navigation/seat/badge scaling, and retain standard-size lettering on the fixed physical rail nameplates without changing the shared Build Costs name-tile component. Learning has reached its initial-plus-ten validation ceiling, so its final correction remains unverified; no relabeled retry. Other independent AX matrix rows continue.
+
+`make harness-audit` found two documentation issues: the new observation record lacked its required Execution Settings heading (corrected), and the unrelated approved-integration plan references ignored evidence absent from this worktree (`output/beta12-production-models-final.xcresult`). Do not fabricate or silently rewrite that historical evidence. This is a reported repository-wide audit blocker in addition to the selected plan's unresolved acceptance.
+
+#22 source audit confirms existing redundant cues across lobby/setup/robber/discard/purchases/trade/records/results, but the prior audit explicitly requires a preference-aware board mode. Lock the remaining source/proof delta before implementation: read SwiftUI Differentiate Without Color and Increase Contrast; strengthen ownership outlines and selected/legal geometry in SpriteKit without changing rules. Focused GameBoardSceneTests must prove mode invalidation and selected-edge contrast geometry. A dedicated `testAccessibleBoardSelectedTarget` harness route uses the same road fixture in default and `UI_SCREENSHOT_ACCESSIBLE_BOARD=1` mode; the DEBUG override tests the exact rendering branch, not an OS-setting assertion. Actual system preference/device and human CVD review remain separate. This is a sourced gap from the frozen #22 audit, not scope inferred from an unrelated test failure.
+
+AX attempt 11 also passed four-seat reference, forced-state reference and mixed costs. Receipt actual Reduce Motion policy and visible gain receipt passed, but its later Reference disclosure failed: hierarchy retained a collapsed latest-roll group after tapping the wrapped label. Make the whole disclosure label a 44pt-minimum button via a shared reference disclosure style, preserving full dynamic text. Receipt settings rerun 2 isolates this diagnosed issue plus the unrun no-production case; it does not rerun the exhausted controls journey. Public wooden Bank/Dev labels follow fixed physical nameplate lettering after the capture still truncated Dev Cards. Inspected mixed-cost captures show scrollable available/unavailable costs; no protected Build Costs components changed.
+
+Final focused test run built successfully but found five assertions: three new contrast-test expectations compared UIColor color spaces/CGFloat storage exactly (corrected to existing component/epsilon helpers), and two real fixture defects placed the third/fourth players' roads disconnected from their buildings. The four-seat fixture now derives adjacent edges from canonical topology. Repeat only the same 40-test set; do not treat fixture corrections as gameplay rules changes.
+
+Final focused rerun passed 40/40 tests, including contrast on/off cache rebuilding for selection and all three ownership marks, local announcement content/no-production shortage, and all fixture geometry (`DerivedData/Flight/Logs/Test/Test-UnluckySevens-Workspace-2026.11.05_18-39-55--0800.xcresult`). The default selected-edge glow stacking remains unchanged; only the accessible mode moves its white outline behind the black band. Source compiles with all final AX/announcement/disclosure fixes. `make completion-gate PLAN=docs/exec-plans/active/beta-1.2-flight-delivery.md` correctly stops at FL-03 failed visual acceptance; it is not a passing gate. Harness audit now reports only the absent unrelated prior integration evidence.

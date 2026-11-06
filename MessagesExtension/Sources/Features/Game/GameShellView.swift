@@ -1,5 +1,6 @@
 import Combine
 import SwiftUI
+import UIKit
 import ULS_CoreGame
 
 struct GameShellView: View {
@@ -528,7 +529,7 @@ struct GameShellView: View {
                             .gameTutorialTarget(.board)
                             .accessibilityHidden(isPhysicalStartTurn && !isInspectingPreRollBoard && designPreviewID != "preview-map-inspection")
                             .overlay {
-                                if !isPhysicalGameOver {
+                                if !isPhysicalGameOver && !isSyntheticSession {
                                     GameTableSeatsView(players: screenModel.gameInfo.players, compact: boardViewportLayout.size.width < 300, onShowPlayers: handleGameInfoToggle)
                                         .padding(14)
                                         .allowsHitTesting(!isUtilityPresented && !showsBuildReference && !showsDevPurchase)
@@ -747,6 +748,7 @@ struct GameShellView: View {
                                        ready.cards.contains(where: { $0.isEnabled && $0.kind != .victoryPoint }) {
                                         Text("Dev: Play available")
                                             .font(.caption2.bold())
+                                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                                             .foregroundStyle(GameTheme.surface)
                                             .padding(.horizontal, 6)
                                             .padding(.vertical, 3)
@@ -1102,8 +1104,12 @@ struct GameShellView: View {
                         }
                         .id("\(viewModel.gameplayShellProjection.gameId)-\(receipt.revision)")
                         .onAppear {
-                            _ = preferences.claimRollReceipt(gameID: viewModel.gameplayShellProjection.gameId,
-                                                             revision: receipt.revision)
+                            if preferences.claimRollReceipt(gameID: viewModel.gameplayShellProjection.gameId,
+                                                            revision: receipt.revision) {
+                                UIAccessibility.post(notification: .announcement,
+                                    argument: GameRollReceiptView.announcement(receipt: receipt,
+                                        rollerName: viewModel.receiptRollerName))
+                            }
                         }
                         .zIndex(9)
                     }

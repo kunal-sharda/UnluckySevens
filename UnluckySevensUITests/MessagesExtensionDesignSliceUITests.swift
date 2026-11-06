@@ -2575,9 +2575,26 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
     }
 
     func testPrivateRollReceiptAndReference() throws {
+        try verifyPrivateRollReceipt()
+    }
+
+    func testPrivateRollReceiptWithReduceMotion() throws {
+        try verifyPrivateRollReceipt(verifiesReduceMotion: true)
+    }
+
+    func testPrivateRollReceiptWithoutProduction() throws {
+        try verifyPrivateRollReceipt(noProduction: true)
+    }
+
+    private func verifyPrivateRollReceipt(verifiesReduceMotion: Bool = false, noProduction: Bool = false) throws {
         openUnluckySevensExtension()
-        assertLaunchFixtureLoaded(title: "Turn needs roll")
+        assertLaunchFixtureLoaded(title: noProduction ? "Roll bank shortage" : "Turn needs roll")
         hideUXLabChromeWithoutChangingFixture()
+        if verifiesReduceMotion {
+            let motion = messages.staticTexts["uls.tabletop.motionPolicy"].firstMatch
+            XCTAssertTrue(motion.waitForExistence(timeout: 4))
+            XCTAssertEqual(motion.value as? String, "reduceMotion=true;spatial=false")
+        }
         let before = gameplayActionEvidenceValue()
         messages.buttons["uls.startTurn.roll"].firstMatch.tap()
         let after = waitForGameplayActionEvidenceChange(from: before, timeout: 10)
@@ -2590,7 +2607,10 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         if purchaseClose.waitForExistence(timeout: 2) { purchaseClose.tap() }
         let receipt = messages.descendants(matching: .any)["uls.roll.privateReceipt"].firstMatch
         XCTAssertTrue(receipt.waitForExistence(timeout: 10))
-        attachScreenshot(named: "Private roll - verified production receipt")
+        if noProduction {
+            XCTAssertTrue(receipt.label.contains("You received no resources."), receipt.label)
+        }
+        attachScreenshot(named: noProduction ? "Private roll - no production" : "Private roll - verified production receipt")
         messages.buttons["uls.roll.receipt.close"].firstMatch.tap()
         messages.buttons["uls.tabletop.reference"].firstMatch.tap()
         let latest = messages.buttons["Your latest observed roll"].firstMatch
@@ -2879,6 +2899,16 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(afterRoad.contains("host:R14/S4/C4"), afterRoad)
         XCTAssertTrue(afterRoad.contains("current=alice"), afterRoad)
         attachGameplayActionEvidence(name: "Setup Settlement and Road", before: before, after: afterRoad)
+    }
+
+    func testAccessibleBoardSelectedTarget() throws {
+        openCanonicalPostRollActionFixture()
+        let before = gameplayActionEvidenceValue()
+        chooseBuildAction(identifier: "uls.physicalProps.build.buildRoad")
+        let target = try XCTUnwrap(boardTargetCoordinate(kind: "edge", timeout: 5))
+        tapBoardTarget(target)
+        attachScreenshot(named: "Board ownership - selected and legal road targets")
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
     }
 
     func testGameplayActionBuildRoadCommitsCanonicalState() throws {
@@ -3171,7 +3201,12 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(before.contains("phase=turn"), before)
         XCTAssertTrue(before.contains("winner=-"), before)
 
-        openPlayableDevCard(identifier: "uls.physicalProps.devCard.victoryPoint")
+        // This legacy fixture is already at ten points. Passive VP cards have no Play action.
+        let menu = openCurrentGameLifecycleMenu()
+        menu.tap()
+        let declare = messages.buttons["Declare Victory"].firstMatch
+        XCTAssertTrue(declare.waitForExistence(timeout: 4))
+        declare.tap()
 
         let after = waitForGameplayActionEvidenceChange(from: before, timeout: 8)
         XCTAssertTrue(after.contains("rev=18"), after)

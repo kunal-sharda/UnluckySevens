@@ -61,6 +61,7 @@ struct GameLearningView: View {
                     Divider()
                     GameQuickReferenceContent()
                 }
+                .disclosureGroupStyle(GameReferenceDisclosureStyle())
                 .buttonStyle(.plain)
                 .font(.body)
                 .padding(20)
@@ -150,5 +151,25 @@ struct GameQuickReferenceContent: View {
             GameBuildCostRow(cost: hand)
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// Make the whole wrapped label actionable, including at accessibility text sizes.
+struct GameReferenceDisclosureStyle: DisclosureGroupStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button { configuration.isExpanded.toggle() } label: {
+                HStack {
+                    configuration.label
+                    Spacer(minLength: 8)
+                    Image(systemName: configuration.isExpanded ? "chevron.down" : "chevron.right")
+                        .accessibilityHidden(true)
+                }
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .accessibilityValue(configuration.isExpanded ? "Expanded" : "Collapsed")
+            if configuration.isExpanded { configuration.content }
+        }
     }
 }

@@ -94,6 +94,7 @@ struct GamePhysicalPublicRackView: View {
     private func publicNameTile(_ title: String, width: CGFloat) -> some View {
         Text(title)
             .font(.caption.bold())
+            .dynamicTypeSize(.large)
             .foregroundStyle(GamePhysicalTurnPalette.nameTileInk)
             .lineLimit(1)
             .minimumScaleFactor(0.5)

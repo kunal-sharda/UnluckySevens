@@ -26,6 +26,16 @@ final class GameBoardScene: SKScene {
         return UIFont(descriptor: serifDescriptor, size: size)
     }
 
+    private(set) var usesAccessibleContrast = false
+
+    func setAccessibleContrast(_ enabled: Bool) {
+        guard usesAccessibleContrast != enabled else { return }
+        usesAccessibleContrast = enabled
+        cachedRoadKey = nil
+        cachedStructureKey = nil
+        cachedOverlayKey = nil
+    }
+
     private let contentRootNode = SKNode()
     private let baseContentNode = SKNode()
     private let overlayContentNode = SKNode()
@@ -734,10 +744,13 @@ final class GameBoardScene: SKScene {
     private func ownershipMark(owner: String, playerOrder: [String], size: CGFloat) -> SKNode {
         let mark = GamePlayerMark.resolve(owner: owner, playerOrder: playerOrder)
         let shape = SKShapeNode(path: mark.path(in: CGRect(x: -size / 2, y: -size / 2, width: size, height: size)))
+        shape.name = "ownership.mark"
         shape.yScale = -1
         shape.fillColor = .white
         shape.strokeColor = .black
-        shape.lineWidth = 0.8
+        shape.lineWidth = usesAccessibleContrast ? 1.6 : 0.8
+        shape.setScale(usesAccessibleContrast ? 1.15 : 1)
+        shape.yScale = -abs(shape.yScale)
         shape.zPosition = 2
         return shape
     }
@@ -895,14 +908,14 @@ final class GameBoardScene: SKScene {
         halo.fillColor = isSelected
             ? GameBoardPalette.selectedHighlightFill
             : GameBoardPalette.legalHighlightFill.withAlphaComponent(0.18)
-        halo.strokeColor = isSelected ? GameBoardPalette.selectedHighlight : GameBoardPalette.legalHighlight
+        halo.strokeColor = usesAccessibleContrast ? (isSelected ? .black : .white) : (isSelected ? GameBoardPalette.selectedHighlight : GameBoardPalette.legalHighlight)
         halo.lineWidth = isSelected ? 4 : 1.6
         node.addChild(halo)
 
         if isSelected {
             let ring = SKShapeNode(path: hexagonPath(radius: radius * 1.11))
             ring.fillColor = .clear
-            ring.strokeColor = GameBoardPalette.selectedHighlight.withAlphaComponent(0.36)
+            ring.strokeColor = usesAccessibleContrast ? .white : GameBoardPalette.selectedHighlight.withAlphaComponent(0.36)
             ring.lineWidth = 2
             node.addChild(ring)
         }
@@ -926,18 +939,27 @@ final class GameBoardScene: SKScene {
         path.addLine(to: sceneEnd)
 
         let halo = SKShapeNode(path: path)
-        halo.strokeColor = isSelected ? GameBoardPalette.selectedHighlight : GameBoardPalette.legalHighlight
+        halo.strokeColor = usesAccessibleContrast ? (isSelected ? .black : .white) : (isSelected ? GameBoardPalette.selectedHighlight : GameBoardPalette.legalHighlight)
         halo.lineWidth = layout.roadWidth + (isSelected ? 5.5 : 2.5)
         halo.lineCap = .round
-        halo.alpha = isSelected ? 0.92 : 0.40
+        halo.alpha = usesAccessibleContrast ? 1 : (isSelected ? 0.92 : 0.40)
         node.addChild(halo)
 
         if isSelected {
             let glow = SKShapeNode(path: path)
-            glow.strokeColor = GameBoardPalette.selectedHighlight.withAlphaComponent(0.26)
+            glow.strokeColor = usesAccessibleContrast ? .white : GameBoardPalette.selectedHighlight.withAlphaComponent(0.26)
+            glow.zPosition = usesAccessibleContrast ? -1 : 0
             glow.lineWidth = layout.roadWidth + 12
             glow.lineCap = .round
             node.addChild(glow)
+            if usesAccessibleContrast {
+                let center = SKShapeNode(path: path)
+                center.name = "accessibility.selectedEdge.center"
+                center.strokeColor = .white
+                center.lineWidth = 2
+                center.lineCap = .round
+                node.addChild(center)
+            }
         }
 
         return node
@@ -966,13 +988,14 @@ final class GameBoardScene: SKScene {
         ring.strokeColor = isSelected
             ? GameBoardPalette.selectedHighlight
             : GameBoardPalette.legalHighlight.withAlphaComponent(denseCluster ? 0.60 : 1.0)
+        if usesAccessibleContrast { ring.strokeColor = isSelected ? .black : .white }
         ring.lineWidth = denseCluster ? (isSelected ? 3 : 1.1) : (isSelected ? 4 : 2.2)
         node.addChild(ring)
 
         if isSelected {
             let outerRing = SKShapeNode(circleOfRadius: circleRadius + 6)
             outerRing.fillColor = .clear
-            outerRing.strokeColor = GameBoardPalette.selectedHighlight.withAlphaComponent(0.32)
+            outerRing.strokeColor = usesAccessibleContrast ? .white : GameBoardPalette.selectedHighlight.withAlphaComponent(0.32)
             outerRing.lineWidth = 1.8
             node.addChild(outerRing)
         }

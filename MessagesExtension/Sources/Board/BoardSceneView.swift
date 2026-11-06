@@ -3,6 +3,8 @@ import SwiftUI
 import UIKit
 
 struct BoardSceneView: View, Equatable {
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.isPracticeBoard) private var isPracticeBoard
     let renderModel: GameBoardRenderModel
     let overlayModel: GameBoardOverlayModel
@@ -25,6 +27,15 @@ struct BoardSceneView: View, Equatable {
 
     private static let referencePromotionThreshold: CGFloat = 24
     private static let resizeSettleDelayNanoseconds: UInt64 = 180_000_000
+
+    private var usesAccessibleContrast: Bool {
+        #if DEBUG
+        let forced = UserDefaults.standard.bool(forKey: "uls.debug.accessibleBoard")
+        #else
+        let forced = false
+        #endif
+        return differentiateWithoutColor || colorSchemeContrast == .increased || forced
+    }
 
     static func == (lhs: BoardSceneView, rhs: BoardSceneView) -> Bool {
         lhs.renderModel == rhs.renderModel
@@ -72,6 +83,10 @@ struct BoardSceneView: View, Equatable {
                     viewportSize: geometry.size
                 )
                 lastViewportUpdateSize = geometry.size
+            }
+            .onChange(of: usesAccessibleContrast) { _, _ in
+                applySceneUpdate(renderModel: renderModel, overlayModel: overlayModel,
+                                 referenceSize: resolvedReferenceSize(for: geometry.size), viewportSize: geometry.size)
             }
             .onChange(of: renderModel) { _, newValue in
                 pendingRenderModel = newValue
@@ -196,6 +211,7 @@ struct BoardSceneView: View, Equatable {
         referenceSize: CGSize,
         viewportSize: CGSize
     ) {
+        scene.setAccessibleContrast(usesAccessibleContrast)
         scene.updateBase(
             renderModel: renderModel,
             referenceSize: referenceSize,

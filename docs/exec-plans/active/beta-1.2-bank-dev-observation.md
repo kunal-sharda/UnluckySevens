@@ -1,6 +1,11 @@
 # #55 Bank and Dev first-use observation — proposed checkpoint
 
-Base c51a207. Validation profile: standard. Delivery posture: direct. Planning record under beta-1.2-flight-delivery.md. Leave the Build Costs workstream alone. The owner delegated production design on 2026-11-05 and deferred human feedback. Build and simulator permission is requested separately. See issues #55, #25 and #26 and the contextual tutorial section of ui-flows.md.
+## Execution Settings
+- Validation profile: `standard`
+- Delivery posture: `direct`
+- Rationale: persona and observation design informs product behavior; actual observation remains deferred.
+
+Base c51a207. Planning record under beta-1.2-flight-delivery.md. Leave the Build Costs workstream alone. The owner delegated production design on 2026-11-05 and deferred human feedback. Build and simulator work was authorized by the owner on 2026-11-05. See issues #55, #25 and #26 and the contextual tutorial section of ui-flows.md.
 
 ## Baseline and open question
 
@@ -26,7 +31,7 @@ Record first action, path, elapsed time, prompt exposure, wrong turns, interpret
 
 ## Verification contract and next gate
 
-Human observation is deferred by the owner. The assumptions above guide design now. The delegated delivery plan owns implementation and automated proof. Preserve this protocol for later feedback and do not report the hypotheses as observed behavior. Build and simulator authorization remains separately pending.
+Human observation is deferred by the owner. The assumptions above guide design now. The delegated delivery plan owns implementation and automated proof. Preserve this protocol for later feedback and do not report the hypotheses as observed behavior. Build and simulator work is authorized under the delegated delivery plan.
 
 <!-- verification-contract:start -->
 | ID | Class | Source | Acceptance | Verification | Evidence | Status | Rationale |

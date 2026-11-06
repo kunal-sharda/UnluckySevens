@@ -43,6 +43,7 @@ struct GameTableSeatsView: View {
                     .lineLimit(dynamicTypeSize.isAccessibilitySize || compact ? 3 : 1)
             }
             .font(.caption2.weight(player.isCurrentPlayer ? .bold : .regular))
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .foregroundStyle(GameTheme.surface)
             .padding(5)
             .frame(maxWidth: .infinity, alignment: .leading)

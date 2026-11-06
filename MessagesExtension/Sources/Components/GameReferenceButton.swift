@@ -7,6 +7,9 @@ struct GameReferenceButton: View {
         Button(action: action) {
             Text("Reference")
                 .font(.caption.weight(.semibold))
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
                 .foregroundStyle(GameTheme.felt)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)

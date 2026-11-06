@@ -94,6 +94,7 @@ enum UXTestFixtures {
         setupRoadPlacement,
         setupHandoff,
         turnNeedsRoll,
+        rollBankShortage,
         turnNeedsRollOnly,
         turnAfterRoll,
         fourPlayerSeats,
@@ -366,6 +367,14 @@ enum UXTestFixtures {
         )
     )
 
+    private static let rollBankShortage = UXTestFixture(
+        id: "roll-bank-shortage", title: "Roll bank shortage",
+        detail: "Observed roll with no local production because the Bank is empty.",
+        defaultActorID: host,
+        state: makeState(rev: 8, phase: .turn, bankResources: .zero,
+            turnState: TurnStateV1(step: .needsRoll, lastRoll: nil))
+    )
+
     private static let turnNeedsRollOnly = UXTestFixture(
         id: turnNeedsRollOnlyID,
         title: "Turn needs roll only",
@@ -395,7 +404,10 @@ enum UXTestFixtures {
             phase: .turn,
             resourcesByPlayer: [host: ResourceHandV1(wood: 2), alice: .zero, ben: .zero, "fourth": .zero],
             settlementsByNode: [0: host, 10: alice, 20: ben, 30: "fourth"],
-            citiesByNode: [:], roadsByEdge: [0: host, 15: alice, 30: ben, 45: "fourth"],
+            citiesByNode: [:], roadsByEdge: Dictionary(uniqueKeysWithValues:
+                [(0, host), (10, alice), (20, ben), (30, "fourth")].map { node, player in
+                    (StandardBoardTopologyV1.standard().edges.firstIndex { $0.a == node || $0.b == node }!, player)
+                }),
             turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 5)))
     )
 

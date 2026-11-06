@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct GameControlsTourView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let preferences: AppPreferences
     let onDismiss: () -> Void
 
@@ -15,6 +16,9 @@ struct GameControlsTourView: View {
 
     var body: some View {
         GeometryReader { geometry in
+            let instructionHeight = dynamicTypeSize.isAccessibilitySize
+                ? min(260, geometry.size.height * 0.42)
+                : min(110, geometry.size.height * 0.24)
             VStack(spacing: 0) {
                 if progress.index < GameControlInteraction.allCases.count {
                     let interaction = GameControlInteraction.allCases[progress.index]
@@ -38,11 +42,14 @@ struct GameControlsTourView: View {
                                 }
                             }
                             .font(.subheadline)
+                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                             .frame(minHeight: 44)
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .frame(height: min(110, geometry.size.height * 0.24))
+                    .frame(height: instructionHeight)
                     .foregroundStyle(GameTheme.felt)
                     .background(GameTheme.surface)
                     GameControlsPracticeView(interaction: interaction, skipsAnimations: preferences.skipsAnimations,
@@ -50,7 +57,7 @@ struct GameControlsTourView: View {
                         progress.record(event)
                     }
                     .id(progress.index)
-                    .frame(width: geometry.size.width, height: max(0, geometry.size.height - min(110, geometry.size.height * 0.24)))
+                    .frame(width: geometry.size.width, height: max(0, geometry.size.height - instructionHeight))
                 } else {
                     VStack(spacing: 20) {
                         Text(progress.isComplete ? "Controls practiced" : "Practice saved")
