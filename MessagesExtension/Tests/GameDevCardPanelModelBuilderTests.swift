@@ -30,7 +30,7 @@ final class GameDevCardPanelModelBuilderTests: XCTestCase {
         XCTAssertFalse(panel.canConfirm)
         XCTAssertFalse(panel.showsBackButton)
         XCTAssertEqual(panel.message, "Choose a development card.")
-        XCTAssertTrue(panel.timingNotes.isEmpty)
+        XCTAssertTrue(panel.timingNotes.contains { $0.contains("at most one action") })
         XCTAssertTrue(panel.cards.contains(where: { $0.kind == .knight && $0.isEnabled }))
         XCTAssertTrue(panel.cards.contains(where: { $0.kind == .monopoly && $0.isEnabled }))
     }
@@ -105,7 +105,7 @@ final class GameDevCardPanelModelBuilderTests: XCTestCase {
         XCTAssertEqual(panel.heldCounts.first(where: { $0.title == "Victory Point" })?.count, 1)
         XCTAssertEqual(panel.newCounts.first(where: { $0.title == "Year of Plenty" })?.count, 1)
         XCTAssertFalse(panel.playActions.contains(where: { $0.kind == .revealVictoryPoint }))
-        XCTAssertTrue(panel.timingNotes.isEmpty)
+        XCTAssertTrue(panel.timingNotes.contains { $0.contains("bought this turn") })
         XCTAssertTrue(panel.cards.contains(where: { $0.kind == .victoryPoint && !$0.isEnabled }))
         XCTAssertTrue(panel.cards.contains(where: { $0.kind == .yearOfPlenty && !$0.isEnabled }))
     }
@@ -177,6 +177,20 @@ final class GameDevCardPanelModelBuilderTests: XCTestCase {
         )
         XCTAssertTrue(selectedStage.canConfirm)
         XCTAssertTrue(selectedStage.draftSummary?.contains("ore") == true)
+    }
+
+    func testForcedActionsAllowPrivateInspectionButNeverPlay() throws {
+        for step in [TurnStepV1.pendingDiscards, .needsRobberMove, .needsRobberSteal] {
+            let state = makeState(currentPlayer: "A", resourcesByPlayer: ["A": .zero, "B": .zero],
+                devCardsByPlayer: ["A": DevCardInventoryV1(knight: 1, victoryPoint: 1)],
+                newDevCardsByPlayer: ["A": DevCardInventoryV1(monopoly: 1)],
+                turnState: TurnStateV1(step: step, lastRoll: DiceRollV1(d1: 3, d2: 4)))
+            let panel = try XCTUnwrap(GameDevCardPanelModelBuilder.build(state: state, actingAs: "A"))
+            XCTAssertEqual(panel.cards.reduce(0) { $0 + $1.count }, 3)
+            XCTAssertTrue(panel.playActions.isEmpty)
+            XCTAssertTrue(panel.cards.allSatisfy { !$0.isEnabled })
+            XCTAssertTrue(panel.timingNotes.contains { $0.contains("required discard or robber") })
+        }
     }
 
     private func makeState(

@@ -140,7 +140,7 @@ enum TranscriptBubbleCopyBuilder {
         switch intent {
         case .rollDice:
             let rollTotal = state.turnState?.lastRoll.map { $0.d1 + $0.d2 }
-            let title = rollTotal.map { "Rolled \($0)" } ?? "Dice Rolled"
+            let title = state.turnState?.lastRoll.map { "\(actorName) rolled \($0.d1) + \($0.d2) = \($0.d1 + $0.d2)" } ?? "Dice Rolled"
             let summary: String
             if rollTotal == 7 {
                 summary = "Players discard, then the robber moves."
@@ -198,7 +198,8 @@ enum TranscriptBubbleCopyBuilder {
             return titled(
                 "Trade Offered",
                 summary: "\(actorName) offered a trade\(tradeRecipientSummary(for: recipients, in: state)).",
-                visual: liveTradeVisual(for: state)
+                visual: liveTradeVisual(for: state),
+                continuationState: state
             )
         case .acceptTrade:
             return boardTitled("Trade Accepted", summary: "\(actorName) accepted the trade.", state: state)
@@ -208,13 +209,15 @@ enum TranscriptBubbleCopyBuilder {
                 summary: "\(actorName) declined the trade.",
                 visual: state.activeTradeOffer == nil
                     ? boardVisual(for: state, showsNumberTokens: true)
-                    : liveTradeVisual(for: state)
+                    : liveTradeVisual(for: state),
+                continuationState: state
             )
         case .counterTrade:
             return titled(
                 "Counteroffer Sent",
                 summary: "\(actorName) proposed a counteroffer.",
-                visual: liveTradeVisual(for: state)
+                visual: liveTradeVisual(for: state),
+                continuationState: state
             )
         case .maritimeTrade:
             return boardTitled(
@@ -322,11 +325,13 @@ enum TranscriptBubbleCopyBuilder {
     private static func titled(
         _ title: String,
         summary: String,
-        visual: TranscriptBubbleVisual = .none
+        visual: TranscriptBubbleVisual = .none,
+        continuationState: CoreGameStateV1? = nil
     ) -> TranscriptBubbleCopy {
-        TranscriptBubbleCopy(
+        let continuation = continuationState.flatMap { GameContinuation.text(for: $0) }
+        return TranscriptBubbleCopy(
             caption: "Unlucky Sevens: \(title)",
-            summary: summary,
+            summary: [continuation, summary].compactMap { $0 }.joined(separator: " "),
             visual: visual
         )
     }
@@ -340,7 +345,8 @@ enum TranscriptBubbleCopyBuilder {
         titled(
             title,
             summary: summary,
-            visual: boardVisual(for: state, showsNumberTokens: showsNumberTokens)
+            visual: boardVisual(for: state, showsNumberTokens: showsNumberTokens),
+            continuationState: state
         )
     }
 

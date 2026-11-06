@@ -96,6 +96,7 @@ enum UXTestFixtures {
         turnNeedsRoll,
         turnNeedsRollOnly,
         turnAfterRoll,
+        fourPlayerSeats,
         mixedBankSupply,
         newKnight,
         newVictoryPoint,
@@ -376,6 +377,17 @@ enum UXTestFixtures {
             newDevCardsByPlayer: [:],
             turnState: TurnStateV1(step: .needsRoll, lastRoll: nil)
         )
+    )
+
+    private static let fourPlayerSeats = UXTestFixture(
+        id: "four-player-seats", title: "Four player seats", detail: "Stable public seats and ownership marks.",
+        defaultActorID: host,
+        state: makeState(rev: 9, roster: [host, alice, ben, "fourth"], currentPlayer: alice,
+            phase: .turn,
+            resourcesByPlayer: [host: ResourceHandV1(wood: 2), alice: .zero, ben: .zero, "fourth": .zero],
+            settlementsByNode: [0: host, 10: alice, 20: ben, 30: "fourth"],
+            citiesByNode: [:], roadsByEdge: [0: host, 15: alice, 30: ben, 45: "fourth"],
+            turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 5)))
     )
 
     private static let turnAfterRoll = UXTestFixture(

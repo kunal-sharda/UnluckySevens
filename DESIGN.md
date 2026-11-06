@@ -90,3 +90,7 @@ The 2026-10-25 approved Beta 1.2 previews establish these directions for product
 - [Tabletop UI System](docs/design/tabletop-ui-system.md) is the approved detailed reusable contract extracted from the Physical Props Turn Screen and the starting reference for remaining game surfaces.
 
 Binary references are default-denied and require explicit user approval. The manifest and budgets live in [docs/design/references/manifest.json](docs/design/references/manifest.json). Prefer production assets and text decisions over duplicate reference binaries.
+
+### Beta 1.2 learning and identity
+
+Reference uses a quiet cream surface with progressive rule sections. Controls practice keeps the real table controls beneath a short instruction area. Stable roster-order circle/triangle/square/diamond ownership marks supplement color; peripheral seats report public VP and distinguish You from the acting player. Supply uses three filled segments rather than cramped full-word or ambiguous abbreviated levels. These are owner-delegated design assumptions pending later player feedback.

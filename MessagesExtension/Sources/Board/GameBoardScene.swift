@@ -699,6 +699,9 @@ final class GameBoardScene: SKScene {
         outline.lineCap = .round
         outline.zPosition = -1
         node.addChild(outline)
+        let mark = ownershipMark(owner: road.owner, playerOrder: playerOrder, size: max(5, layout.roadWidth * 0.75))
+        mark.position = CGPoint(x: (sceneStart.x + sceneEnd.x) / 2, y: (sceneStart.y + sceneEnd.y) / 2)
+        node.addChild(mark)
 
         return node
     }
@@ -723,8 +726,20 @@ final class GameBoardScene: SKScene {
         fill.strokeColor = GameBoardPalette.playerStroke(owner: structure.owner, playerOrder: playerOrder)
         fill.lineWidth = 2.2
         node.addChild(fill)
+        node.addChild(ownershipMark(owner: structure.owner, playerOrder: playerOrder, size: max(5, layout.structureRadius * 0.7)))
 
         return node
+    }
+
+    private func ownershipMark(owner: String, playerOrder: [String], size: CGFloat) -> SKNode {
+        let mark = GamePlayerMark.resolve(owner: owner, playerOrder: playerOrder)
+        let shape = SKShapeNode(path: mark.path(in: CGRect(x: -size / 2, y: -size / 2, width: size, height: size)))
+        shape.yScale = -1
+        shape.fillColor = .white
+        shape.strokeColor = .black
+        shape.lineWidth = 0.8
+        shape.zPosition = 2
+        return shape
     }
 
     private func makeOverlayNode(

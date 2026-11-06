@@ -10,8 +10,7 @@ enum GameDevCardPanelModelBuilder {
         guard
             let state,
             state.phase == .turn,
-            mode.isDevCardMode,
-            state.turnState?.step.allowsDevCardPlay == true
+            mode.isDevCardMode
         else {
             return nil
         }
@@ -393,7 +392,13 @@ enum GameDevCardPanelModelBuilder {
         heldCounts: [GameDevCardCount],
         newCounts: [GameDevCardCount]
     ) -> [String] {
-        []
+        var notes: [String] = []
+        if state.turnState?.step.allowsDevCardPlay != true { notes.append("Finish the required discard or robber action before playing a Dev Card.") }
+        if !newCounts.isEmpty { notes.append("Cards bought this turn must wait until your next turn. Victory Points count immediately, even when bought this turn.") }
+        if state.devCardActionPlayedThisTurn { notes.append("You have already played an action Dev Card this turn.") }
+        if actingAs != state.currentPlayer { notes.append("Play action Dev Cards on your own turn.") }
+        notes.append("Play at most one action Dev Card per turn, before or after rolling. Victory Points reveal automatically when you reach 10 points on your turn.")
+        return notes
     }
 
     private static func actionableCounts(

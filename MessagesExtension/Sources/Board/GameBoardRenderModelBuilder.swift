@@ -50,7 +50,10 @@ enum GameBoardRenderModelBuilder {
             tiles: tiles,
             ports: ports,
             structures: structures,
-            roads: roads
+            roads: roads,
+            playerNames: Dictionary(uniqueKeysWithValues: state.roster.map {
+                ($0, PlayerPseudonymResolver.displayName(for: $0, in: state))
+            })
         )
     }
 }

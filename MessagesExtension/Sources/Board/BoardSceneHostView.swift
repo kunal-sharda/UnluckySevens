@@ -68,7 +68,19 @@ enum GameBoardPanelOcclusionController {
     }
 }
 
+private struct PracticeBoardKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var isPracticeBoard: Bool {
+        get { self[PracticeBoardKey.self] }
+        set { self[PracticeBoardKey.self] = newValue }
+    }
+}
+
 struct BoardSceneHostView: UIViewRepresentable {
+    @Environment(\.isPracticeBoard) private var isPracticeBoard
     let scene: GameBoardScene
     let renderModel: GameBoardRenderModel
     let overlayModel: GameBoardOverlayModel
@@ -97,9 +109,14 @@ struct BoardSceneHostView: UIViewRepresentable {
         view.accessibilityValue = boardHostDiagnosticValue(
             mountIdentity: context.coordinator.mountIdentity
         )
+#else
+        view.isAccessibilityElement = true
+        view.accessibilityLabel = "Game board"
+        view.accessibilityValue = renderModel.publicOwnershipSummary
 #endif
         configure(view)
-        GameBoardPanelOcclusionController.attach(to: view)
+        context.coordinator.ignoresGlobalOcclusion = isPracticeBoard
+        if !isPracticeBoard { GameBoardPanelOcclusionController.attach(to: view) }
         context.coordinator.attachGestures(to: view)
         context.coordinator.update(
             scene: scene,
@@ -125,7 +142,8 @@ struct BoardSceneHostView: UIViewRepresentable {
 
     func updateUIView(_ uiView: SKView, context: Context) {
         configure(uiView)
-        GameBoardPanelOcclusionController.attach(to: uiView)
+        context.coordinator.ignoresGlobalOcclusion = isPracticeBoard
+        if !isPracticeBoard { GameBoardPanelOcclusionController.attach(to: uiView) }
 #if DEBUG
         uiView.accessibilityIdentifier = bottomOcclusionHeight > 0
             ? "uls.tabletop.boardHost.occluded"
@@ -133,6 +151,10 @@ struct BoardSceneHostView: UIViewRepresentable {
         uiView.accessibilityValue = boardHostDiagnosticValue(
             mountIdentity: context.coordinator.mountIdentity
         )
+#else
+        uiView.isAccessibilityElement = bottomOcclusionHeight <= 0
+        uiView.accessibilityLabel = "Game board"
+        uiView.accessibilityValue = renderModel.publicOwnershipSummary
 #endif
         if uiView.scene !== scene {
             uiView.presentScene(scene)
@@ -237,6 +259,8 @@ struct BoardSceneHostView: UIViewRepresentable {
 
     @MainActor
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var ignoresGlobalOcclusion = false
+
         let mountIdentity = UUID().uuidString
         private weak var view: SKView?
         private var scene: GameBoardScene?
@@ -335,6 +359,7 @@ struct BoardSceneHostView: UIViewRepresentable {
 
         @objc
         private func handlePanelOcclusionChanged(_ notification: Notification) {
+            guard !ignoresGlobalOcclusion else { return }
             let rawHeight = notification.userInfo?["height"]
             let height: CGFloat
             if let number = rawHeight as? NSNumber {

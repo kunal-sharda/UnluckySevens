@@ -9,7 +9,7 @@ Implement remaining Beta 1.2 tickets under the owner's 2026-11-05 delegation to 
 - Rationale: owner explicitly delegated design iteration and production decisions. Each implementation slice receives scoped proof and a fresh review. Final milestone/device acceptance remains separate and requires release-critical evidence.
 
 ## Context and Boundaries
-Work from c51a207 on the isolated codex/beta-1.2-finish branch because beta-1.2 is checked out in the owner's original directory. Preserve the owner's Build Costs source, drawing, layout and preview work. Use remote beta-1.2 as integration target only after scoped validation and remote comparison. The earlier request to ask before builds/simulators is pending explicit confirmation. No build or simulator is authorized by silence.
+Work from c51a207 on the isolated codex/beta-1.2-finish branch because beta-1.2 is checked out in the owner's original directory. Preserve the owner's Build Costs source, drawing, layout and preview work. Use remote beta-1.2 as integration target only after scoped validation and remote comparison. The owner explicitly authorized all required builds and simulators on 2026-11-05. Proceed autonomously with scoped validation.
 
 Retain approximate three-segment supply. Full-word stock levels did not fit and abbreviated levels confused the owner. Design for an experienced Catan player learning controls, a newcomer needing contextual explanation, and a returning player consulting reference. Human feedback is deferred by owner instruction. Do not claim uncoached observation or connected-device proof from automated tests.
 
@@ -28,9 +28,9 @@ Use the QA diagnostic-first initial plus ten focused-rerun ceiling. Every rerun 
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | FL-01 | mechanical | user isolation request | Preserve original checkout and Build Costs work | Diff and worktree inspection | report:isolated-worktree-c51a207 | pending | Recheck before delivery |
 | FL-02 | mechanical | issues 25,26,55 | Learning is interactive, isolated and context preserving | Focused learning tests | report:pending | pending | Implementation pending |
-| FL-03 | observable | issues 25,26,55 | Reference and controls work at normal and accessibility sizes | Scoped UI journeys and captures | report:pending | pending | Build permission requested |
+| FL-03 | observable | issues 25,26,55 | Reference and controls work at normal and accessibility sizes | Scoped UI journeys and captures | report:pending | pending | Authorized, awaiting implementation |
 | FL-04 | mechanical | issues 42,19,22 | Stable, color-independent identity and public-only scoring | Projection and privacy tests | report:pending | pending | Source audit pending |
-| FL-05 | observable | issues 42,19,22 | Identity and standings remain readable across host states | Four-player and forced-action captures | report:pending | pending | Build permission requested |
+| FL-05 | observable | issues 42,19,22 | Identity and standings remain readable across host states | Four-player and forced-action captures | report:pending | pending | Authorized, awaiting implementation |
 | FL-06 | mechanical | issues 17,18 | Public continuation and private receipts preserve secrecy and attribution | Copy and query tests | report:pending | pending | Source audit pending |
 | FL-07 | observable | issues 17,18 | Roll feedback and transcript composition are usable | Renderer and receipt journeys | report:pending | pending | Hardware evidence separately required |
 | FL-08 | mechanical | issues 13,14,3 | Missing timing and visual regression matrices covered | Focused test and fixture inventory | report:pending | pending | Reconcile prior evidence first |
@@ -47,7 +47,7 @@ Use the QA diagnostic-first initial plus ten focused-rerun ceiling. Every rerun 
 <!-- fresh-review:end -->
 
 ## Living Record
-2026-11-05: fetched remote, confirmed 11 open milestone issues (#3,13,14,17,18,19,22,25,26,42,55). Remote remains c51a207. Existing tutorial uses a production shell with hit testing disabled and Next navigation, so it cannot satisfy #25 interaction completion. Existing Rules hardcodes the winning goal and puts Strategy at the bottom. Isolated branch created. Runtime validation authorization remains pending.
+2026-11-05: fetched remote, confirmed 11 open milestone issues (#3,13,14,17,18,19,22,25,26,42,55). Remote remains c51a207. Existing tutorial uses a production shell with hit testing disabled and Next navigation, so it cannot satisfy #25 interaction completion. Existing Rules hardcodes the winning goal and puts Strategy at the bottom. Isolated branch created. Runtime validation was subsequently explicitly authorized by the owner.
 
 ### Source audit and implementation assumptions
 - #26 Rules currently lives inside AppSettingsView; the lobby Tutorial callback routes directly to GameTutorialView. Add one shared Learn & Reference utility overlay while retaining the mounted real shell. The existing utility route already blocks game interaction while visible.
@@ -58,4 +58,18 @@ Use the QA diagnostic-first initial plus ten focused-rerun ceiling. Every rerun 
 - #13 overlaps protected Build Costs work. Reconcile coverage and avoid editing its components until an integration-safe boundary is identified.
 
 ## Validation and Outcome
-Source inspection only. No product slice delivered yet.
+Learning/reference implementation in progress. Initial generated simulator build passed. Focused test attempt 1 stopped at UI-test compilation because the new journey used nonexistent board-frame helper names. Corrected to the existing turnElement/assertFrame helpers. Attempt 2 runs the same focused set. No runtime failure or scope expansion.
+
+Learning UI attempt 1 reached the reference but failed to navigate into the tour. Exported hierarchy showed the Reference content extending below the host while the underlying Bank still existed in the accessibility tree. Inspected the reference screenshot. Constrained the learning overlay to the measured host usable size, moved learning links above the rules, and added an explicit tour-arrival assertion. Normal-size attempt 2 pins the simulator content size to large and restores its original size afterward. This addresses the existing reference containment/entry contract.
+
+Learning UI attempt 2 reached the tour but its Group-level accessibility identifier propagated to every descendant, replacing the Bank and Continue identifiers. The test consequently found the underlying real Bank. Changed the tour root to a containing ZStack accessibility element and scoped tour queries to that container. Independent architecture review also found global board-occlusion broadcasts from practice could affect the mounted real shell. Practice now skips that global channel and uses its local board occlusion projection. The return journey must exercise an already-open real Players panel.
+
+Combined focused model/render attempt 1 passed 51/52 tests. One newly updated draw-copy expectation incorrectly assumed a third player in an existing two-player fixture. Corrected the expected pending voter to Blake only. No product defect. Reviewer findings led to practice callback wiring and receipt initial/deferred-display fixes. Exact receipts still require an observed canonical predecessor and are explicitly unavailable when history is missing. This is an unresolved #18 acceptance gap, without changing protocol fields.
+
+Learning UI attempt 3 passed Bank practice and captured the controls surface, then used an unscoped Dev query that selected the real underlying deck. Scoped all practice controls to the tour. Screenshot review additionally showed a zero-height practice board under safeAreaInset sizing. Replaced that layout with an explicit GeometryReader/VStack allocation for the instruction area and practice shell. Attempt 4 extends the same originally contracted full-tour proof and starts from an open real Players panel.
+
+- Learning harness attempt 4 failed at opening Reference while Players was already open: the existing full-shell modal veil intercepts the underlying top bar. Added an accessible Reference entry above that veil while retaining the mounted Players panel; retry 5 targets this diagnosed defect.
+
+Learning attempt 5 passed Reference with Players open and Bank/public Dev interactions; failed on an incorrect Hand identifier. Corrected to the production physicalProps.hand identifier. Inspected capture still shows collapsed practice board; give the practice shell an exact remaining height. Reviewer also found beginner tutorial global occlusion coupling: added explicit synthetic-session isolation to both tutorial shells. VP copy now follows automatic winning reveal; private read-only inventory added to Reference for forced/pre-roll inspection.
+
+Focused model/render rerun 2 passed 54/54 tests (GameControlsTourTests, GameFlightDeliveryTests, TranscriptBubbleCopyTests, GameDevCardPanelModelBuilderTests, GameScreenModelBuilderTests, GameBoardSnapshotRendererTests, TranscriptBubbleImageRendererTests), result `DerivedData/Flight/Logs/Test/Test-UnluckySevens-Workspace-2026.11.05_17-57-22--0800.xcresult`. Later forced-inventory/public-score invariance tests await the next scoped run. Core production tests previously passed 3/3. Normal tour runtime proof remains pending; implementation checkpoint is not milestone acceptance. Doc freshness passes; product/design/runtime owners updated, locked decisions/protocol unchanged.

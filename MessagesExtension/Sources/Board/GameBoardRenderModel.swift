@@ -37,4 +37,15 @@ struct GameBoardRenderModel: Equatable {
     let ports: [GameBoardPortRenderModel]
     let structures: [GameBoardStructureRenderModel]
     let roads: [GameBoardRoadRenderModel]
+    var playerNames: [String: String] = [:]
+
+    var publicOwnershipSummary: String {
+        playerOrder.map { player in
+            let mark = GamePlayerMark.resolve(owner: player, playerOrder: playerOrder)
+            let settlements = structures.filter { $0.owner == player && $0.kind == .settlement }.count
+            let cities = structures.filter { $0.owner == player && $0.kind == .city }.count
+            let roadCount = roads.filter { $0.owner == player }.count
+            return "\(playerNames[player] ?? mark.name), \(mark.name): \(roadCount) roads, \(settlements) settlements, \(cities) cities"
+        }.joined(separator: ". ")
+    }
 }

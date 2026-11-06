@@ -2550,6 +2550,92 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         close.tap()
     }
 
+    func testFourPlayerSeatsAndReference() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Four player seats")
+        hideUXLabChromeWithoutChangingFixture()
+        let before = gameplayActionEvidenceValue()
+        for index in 0..<4 {
+            let seat = messages.buttons["uls.tabletop.seat.\(index)"].firstMatch
+            XCTAssertTrue(seat.waitForExistence(timeout: 4))
+            XCTAssertTrue(seat.label.contains("public victory points"))
+            XCTAssertTrue(seat.isHittable)
+        }
+        attachScreenshot(named: "Four seats - public scores and marks")
+        messages.buttons["uls.tabletop.reference"].firstMatch.tap()
+        XCTAssertTrue(messages.buttons["uls.learning.controls"].firstMatch.waitForExistence(timeout: 4))
+        attachScreenshot(named: "Four seats - Reference")
+        messages.buttons["uls.learning.close"].firstMatch.tap()
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+    }
+
+    func testLearningReferenceAndControls() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Turn after roll")
+        hideUXLabChromeWithoutChangingFixture()
+        turnElement(identifier: "", labels: ["Players and game information"]).tap()
+        XCTAssertTrue(messages.buttons["uls.gameInfo.close"].firstMatch.waitForExistence(timeout: 4))
+        let before = gameplayActionEvidenceValue()
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let boardBefore = board.frame
+        let reference = messages.buttons["uls.tabletop.reference"].firstMatch
+        XCTAssertTrue(reference.waitForExistence(timeout: 5))
+        reference.tap()
+        XCTAssertTrue(messages.otherElements["uls.learning.surface"].firstMatch.waitForExistence(timeout: 5))
+        attachScreenshot(named: "Learning - Reference")
+        let controls = messages.buttons["uls.learning.controls"].firstMatch
+        for _ in 0..<6 where !controls.isHittable { messages.swipeUp() }
+        XCTAssertTrue(controls.isHittable)
+        controls.tap()
+        XCTAssertTrue(messages.otherElements["uls.controls.surface"].firstMatch.waitForExistence(timeout: 5))
+        let tour = messages.otherElements["uls.controls.surface"].firstMatch
+        let bank = tour.buttons["uls.tabletop.bankRack"].firstMatch
+        XCTAssertTrue(bank.waitForExistence(timeout: 5))
+        bank.tap()
+        let next = tour.buttons["uls.controls.continue"].firstMatch
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        attachScreenshot(named: "Learning - Controls practice")
+        next.tap()
+        tour.buttons["uls.tabletop.devDeck"].firstMatch.tap()
+        XCTAssertTrue(tour.buttons["uls.purchase.confirm"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(next.exists)
+        tour.buttons["uls.purchase.close"].firstMatch.tap()
+        next.tap()
+        tour.buttons["uls.physicalProps.hand"].firstMatch.tap()
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        next.tap()
+        tour.buttons["uls.turnObject.build"].firstMatch.tap()
+        tour.buttons["uls.physicalProps.build.buildRoad"].firstMatch.tap()
+        let target = try XCTUnwrap(boardTargetCoordinate(kind: "edge", timeout: 5, in: tour))
+        tapBoardTarget(target)
+        tapBoardTarget(target)
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        next.tap()
+        tour.buttons["uls.turnObject.trade"].firstMatch.tap()
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        next.tap()
+        let owned = tour.buttons["uls.physicalProps.ownedDevCards"].firstMatch
+        XCTAssertTrue(owned.waitForExistence(timeout: 4))
+        owned.tap()
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        next.tap()
+        tour.buttons["Players and game information"].firstMatch.tap()
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        next.tap()
+        tour.buttons["uls.turnObject.endTurn"].firstMatch.tap()
+        tour.buttons["uls.turn.endConfirmation.confirm"].firstMatch.tap()
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        next.tap()
+        XCTAssertTrue(messages.staticTexts["Controls practiced"].firstMatch.waitForExistence(timeout: 4))
+        messages.buttons["Return to Reference"].firstMatch.tap()
+        messages.buttons["uls.learning.close"].firstMatch.tap()
+        XCTAssertTrue(messages.buttons["uls.gameInfo.close"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+        messages.buttons["uls.gameInfo.close"].firstMatch.tap()
+        attachScreenshot(named: "Table - Seats and public scores")
+        assertFrame(of: board, matches: boardBefore, message: "Reference must preserve the board frame")
+    }
+
     func testAutomaticDevBankTeaching() throws {
         openUnluckySevensExtension()
         assertLaunchFixtureLoaded(title: "End turn action")
@@ -5249,9 +5335,10 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
     private func boardTargetCoordinate(
         kind: String,
-        timeout: TimeInterval
+        timeout: TimeInterval,
+        in root: XCUIElement? = nil
     ) throws -> BoardTargetCoordinate? {
-        let boardHost = messages.descendants(matching: .any)["uls.tabletop.boardHost"].firstMatch
+        let boardHost = (root ?? messages).descendants(matching: .any)["uls.tabletop.boardHost"].firstMatch
         guard boardHost.waitForExistence(timeout: timeout) else {
             return nil
         }

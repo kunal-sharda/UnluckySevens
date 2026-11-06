@@ -83,7 +83,7 @@ final class TranscriptBubbleCopyTests: XCTestCase {
         let copy = TranscriptBubbleCopyBuilder.turnIntent(intent, actor: "A", resultingState: state)
 
         XCTAssertEqual(copy.caption, "Unlucky Sevens: Turn Ended")
-        XCTAssertEqual(copy.summary, "Next turn: Kunal.")
+        XCTAssertEqual(copy.summary, "Kunal rolls next or plays an eligible Dev Card. Next turn: Kunal.")
         XCTAssertEqual(boardVisual(from: copy)?.showsNumberTokens, true)
     }
 
@@ -140,7 +140,7 @@ final class TranscriptBubbleCopyTests: XCTestCase {
         )
 
         XCTAssertEqual(copy.caption, "Unlucky Sevens: Avery Resigned")
-        XCTAssertEqual(copy.summary, "Avery left the game. Blake has the turn.")
+        XCTAssertEqual(copy.summary, "Blake rolls next or plays an eligible Dev Card. Avery left the game. Blake has the turn.")
         guard case .board = copy.visual else {
             return XCTFail("Expected the continuing board visual.")
         }
@@ -166,7 +166,7 @@ final class TranscriptBubbleCopyTests: XCTestCase {
         XCTAssertEqual(proposalCopy.caption, "Unlucky Sevens: Draw Proposed")
         XCTAssertEqual(
             proposalCopy.summary,
-            "Avery proposed a draw. Every active player must agree."
+            "Waiting for Blake to vote on the draw. Avery proposed a draw. Every active player must agree."
         )
 
         let rejected = try apply(
@@ -181,7 +181,7 @@ final class TranscriptBubbleCopyTests: XCTestCase {
         )
 
         XCTAssertEqual(rejectionCopy.caption, "Unlucky Sevens: Draw Declined")
-        XCTAssertEqual(rejectionCopy.summary, "Blake declined the draw. Play continues.")
+        XCTAssertEqual(rejectionCopy.summary, "Avery rolls next or plays an eligible Dev Card. Blake declined the draw. Play continues.")
         XCTAssertEqual(rejected.phase, .turn)
         XCTAssertNil(rejected.drawVote)
     }

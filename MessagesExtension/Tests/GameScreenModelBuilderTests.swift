@@ -259,6 +259,18 @@ final class GameScreenModelBuilderTests: XCTestCase {
         XCTAssertFalse(model.actionDock.primaryItems[3].isEnabled)
     }
 
+    func testPublicScoresDoNotIncludeHiddenVictoryPoints() {
+        let projections = [0, 4].map { hidden in
+            let state = makeState(currentPlayer: "A", resourcesByPlayer: ["A": .zero, "B": .zero],
+                devCardsByPlayer: ["A": DevCardInventoryV1(victoryPoint: hidden)])
+            return GameScreenModelBuilder.build(context: GameScreenContext(selectedState: state,
+                actingAs: "B", contextBanner: "", contextMeta: "",
+                actionAvailability: .none, modeAvailability: .none))
+        }
+        XCTAssertEqual(projections[0].gameInfo.players.map(\.victoryPoints), projections[1].gameInfo.players.map(\.victoryPoints))
+        XCTAssertEqual(projections[0].ownedDevCards, projections[1].ownedDevCards)
+    }
+
     func testBuildCreatesLocalOwnedDevInventoryAndPublicGameInfo() throws {
         let state = makeState(
             currentPlayer: "A",

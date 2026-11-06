@@ -33,6 +33,11 @@ final class LobbyDriverViewModel: ObservableObject {
     private let lobbyDisplayNamePreferenceStore: LobbyDisplayNamePreferenceStore
     private let allowsLocalLedgerStateRecovery = true
     private let tutorialActorID: String?
+    private let isInteractivePractice: Bool
+    private var receiptPreviousStates: [String: CoreGameStateV1] = [:]
+    @Published private(set) var privateRollReceipt: ProductionReceiptV1?
+    private var receiptStore: GameRollReceiptStore { GameRollReceiptStore(defaults: userDefaults) }
+
     private var reliabilityDiagnostics: ReliabilityDiagnostics?
 
     private weak var activeConversation: MSConversation?
@@ -85,11 +90,13 @@ final class LobbyDriverViewModel: ObservableObject {
         userDefaults: UserDefaults = .standard,
         tutorialState: CoreGameStateV1? = nil,
         tutorialActorID: String? = nil,
+        isInteractivePractice: Bool = false,
         reliabilityDiagnostics: ReliabilityDiagnostics? = nil
     ) {
         self.userDefaults = userDefaults
         self.reliabilityDiagnostics = reliabilityDiagnostics
         self.tutorialActorID = tutorialActorID
+        self.isInteractivePractice = isInteractivePractice
         #if DEBUG
         uxTestingChromeHiddenForScreenshot = userDefaults.bool(
             forKey: Self.uxTestingChromeHiddenKey
@@ -108,6 +115,7 @@ final class LobbyDriverViewModel: ObservableObject {
         latestKnownStatesByGameId = ledgerSnapshot.latestKnownStatesByGameId
         convergenceContextsByGameId = ledgerSnapshot.convergenceContextsByGameId
         refreshRecoveredGames()
+        receiptPreviousStates = latestKnownStatesByGameId
 
         if let tutorialState {
             selectedState = tutorialState
@@ -2507,6 +2515,10 @@ final class LobbyDriverViewModel: ObservableObject {
     private func render(state: CoreGameStateV1, source: TranscriptPayloadSource) {
         selectionStatus = "Decoded game rev\(state.rev) via \(source.label)"
         let actor = localActorIdentifier()
+        if tutorialActorID == nil {
+            privateRollReceipt = receiptStore.observe(state, previous: receiptPreviousStates[state.gameId], viewer: actor)
+            receiptPreviousStates[state.gameId] = state
+        }
         updateGameplayShellProjection(
             GameShellProjectionBuilder.build(
                 state: state,
@@ -2524,6 +2536,7 @@ final class LobbyDriverViewModel: ObservableObject {
     }
 
     private func resetDisplayedFields() {
+        privateRollReceipt = nil
         updateGameplayShellProjection(.empty)
         #if DEBUG
         gameplayShellDiagnostics = .empty
@@ -2631,6 +2644,15 @@ final class LobbyDriverViewModel: ObservableObject {
         diagnosticAction: ReliabilityDiagnosticBuffer.Action = .publication,
         onAccepted: (() -> Void)? = nil
     ) throws {
+        if isInteractivePractice {
+            // Synthetic lessons apply Core transitions locally and never touch transport or the ledger.
+            selectedState = state
+            activeSource = .tutorial
+            onAccepted?()
+            render(state: state, source: .local)
+            setLastError(nil)
+            return
+        }
         guard !isSendingGameUpdate, !isSendingInvite, !isReconcilingLobby else {
             recordReliability(state: state, boundary: .localHandoff, outcome: .unavailable, action: diagnosticAction)
             throw SendError.publicationInFlight
@@ -2701,6 +2723,7 @@ final class LobbyDriverViewModel: ObservableObject {
         diagnosticAction: ReliabilityDiagnosticBuffer.Action = .publication,
         completion: ((Result<PublicationReceipt, Error>) -> Void)? = nil
     ) throws {
+        guard !isInteractivePractice else { throw SendError.noActiveConversation }
         #if DEBUG
         if let handoff = stateHandoffForTesting, let completion {
             let record = localLedgerStateRecord(from: envelope)
@@ -2854,6 +2877,21 @@ final class LobbyDriverViewModel: ObservableObject {
                 }
             }
         }
+    }
+
+    var unavailableRollReceiptText: String? {
+        guard privateRollReceipt == nil, let state = selectedState, let roll = state.turnState?.lastRoll else { return nil }
+        let name = PlayerPseudonymResolver.displayName(for: state.currentPlayer, in: state)
+        return "\(name) rolled \(roll.d1) + \(roll.d2) = \(roll.d1 + roll.d2). Resource gains for this roll are unavailable on this device."
+    }
+
+    var receiptRollerName: String {
+        guard let state = selectedState, let receipt = privateRollReceipt else { return "" }
+        return PlayerPseudonymResolver.displayName(for: receipt.roller, in: state)
+    }
+
+    var referenceBoardStrategy: BoardGenStrategyV1 {
+        selectedState?.boardRules?.strategy ?? selectedState?.board?.generator ?? boardStrategy
     }
 
     func requestExtensionDismissal() {
