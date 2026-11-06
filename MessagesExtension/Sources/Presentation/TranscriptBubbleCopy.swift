@@ -330,8 +330,8 @@ enum TranscriptBubbleCopyBuilder {
     ) -> TranscriptBubbleCopy {
         let continuation = continuationState.flatMap { GameContinuation.text(for: $0) }
         return TranscriptBubbleCopy(
-            caption: "Unlucky Sevens: \(title)",
-            summary: [continuation, summary].compactMap { $0 }.joined(separator: " "),
+            caption: continuation ?? "Unlucky Sevens: \(title)",
+            summary: continuation == nil ? summary : "\(title). \(summary)",
             visual: visual
         )
     }

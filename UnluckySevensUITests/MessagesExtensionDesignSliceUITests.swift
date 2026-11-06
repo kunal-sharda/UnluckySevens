@@ -2550,6 +2550,30 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         close.tap()
     }
 
+    func testWaitingRobberMoveOwnedInventory() throws {
+        try verifyWaitingRobberInventory(title: "Robber move")
+    }
+
+    func testWaitingRobberStealOwnedInventory() throws {
+        try verifyWaitingRobberInventory(title: "Robber victim")
+    }
+
+    private func verifyWaitingRobberInventory(title: String) throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: title)
+        hideUXLabChromeWithoutChangingFixture()
+        let before = gameplayActionEvidenceValue()
+        let hand = messages.buttons["uls.physicalProps.hand"].firstMatch
+        XCTAssertTrue(hand.waitForExistence(timeout: 4))
+        if !messages.buttons["uls.physicalProps.ownedDevCards"].firstMatch.exists { hand.tap() }
+        messages.buttons["uls.physicalProps.ownedDevCards"].firstMatch.tap()
+        let inventory = messages.descendants(matching: .any)["uls.devCards.inventory"].firstMatch
+        XCTAssertTrue(inventory.waitForExistence(timeout: 4))
+        XCTAssertEqual(inventory.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Play ")).count, 0)
+        attachScreenshot(named: "Waiting robber - owned inventory")
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+    }
+
     func testPrivateRollReceiptAndReference() throws {
         openUnluckySevensExtension()
         assertLaunchFixtureLoaded(title: "Turn needs roll")
@@ -2558,6 +2582,12 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         messages.buttons["uls.startTurn.roll"].firstMatch.tap()
         let after = waitForGameplayActionEvidenceChange(from: before, timeout: 10)
         XCTAssertTrue(after.contains("status=Published roll"), after)
+        let diceResult = messages.buttons["uls.startTurn.diceRoll"].firstMatch
+        let settled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label BEGINSWITH %@", "Rolled"), object: diceResult)
+        XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 6), .completed)
+        diceResult.tap()
+        let purchaseClose = messages.buttons["uls.purchase.close"].firstMatch
+        if purchaseClose.waitForExistence(timeout: 2) { purchaseClose.tap() }
         let receipt = messages.descendants(matching: .any)["uls.roll.privateReceipt"].firstMatch
         XCTAssertTrue(receipt.waitForExistence(timeout: 10))
         attachScreenshot(named: "Private roll - verified production receipt")
@@ -2692,7 +2722,9 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(messages.staticTexts["Controls practiced"].firstMatch.waitForExistence(timeout: 4))
         messages.buttons["Return to Reference"].firstMatch.tap()
         messages.buttons["uls.learning.beginner"].firstMatch.tap()
-        let exitBeginner = messages.buttons["Exit tutorial"].firstMatch
+        let coach = messages.buttons["uls.tutorial.navigationCoach"].firstMatch
+        if coach.waitForExistence(timeout: 2) { coach.tap() }
+        let exitBeginner = messages.buttons["uls.tutorial.exit"].firstMatch
         XCTAssertTrue(exitBeginner.waitForExistence(timeout: 4))
         exitBeginner.tap()
         messages.buttons["uls.learning.close"].firstMatch.tap()

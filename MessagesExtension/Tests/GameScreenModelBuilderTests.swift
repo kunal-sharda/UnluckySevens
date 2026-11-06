@@ -466,6 +466,7 @@ final class GameScreenModelBuilderTests: XCTestCase {
         XCTAssertEqual(endScreen.winnerTitle, "Victory!")
         XCTAssertEqual(endScreen.winningScoreText, "10 points")
         XCTAssertEqual(endScreen.players.map(\.id), ["B", "A", "C"])
+        XCTAssertEqual(endScreen.players.map(\.ownershipMark), [.triangle, .circle, .square])
         XCTAssertEqual(endScreen.players.map(\.victoryPoints), [10, 1, 1])
         XCTAssertEqual(endScreen.players.map(\.isWinner), [true, false, false])
         XCTAssertEqual(endScreen.players.map(\.isLocalPlayer), [true, false, false])

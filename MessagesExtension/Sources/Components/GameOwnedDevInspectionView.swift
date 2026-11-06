@@ -23,9 +23,8 @@ struct GameOwnedDevInspectionView: View {
                             }
                             Spacer(minLength: 0)
                             if allowsPlaying, let action = card.actionKind, card.isEnabled, action != .revealVictoryPoint {
-                                Button("Play") { onPlay(action) }
+                                Button { onPlay(action) } label: { Text("Play").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle()) }
                                     .buttonStyle(.bordered)
-                                    .frame(minWidth: 44, minHeight: 44)
                                     .accessibilityLabel("Play \(card.kind.title)")
                                     .accessibilityIdentifier("uls.physicalProps.devCard.\(card.kind.rawValue)")
                             }

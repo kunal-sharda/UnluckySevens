@@ -707,7 +707,7 @@ final class LobbyDriverViewModel: ObservableObject {
 
     private var canInspectOwnedDevCards: Bool {
         guard let state = selectedState, let actor = localActorIdentifier(),
-              state.phase == .turn, state.turnState?.step.allowsDevCardPlay == true else { return false }
+              state.phase == .turn else { return false }
         return state.visibleDevCards(for: actor).contains { $0.player == actor && $0.totalCount > 0 }
     }
 

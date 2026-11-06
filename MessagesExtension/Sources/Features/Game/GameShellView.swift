@@ -500,7 +500,7 @@ struct GameShellView: View {
                                 selectionText: visibleBoardSelectionText,
                                 hintBottomInset: boardHintBottomInset,
                                 showsCreamFrame: false,
-                                boardContentVerticalOffset: isPhysicalSetup
+                                boardContentVerticalOffset: isPhysicalSetup || isSyntheticSession
                                     ? 0
                                     : physicalBoardCenteringOffset,
                                 bottomOcclusionHeight: boardBottomOcclusionHeight,

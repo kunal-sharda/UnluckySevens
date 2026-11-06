@@ -286,7 +286,7 @@ Contextual tips explain the immediate object or new-card timing. They do not rep
 
 Bank supply remains approximate three-segment bars. Opening Trade reveals supply without opening a teaching card. Owned Dev Cards expose private quantities/status and explicit Play actions for action cards and a passive Victory Point explanation; public Dev remains a separate purchase surface.
 
-Stable roster-order circle, triangle, square and diamond marks supplement player colors on pieces and peripheral seats. Seats show public VP, local identity, current actor and resigned state; hidden Victory Points never enter them. Public transcript summaries name the next actor/action, including forced steps. A private roll receipt is shown only for a verified locally observed roll transition and retained in Reference; missing predecessor history is explicitly unavailable, never inferred from a later hand.
+Stable roster-order circle, triangle, square and diamond marks supplement player colors on pieces and peripheral seats. Seats show public VP, local identity, current actor and resigned state; hidden Victory Points never enter them. Public transcript captions lead with the next actor/action, including forced steps; summaries retain the outcome receipt. A private roll receipt is shown only for a verified locally observed roll transition and retained in Reference; missing predecessor history is explicitly unavailable, never inferred from a later hand.
 
 
 

@@ -39,18 +39,18 @@ struct GameTableSeatsView: View {
                         .lineLimit(dynamicTypeSize.isAccessibilitySize && !compact ? 2 : 1)
                         .minimumScaleFactor(0.8)
                 }
-                Text(compact ? "\(player.victoryPoints) VP" : "\(player.victoryPoints) public VP\(player.isResigned ? " · Left" : player.isLocalPlayer ? " · You" : "")")
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                Text("\(player.victoryPoints) public VP\(player.isResigned ? " · Left" : player.isLocalPlayer ? " · You" : "")")
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize || compact ? 3 : 1)
             }
             .font(.caption2.weight(player.isCurrentPlayer ? .bold : .regular))
             .foregroundStyle(GameTheme.surface)
             .padding(5)
-            .frame(width: compact ? 64 : dynamicTypeSize.isAccessibilitySize ? 140 : 110, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .frame(minHeight: 44)
-            .background(GameTheme.felt.opacity(0.94), in: RoundedRectangle(cornerRadius: 5))
-            .overlay {
+            .background(player.isCurrentPlayer ? GameTheme.felt.opacity(0.55) : Color.clear, in: RoundedRectangle(cornerRadius: 5))
+            .overlay(alignment: .bottomLeading) {
                 if player.isCurrentPlayer {
-                    RoundedRectangle(cornerRadius: 5).stroke(GameTheme.surface, lineWidth: 1)
+                    Capsule().fill(GameTheme.surface).frame(width: 22, height: 2)
                 }
             }
         }

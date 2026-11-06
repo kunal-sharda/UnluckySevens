@@ -33,7 +33,7 @@ struct GamePhysicalPublicRackView: View {
                     }
 
                     HStack(spacing: 6) {
-                        GameTabletopNameTileView(title: "Bank", width: bankLabelWidth, isSelected: false)
+                        publicNameTile("Bank", width: bankLabelWidth)
                         if revealsBankCounts {
                             Text("Approx. cards left")
                                 .font(.caption2)
@@ -91,6 +91,19 @@ struct GamePhysicalPublicRackView: View {
         .accessibilityIdentifier("uls.turn.publicRail")
     }
 
+    private func publicNameTile(_ title: String, width: CGFloat) -> some View {
+        Text(title)
+            .font(.caption.bold())
+            .foregroundStyle(GamePhysicalTurnPalette.nameTileInk)
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
+            .frame(width: width)
+            .frame(minHeight: 17)
+            .background(GamePhysicalTurnPalette.nameTileFill, in: RoundedRectangle(cornerRadius: 3))
+            .overlay { RoundedRectangle(cornerRadius: 3).stroke(GamePhysicalTurnPalette.nameTileEdge, lineWidth: 1) }
+            .accessibilityHidden(true)
+    }
+
     private func supplyBar(filledSegments: Int) -> some View {
         HStack(spacing: 1.5) {
             ForEach(0..<3) { segment in
@@ -113,11 +126,7 @@ struct GamePhysicalPublicRackView: View {
         VStack(spacing: GamePhysicalTurnLayout.publicLabelGap) {
             developmentCard
 
-            GameTabletopNameTileView(
-                title: "Dev Cards",
-                width: 74,
-                isSelected: false
-            )
+            publicNameTile("Dev Cards", width: 74)
         }
         .frame(minWidth: 74, minHeight: 44)
         .contentShape(Rectangle())

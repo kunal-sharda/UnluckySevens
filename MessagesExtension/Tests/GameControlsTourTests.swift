@@ -53,6 +53,22 @@ final class GameControlsTourTests: XCTestCase {
         XCTAssertEqual(defaults.persistentDomain(forName: name) as NSDictionary?, persistedBefore)
     }
 
+    func testWaitingRobberStatesPermitInventoryRouteWithoutPlay() throws {
+        for id in ["robber-move", "robber-victim"] {
+            let fixture = UXTestFixtures.fixture(id: id)
+            let name = "GameControlsTourTests.\(UUID().uuidString)"
+            let defaults = UserDefaults(suiteName: name)!
+            defer { defaults.removePersistentDomain(forName: name) }
+            let model = LobbyDriverViewModel(userDefaults: defaults, tutorialState: fixture.state,
+                tutorialActorID: UXTestFixtures.alice, isInteractivePractice: true)
+            let availability = model.gameplayShellProjection.gameScreenModel.modeAvailability
+            XCTAssertEqual(GameModeResolver.nextMode(for: .devCards, currentMode: .idle, availability: availability), .playDevCard)
+            let panel = try XCTUnwrap(model.makeDevCardPanelModel(mode: .playDevCard, draft: nil))
+            XCTAssertFalse(panel.cards.isEmpty)
+            XCTAssertTrue(panel.playActions.isEmpty)
+        }
+    }
+
     func testPracticePurchaseIsExplicitAndChangesOnlySyntheticHand() throws {
         let name = "GameControlsTourTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
