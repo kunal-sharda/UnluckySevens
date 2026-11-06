@@ -47,7 +47,7 @@ struct GamePhysicalTurnTopBarView: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(GamePhysicalTurnPalette.primaryText)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.78)
+                        .minimumScaleFactor(0.5)
                         .multilineTextAlignment(.center)
                 } else if rollValues.count >= 2 {
                     HStack(spacing: 3) {
@@ -65,6 +65,7 @@ struct GamePhysicalTurnTopBarView: View {
                         .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
                 }
             }
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .frame(maxWidth: .infinity, minHeight: 44)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(prompt?.text ?? "\(title), \(subtitle)")
@@ -141,7 +142,7 @@ struct GamePhysicalTurnPromptView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(GamePhysicalTurnPalette.primaryText)
                 .lineLimit(1)
-                .minimumScaleFactor(0.82)
+                .minimumScaleFactor(0.5)
                 .multilineTextAlignment(.center)
 
             Capsule()

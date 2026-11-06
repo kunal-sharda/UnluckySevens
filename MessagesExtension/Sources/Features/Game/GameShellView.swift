@@ -421,7 +421,6 @@ struct GameShellView: View {
                                 } else if isPhysicalGameOver,
                                               let endScreen = screenModel.endScreen {
                                         GameEndTopTableauView(model: endScreen)
-                                            .overlay(alignment: .topTrailing) { GameReferenceButton(action: onReferenceTap) }
                                 } else {
                                         if let tutorialHeaderTitle {
                                             GamePhysicalTurnPromptView(text: tutorialHeaderTitle)
@@ -533,6 +532,11 @@ struct GameShellView: View {
                                     GameTableSeatsView(players: screenModel.gameInfo.players, compact: boardViewportLayout.size.width < 300, onShowPlayers: handleGameInfoToggle)
                                         .padding(14)
                                         .allowsHitTesting(!isUtilityPresented && !showsBuildReference && !showsDevPurchase)
+                                }
+                            }
+                            .overlay(alignment: .topTrailing) {
+                                if isPhysicalGameOver {
+                                    GameReferenceButton(action: onReferenceTap).padding(14)
                                 }
                             }
                             .clipShape(RoundedRectangle(cornerRadius: GameTheme.largeRadius + 8))

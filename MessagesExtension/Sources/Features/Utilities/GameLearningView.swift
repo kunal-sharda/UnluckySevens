@@ -51,7 +51,8 @@ struct GameLearningView: View {
                         }
                     }
                     if let receipt {
-                        DisclosureGroup("Your latest observed roll") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Your latest observed roll").font(.headline)
                             GameRollReceiptView(receipt: receipt, rollerName: rollerName)
                         }
                     }

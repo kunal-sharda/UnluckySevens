@@ -94,7 +94,7 @@ The controller is the sole authority for host geometry. SwiftUI consumes one set
 `MessagesHostLayoutSnapshot`; product routes cannot publish layout revisions. UIKit
 transition callbacks suppress intermediate geometry and commit once after a genuine
 Messages presentation or window-size transition settles. SpriteKit keeps its mounted
-`SKView` and receives only the resulting viewport adjustment.
+`SKView` and receives only the resulting viewport adjustment. Its settled reference dimensions follow both shrinking and growing hosts; overlay-only updates retain the mounted board fit.
 
 ## Protocol Model
 

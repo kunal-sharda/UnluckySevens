@@ -280,13 +280,15 @@ Player Trade requirements:
 
 ### Learn & Reference and optional controls practice
 
+At game over, Reference occupies the board’s free upper corner so it does not cover the result or owned-card headings.
+
 The lobby and mounted game expose Learn & Reference. It offers quick costs/rules, current board strategy, the existing beginner walkthrough, and an optional controls tour for players who already know Catan. Opening it retains the real game's mounted shell and current panel. Reference remains available from Players and before rolling. Its private owned-card inspector stays read-only during forced actions and off-turn play.
 
 Contextual tips explain the immediate object or new-card timing. They do not replace the optional tour or permanent rules reference. The tour uses an isolated synthetic table with real controls: Bank, public Dev purchase inspection, Hand, confirmed Road placement, Trade, owned Dev Cards, Players, and confirmed End Turn. Progress records performed actions separately from skipped steps, persists locally, and supports returning or replaying. Practice cannot send messages or mutate the real game ledger. Its smaller board omits passive seat markers to keep hexes and ports unobstructed; the Players control remains interactive.
 
 Bank supply remains approximate three-segment bars. Opening Trade reveals supply without opening a teaching card. Owned Dev Cards expose private quantities/status and explicit Play actions for action cards and a passive Victory Point explanation; public Dev remains a separate purchase surface.
 
-Stable roster-order circle, triangle, square and diamond marks supplement player colors on pieces and peripheral seats. Seats show public VP, local identity, current actor and resigned state; hidden Victory Points never enter them. Public transcript captions lead with the next actor/action, including forced steps; summaries retain the outcome receipt. A private roll receipt is shown only for a verified locally observed roll transition and retained in Reference; missing predecessor history is explicitly unavailable, never inferred from a later hand. The first visible receipt posts a VoiceOver announcement with the same local gains; reopening Reference retains the readable label without replaying the arrival announcement.
+Stable roster-order circle, triangle, square and diamond marks supplement player colors on pieces and peripheral seats. Seats show public VP, local identity, current actor and resigned state; hidden Victory Points never enter them. Public transcript captions lead with the next actor/action, including forced steps; summaries retain the outcome receipt. A private roll receipt is shown only for a verified locally observed roll transition and displayed directly in Reference without an additional disclosure tap; missing predecessor history is explicitly unavailable, never inferred from a later hand. The first visible receipt posts a VoiceOver announcement with the same local gains; reopening Reference retains the readable label without replaying the arrival announcement.
 
 
 

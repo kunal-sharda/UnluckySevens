@@ -2613,10 +2613,7 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachScreenshot(named: noProduction ? "Private roll - no production" : "Private roll - verified production receipt")
         messages.buttons["uls.roll.receipt.close"].firstMatch.tap()
         messages.buttons["uls.tabletop.reference"].firstMatch.tap()
-        let latest = messages.buttons["Your latest observed roll"].firstMatch
-        for _ in 0..<4 where !latest.isHittable { messages.swipeUp() }
-        XCTAssertTrue(latest.waitForExistence(timeout: 4))
-        latest.tap()
+        for _ in 0..<6 where !receipt.exists { messages.swipeUp() }
         XCTAssertTrue(receipt.waitForExistence(timeout: 4))
         messages.buttons["uls.learning.close"].firstMatch.tap()
         XCTAssertFalse(messages.buttons["uls.roll.receipt.close"].firstMatch.exists)

@@ -371,7 +371,7 @@ enum UXTestFixtures {
         id: "roll-bank-shortage", title: "Roll bank shortage",
         detail: "Observed roll with no local production because the Bank is empty.",
         defaultActorID: host,
-        state: makeState(rev: 8, phase: .turn, bankResources: .zero,
+        state: makeState(rev: 28, phase: .turn, bankResources: .zero,
             turnState: TurnStateV1(step: .needsRoll, lastRoll: nil))
     )
 
