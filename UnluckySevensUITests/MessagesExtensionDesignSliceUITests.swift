@@ -10,6 +10,221 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         expectedTurnActionWellFrame = nil
     }
 
+    // Capture-only inventory. These methods intentionally do not replace the
+    // behavioral/geometry acceptance tests. Unreachable destinations are attached
+    // as explicit gaps so an atlas cannot silently imply coverage.
+    @discardableResult
+    private func atlasTap(_ choices: [String]) -> Bool {
+        for choice in choices {
+            let byID = messages.buttons[choice].firstMatch
+            if byID.waitForExistence(timeout: 1) && waitForHittable(byID, timeout: 1) { byID.tap(); return true }
+            let byLabel = messages.buttons.matching(NSPredicate(format: "label == %@", choice)).firstMatch
+            if byLabel.exists && byLabel.isHittable { byLabel.tap(); return true }
+        }
+        let gap = XCTAttachment(string: "Unreachable atlas control: \(choices.joined(separator: " | "))\n\(messages.debugDescription)")
+        gap.name = "Atlas capture gap"; gap.lifetime = .keepAlways; add(gap)
+        return false
+    }
+
+    private func atlasOpen(_ title: String) {
+        openUnluckySevensExtension()
+        hideUXLabChromeWithoutChangingFixture()
+        attachScreenshot(named: title)
+    }
+
+    func testAtlasControlsEntry() throws {
+        openUnluckySevensExtension(); hideUXLabChromeWithoutChangingFixture()
+        guard atlasTap(["uls.tabletop.reference", "Reference"]) else { return }
+        guard atlasTap(["uls.learning.controls", "Know Catan? Learn the Controls"]) else { return }
+        attachScreenshot(named: "Controls practice - entry only")
+        // Inventory only: no action completion, progression, AX or return-state
+        // acceptance rerun. The prior full journey remains blocked.
+    }
+
+    func testAtlasCompact() throws {
+        openUnluckySevensExtension(automaticallyOpensCompactLaunch: false)
+        _ = atlasTap(["uls.compactLaunch.skip", "Skip"])
+        attachScreenshot(named: "Compact entrance - Open Lobby")
+    }
+
+    func testAtlasLobby() throws {
+        openUnluckySevensExtension()
+        for (title, identifier) in [("Invitation", "uls.uxLab.cleanShot.lobbyInvite"), ("Join", "uls.uxLab.cleanShot.lobbyJoin"), ("Ready", "uls.uxLab.cleanShot.lobbyReady")] {
+            activateUXLabNestedQuickState(title: title, identifier: identifier)
+            hideUXLabChromeWithoutChangingFixture()
+            attachScreenshot(named: "Lobby - \(title)")
+        }
+    }
+
+    func testAtlasUtilities() throws {
+        atlasOpen("Table - utility entry")
+        guard atlasTap(["Settings"]) else { return }
+        attachScreenshot(named: "Settings - preferences and current game")
+        if atlasTap(["uls.settings.chooseTutorialTips", "Choose which tips appear"]) {
+            attachScreenshot(named: "Settings - individual tutorial tips")
+            messages.navigationBars["Tutorial Tips"].buttons.firstMatch.tap()
+        }
+        messages.scrollViews.firstMatch.swipeUp()
+        if atlasTap(["uls.settings.showRules", "Rules"]) {
+            attachScreenshot(named: "Rules - beginning")
+            messages.swipeUp(); attachScreenshot(named: "Rules - lower content")
+            messages.navigationBars["Rules"].buttons.firstMatch.tap()
+        }
+        if atlasTap(["uls.settings.reliability", "Reliability Report"]) {
+            attachScreenshot(named: "Reliability Report - current preview")
+            messages.swipeUp(); attachScreenshot(named: "Reliability Report - lower content")
+        }
+    }
+
+    func testAtlasReference() throws {
+        atlasOpen("Table - normal turn")
+        guard atlasTap(["uls.tabletop.reference", "Reference"]) else { return }
+        attachScreenshot(named: "Learn and Reference - hub")
+        if atlasTap(["Your owned Dev Cards"]) { attachScreenshot(named: "Reference - owned Dev cards") }
+        messages.swipeUp(); attachScreenshot(named: "Reference - rules and costs")
+        messages.swipeUp(); attachScreenshot(named: "Reference - further rules")
+    }
+
+    func testAtlasBeginner() throws {
+        openUnluckySevensExtension(); hideUXLabChromeWithoutChangingFixture()
+        guard atlasTap(["uls.tabletop.reference", "Reference"]) else { return }
+        guard atlasTap(["uls.learning.beginner", "New to Catan? Learn the Game"]) else { return }
+        attachScreenshot(named: "Beginner tutorial - navigation coach")
+        if messages.staticTexts["Tap anywhere to begin"].firstMatch.exists {
+            messages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        let titles = ["Place Your First Settlement", "Add a Road", "Roll to Begin", "Follow the Roll", "Check Your Hand", "Choose What to Build", "Choose a Glowing Corner", "Make an Offer", "Choose Who Gets It", "Trade with Bank or Port", "Discard on Seven", "Move the Robber", "Choose a Victim", "Play a Dev Card", "Send the Turn", "Strategy"]
+        for (index,title) in titles.enumerated() {
+            attachScreenshot(named: String(format: "Beginner tutorial %02d - %@", index+1,title))
+            if index < titles.count-1 {
+                let next = messages.buttons["uls.tutorial.next"].firstMatch
+                guard next.waitForExistence(timeout: 2) else { _ = atlasTap(["uls.tutorial.next"]); return }
+                if next.isHittable { next.tap() }
+                else {
+                    // Trade preview is above the invisible navigation zones in
+                    // AX order. Tap the advertised right zone away from Close.
+                    next.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.95)).tap()
+                }
+            }
+        }
+    }
+
+    func testAtlasTable() throws {
+        atlasOpen("Table - action well at rest")
+        if atlasTap(["uls.purchase.close"]) { }
+        if atlasTap(["uls.physicalProps.hand", "Hand"]) { attachScreenshot(named: "Table - Hand closed") }
+        if atlasTap(["uls.tabletop.bankRack", "Bank"]) { attachScreenshot(named: "Table - Bank supply revealed") }
+        if atlasTap(["uls.physicalProps.build", "Build"]) { attachScreenshot(named: "Build - piece choices and reference") }
+        if atlasTap(["uls.purchase.close"]) { attachScreenshot(named: "Build - choices without teaching") }
+        if atlasTap(["uls.physicalProps.endTurn", "End Turn", "End"]) { attachScreenshot(named: "Turn - end confirmation") }
+        if atlasTap(["Keep Playing"]) { }
+        if atlasTap(["Players and game information"]) {
+            attachScreenshot(named: "Players - game information")
+            if atlasTap(["uls.gameInfo.playerRecord", "Player Record"]) {
+                attachScreenshot(named: "Player Record - overview")
+                messages.swipeUp(); attachScreenshot(named: "Player Record - honors and groups")
+            }
+        }
+    }
+
+    func testAtlasTrade() throws {
+        atlasOpen("Trade - table before opening")
+        _ = atlasTap(["uls.purchase.close"])
+        guard atlasTap(["uls.physicalProps.trade", "Trade"]) else { return }
+        attachScreenshot(named: "Trade - route chooser")
+        if atlasTap(["Player Trade"]) {
+            attachScreenshot(named: "Trade - player Give and Get")
+            _ = atlasTap(["uls.physicalTrade.give.wood.add"])
+            _ = atlasTap(["uls.physicalTrade.receive.brick.add", "uls.physicalTrade.get.brick.add"])
+            if atlasTap(["uls.physicalTrade.chooseRecipients", "Choose Players"]) { attachScreenshot(named: "Trade - recipient selection") }
+            _ = atlasTap(["uls.physicalTrade.recipientClose", "uls.physicalTrade.close", "Close trade"])
+        }
+        guard atlasTap(["uls.physicalProps.trade", "Trade"]) else { return }
+        if atlasTap(["Bank or Port"]) { attachScreenshot(named: "Trade - Bank or Port exchange") }
+    }
+
+    func testAtlasDev() throws {
+        atlasOpen("Dev Cards - table entry")
+        _ = atlasTap(["uls.purchase.close"])
+        if atlasTap(["uls.tabletop.devDeck", "Dev Cards"]) {
+            attachScreenshot(named: "Dev Cards - public purchase inspection")
+            _ = atlasTap(["uls.purchase.close"])
+        }
+        if !messages.buttons["uls.physicalProps.ownedDevCards"].firstMatch.exists {
+            _ = atlasTap(["uls.physicalProps.hand", "Hand"])
+        }
+        if atlasTap(["uls.physicalProps.ownedDevCards", "Owned Dev Cards"]) {
+            attachScreenshot(named: "Dev Cards - owned inventory")
+        }
+    }
+
+    func testAtlasLifecycle() throws {
+        atlasOpen("Game lifecycle - entry table")
+        guard atlasTap(["Players and game information"]) else { return }
+        guard atlasTap(["uls.gameInfo.lifecycleActions", "Current game actions"]) else { return }
+        attachScreenshot(named: "Game lifecycle - available actions")
+        if atlasTap(["Resign"]) {
+            attachScreenshot(named: "Game lifecycle - resign confirmation")
+            _ = atlasTap(["Keep Playing"])
+        }
+        if atlasTap(["End Game"]) {
+            attachScreenshot(named: "Game lifecycle - host end confirmation")
+            _ = atlasTap(["Keep Playing"])
+        }
+        if atlasTap(["Propose Draw"]) { attachScreenshot(named: "Game lifecycle - draw proposal confirmation") }
+    }
+
+    func testAtlasStrategy() throws {
+        atlasOpen("Strategy - entry table")
+        guard atlasTap(["uls.tabletop.reference", "Reference"]) else { return }
+        if atlasTap(["uls.learning.strategy", "Strategy quick tips"]) { attachScreenshot(named: "Strategy - standalone player aid") }
+    }
+
+    func testAtlasSetup() throws { atlasOpen("Setup - first settlement") }
+
+    func testAtlasSetupRoad() throws { atlasOpen("Setup - connected road") }
+
+    func testAtlasStart() throws { atlasOpen("Start of turn - roll or Dev") }
+
+    func testAtlasWaiting() throws { atlasOpen("Waiting - ordinary opponent turn") }
+
+    func testAtlasDiscard() throws { atlasOpen("Discard - resource selection") }
+
+    func testAtlasWaitDiscard() throws { atlasOpen("Discard - waiting on others") }
+
+    func testAtlasRobber() throws { atlasOpen("Robber - move target") }
+
+    func testAtlasVictim() throws { atlasOpen("Robber - choose victim") }
+
+    func testAtlasIncoming() throws {
+        openUnluckySevensExtension(); hideUXLabChromeWithoutChangingFixture()
+        let teaching = messages.buttons["uls.purchase.close"].firstMatch
+        if teaching.waitForExistence(timeout: 2) && teaching.isHittable { teaching.tap() }
+        if atlasTap(["uls.physicalProps.trade", "uls.turnObject.trade", "Pending offer", "Trade"]) {
+            attachScreenshot(named: "Trade - incoming offer")
+        }
+    }
+
+    func testAtlasMultiTrade() throws {
+        openUnluckySevensExtension(); hideUXLabChromeWithoutChangingFixture()
+        let teaching = messages.buttons["uls.purchase.close"].firstMatch
+        if teaching.waitForExistence(timeout: 2) && teaching.isHittable { teaching.tap() }
+        if atlasTap(["uls.physicalProps.trade", "uls.turnObject.trade", "Pending offer", "Trade"]) {
+            attachScreenshot(named: "Trade - multiple resource incoming offer")
+        }
+    }
+
+    func testAtlasPending() throws {
+        openUnluckySevensExtension(); hideUXLabChromeWithoutChangingFixture()
+        let teaching = messages.buttons["uls.purchase.close"].firstMatch
+        if teaching.waitForExistence(timeout: 2) && teaching.isHittable { teaching.tap() }
+        if atlasTap(["uls.physicalProps.trade", "uls.turnObject.trade", "Pending offer", "Trade"]) {
+            attachScreenshot(named: "Trade - proposer pending offer")
+        }
+    }
+
+    func testAtlasEnd() throws { atlasOpen("Game result - victory") }
+
     func testOpenMessagesExtensionAndCaptureDesignSlices() throws {
         openUnluckySevensExtension()
 
