@@ -82,8 +82,8 @@ final class TranscriptBubbleCopyTests: XCTestCase {
 
         let copy = TranscriptBubbleCopyBuilder.turnIntent(intent, actor: "A", resultingState: state)
 
-        XCTAssertEqual(copy.caption, "Unlucky Sevens: Turn Ended")
-        XCTAssertEqual(copy.summary, "Next turn: Kunal.")
+        XCTAssertEqual(copy.caption, "Kunal rolls next or plays an eligible Dev Card.")
+        XCTAssertEqual(copy.summary, "Turn Ended. Next turn: Kunal.")
         XCTAssertEqual(boardVisual(from: copy)?.showsNumberTokens, true)
     }
 
@@ -139,8 +139,8 @@ final class TranscriptBubbleCopyTests: XCTestCase {
             actor: "A"
         )
 
-        XCTAssertEqual(copy.caption, "Unlucky Sevens: Avery Resigned")
-        XCTAssertEqual(copy.summary, "Avery left the game. Blake has the turn.")
+        XCTAssertEqual(copy.caption, "Blake rolls next or plays an eligible Dev Card.")
+        XCTAssertEqual(copy.summary, "Avery Resigned. Avery left the game. Blake has the turn.")
         guard case .board = copy.visual else {
             return XCTFail("Expected the continuing board visual.")
         }
@@ -163,10 +163,10 @@ final class TranscriptBubbleCopyTests: XCTestCase {
             actor: "A"
         )
 
-        XCTAssertEqual(proposalCopy.caption, "Unlucky Sevens: Draw Proposed")
+        XCTAssertEqual(proposalCopy.caption, "Waiting for Blake to vote on the draw.")
         XCTAssertEqual(
             proposalCopy.summary,
-            "Avery proposed a draw. Every active player must agree."
+            "Draw Proposed. Avery proposed a draw. Every active player must agree."
         )
 
         let rejected = try apply(
@@ -180,8 +180,8 @@ final class TranscriptBubbleCopyTests: XCTestCase {
             approved: false
         )
 
-        XCTAssertEqual(rejectionCopy.caption, "Unlucky Sevens: Draw Declined")
-        XCTAssertEqual(rejectionCopy.summary, "Blake declined the draw. Play continues.")
+        XCTAssertEqual(rejectionCopy.caption, "Avery rolls next or plays an eligible Dev Card.")
+        XCTAssertEqual(rejectionCopy.summary, "Draw Declined. Blake declined the draw. Play continues.")
         XCTAssertEqual(rejected.phase, .turn)
         XCTAssertNil(rejected.drawVote)
     }
@@ -279,6 +279,43 @@ final class TranscriptBubbleCopyTests: XCTestCase {
 
         XCTAssertNotNil(boardVisual(from: accepted))
         XCTAssertNotNil(boardVisual(from: finalDecline))
+    }
+
+    func testEveryTurnPublishingFamilyLeadsWithCanonicalContinuation() {
+        let intents: [TurnIntentV1] = [
+            .rollDice, .submitDiscard(player: "A", discarded: ResourceHandV1(ore: 3)),
+            .moveRobber(tileID: 1), .selectStealVictim(victimPlayer: "B"),
+            .buildRoad(edgeID: 1), .buildSettlement(nodeID: 1), .buildCity(nodeID: 1),
+            .proposeTrade(give: ResourceHandV1(wood: 1), receive: ResourceHandV1(brick: 1), recipients: ["B"]),
+            .acceptTrade(acceptingPlayer: "B", offerHash: "offer"),
+            .declineTrade(decliningPlayer: "B", offerHash: "offer"),
+            .counterTrade(counteringPlayer: "B", offerHash: "offer", give: ResourceHandV1(wood: 1), receive: ResourceHandV1(brick: 1)),
+            .maritimeTrade(give: ResourceHandV1(wood: 4), receive: ResourceHandV1(brick: 1)),
+            .buyDevCard, .playKnight(tileID: 1, victimPlayer: "B"), .playMonopoly(resource: .wheat),
+            .playYearOfPlenty(first: .wheat, second: .ore), .playRoadBuilding(firstEdgeID: 1, secondEdgeID: 2),
+            .revealVictoryPoint, .endTurn
+        ]
+        for intent in intents {
+            let step: TurnStepV1
+            let caption: String
+            switch intent {
+            case .endTurn:
+                step = .needsRoll; caption = "Avery rolls next or plays an eligible Dev Card."
+            case .submitDiscard:
+                step = .needsRobberMove; caption = "Avery moves the robber next."
+            case .moveRobber:
+                step = .needsRobberSteal; caption = "Avery chooses a player to steal from."
+            default:
+                step = .afterRoll; caption = "Avery continues their turn."
+            }
+            let state = makeTurnState(currentPlayer: "A", customNames: ["A": "Avery", "B": "Blake"],
+                turnState: TurnStateV1(step: step, lastRoll: DiceRollV1(d1: 3, d2: 5)))
+            let copy = TranscriptBubbleCopyBuilder.turnIntent(intent, actor: "A", resultingState: state)
+            XCTAssertEqual(copy.caption, caption, "\(intent)")
+            XCTAssertFalse(copy.summary.isEmpty)
+            if case .submitDiscard = intent { XCTAssertFalse(copy.summary.localizedCaseInsensitiveContains("ore")) }
+            if case .rollDice = intent { XCTAssertTrue(copy.summary.contains("3 + 5 = 8")) }
+        }
     }
 
     private func makeLobbyState(

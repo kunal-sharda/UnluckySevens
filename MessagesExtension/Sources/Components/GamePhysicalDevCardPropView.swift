@@ -52,6 +52,14 @@ struct GamePhysicalDevCardPropView: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(1)
                     .frame(width: 66, height: 20, alignment: .top)
+                if action != nil {
+                    Text("Play")
+                        .font(.caption.bold())
+                        .foregroundStyle(GameTheme.felt)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(GameTheme.surface, in: Capsule())
+                }
             }
             .frame(width: 66)
             .frame(minHeight: 68)
@@ -62,7 +70,7 @@ struct GamePhysicalDevCardPropView: View {
         .accessibilityIdentifier("uls.physicalProps.devCard.\(card.kind.rawValue)")
         .accessibilityLabel("\(card.kind.title), \(card.count) owned")
         .accessibilityValue(card.statusText)
-        .accessibilityHint(action == nil ? card.detailText : "Selects this Dev Card")
+        .accessibilityHint(action == nil ? card.detailText : "Play \(card.kind.title). \(card.detailText)")
     }
 
     private var displayTitleLines: [String] {

@@ -20,6 +20,34 @@ final class AppPreferences {
         return true
     }
 
+    var controlsTourProgress: GameControlsTourProgress {
+        get {
+            guard let data = userDefaults.data(forKey: "uls.controlsTour.progress"),
+                  let progress = try? JSONDecoder().decode(GameControlsTourProgress.self, from: data),
+                  (0...GameControlInteraction.allCases.count).contains(progress.index) else {
+                return GameControlsTourProgress()
+            }
+            return progress
+        }
+        set {
+            userDefaults.set(try? JSONEncoder().encode(newValue), forKey: "uls.controlsTour.progress")
+        }
+    }
+
+    func hasSeenRollReceipt(gameID: String, revision: Int) -> Bool {
+        let seen = userDefaults.dictionary(forKey: "uls.rollReceipt.lastSeen") as? [String: Int] ?? [:]
+        return revision <= (seen[gameID] ?? -1)
+    }
+
+    func claimRollReceipt(gameID: String, revision: Int) -> Bool {
+        let key = "uls.rollReceipt.lastSeen"
+        var seen = userDefaults.dictionary(forKey: key) as? [String: Int] ?? [:]
+        guard revision > (seen[gameID] ?? -1) else { return false }
+        seen[gameID] = revision
+        userDefaults.set(seen, forKey: key)
+        return true
+    }
+
     private let userDefaults: UserDefaults
 
     var skipsAnimations: Bool {

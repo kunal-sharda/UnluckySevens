@@ -100,6 +100,7 @@ struct GamePhysicalTurnPropRailView: View {
                 width: nameTileWidth(for: slot.kind),
                 isSelected: isSelected
             )
+            .dynamicTypeSize(.large)
         }
         .frame(maxWidth: .infinity, minHeight: 58, maxHeight: 58, alignment: .top)
         .contentShape(Rectangle())

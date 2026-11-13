@@ -1,0 +1,2 @@
+testFourPlayerSeatsAndReference|four-player-seats|host
+testForcedActionReferenceInspection|pending-discard|host

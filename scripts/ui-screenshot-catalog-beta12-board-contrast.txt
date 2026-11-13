@@ -1,0 +1,1 @@
+testAccessibleBoardSelectedTarget|turn-after-roll|host

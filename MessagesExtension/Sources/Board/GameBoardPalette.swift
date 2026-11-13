@@ -134,6 +134,11 @@ enum GameBoardPalette {
     }
 
     static func playerColor(owner: String, playerOrder: [String]) -> SKColor {
+        let index = playerOrder.firstIndex(of: owner) ?? owner.utf8.reduce(0) { ($0 + Int($1)) % 4 }
+        return playerColor(index: index)
+    }
+
+    static func playerColor(index: Int) -> SKColor {
         let palette: [SKColor] = [
             SKColor(red: 0.72, green: 0.18, blue: 0.16, alpha: 1.0),
             SKColor(red: 0.18, green: 0.42, blue: 0.70, alpha: 1.0),
@@ -141,12 +146,7 @@ enum GameBoardPalette {
             SKColor(red: 0.78, green: 0.48, blue: 0.13, alpha: 1.0),
         ]
 
-        if let index = playerOrder.firstIndex(of: owner) {
-            return palette[index % palette.count]
-        }
-
-        let fallbackIndex = abs(owner.hashValue) % palette.count
-        return palette[fallbackIndex]
+        return palette[max(0, index) % palette.count]
     }
 
     static func playerStroke(owner: String, playerOrder: [String]) -> SKColor {

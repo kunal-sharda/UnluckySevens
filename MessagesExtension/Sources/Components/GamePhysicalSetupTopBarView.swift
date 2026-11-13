@@ -3,6 +3,7 @@ import SwiftUI
 struct GamePhysicalSetupTopBarView: View {
     let model: GameSetupPlacementModel
     let onSettingsTap: () -> Void
+    var onReferenceTap: () -> Void = {}
     let onGameInfoTap: () -> Void
 
     var body: some View {
@@ -11,6 +12,8 @@ struct GamePhysicalSetupTopBarView: View {
                 .labelStyle(.iconOnly)
                 .font(.system(size: 20, weight: .semibold))
                 .frame(width: 44, height: 44)
+
+            GameReferenceButton(action: onReferenceTap)
 
             VStack(spacing: 2) {
                 Text(model.title)

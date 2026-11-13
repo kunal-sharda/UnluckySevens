@@ -14,7 +14,7 @@ This is the durable rationale index for structural debt. GitHub Issues own actio
 ### TD-002 — Production board visual assertions are shallow
 
 - Risk: real gameplay boards, transcript variants, and device-sized compositions remain under-protected against visual regressions.
-- Direction: representative deterministic fixtures and production-surface assertions.
+- Direction: representative deterministic fixtures and production-surface assertions. The 2026-11-05 Beta 1.2 slice adds four-owner production boards at both snapshot sizes, grayscale/color-vision diagnostic captures, and live four-seat/forced-reference journeys. Device-composition and remaining acceptance are tracked in the active flight-delivery plan; this debt is not yet closed.
 - Owner: [GitHub issue #3](https://github.com/kunal-sharda/UnluckySevens/issues/3)
 
 ### TD-005 — Concurrent lobby joins do not converge before start

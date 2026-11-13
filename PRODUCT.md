@@ -14,6 +14,8 @@ Unlucky Sevens is for groups of 3–4 friends who want to play asynchronous stan
 
 Players interact in short, interrupted sessions and often return from a transcript bubble after time away. They need to identify the table, players, current actor, pending obligation, and next legal action quickly without reconstructing the game from message history.
 
+For Beta 1.2, the owner has delegated design around three working personas before further feedback: an experienced Catan player learning app controls, a newcomer needing a short explanation at the relevant action, and a returning player checking a rule or reorienting. These are design assumptions, not validated research segments. The corresponding learning layers are optional controls practice, contextual tips, and permanent reference; no layer requires finishing another.
+
 ## Product Purpose
 
 The product brings the full standard-Catan loop to Messages while preserving deterministic rules, canonical state, and hidden-information boundaries. Success means players can invite, join, set up, play turns, trade, build, use Development Cards, resume from the real game bubble, inspect device-local results, leave play without stopping everyone else, and finish by victory, unanimous draw, or host end without leaving the Messages-first flow.

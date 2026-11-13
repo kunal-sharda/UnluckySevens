@@ -10,6 +10,221 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         expectedTurnActionWellFrame = nil
     }
 
+    // Capture-only inventory. These methods intentionally do not replace the
+    // behavioral/geometry acceptance tests. Unreachable destinations are attached
+    // as explicit gaps so an atlas cannot silently imply coverage.
+    @discardableResult
+    private func atlasTap(_ choices: [String]) -> Bool {
+        for choice in choices {
+            let byID = messages.buttons[choice].firstMatch
+            if byID.waitForExistence(timeout: 1) && waitForHittable(byID, timeout: 1) { byID.tap(); return true }
+            let byLabel = messages.buttons.matching(NSPredicate(format: "label == %@", choice)).firstMatch
+            if byLabel.exists && byLabel.isHittable { byLabel.tap(); return true }
+        }
+        let gap = XCTAttachment(string: "Unreachable atlas control: \(choices.joined(separator: " | "))\n\(messages.debugDescription)")
+        gap.name = "Atlas capture gap"; gap.lifetime = .keepAlways; add(gap)
+        return false
+    }
+
+    private func atlasOpen(_ title: String) {
+        openUnluckySevensExtension()
+        hideUXLabChromeWithoutChangingFixture()
+        attachScreenshot(named: title)
+    }
+
+    func testAtlasControlsEntry() throws {
+        openUnluckySevensExtension(); hideUXLabChromeWithoutChangingFixture()
+        guard atlasTap(["uls.tabletop.reference", "Reference"]) else { return }
+        guard atlasTap(["uls.learning.controls", "Know Catan? Learn the Controls"]) else { return }
+        attachScreenshot(named: "Controls practice - entry only")
+        // Inventory only: no action completion, progression, AX or return-state
+        // acceptance rerun. The prior full journey remains blocked.
+    }
+
+    func testAtlasCompact() throws {
+        openUnluckySevensExtension(automaticallyOpensCompactLaunch: false)
+        _ = atlasTap(["uls.compactLaunch.skip", "Skip"])
+        attachScreenshot(named: "Compact entrance - Open Lobby")
+    }
+
+    func testAtlasLobby() throws {
+        openUnluckySevensExtension()
+        for (title, identifier) in [("Invitation", "uls.uxLab.cleanShot.lobbyInvite"), ("Join", "uls.uxLab.cleanShot.lobbyJoin"), ("Ready", "uls.uxLab.cleanShot.lobbyReady")] {
+            activateUXLabNestedQuickState(title: title, identifier: identifier)
+            hideUXLabChromeWithoutChangingFixture()
+            attachScreenshot(named: "Lobby - \(title)")
+        }
+    }
+
+    func testAtlasUtilities() throws {
+        atlasOpen("Table - utility entry")
+        guard atlasTap(["Settings"]) else { return }
+        attachScreenshot(named: "Settings - preferences and current game")
+        if atlasTap(["uls.settings.chooseTutorialTips", "Choose which tips appear"]) {
+            attachScreenshot(named: "Settings - individual tutorial tips")
+            messages.navigationBars["Tutorial Tips"].buttons.firstMatch.tap()
+        }
+        messages.scrollViews.firstMatch.swipeUp()
+        if atlasTap(["uls.settings.showRules", "Rules"]) {
+            attachScreenshot(named: "Rules - beginning")
+            messages.swipeUp(); attachScreenshot(named: "Rules - lower content")
+            messages.navigationBars["Rules"].buttons.firstMatch.tap()
+        }
+        if atlasTap(["uls.settings.reliability", "Reliability Report"]) {
+            attachScreenshot(named: "Reliability Report - current preview")
+            messages.swipeUp(); attachScreenshot(named: "Reliability Report - lower content")
+        }
+    }
+
+    func testAtlasReference() throws {
+        atlasOpen("Table - normal turn")
+        guard atlasTap(["uls.tabletop.reference", "Reference"]) else { return }
+        attachScreenshot(named: "Learn and Reference - hub")
+        if atlasTap(["Your owned Dev Cards"]) { attachScreenshot(named: "Reference - owned Dev cards") }
+        messages.swipeUp(); attachScreenshot(named: "Reference - rules and costs")
+        messages.swipeUp(); attachScreenshot(named: "Reference - further rules")
+    }
+
+    func testAtlasBeginner() throws {
+        openUnluckySevensExtension(); hideUXLabChromeWithoutChangingFixture()
+        guard atlasTap(["uls.tabletop.reference", "Reference"]) else { return }
+        guard atlasTap(["uls.learning.beginner", "New to Catan? Learn the Game"]) else { return }
+        attachScreenshot(named: "Beginner tutorial - navigation coach")
+        if messages.staticTexts["Tap anywhere to begin"].firstMatch.exists {
+            messages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        let titles = ["Place Your First Settlement", "Add a Road", "Roll to Begin", "Follow the Roll", "Check Your Hand", "Choose What to Build", "Choose a Glowing Corner", "Make an Offer", "Choose Who Gets It", "Trade with Bank or Port", "Discard on Seven", "Move the Robber", "Choose a Victim", "Play a Dev Card", "Send the Turn", "Strategy"]
+        for (index,title) in titles.enumerated() {
+            attachScreenshot(named: String(format: "Beginner tutorial %02d - %@", index+1,title))
+            if index < titles.count-1 {
+                let next = messages.buttons["uls.tutorial.next"].firstMatch
+                guard next.waitForExistence(timeout: 2) else { _ = atlasTap(["uls.tutorial.next"]); return }
+                if next.isHittable { next.tap() }
+                else {
+                    // Trade preview is above the invisible navigation zones in
+                    // AX order. Tap the advertised right zone away from Close.
+                    next.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.95)).tap()
+                }
+            }
+        }
+    }
+
+    func testAtlasTable() throws {
+        atlasOpen("Table - action well at rest")
+        if atlasTap(["uls.purchase.close"]) { }
+        if atlasTap(["uls.physicalProps.hand", "Hand"]) { attachScreenshot(named: "Table - Hand closed") }
+        if atlasTap(["uls.tabletop.bankRack", "Bank"]) { attachScreenshot(named: "Table - Bank supply revealed") }
+        if atlasTap(["uls.physicalProps.build", "Build"]) { attachScreenshot(named: "Build - piece choices and reference") }
+        if atlasTap(["uls.purchase.close"]) { attachScreenshot(named: "Build - choices without teaching") }
+        if atlasTap(["uls.physicalProps.endTurn", "End Turn", "End"]) { attachScreenshot(named: "Turn - end confirmation") }
+        if atlasTap(["Keep Playing"]) { }
+        if atlasTap(["Players and game information"]) {
+            attachScreenshot(named: "Players - game information")
+            if atlasTap(["uls.gameInfo.playerRecord", "Player Record"]) {
+                attachScreenshot(named: "Player Record - overview")
+                messages.swipeUp(); attachScreenshot(named: "Player Record - honors and groups")
+            }
+        }
+    }
+
+    func testAtlasTrade() throws {
+        atlasOpen("Trade - table before opening")
+        _ = atlasTap(["uls.purchase.close"])
+        guard atlasTap(["uls.physicalProps.trade", "Trade"]) else { return }
+        attachScreenshot(named: "Trade - route chooser")
+        if atlasTap(["Player Trade"]) {
+            attachScreenshot(named: "Trade - player Give and Get")
+            _ = atlasTap(["uls.physicalTrade.give.wood.add"])
+            _ = atlasTap(["uls.physicalTrade.receive.brick.add", "uls.physicalTrade.get.brick.add"])
+            if atlasTap(["uls.physicalTrade.chooseRecipients", "Choose Players"]) { attachScreenshot(named: "Trade - recipient selection") }
+            _ = atlasTap(["uls.physicalTrade.recipientClose", "uls.physicalTrade.close", "Close trade"])
+        }
+        guard atlasTap(["uls.physicalProps.trade", "Trade"]) else { return }
+        if atlasTap(["Bank or Port"]) { attachScreenshot(named: "Trade - Bank or Port exchange") }
+    }
+
+    func testAtlasDev() throws {
+        atlasOpen("Dev Cards - table entry")
+        _ = atlasTap(["uls.purchase.close"])
+        if atlasTap(["uls.tabletop.devDeck", "Dev Cards"]) {
+            attachScreenshot(named: "Dev Cards - public purchase inspection")
+            _ = atlasTap(["uls.purchase.close"])
+        }
+        if !messages.buttons["uls.physicalProps.ownedDevCards"].firstMatch.exists {
+            _ = atlasTap(["uls.physicalProps.hand", "Hand"])
+        }
+        if atlasTap(["uls.physicalProps.ownedDevCards", "Owned Dev Cards"]) {
+            attachScreenshot(named: "Dev Cards - owned inventory")
+        }
+    }
+
+    func testAtlasLifecycle() throws {
+        atlasOpen("Game lifecycle - entry table")
+        guard atlasTap(["Players and game information"]) else { return }
+        guard atlasTap(["uls.gameInfo.lifecycleActions", "Current game actions"]) else { return }
+        attachScreenshot(named: "Game lifecycle - available actions")
+        if atlasTap(["Resign"]) {
+            attachScreenshot(named: "Game lifecycle - resign confirmation")
+            _ = atlasTap(["Keep Playing"])
+        }
+        if atlasTap(["End Game"]) {
+            attachScreenshot(named: "Game lifecycle - host end confirmation")
+            _ = atlasTap(["Keep Playing"])
+        }
+        if atlasTap(["Propose Draw"]) { attachScreenshot(named: "Game lifecycle - draw proposal confirmation") }
+    }
+
+    func testAtlasStrategy() throws {
+        atlasOpen("Strategy - entry table")
+        guard atlasTap(["uls.tabletop.reference", "Reference"]) else { return }
+        if atlasTap(["uls.learning.strategy", "Strategy quick tips"]) { attachScreenshot(named: "Strategy - standalone player aid") }
+    }
+
+    func testAtlasSetup() throws { atlasOpen("Setup - first settlement") }
+
+    func testAtlasSetupRoad() throws { atlasOpen("Setup - connected road") }
+
+    func testAtlasStart() throws { atlasOpen("Start of turn - roll or Dev") }
+
+    func testAtlasWaiting() throws { atlasOpen("Waiting - ordinary opponent turn") }
+
+    func testAtlasDiscard() throws { atlasOpen("Discard - resource selection") }
+
+    func testAtlasWaitDiscard() throws { atlasOpen("Discard - waiting on others") }
+
+    func testAtlasRobber() throws { atlasOpen("Robber - move target") }
+
+    func testAtlasVictim() throws { atlasOpen("Robber - choose victim") }
+
+    func testAtlasIncoming() throws {
+        openUnluckySevensExtension(); hideUXLabChromeWithoutChangingFixture()
+        let teaching = messages.buttons["uls.purchase.close"].firstMatch
+        if teaching.waitForExistence(timeout: 2) && teaching.isHittable { teaching.tap() }
+        if atlasTap(["uls.physicalProps.trade", "uls.turnObject.trade", "Pending offer", "Trade"]) {
+            attachScreenshot(named: "Trade - incoming offer")
+        }
+    }
+
+    func testAtlasMultiTrade() throws {
+        openUnluckySevensExtension(); hideUXLabChromeWithoutChangingFixture()
+        let teaching = messages.buttons["uls.purchase.close"].firstMatch
+        if teaching.waitForExistence(timeout: 2) && teaching.isHittable { teaching.tap() }
+        if atlasTap(["uls.physicalProps.trade", "uls.turnObject.trade", "Pending offer", "Trade"]) {
+            attachScreenshot(named: "Trade - multiple resource incoming offer")
+        }
+    }
+
+    func testAtlasPending() throws {
+        openUnluckySevensExtension(); hideUXLabChromeWithoutChangingFixture()
+        let teaching = messages.buttons["uls.purchase.close"].firstMatch
+        if teaching.waitForExistence(timeout: 2) && teaching.isHittable { teaching.tap() }
+        if atlasTap(["uls.physicalProps.trade", "uls.turnObject.trade", "Pending offer", "Trade"]) {
+            attachScreenshot(named: "Trade - proposer pending offer")
+        }
+    }
+
+    func testAtlasEnd() throws { atlasOpen("Game result - victory") }
+
     func testOpenMessagesExtensionAndCaptureDesignSlices() throws {
         openUnluckySevensExtension()
 
@@ -2550,6 +2765,209 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         close.tap()
     }
 
+    func testWaitingRobberMoveOwnedInventory() throws {
+        try verifyWaitingRobberInventory(title: "Robber move")
+    }
+
+    func testWaitingRobberStealOwnedInventory() throws {
+        try verifyWaitingRobberInventory(title: "Robber victim")
+    }
+
+    private func verifyWaitingRobberInventory(title: String) throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: title)
+        hideUXLabChromeWithoutChangingFixture()
+        let before = gameplayActionEvidenceValue()
+        let hand = messages.buttons["uls.physicalProps.hand"].firstMatch
+        XCTAssertTrue(hand.waitForExistence(timeout: 4))
+        if !messages.buttons["uls.physicalProps.ownedDevCards"].firstMatch.exists { hand.tap() }
+        messages.buttons["uls.physicalProps.ownedDevCards"].firstMatch.tap()
+        let inventory = messages.descendants(matching: .any)["uls.devCards.inventory"].firstMatch
+        XCTAssertTrue(inventory.waitForExistence(timeout: 4))
+        XCTAssertEqual(inventory.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Play ")).count, 0)
+        attachScreenshot(named: "Waiting robber - owned inventory")
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+    }
+
+    func testPrivateRollReceiptAndReference() throws {
+        try verifyPrivateRollReceipt()
+    }
+
+    func testPrivateRollReceiptWithReduceMotion() throws {
+        try verifyPrivateRollReceipt(verifiesReduceMotion: true)
+    }
+
+    func testPrivateRollReceiptWithoutProduction() throws {
+        try verifyPrivateRollReceipt(noProduction: true)
+    }
+
+    private func verifyPrivateRollReceipt(verifiesReduceMotion: Bool = false, noProduction: Bool = false) throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: noProduction ? "Roll bank shortage" : "Turn needs roll")
+        hideUXLabChromeWithoutChangingFixture()
+        if verifiesReduceMotion {
+            let motion = messages.staticTexts["uls.tabletop.motionPolicy"].firstMatch
+            XCTAssertTrue(motion.waitForExistence(timeout: 4))
+            XCTAssertEqual(motion.value as? String, "reduceMotion=true;spatial=false")
+        }
+        let before = gameplayActionEvidenceValue()
+        messages.buttons["uls.startTurn.roll"].firstMatch.tap()
+        let after = waitForGameplayActionEvidenceChange(from: before, timeout: 10)
+        XCTAssertTrue(after.contains("status=Published roll"), after)
+        let diceResult = messages.buttons["uls.startTurn.diceRoll"].firstMatch
+        let settled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label BEGINSWITH %@", "Rolled"), object: diceResult)
+        XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 6), .completed)
+        diceResult.tap()
+        let purchaseClose = messages.buttons["uls.purchase.close"].firstMatch
+        if purchaseClose.waitForExistence(timeout: 2) { purchaseClose.tap() }
+        let receipt = messages.descendants(matching: .any)["uls.roll.privateReceipt"].firstMatch
+        XCTAssertTrue(receipt.waitForExistence(timeout: 10))
+        if noProduction {
+            XCTAssertTrue(receipt.label.contains("You received no resources."), receipt.label)
+        }
+        attachScreenshot(named: noProduction ? "Private roll - no production" : "Private roll - verified production receipt")
+        messages.buttons["uls.roll.receipt.close"].firstMatch.tap()
+        messages.buttons["uls.tabletop.reference"].firstMatch.tap()
+        for _ in 0..<6 where !receipt.exists { messages.swipeUp() }
+        XCTAssertTrue(receipt.waitForExistence(timeout: 4))
+        messages.buttons["uls.learning.close"].firstMatch.tap()
+        XCTAssertFalse(messages.buttons["uls.roll.receipt.close"].firstMatch.exists)
+        XCTAssertEqual(gameplayActionEvidenceValue(), after)
+    }
+
+    func testMixedPurchaseCostInspection() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Mixed purchase costs")
+        hideUXLabChromeWithoutChangingFixture()
+        let before = gameplayActionEvidenceValue()
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let frame = board.frame
+        messages.buttons["uls.turnObject.build"].firstMatch.tap()
+        let road = messages.buttons["uls.tutorial.build.buildRoad"].firstMatch
+        XCTAssertTrue(road.waitForExistence(timeout: 4))
+        XCTAssertTrue(road.isEnabled)
+        XCTAssertFalse(messages.buttons["uls.tutorial.build.buildSettlement"].firstMatch.isEnabled)
+        XCTAssertFalse(messages.buttons["uls.tutorial.build.buildCity"].firstMatch.isEnabled)
+        attachScreenshot(named: "Mixed costs - road available")
+        messages.buttons["uls.purchase.close"].firstMatch.tap()
+        messages.buttons["uls.tabletop.devDeck"].firstMatch.tap()
+        let buy = messages.buttons["uls.purchase.confirm"].firstMatch
+        XCTAssertTrue(buy.waitForExistence(timeout: 4))
+        XCTAssertFalse(buy.isEnabled)
+        attachScreenshot(named: "Mixed costs - Dev unavailable")
+        messages.buttons["uls.purchase.close"].firstMatch.tap()
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+        assertFrame(of: board, matches: frame, message: "Inspecting unavailable costs must retain the mounted board")
+    }
+
+    func testForcedActionReferenceInspection() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Pending discard")
+        hideUXLabChromeWithoutChangingFixture()
+        let before = gameplayActionEvidenceValue()
+        messages.buttons["uls.tabletop.reference"].firstMatch.tap()
+        let inventory = messages.buttons["Your owned Dev Cards"].firstMatch
+        XCTAssertTrue(inventory.waitForExistence(timeout: 4))
+        inventory.tap()
+        XCTAssertTrue(messages.descendants(matching: .any)["uls.devCards.inventory"].firstMatch.waitForExistence(timeout: 4))
+        attachScreenshot(named: "Forced action - private inspection")
+        messages.buttons["uls.learning.close"].firstMatch.tap()
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+    }
+
+    func testFourPlayerSeatsAndReference() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Four player seats")
+        hideUXLabChromeWithoutChangingFixture()
+        let before = gameplayActionEvidenceValue()
+        for index in 0..<4 {
+            let seat = messages.buttons["uls.tabletop.seat.\(index)"].firstMatch
+            XCTAssertTrue(seat.waitForExistence(timeout: 4))
+            XCTAssertTrue(seat.label.contains("public victory points"))
+            XCTAssertTrue(seat.isHittable)
+        }
+        attachScreenshot(named: "Four seats - public scores and marks")
+        messages.buttons["uls.tabletop.reference"].firstMatch.tap()
+        XCTAssertTrue(messages.buttons["uls.learning.controls"].firstMatch.waitForExistence(timeout: 4))
+        attachScreenshot(named: "Four seats - Reference")
+        messages.buttons["uls.learning.close"].firstMatch.tap()
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+    }
+
+    func testLearningReferenceAndControls() throws {
+        openUnluckySevensExtension()
+        assertLaunchFixtureLoaded(title: "Turn after roll")
+        hideUXLabChromeWithoutChangingFixture()
+        turnElement(identifier: "", labels: ["Players and game information"]).tap()
+        XCTAssertTrue(messages.buttons["uls.gameInfo.close"].firstMatch.waitForExistence(timeout: 4))
+        let before = gameplayActionEvidenceValue()
+        let board = turnElement(identifier: "uls.tabletop.board", labels: [])
+        let boardBefore = board.frame
+        let reference = messages.buttons["uls.tabletop.reference"].firstMatch
+        XCTAssertTrue(reference.waitForExistence(timeout: 5))
+        reference.tap()
+        XCTAssertTrue(messages.otherElements["uls.learning.surface"].firstMatch.waitForExistence(timeout: 5))
+        attachScreenshot(named: "Learning - Reference")
+        let controls = messages.buttons["uls.learning.controls"].firstMatch
+        for _ in 0..<6 where !controls.isHittable { messages.swipeUp() }
+        XCTAssertTrue(controls.isHittable)
+        controls.tap()
+        XCTAssertTrue(messages.otherElements["uls.controls.surface"].firstMatch.waitForExistence(timeout: 5))
+        let tour = messages.otherElements["uls.controls.surface"].firstMatch
+        let bank = tour.buttons["uls.tabletop.bankRack"].firstMatch
+        XCTAssertTrue(bank.waitForExistence(timeout: 5))
+        bank.tap()
+        let next = tour.buttons["uls.controls.continue"].firstMatch
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        attachScreenshot(named: "Learning - Controls practice")
+        next.tap()
+        tour.buttons["uls.tabletop.devDeck"].firstMatch.tap()
+        XCTAssertTrue(tour.buttons["uls.purchase.confirm"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(next.exists)
+        tour.buttons["uls.purchase.close"].firstMatch.tap()
+        next.tap()
+        tour.buttons["uls.physicalProps.hand"].firstMatch.tap()
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        next.tap()
+        tour.buttons["uls.turnObject.build"].firstMatch.tap()
+        tour.buttons["uls.physicalProps.build.buildRoad"].firstMatch.tap()
+        let target = try XCTUnwrap(boardTargetCoordinate(kind: "edge", timeout: 5, in: tour))
+        tapBoardTarget(target)
+        tapBoardTarget(target)
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        next.tap()
+        tour.buttons["uls.turnObject.trade"].firstMatch.tap()
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        next.tap()
+        let owned = tour.buttons["uls.physicalProps.ownedDevCards"].firstMatch
+        XCTAssertTrue(owned.waitForExistence(timeout: 4))
+        owned.tap()
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        next.tap()
+        tour.buttons["Players and game information"].firstMatch.tap()
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        next.tap()
+        tour.buttons["uls.turnObject.endTurn"].firstMatch.tap()
+        tour.buttons["uls.turn.endConfirmation.confirm"].firstMatch.tap()
+        XCTAssertTrue(next.waitForExistence(timeout: 4))
+        next.tap()
+        XCTAssertTrue(messages.staticTexts["Controls practiced"].firstMatch.waitForExistence(timeout: 4))
+        messages.buttons["Return to Reference"].firstMatch.tap()
+        messages.buttons["uls.learning.beginner"].firstMatch.tap()
+        let coach = messages.buttons["uls.tutorial.navigationCoach"].firstMatch
+        if coach.waitForExistence(timeout: 2) { coach.tap() }
+        let exitBeginner = messages.buttons["uls.tutorial.exit"].firstMatch
+        XCTAssertTrue(exitBeginner.waitForExistence(timeout: 4))
+        exitBeginner.tap()
+        messages.buttons["uls.learning.close"].firstMatch.tap()
+        XCTAssertTrue(messages.buttons["uls.gameInfo.close"].firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(messages.descendants(matching: .any)["uls.tabletop.boardHost.occluded"].firstMatch.exists)
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
+        messages.buttons["uls.gameInfo.close"].firstMatch.tap()
+        attachScreenshot(named: "Table - Seats and public scores")
+        assertFrame(of: board, matches: boardBefore, message: "Reference must preserve the board frame")
+    }
+
     func testAutomaticDevBankTeaching() throws {
         openUnluckySevensExtension()
         assertLaunchFixtureLoaded(title: "End turn action")
@@ -2693,6 +3111,16 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(afterRoad.contains("host:R14/S4/C4"), afterRoad)
         XCTAssertTrue(afterRoad.contains("current=alice"), afterRoad)
         attachGameplayActionEvidence(name: "Setup Settlement and Road", before: before, after: afterRoad)
+    }
+
+    func testAccessibleBoardSelectedTarget() throws {
+        openCanonicalPostRollActionFixture()
+        let before = gameplayActionEvidenceValue()
+        chooseBuildAction(identifier: "uls.physicalProps.build.buildRoad")
+        let target = try XCTUnwrap(boardTargetCoordinate(kind: "edge", timeout: 5))
+        tapBoardTarget(target)
+        attachScreenshot(named: "Board ownership - selected and legal road targets")
+        XCTAssertEqual(gameplayActionEvidenceValue(), before)
     }
 
     func testGameplayActionBuildRoadCommitsCanonicalState() throws {
@@ -2985,7 +3413,12 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         XCTAssertTrue(before.contains("phase=turn"), before)
         XCTAssertTrue(before.contains("winner=-"), before)
 
-        openPlayableDevCard(identifier: "uls.physicalProps.devCard.victoryPoint")
+        // This legacy fixture is already at ten points. Passive VP cards have no Play action.
+        let menu = openCurrentGameLifecycleMenu()
+        menu.tap()
+        let declare = messages.buttons["Declare Victory"].firstMatch
+        XCTAssertTrue(declare.waitForExistence(timeout: 4))
+        declare.tap()
 
         let after = waitForGameplayActionEvidenceChange(from: before, timeout: 8)
         XCTAssertTrue(after.contains("rev=18"), after)
@@ -5249,9 +5682,10 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
 
     private func boardTargetCoordinate(
         kind: String,
-        timeout: TimeInterval
+        timeout: TimeInterval,
+        in root: XCUIElement? = nil
     ) throws -> BoardTargetCoordinate? {
-        let boardHost = messages.descendants(matching: .any)["uls.tabletop.boardHost"].firstMatch
+        let boardHost = (root ?? messages).descendants(matching: .any)["uls.tabletop.boardHost"].firstMatch
         guard boardHost.waitForExistence(timeout: timeout) else {
             return nil
         }

@@ -94,7 +94,7 @@ The controller is the sole authority for host geometry. SwiftUI consumes one set
 `MessagesHostLayoutSnapshot`; product routes cannot publish layout revisions. UIKit
 transition callbacks suppress intermediate geometry and commit once after a genuine
 Messages presentation or window-size transition settles. SpriteKit keeps its mounted
-`SKView` and receives only the resulting viewport adjustment.
+`SKView` and receives only the resulting viewport adjustment. Its settled reference dimensions follow both shrinking and growing hosts; overlay-only updates retain the mounted board fit.
 
 ## Protocol Model
 
@@ -189,3 +189,9 @@ The extension now has explicit host, support, feature, presentation, board, reco
 Core evaluates the current player's buildings, awards and all owned VP cards (including cards bought this turn) for immediate victory. Public standings still omit unrevealed cards. Terminalization reveals only the winner's VP cards. Turn entry and resignation handoff use the resulting current player; canonical winning transitions must exactly replay a legal Core turn or lifecycle intent. Decoding an old snapshot never rewrites it: an explicit winning claim or next current-player action publishes the terminal transition.
 
 Ordinary lobby/setup/turn/lifecycle publications stage a snapshot until the Messages send callback accepts the local handoff. Failure discards the staged snapshot, allowing the original action to be retried. Only one publication can be in flight; conversation changes invalidate its callback, including lobby reconciliation. Reconciliation callbacks preserve a newer persisted state, cannot reopen another selected game, and drain newly observed join claims after an accepted handoff. A late accepted snapshot is recorded but cannot replace a preferred received state or reopen another selected game. The player-triggered resend republishes the validated latest known snapshot unchanged in the existing bound session; it does not advance revision, reroll or execute an intent. Messages acceptance is not remote delivery evidence.
+
+### Local learning and roll receipts
+
+The controls tour owns a synthetic `LobbyDriverViewModel` and isolated preferences. Its send path never reaches transport or the real ledger. Both tutorial shells opt out of global board-occlusion coordination, so opening help cannot alter the mounted game's panel cover.
+
+Core's `productionReceipt(from:for:)` verifies a complete canonical roll transition and computes only the requested viewer's production outcome, including robber/shortage reasons. The extension persists that private receipt locally and carries it only along observed hash links. Missing predecessor history returns no receipt. This adds no serialized state/envelope fields and changes no rules or protocol validation.

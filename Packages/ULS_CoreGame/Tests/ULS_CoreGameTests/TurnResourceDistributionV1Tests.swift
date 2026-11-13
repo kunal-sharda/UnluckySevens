@@ -23,6 +23,13 @@ final class TurnResourceDistributionV1Tests: XCTestCase {
         XCTAssertEqual(rolled.resourcesByPlayer["A"]?.wood, 1)
         XCTAssertEqual(rolled.resourcesByPlayer["B"]?.wood, 2)
         XCTAssertEqual(rolled.bankResources.wood, 16)
+        let settlementReceipt = try XCTUnwrap(rolled.productionReceipt(from: initial, for: "A"))
+        let cityReceipt = try XCTUnwrap(rolled.productionReceipt(from: initial, for: "B"))
+        XCTAssertEqual(settlementReceipt.gains.wood, 1)
+        XCTAssertEqual(cityReceipt.gains.wood, 2)
+        XCTAssertFalse(settlementReceipt.blockedByRobber)
+        XCTAssertFalse(settlementReceipt.bankShortage)
+        XCTAssertNil(rolled.productionReceipt(from: initial, for: "outsider"))
         XCTAssertNoThrow(try validateTransition(from: initial, to: rolled, actor: "A"))
     }
 
@@ -44,6 +51,10 @@ final class TurnResourceDistributionV1Tests: XCTestCase {
         XCTAssertEqual(rolled.resourcesByPlayer["A"], .zero)
         XCTAssertEqual(rolled.resourcesByPlayer["B"], .zero)
         XCTAssertEqual(rolled.bankResources, .standardBank)
+        let receipt = try XCTUnwrap(rolled.productionReceipt(from: initial, for: "A"))
+        XCTAssertEqual(receipt.gains, .zero)
+        XCTAssertTrue(receipt.blockedByRobber)
+        XCTAssertFalse(receipt.bankShortage)
         XCTAssertNoThrow(try validateTransition(from: initial, to: rolled, actor: "A"))
     }
 
@@ -66,6 +77,10 @@ final class TurnResourceDistributionV1Tests: XCTestCase {
         XCTAssertEqual(rolled.resourcesByPlayer["A"], .zero)
         XCTAssertEqual(rolled.resourcesByPlayer["B"], .zero)
         XCTAssertEqual(rolled.bankResources, constrainedBank)
+        let receipt = try XCTUnwrap(rolled.productionReceipt(from: initial, for: "B"))
+        XCTAssertEqual(receipt.gains, .zero)
+        XCTAssertFalse(receipt.blockedByRobber)
+        XCTAssertTrue(receipt.bankShortage)
         XCTAssertNoThrow(try validateTransition(from: initial, to: rolled, actor: "A"))
     }
 
