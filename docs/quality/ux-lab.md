@@ -36,7 +36,7 @@ While UX Lab is active, the view model uses local fixture state and local actor 
 
 The `UnluckySevensUITests` XCUITest harness can drive the simulator through Messages, open the Unlucky Sevens app drawer item, and attach screenshots of the canonical Invitation slice plus the UX Lab panel to the `.xcresult` bundle. Retired lobby-direction comparisons are no longer UX Lab routes. The harness is a design-review capture aid, not a replacement for the real-device Messages lane. It expects Messages to have at least one existing simulator conversation and falls back to the first visible conversation if the seeded `+1 (888) 555-1212` thread is unavailable.
 
-The checked-in catalog entrypoint is `scripts/run-ui-screenshot-catalog.sh`. Its iPhone inventory is exhaustive and its iPad inventory is representative. Both inventories are plain-text manifests beside the runner so route additions and removals are code-reviewed instead of reconstructed from shell history.
+The checked-in catalog entrypoint is `scripts/run-ui-screenshot-catalog.sh`. Its iPhone inventory covers the original canonical routes and its iPad inventory is representative. Newer beta surfaces also use the focused catalogs and the capture-only atlas described below. Both inventories are plain-text manifests beside the runner so route additions and removals are code-reviewed instead of reconstructed from shell history.
 
 Default visual iteration lane:
 
@@ -67,3 +67,7 @@ Messages exposes the app drawer differently across simulator/runtime states. The
 When iterating on the Messages extension UI, the simulator can keep rendering an older installed extension even after the workspace build product contains the new code. If a screenshot shows stale copy or layout, or if the app drawer item disappeared after an uninstall, explicitly install the latest `UnluckySevensApp.app` into the booted simulator, terminate `com.apple.MobileSMS`, and rerun the capture harness before judging the design. The XCUITest target drives Messages; it does not replace a missing installed iMessage app bundle by itself.
 
 Before TestFlight or any release claim, follow the relevant Real Device Lane checklist even if the UX Lab pass looked good.
+
+## Capture-only screen inventory
+
+For a design discussion inventory, `scripts/ui-screenshot-catalog-atlas.txt` uses the same iPhone cold-install runner and production components. Its `testAtlas*` methods record screenshots without substituting for geometry, gameplay or accessibility acceptance tests. Visible-label lookup accommodates inherited parent accessibility identifiers; an unreachable control produces an `Atlas capture gap` attachment instead of silently claiming that destination. Review captures and gaps together. Do not interpret a successful capture method as a functional pass or reset another journey's exhausted retry budget. The PDF atlas distinguishes source-only and historical evidence from fresh captures.

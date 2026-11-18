@@ -6,6 +6,7 @@ struct GamePhysicalTurnTopBarView: View {
     var prompt: GamePhysicalTurnHeaderPrompt? = nil
     let isGameInfoOpen: Bool
     let onSettingsTap: () -> Void
+    var onReferenceTap: () -> Void = {}
     let onGameInfoTap: () -> Void
 
     init(
@@ -14,6 +15,7 @@ struct GamePhysicalTurnTopBarView: View {
         prompt: GamePhysicalTurnHeaderPrompt? = nil,
         isGameInfoOpen: Bool,
         onSettingsTap: @escaping () -> Void,
+        onReferenceTap: @escaping () -> Void = {},
         onGameInfoTap: @escaping () -> Void
     ) {
         self.title = title
@@ -21,6 +23,7 @@ struct GamePhysicalTurnTopBarView: View {
         self.prompt = prompt
         self.isGameInfoOpen = isGameInfoOpen
         self.onSettingsTap = onSettingsTap
+        self.onReferenceTap = onReferenceTap
         self.onGameInfoTap = onGameInfoTap
     }
 
@@ -33,6 +36,9 @@ struct GamePhysicalTurnTopBarView: View {
                 action: onSettingsTap
             )
 
+            GameReferenceButton(action: onReferenceTap)
+                .accessibilityHidden(isGameInfoOpen)
+
             HStack(spacing: 7) {
                 if let prompt {
                     GamePhysicalTurnPromptView(text: prompt.text)
@@ -41,7 +47,7 @@ struct GamePhysicalTurnTopBarView: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(GamePhysicalTurnPalette.primaryText)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.78)
+                        .minimumScaleFactor(0.5)
                         .multilineTextAlignment(.center)
                 } else if rollValues.count >= 2 {
                     HStack(spacing: 3) {
@@ -59,6 +65,7 @@ struct GamePhysicalTurnTopBarView: View {
                         .foregroundStyle(GamePhysicalTurnPalette.secondaryText)
                 }
             }
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .frame(maxWidth: .infinity, minHeight: 44)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(prompt?.text ?? "\(title), \(subtitle)")
@@ -135,7 +142,7 @@ struct GamePhysicalTurnPromptView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(GamePhysicalTurnPalette.primaryText)
                 .lineLimit(1)
-                .minimumScaleFactor(0.82)
+                .minimumScaleFactor(0.5)
                 .multilineTextAlignment(.center)
 
             Capsule()

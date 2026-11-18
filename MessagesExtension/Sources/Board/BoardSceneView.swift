@@ -3,6 +3,9 @@ import SwiftUI
 import UIKit
 
 struct BoardSceneView: View, Equatable {
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @Environment(\.isPracticeBoard) private var isPracticeBoard
     let renderModel: GameBoardRenderModel
     let overlayModel: GameBoardOverlayModel
     let interactionMode: GameMode
@@ -13,7 +16,6 @@ struct BoardSceneView: View, Equatable {
     @State private var scene = GameBoardScene(size: CGSize(width: 320, height: 240))
     @State private var interactionController = BoardSceneInteractionController()
     @State private var stableBoardReferenceSize: CGSize?
-    @State private var largestSettledViewportSize: CGSize?
     @State private var lastViewportUpdateSize: CGSize?
     @State private var pendingViewportSize: CGSize?
     @State private var pendingRenderModel: GameBoardRenderModel?
@@ -22,8 +24,16 @@ struct BoardSceneView: View, Equatable {
     @AppStorage(GameBoardOceanStyle.defaultsKey)
     private var oceanStyleRawValue = GameBoardOceanStyle.flat.rawValue
 
-    private static let referencePromotionThreshold: CGFloat = 24
     private static let resizeSettleDelayNanoseconds: UInt64 = 180_000_000
+
+    private var usesAccessibleContrast: Bool {
+        #if DEBUG
+        let forced = UserDefaults.standard.bool(forKey: "uls.debug.accessibleBoard")
+        #else
+        let forced = false
+        #endif
+        return differentiateWithoutColor || colorSchemeContrast == .increased || forced
+    }
 
     static func == (lhs: BoardSceneView, rhs: BoardSceneView) -> Bool {
         lhs.renderModel == rhs.renderModel
@@ -60,9 +70,6 @@ struct BoardSceneView: View, Equatable {
                 if stableBoardReferenceSize == nil {
                     stableBoardReferenceSize = geometry.size
                 }
-                if largestSettledViewportSize == nil {
-                    largestSettledViewportSize = geometry.size
-                }
                 let referenceSize = resolvedReferenceSize(for: geometry.size)
                 applySceneUpdate(
                     renderModel: renderModel,
@@ -71,6 +78,10 @@ struct BoardSceneView: View, Equatable {
                     viewportSize: geometry.size
                 )
                 lastViewportUpdateSize = geometry.size
+            }
+            .onChange(of: usesAccessibleContrast) { _, _ in
+                applySceneUpdate(renderModel: renderModel, overlayModel: overlayModel,
+                                 referenceSize: resolvedReferenceSize(for: geometry.size), viewportSize: geometry.size)
             }
             .onChange(of: renderModel) { _, newValue in
                 pendingRenderModel = newValue
@@ -166,9 +177,10 @@ struct BoardSceneView: View, Equatable {
         renderModel: GameBoardRenderModel,
         overlayModel: GameBoardOverlayModel
     ) {
-        let referenceSize = shouldPromoteReferenceSize(to: viewportSize)
-            ? promotedReferenceSize(for: viewportSize)
-            : resolvedReferenceSize(for: viewportSize)
+        // A settled host can shrink as well as grow (for example iPad Messages).
+        // Retaining maximum dimensions crops the island in the smaller canvas.
+        // Overlay changes use updateOverlay directly and never refit the board.
+        let referenceSize = viewportSize
         stableBoardReferenceSize = referenceSize
         applySceneUpdate(
             renderModel: renderModel,
@@ -186,7 +198,6 @@ struct BoardSceneView: View, Equatable {
             scene: scene
         )
         lastViewportUpdateSize = viewportSize
-        largestSettledViewportSize = promotedLargestSettledViewportSize(with: viewportSize)
     }
 
     private func applySceneUpdate(
@@ -195,6 +206,7 @@ struct BoardSceneView: View, Equatable {
         referenceSize: CGSize,
         viewportSize: CGSize
     ) {
+        scene.setAccessibleContrast(usesAccessibleContrast)
         scene.updateBase(
             renderModel: renderModel,
             referenceSize: referenceSize,
@@ -214,37 +226,7 @@ struct BoardSceneView: View, Equatable {
     }
 
     private func resolvedReferenceSize(for viewportSize: CGSize) -> CGSize {
-        stableBoardReferenceSize ?? viewportSize
+        isPracticeBoard ? viewportSize : (stableBoardReferenceSize ?? viewportSize)
     }
 
-    private func shouldPromoteReferenceSize(to viewportSize: CGSize) -> Bool {
-        guard let stableBoardReferenceSize else {
-            return true
-        }
-
-        return viewportSize.width > (stableBoardReferenceSize.width + Self.referencePromotionThreshold)
-            || viewportSize.height > (stableBoardReferenceSize.height + Self.referencePromotionThreshold)
-    }
-
-    private func promotedReferenceSize(for viewportSize: CGSize) -> CGSize {
-        guard let stableBoardReferenceSize else {
-            return viewportSize
-        }
-
-        return CGSize(
-            width: max(stableBoardReferenceSize.width, viewportSize.width),
-            height: max(stableBoardReferenceSize.height, viewportSize.height)
-        )
-    }
-
-    private func promotedLargestSettledViewportSize(with viewportSize: CGSize) -> CGSize {
-        guard let largestSettledViewportSize else {
-            return viewportSize
-        }
-
-        return CGSize(
-            width: max(largestSettledViewportSize.width, viewportSize.width),
-            height: max(largestSettledViewportSize.height, viewportSize.height)
-        )
-    }
 }

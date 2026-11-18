@@ -207,6 +207,10 @@ while IFS='|' read -r TEST_NAME FIXTURE_ID FIXTURE_ACTOR; do
       /usr/libexec/PlistBuddy -c "Delete :$KEY" "$PREFERENCES_PATH"
     fi
   done
+  /usr/libexec/PlistBuddy -c 'Delete :uls.debug.accessibleBoard' "$PREFERENCES_PATH" >/dev/null 2>&1 || true
+  if [[ "${UI_SCREENSHOT_ACCESSIBLE_BOARD:-0}" == "1" ]]; then
+    /usr/libexec/PlistBuddy -c 'Add :uls.debug.accessibleBoard bool true' "$PREFERENCES_PATH"
+  fi
   /usr/libexec/PlistBuddy -c 'Delete :uls.debug.hostLayoutProbe' "$PREFERENCES_PATH" >/dev/null 2>&1 || true
   if [[ "${UI_SCREENSHOT_HOST_LAYOUT_PROBE:-0}" == "1" ]]; then
     /usr/libexec/PlistBuddy -c 'Add :uls.debug.hostLayoutProbe bool true' "$PREFERENCES_PATH"

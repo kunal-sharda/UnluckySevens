@@ -122,6 +122,7 @@ struct MessagesRootView: View {
                             GameShellView(
                                 viewModel: viewModel,
                                 onSettingsTap: showGameplaySettings,
+                                onReferenceTap: showTutorial,
                                 onGamesTap: showGames,
                                 preferences: appPreferences,
                                 initialMode: viewModel.uxTestingForcesCityTargets
@@ -138,6 +139,7 @@ struct MessagesRootView: View {
                             GameShellView(
                                 viewModel: viewModel,
                                 onSettingsTap: showGameplaySettings,
+                                onReferenceTap: showTutorial,
                                 onGamesTap: showGames,
                                 preferences: appPreferences,
                                 isUtilityPresented: utilityRoute != nil
@@ -165,6 +167,17 @@ struct MessagesRootView: View {
                         }
                     }
                     .overlay {
+                        if utilityRoute == .learning {
+                            GameLearningView(preferences: appPreferences,
+                                isInGame: viewModel.gameplayShellProjection.phase != "-" && viewModel.gameplayShellProjection.phase != "lobby",
+                                boardStrategy: viewModel.referenceBoardStrategy, onDismiss: dismissUtility,
+                                ownedDevPanel: viewModel.makeDevCardPanelModel(mode: .playDevCard, draft: nil),
+                                receipt: viewModel.privateRollReceipt, rollerName: viewModel.receiptRollerName,
+                                unavailableReceiptText: viewModel.unavailableRollReceiptText)
+                                .frame(width: hostLayout.usableSize.width, height: hostLayout.usableSize.height)
+                                .clipped()
+                                .zIndex(30)
+                        }
                         if utilityRoute == .tutorial {
                             GameTutorialView(
                                 preferences: appPreferences,
@@ -257,7 +270,7 @@ struct MessagesRootView: View {
     }
 
     private func showTutorial() {
-        utilityRoute = .tutorial
+        utilityRoute = .learning
     }
 
     private func showGames() {

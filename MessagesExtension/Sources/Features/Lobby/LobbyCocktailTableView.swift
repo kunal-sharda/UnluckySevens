@@ -218,7 +218,7 @@ struct LobbyCocktailTableView: View {
     private var tutorialAction: some View {
         Button(action: tutorial) {
             HStack(spacing: GameTheme.inlineSpacing) {
-                Text("Tutorial")
+                Text("Learn & Reference")
                 Spacer(minLength: GameTheme.inlineSpacing)
                 rulesChevron
             }
@@ -229,7 +229,7 @@ struct LobbyCocktailTableView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityHint("Opens a short game tutorial")
+        .accessibilityHint("Opens costs, rules, strategy and optional learning")
         .accessibilityIdentifier("uls.lobby.tutorial")
     }
 

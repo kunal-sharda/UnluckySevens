@@ -6,11 +6,11 @@ struct GameEndScoreLedgerRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 5) {
-                Circle()
+                Path(player.ownershipMark.path(in: CGRect(x: 0, y: 0, width: 9, height: 9)))
                     .fill(playerColor)
                     .frame(width: 9, height: 9)
                     .overlay {
-                        Circle()
+                        Path(player.ownershipMark.path(in: CGRect(x: 0, y: 0, width: 9, height: 9)))
                             .stroke(
                                 GamePhysicalTurnPalette.nameTileInk.opacity(0.56),
                                 lineWidth: 1
@@ -69,6 +69,7 @@ struct GameEndScoreLedgerRowView: View {
     private var accessibilityLabel: String {
         [
             player.displayName,
+            player.ownershipMark.name,
             player.isLocalPlayer ? "you" : nil,
             player.isWinner ? "winner" : nil,
             "\(player.victoryPoints) victory points",

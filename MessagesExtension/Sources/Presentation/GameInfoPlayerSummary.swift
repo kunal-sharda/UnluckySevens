@@ -8,4 +8,5 @@ struct GameInfoPlayerSummary: Identifiable, Equatable {
     let isCurrentPlayer: Bool
     let isLocalPlayer: Bool
     let awardLabels: [String]
+    var isResigned = false
 }

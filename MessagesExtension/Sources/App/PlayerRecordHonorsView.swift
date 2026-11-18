@@ -5,13 +5,7 @@ struct PlayerRecordHonorsView: View {
     let playerColorIndex: Int
 
     private var playerColor: Color {
-        let colors: [Color] = [
-            Color(red: 0.72, green: 0.18, blue: 0.16),
-            Color(red: 0.18, green: 0.42, blue: 0.70),
-            Color(red: 0.91, green: 0.88, blue: 0.78),
-            Color(red: 0.78, green: 0.48, blue: 0.13),
-        ]
-        return colors[playerColorIndex % colors.count]
+        Color(GameBoardPalette.playerColor(index: playerColorIndex))
     }
 
     var body: some View {

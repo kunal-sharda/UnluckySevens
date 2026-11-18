@@ -1,0 +1,2 @@
+testWaitingRobberMoveOwnedInventory|robber-move|alice
+testWaitingRobberStealOwnedInventory|robber-victim|alice

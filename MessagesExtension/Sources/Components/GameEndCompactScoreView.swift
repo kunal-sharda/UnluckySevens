@@ -6,11 +6,11 @@ struct GameEndCompactScoreView: View {
     var body: some View {
         VStack(spacing: GameTheme.chipSpacing) {
             HStack(spacing: GameTheme.chipSpacing) {
-                Circle()
+                Path(player.ownershipMark.path(in: CGRect(x: 0, y: 0, width: 9, height: 9)))
                     .fill(playerColor)
                     .frame(width: 9, height: 9)
                     .overlay {
-                        Circle()
+                        Path(player.ownershipMark.path(in: CGRect(x: 0, y: 0, width: 9, height: 9)))
                             .stroke(
                                 GamePhysicalTurnPalette.nameTileInk.opacity(0.56),
                                 lineWidth: 1
@@ -57,6 +57,7 @@ struct GameEndCompactScoreView: View {
     private var accessibilityLabel: String {
         [
             player.displayName,
+            player.ownershipMark.name,
             player.isLocalPlayer ? "you" : nil,
             "\(player.victoryPoints) victory points",
             player.awardLabels.isEmpty ? nil : player.awardLabels.joined(separator: ", "),

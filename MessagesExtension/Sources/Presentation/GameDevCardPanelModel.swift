@@ -106,7 +106,7 @@ struct GameDevCardPanelModel: Equatable {
     func executableSelectionOnly() -> GameDevCardPanelModel {
         GameDevCardPanelModel(
             message: message,
-            cards: cards.filter { $0.isEnabled || $0.isSelected },
+            cards: cards.filter { ($0.isEnabled || $0.isSelected) && $0.kind != .victoryPoint },
             playableCounts: playableCounts,
             heldCounts: heldCounts,
             newCounts: newCounts,

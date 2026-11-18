@@ -244,6 +244,34 @@ final class GameBoardSceneTests: XCTestCase {
         XCTAssertGreaterThan(overlayNode.children.count, 0)
     }
 
+    func testAccessibleContrastRebuildsSelectionWithoutChangingTargets() throws {
+        let model = makeRenderModel()
+        let size = CGSize(width: 320, height: 240)
+        let scene = GameBoardScene(size: size)
+        let overlay = GameBoardOverlayModel(legalTileIDs: [], legalNodeIDs: [], legalEdgeIDs: [3, 4],
+                                            anchorNodeID: nil, selectedTarget: .edge(3))
+        scene.update(renderModel: model, referenceSize: size, viewportSize: size, overlayModel: overlay)
+        XCTAssertFalse(descendants(of: scene).contains { $0.name == "accessibility.selectedEdge.center" })
+        scene.setAccessibleContrast(true)
+        scene.update(renderModel: model, referenceSize: size, viewportSize: size, overlayModel: overlay)
+        let center = try XCTUnwrap(descendants(of: scene).first { $0.name == "accessibility.selectedEdge.center" } as? SKShapeNode)
+        XCTAssertColor(center.strokeColor, equals: .white)
+        XCTAssertEqual(center.lineWidth, 2)
+        let marks = descendants(of: scene).filter { $0.name == "ownership.mark" }.compactMap { $0 as? SKShapeNode }
+        XCTAssertEqual(marks.count, 3)
+        for mark in marks {
+            XCTAssertEqual(mark.lineWidth, 1.6, accuracy: 0.001)
+            XCTAssertLessThan(mark.yScale, 0)
+        }
+        XCTAssertEqual(scene.size, size)
+        scene.setAccessibleContrast(false)
+        scene.update(renderModel: model, referenceSize: size, viewportSize: size, overlayModel: overlay)
+        XCTAssertFalse(descendants(of: scene).contains { $0.name == "accessibility.selectedEdge.center" })
+        for mark in descendants(of: scene).filter({ $0.name == "ownership.mark" }).compactMap({ $0 as? SKShapeNode }) {
+            XCTAssertEqual(mark.lineWidth, 0.8, accuracy: 0.001)
+        }
+    }
+
     func testCameraUpdatesStayInSceneState() throws {
         let scene = GameBoardScene(size: CGSize(width: 320, height: 240))
         let state = GameBoardCameraState(zoom: 1.8, offset: CGSize(width: 24, height: -18))

@@ -113,13 +113,7 @@ struct PlayerRecordGroupLedgerView: View {
     }
 
     private func playerColor(for index: Int) -> Color {
-        let colors: [Color] = [
-            Color(red: 0.72, green: 0.18, blue: 0.16),
-            Color(red: 0.18, green: 0.42, blue: 0.70),
-            Color(red: 0.91, green: 0.88, blue: 0.78),
-            Color(red: 0.78, green: 0.48, blue: 0.13),
-        ]
-        return colors[index % colors.count]
+        Color(GameBoardPalette.playerColor(index: index))
     }
 
     private func outcomeColor(for outcome: PlayerRecordOutcomeKind) -> Color {

@@ -76,7 +76,8 @@ struct GameTutorialPreviewView: View {
             initialRoute: initialRoute,
             minimumActionSurfaceHeight: minimumActionSurfaceHeight,
             tutorialTradeTarget: tutorialTradeTarget,
-            tutorialHeaderTitle: isTradeStep ? "Trade" : nil
+            tutorialHeaderTitle: isTradeStep ? "Trade" : nil,
+            isSyntheticSession: true
         )
     }
 
