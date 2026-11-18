@@ -107,6 +107,7 @@ enum UXTestFixtures {
         UXTestFixture(id: "preview-road-building", title: "Preview Road Building", detail: "Local two-road draft only", defaultActorID: host, state: turnAfterRoll.state),
         drawVote,
         endTurnAction,
+        cityAtSettlementLimit,
         waitingOnAlice,
         waitingOnDiscard,
         pendingDiscard,
@@ -132,6 +133,7 @@ enum UXTestFixtures {
     static let turnNeedsRollOnlyID = "turn-needs-roll-only"
     static let drawVoteID = "draw-vote"
     static let endTurnActionID = "end-turn-action"
+    static let cityAtSettlementLimitID = "city-at-settlement-limit"
     static let tradeOfferID = "trade-offer"
     static let multiTypeTradeOfferID = "multi-type-trade-offer"
     static let waitingOnAliceID = "waiting-on-alice"
@@ -467,6 +469,38 @@ enum UXTestFixtures {
             )
         )
     )
+
+    private static let cityAtSettlementLimit: UXTestFixture = {
+        let topology = StandardBoardTopologyV1.standard()
+        var nodes: [NodeID] = []
+        for node in 0..<topology.nodesCount where nodes.count < 6 {
+            if Set(topology.nodes(adjacentTo: node)).isDisjoint(with: nodes) {
+                nodes.append(node)
+            }
+        }
+        precondition(nodes.count == 6)
+        return UXTestFixture(
+            id: cityAtSettlementLimitID,
+            title: "City at settlement limit",
+            detail: "Synthetic issue 58 boundary: five settlements and one city on board.",
+            defaultActorID: host,
+            state: makeTurnFixture(
+                rev: 9,
+                currentPlayer: host,
+                devCardsByPlayer: [:],
+                newDevCardsByPlayer: [:],
+                settlementsByNode: Dictionary(uniqueKeysWithValues: nodes.prefix(5).map { ($0, host) }),
+                citiesByNode: [nodes[5]: host],
+                roadsByEdge: [:],
+                knightsPlayedByPlayer: [:],
+                largestArmyOwner: nil,
+                largestArmySize: 0,
+                longestRoadOwner: nil,
+                longestRoadLength: 0,
+                turnState: TurnStateV1(step: .afterRoll, lastRoll: DiceRollV1(d1: 3, d2: 5))
+            )
+        )
+    }()
 
     private static let waitingOnAlice = UXTestFixture(
         id: waitingOnAliceID,

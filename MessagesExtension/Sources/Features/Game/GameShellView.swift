@@ -488,7 +488,7 @@ struct GameShellView: View {
                                     : physicalBoardCenteringOffset,
                                 bottomOcclusionHeight: boardBottomOcclusionHeight,
                                 onInteractionChanged: nil,
-                                onTargetTap: { target in
+                                onTargetTap: { target, tapCount in
                                     #if DEBUG
                                     if designPreviewID == "preview-road-building" {
                                         if case let .edge(edgeID) = target, roadPreviewAcknowledgment == nil {
@@ -499,7 +499,7 @@ struct GameShellView: View {
                                     }
                                     #endif
                                     guard !isInspectingPreRollBoard else { return }
-                                    handleBoardTap(target, mode: resolvedMode)
+                                    handleBoardTap(target, mode: resolvedMode, tapCount: tapCount)
                                 }
                             )
                             .frame(
@@ -2208,7 +2208,7 @@ struct GameShellView: View {
         clearBoardSelection()
     }
 
-    private func handleBoardTap(_ target: GameBoardTarget, mode: GameMode) {
+    private func handleBoardTap(_ target: GameBoardTarget, mode: GameMode, tapCount: Int = 1) {
         guard !viewModel.isSendingGameUpdate else { return }
         let normalizedTarget = normalizedBoardTarget(for: target, mode: mode)
 
@@ -2217,7 +2217,8 @@ struct GameShellView: View {
             guard let decision = GameBoardCommitCoordinator.decision(
                 existingDraft: boardCommitDraft,
                 normalizedTarget: normalizedTarget,
-                mode: mode
+                mode: mode,
+                tapCount: tapCount
             ) else {
                 clearBoardSelection()
                 return

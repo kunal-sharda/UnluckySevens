@@ -2734,6 +2734,29 @@ final class MessagesExtensionDesignSliceUITests: XCTestCase {
         attachGameplayActionEvidence(name: "Build City", before: before, after: after)
     }
 
+    func testGameplayActionBuildCityRapidDoubleTapCommitsCanonicalState() throws {
+        openUnluckySevensExtension()
+        loadDirectGameplayActionFixture(
+            identifier: "uls.uxLab.cleanShot.cityAtSettlementLimit.direct",
+            label: "Clean city at settlement limit"
+        )
+        _ = waitForGameplayActionEvidence(containing: "status=UX Lab loaded City at settlement limit", timeout: 6)
+        let close = messages.buttons["uls.purchase.close"].firstMatch
+        if close.waitForExistence(timeout: 2) { close.tap() }
+        let before = gameplayActionEvidenceValue()
+        XCTAssertTrue(before.contains("R15/S0/C3"), before)
+        chooseBuildAction(identifier: "uls.physicalProps.build.buildCity")
+        let target = try XCTUnwrap(boardTargetCoordinate(kind: "node", timeout: 5))
+        target.boardHost.coordinate(withNormalizedOffset: target.normalizedOffset).doubleTap()
+
+        let after = waitForGameplayActionEvidenceChange(from: before, timeout: 6)
+        XCTAssertTrue(after.contains("rev=10"), after)
+        XCTAssertTrue(after.contains("status=Published city upgrade"), after)
+        XCTAssertTrue(after.contains("rawError=-"), after)
+        XCTAssertTrue(after.contains("R15/S1/C2"), after)
+        attachGameplayActionEvidence(name: "Build City Rapid Double Tap", before: before, after: after)
+    }
+
     func testGameplayActionMoveRobberCommitsCanonicalState() throws {
         openUnluckySevensExtension()
         loadDirectGameplayActionFixture(

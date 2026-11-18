@@ -28,7 +28,8 @@ enum GameBoardCommitCoordinator {
     static func decision(
         existingDraft: GameBoardCommitDraft?,
         normalizedTarget: GameBoardTarget?,
-        mode: GameMode
+        mode: GameMode,
+        tapCount: Int = 1
     ) -> Decision? {
         guard handles(mode: mode) else {
             return nil
@@ -39,7 +40,7 @@ enum GameBoardCommitCoordinator {
         }
 
         let draft = GameBoardCommitDraft(mode: mode, target: normalizedTarget)
-        if existingDraft == draft {
+        if existingDraft == draft || (mode == .buildCity && tapCount == 2) {
             return .confirm(draft)
         }
 

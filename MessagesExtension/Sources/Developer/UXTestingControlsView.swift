@@ -586,6 +586,14 @@ struct UXTestingControlsView: View {
 
                 cleanShotButton(
                     systemImage: "trophy.fill",
+                    accessibilityLabel: "Clean city at settlement limit",
+                    accessibilityIdentifier: "uls.uxLab.cleanShot.cityAtSettlementLimit.direct"
+                ) {
+                    activateCleanFixture(id: UXTestFixtures.cityAtSettlementLimitID)
+                }
+
+                cleanShotButton(
+                    systemImage: "trophy.fill",
                     accessibilityLabel: "Clean victory action",
                     accessibilityIdentifier: "uls.uxLab.cleanShot.victoryAction.direct"
                 ) {

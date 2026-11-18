@@ -9,7 +9,7 @@ struct LiveGameBoardCanvasView: View {
     let contentVerticalOffset: CGFloat
     let bottomOcclusionHeight: CGFloat
     let onInteractionChanged: ((Bool) -> Void)?
-    let onTargetTap: ((GameBoardTarget) -> Void)?
+    let onTargetTap: ((GameBoardTarget, Int) -> Void)?
 
     var body: some View {
         GeometryReader { geometry in

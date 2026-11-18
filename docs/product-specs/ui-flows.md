@@ -168,6 +168,8 @@ The upper instruction is the short action heading centered between Settings and 
 - The visible text is also the center slot’s accessibility label. The line is decorative and accessibility-hidden.
 - Exact typography, spacing, and keyline dimensions belong to the shared component and [Design](../../DESIGN.md), not to each flow.
 
+City upgrades accept either two separated taps on the same legal settlement or one rapid double tap. A rapid double tap confirms once; a single tap only selects the settlement for confirmation. Core still owns upgrade eligibility.
+
 ### Canonical Heading Map
 
 | Interaction state | Upper instruction |

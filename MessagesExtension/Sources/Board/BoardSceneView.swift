@@ -8,7 +8,7 @@ struct BoardSceneView: View, Equatable {
     let interactionMode: GameMode
     let bottomOcclusionHeight: CGFloat
     let onInteractionChanged: ((Bool) -> Void)?
-    let onTargetTap: ((GameBoardTarget) -> Void)?
+    let onTargetTap: ((GameBoardTarget, Int) -> Void)?
 
     @State private var scene = GameBoardScene(size: CGSize(width: 320, height: 240))
     @State private var interactionController = BoardSceneInteractionController()

@@ -1,0 +1,3 @@
+# Issue #58: rapid double tap through the production city target path.
+testGameplayActionBuildCityRapidDoubleTapCommitsCanonicalState
+testGameplayActionBuildCityCommitsCanonicalState

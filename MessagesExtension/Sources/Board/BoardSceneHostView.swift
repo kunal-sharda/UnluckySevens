@@ -80,7 +80,7 @@ struct BoardSceneHostView: UIViewRepresentable {
     let isInteractionEnabled: Bool
     let bottomOcclusionHeight: CGFloat
     let onInteractionChanged: ((Bool) -> Void)?
-    let onTargetTap: ((GameBoardTarget) -> Void)?
+    let onTargetTap: ((GameBoardTarget, Int) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -248,11 +248,12 @@ struct BoardSceneHostView: UIViewRepresentable {
         private var boardReferenceSize: CGSize = CGSize(width: 320, height: 240)
         private var interactionController: BoardSceneInteractionController?
         private var isInteractionEnabled = true
-        private var onTargetTap: ((GameBoardTarget) -> Void)?
+        private var onTargetTap: ((GameBoardTarget, Int) -> Void)?
         private var onInteractionChanged: ((Bool) -> Void)?
         private var panGestureRecognizer: UIPanGestureRecognizer?
         private var pinchGestureRecognizer: UIPinchGestureRecognizer?
         private var tapGestureRecognizer: UITapGestureRecognizer?
+        private var cityDoubleTapGestureRecognizer: UITapGestureRecognizer?
         private var panelOcclusionHeight: CGFloat = 0
         private let panelOcclusionView: UIView = {
             let view = UIView(frame: .zero)
@@ -308,13 +309,24 @@ struct BoardSceneHostView: UIViewRepresentable {
             tap.require(toFail: pan)
             tap.require(toFail: pinch)
 
+            // A rapid pair is a distinct gesture, not two guaranteed single-tap callbacks.
+            let cityDoubleTap = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
+            cityDoubleTap.numberOfTapsRequired = 2
+            cityDoubleTap.delegate = self
+            cityDoubleTap.require(toFail: pan)
+            cityDoubleTap.require(toFail: pinch)
+            tap.require(toFail: cityDoubleTap)
+            cityDoubleTap.isEnabled = false
+
             view.addGestureRecognizer(pan)
             view.addGestureRecognizer(pinch)
             view.addGestureRecognizer(tap)
+            view.addGestureRecognizer(cityDoubleTap)
 
             panGestureRecognizer = pan
             pinchGestureRecognizer = pinch
             tapGestureRecognizer = tap
+            cityDoubleTapGestureRecognizer = cityDoubleTap
         }
 
         func layoutPanelOcclusion(in view: SKView) {
@@ -360,7 +372,7 @@ struct BoardSceneHostView: UIViewRepresentable {
             interactionController: BoardSceneInteractionController,
             isInteractionEnabled: Bool,
             onInteractionChanged: ((Bool) -> Void)?,
-            onTargetTap: ((GameBoardTarget) -> Void)?
+            onTargetTap: ((GameBoardTarget, Int) -> Void)?
         ) {
             self.scene = scene
             self.renderModel = renderModel
@@ -373,6 +385,7 @@ struct BoardSceneHostView: UIViewRepresentable {
             self.isInteractionEnabled = isInteractionEnabled
             self.onInteractionChanged = onInteractionChanged
             self.onTargetTap = onTargetTap
+            cityDoubleTapGestureRecognizer?.isEnabled = isInteractionEnabled && interactionMode == .buildCity
             interactionController.onInteractionChanged = onInteractionChanged
             view?.isUserInteractionEnabled = isInteractionEnabled
         }
@@ -451,7 +464,7 @@ struct BoardSceneHostView: UIViewRepresentable {
                 return
             }
 
-            onTargetTap(target)
+            onTargetTap(target, recognizer.numberOfTapsRequired)
         }
 
         func gestureRecognizer(

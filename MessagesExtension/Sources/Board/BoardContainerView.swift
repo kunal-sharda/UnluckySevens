@@ -12,7 +12,7 @@ struct BoardContainerView: View {
     let boardContentVerticalOffset: CGFloat
     var bottomOcclusionHeight: CGFloat = 0
     let onInteractionChanged: ((Bool) -> Void)?
-    let onTargetTap: ((GameBoardTarget) -> Void)?
+    let onTargetTap: ((GameBoardTarget, Int) -> Void)?
 
     private var shouldShowBoardHeader: Bool {
         renderModel != nil || !model.subtitle.isEmpty
